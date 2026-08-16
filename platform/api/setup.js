@@ -1,8 +1,7 @@
 // Run once against a fresh database. Creates the tables, seeds the catalogue,
 // and makes the first admin. Refuses to do anything if an admin already exists,
 // so it can't be used to mint a second one later.
-const fs = require('fs');
-const path = require('path');
+const SCHEMA = require('../lib/schema.js');
 const { sql, id } = require('../lib/db.js');
 const { hashPassword, startSession } = require('../lib/auth.js');
 
@@ -20,9 +19,8 @@ module.exports = async (req, res) => {
   const s = sql();
 
   try {
-    const schema = fs.readFileSync(path.join(process.cwd(), 'lib', 'schema.sql'), 'utf8');
     // neon's http driver takes one statement at a time
-    for (const stmt of schema.split(';').map(x => x.trim()).filter(x => x && !x.startsWith('--'))) {
+    for (const stmt of SCHEMA) {
       await s.query(stmt);
     }
   } catch (e) {
