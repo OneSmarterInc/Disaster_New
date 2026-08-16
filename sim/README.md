@@ -83,3 +83,18 @@ refuses to write the file if any scenario content has leaked into it.
 The scenario itself — ground truth, character contracts, knowledge sets, the
 debrief — lives in `lib/scenario.js` and is only ever read by the serverless
 functions. It must never be imported by anything under `public/`.
+
+
+## Launching from the platform
+
+The sim can be entered two ways. Standalone, with the shared `ACCESS_CODE`.
+Or from the platform, which signs a short-lived token and sends the person here
+with `?lt=…` on the URL.
+
+`lib/launch.js` verifies that token against `LAUNCH_SECRET`, which must match the
+platform's. A valid token replaces the access code entirely and tells the sim who
+is playing: anyone arriving as faculty is sent straight to the session console,
+students go into the sim. The token is stripped from the address bar on arrival.
+
+The sim never calls the platform and shares no database with it. The signature is
+the whole contract.
