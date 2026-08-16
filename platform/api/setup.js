@@ -19,9 +19,16 @@ module.exports = async (req, res) => {
   const s = sql();
 
   try {
-    // neon's http driver takes one statement at a time
+    // The driver is a tagged-template function, not something with a .query()
+    // method, so hand it an array shaped like the one a template literal makes.
+    const runRaw = (text) => {
+      if (typeof s.query === 'function') return s.query(text);
+      const parts = [text];
+      parts.raw = [text];
+      return s(parts);
+    };
     for (const stmt of SCHEMA) {
-      await s.query(stmt);
+      await runRaw(stmt);
     }
   } catch (e) {
     console.error('schema failure', e.message);
