@@ -74,6 +74,59 @@ module.exports = async (req, res) => {
         return res.status(200).json({ user: A.publicUser(u) });
       }
 
+      // ---------- password management ----------
+      case 'change_password': {
+        const u = await A.currentUser(req);
+        if (!u) return res.status(401).json({ error: 'not_signed_in' });
+        const current = String(b.currentPassword || '');
+        const next = String(b.newPassword || '');
+        if (next.length < 8) return res.status(400).json({ error: 'weak_password', message: 'Use at least 8 characters.' });
+        if (!u.password_hash || !A.verifyPassword(current, u.password_hash)) {
+          return res.status(401).json({ error: 'bad_password', message: 'That current password isn\'t right.' });
+        }
+        await s`UPDATE users SET password_hash = ${A.hashPassword(next)} WHERE id = ${u.id}`;
+        // Everything else signed in as them stops working.
+        await s`DELETE FROM sessions WHERE user_id = ${u.id}`;
+        await A.startSession(res, u.id);
+        return res.status(200).json({ ok: true });
+      }
+
+      case 'reset_check': {
+        const t = String(b.token || '');
+        const rows = await s`
+          SELECT t.expires_at, t.used_at, u.email, u.name
+          FROM tokens t JOIN users u ON u.id = t.user_id
+          WHERE t.token = ${t} AND t.purpose = 'reset'`;
+        const r = rows[0];
+        if (!r) return res.status(404).json({ error: 'unknown_reset' });
+        if (r.used_at) return res.status(410).json({ error: 'already_used' });
+        if (new Date(r.expires_at) < new Date()) return res.status(410).json({ error: 'expired' });
+        return res.status(200).json({ email: r.email, name: r.name });
+      }
+
+      case 'reset_accept': {
+        const t = String(b.token || '');
+        const pw = String(b.password || '');
+        if (pw.length < 8) return res.status(400).json({ error: 'weak_password', message: 'Use at least 8 characters.' });
+        const rows = await s`SELECT user_id, expires_at, used_at FROM tokens WHERE token = ${t} AND purpose = 'reset'`;
+        const r = rows[0];
+        if (!r) return res.status(404).json({ error: 'unknown_reset' });
+        if (r.used_at) return res.status(410).json({ error: 'already_used' });
+        if (new Date(r.expires_at) < new Date()) return res.status(410).json({ error: 'expired' });
+        await s`UPDATE users SET password_hash = ${A.hashPassword(pw)} WHERE id = ${r.user_id}`;
+        await s`UPDATE tokens SET used_at = now() WHERE token = ${t}`;
+        await s`DELETE FROM sessions WHERE user_id = ${r.user_id}`;
+        const u = (await s`SELECT * FROM users WHERE id = ${r.user_id}`)[0];
+        await A.startSession(res, u.id);
+        return res.status(200).json({ user: A.publicUser(u) });
+      }
+
+      // The public catalogue — what the landing page shows before anyone signs in.
+      case 'catalogue': {
+        const sims = await s`SELECT id, title, tagline, description, minutes FROM sims WHERE published = true ORDER BY created_at`;
+        return res.status(200).json({ sims });
+      }
+
       default:
         return res.status(400).json({ error: 'unknown_action' });
     }

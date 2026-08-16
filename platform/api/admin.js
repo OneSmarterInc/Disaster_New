@@ -119,6 +119,37 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true });
       }
 
+      // Every course across every facilitator, for when the question is
+      // "who is running what right now" rather than "how is Chuck doing".
+      case 'all_courses': {
+        const courses = await s`
+          SELECT c.id, c.title, c.term, c.join_code, c.archived, c.created_at,
+                 u.id AS faculty_id, u.name AS faculty_name, u.institution,
+                 (SELECT count(*) FROM enrolments e WHERE e.course_id = c.id AND e.dropped = false) AS enrolled,
+                 (SELECT count(*) FROM enrolments e WHERE e.course_id = c.id AND e.dropped = false AND e.paid = true) AS paid,
+                 (SELECT count(*) FROM launches l WHERE l.course_id = c.id) AS launches,
+                 (SELECT string_agg(si.title, ', ') FROM course_sims cs JOIN sims si ON si.id = cs.sim_id
+                   WHERE cs.course_id = c.id) AS sim_titles
+          FROM courses c JOIN users u ON u.id = c.faculty_id
+          ORDER BY c.created_at DESC`;
+        return res.status(200).json({ courses });
+      }
+
+      // No email service, so a reset is a link the admin hands over.
+      case 'issue_reset': {
+        const uid = String(b.userId || '');
+        const person = (await s`SELECT id, name, email FROM users WHERE id = ${uid}`)[0];
+        if (!person) return res.status(404).json({ error: 'no_such_user' });
+        const token = crypto.randomBytes(24).toString('base64url');
+        const expires = new Date(Date.now() + 3 * 86400000);
+        await s`INSERT INTO tokens (token, user_id, purpose, expires_at)
+                VALUES (${token}, ${uid}, 'reset', ${expires})`;
+        return res.status(200).json({
+          resetUrl: `${baseUrl()}/reset.html?t=${token}`,
+          who: person.name, expiresAt: expires
+        });
+      }
+
       default:
         return res.status(400).json({ error: 'unknown_action' });
     }

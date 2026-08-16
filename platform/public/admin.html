@@ -10,6 +10,7 @@
 <div class="bar">
   <div class="brand">Flexee Rapid <span>Sims</span></div>
   <div class="who" id="who"></div>
+  <a class="btn sm" href="/account.html">Account</a>
   <button class="btn sm" id="out">Sign out</button>
 </div>
 <div class="wrap" id="app"></div>
@@ -39,7 +40,7 @@ function render() {
   if (D.detail) return renderDetail();
 
   const t = D.data.totals || {};
-  const tabs = [['faculty','Faculty'],['catalogue','Catalogue']];
+  const tabs = [['faculty','Faculty'],['courses','All courses'],['catalogue','Catalogue']];
 
   app.innerHTML = `
     <div class="eyebrow">Administration</div>
@@ -61,8 +62,10 @@ function render() {
     <div id="body"></div>`;
 
   app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { D.tab = b.dataset.tab; render(); });
-  document.getElementById('body').innerHTML = D.tab === 'faculty' ? facultyTab() : catalogueTab();
-  if (D.tab === 'faculty') wireFaculty(); else wireCatalogue();
+  const body = document.getElementById('body');
+  if (D.tab === 'faculty') { body.innerHTML = facultyTab(); wireFaculty(); }
+  else if (D.tab === 'courses') { body.innerHTML = coursesTab(); wireCourses(); }
+  else { body.innerHTML = catalogueTab(); wireCatalogue(); }
 }
 
 function facultyTab() {
@@ -172,16 +175,55 @@ function renderDetail() {
     <div class="rule"></div>
     <div class="row">
       <button class="btn ${person.disabled ? '' : 'danger'}" id="tog">${person.disabled ? 'Re-enable this account' : 'Disable this account'}</button>
+      <button class="btn" id="rst">Issue a password reset link</button>
       <span class="tiny dim">Disabling stops them signing in. Their courses and students are untouched.</span>
-    </div>`;
+    </div>
+    <div id="rstout"></div>`;
 
   document.getElementById('back').onclick = () => { D.detail = null; render(); };
+  document.getElementById('rst').onclick = async () => {
+    const out = document.getElementById('rstout');
+    try {
+      const d = await api('/api/admin', { action:'issue_reset', userId: person.id });
+      out.innerHTML = `<div class="note" style="margin-top:14px"><b>Send this to ${esc(d.who)}.</b> It works once and expires in three days.
+        <div class="copybox"><input type="text" id="rurl" readonly value="${esc(d.resetUrl)}"><button class="btn" id="rcopy">Copy</button></div></div>`;
+      document.getElementById('rcopy').onclick = () => { document.getElementById('rurl').select(); navigator.clipboard.writeText(d.resetUrl); };
+    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  };
   document.getElementById('tog').onclick = async () => {
     await api('/api/admin', { action:'set_faculty_disabled', facultyId: person.id, disabled: !person.disabled });
     D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: person.id });
     load();
   };
 }
+
+function coursesTab() {
+  const rows = (D.allCourses || []);
+  if (!D.allCourses) { load_courses(); return '<div class="card dim">Loading…</div>'; }
+  return `
+    <h2>Every course</h2>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>Course</th><th>Facilitator</th><th>Simulations</th><th>Enrolled</th><th>Released</th><th>Launches</th></tr></thead>
+        <tbody>
+        ${rows.map(c => `<tr${c.archived ? ' style="opacity:.5"' : ''}>
+          <td><b>${esc(c.title)}</b><div class="tiny dim">${esc(c.term || '')} · <span class="mono">${esc(c.join_code)}</span>${c.archived ? ' · archived' : ''}</div></td>
+          <td>${esc(c.faculty_name)}${c.institution ? `<div class="tiny dim">${esc(c.institution)}</div>` : ''}</td>
+          <td class="tiny">${esc(c.sim_titles || '—')}</td>
+          <td class="mono">${c.enrolled}</td>
+          <td class="mono">${Number(c.paid) === Number(c.enrolled) && Number(c.enrolled) > 0
+              ? `<span class="pill ok">${c.paid}</span>` : `<span class="pill warn">${c.paid}</span>`}</td>
+          <td class="mono">${c.launches}</td>
+        </tr>`).join('') || '<tr><td colspan="6" class="dim">No courses yet.</td></tr>'}
+        </tbody>
+      </table>
+    </div>`;
+}
+async function load_courses() {
+  try { D.allCourses = (await api('/api/admin', { action:'all_courses' })).courses; render(); }
+  catch (e) { D.err = e.message; }
+}
+function wireCourses() {}
 
 function catalogueTab() {
   return `

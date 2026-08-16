@@ -5,54 +5,99 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flexee Rapid Sims</title>
 <link rel="stylesheet" href="/app.css">
+<style>
+  .hero{padding:60px 0 8px}
+  .hero h1{font-size:52px;line-height:1.05;margin-bottom:18px}
+  .hero .lede{font-size:19px;max-width:56ch}
+  .split{display:grid;grid-template-columns:1fr 340px;gap:40px;align-items:start}
+  .simcard{border:1px solid var(--line);background:var(--card);padding:24px 26px;margin-bottom:14px}
+  .simcard h3{font-size:22px;font-weight:400;letter-spacing:-.015em;margin-bottom:6px}
+  .simcard .tag{color:var(--amber);font-style:italic;font-size:16px;margin-bottom:12px}
+  .simcard p{font-size:15.5px;line-height:1.62;max-width:62ch;margin-bottom:0}
+  .simcard .meta{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-top:14px}
+  .how{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:8px}
+  .how h4{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:7px}
+  .how p{font-size:14.5px;line-height:1.6;margin:0}
+  @media (max-width:860px){.split{grid-template-columns:1fr}.hero h1{font-size:36px}.how{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div class="narrow" id="app"></div>
+<div class="wrap" id="app"></div>
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 async function api(path, payload) {
-  const r = await fetch(path, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
 }
+const home = r => r === 'admin' ? '/admin.html' : r === 'faculty' ? '/faculty.html' : '/student.html';
 
-const home = (role) => role === 'admin' ? '/admin.html' : role === 'faculty' ? '/faculty.html' : '/student.html';
-
-function signIn(msg) {
+function page(sims, msg) {
   app.innerHTML = `
-    <div class="eyebrow">Flexee</div>
-    <h1>Rapid <em>Sims</em></h1>
-    <p class="lede">Short, sharp simulations for the classroom. Twenty minutes, one problem worth untangling, and a conversation afterwards.</p>
-    <div class="card" style="margin-top:28px">
-      <div class="field">
-        <label class="f" for="em">Email</label>
-        <input id="em" type="email" autocomplete="username" placeholder="you@university.edu">
+    <div class="hero">
+      <div class="eyebrow">Flexee</div>
+      <h1>Rapid <em>Sims</em></h1>
+      <p class="lede">Twenty-minute simulations for the classroom. One problem worth untangling, four people who each want something different, and a conversation afterwards that writes itself.</p>
+    </div>
+
+    <div class="split" style="margin-top:36px">
+      <div>
+        <h2>In the catalogue</h2>
+        ${sims.length ? sims.map(si => '<div class="simcard">' +
+            '<h3>' + esc(si.title) + '</h3>' +
+            (si.tagline ? '<div class="tag">' + esc(si.tagline) + '</div>' : '') +
+            (si.description ? '<p>' + esc(si.description) + '</p>' : '') +
+            '<div class="meta">' + (si.minutes ? si.minutes + ' minutes · ' : '') + 'groups of one to three · no marking</div>' +
+          '</div>').join('') : '<div class="card dim">Nothing published yet.</div>'}
+
+        <h2>How a session runs</h2>
+        <div class="how">
+          <div>
+            <h4>Before</h4>
+            <p>You add a simulation to your course and share one link. Students sign up in a minute and wait. You release access once their registration is settled.</p>
+          </div>
+          <div>
+            <h4>The twenty minutes</h4>
+            <p>Groups work on one screen. They question the characters, take people aside, and commit to a position three times. You hold the clock and can freeze the room whenever you want to talk.</p>
+          </div>
+          <div>
+            <h4>Afterwards</h4>
+            <p>Every group's position appears side by side. They have each read their own debrief already, so the room's job is comparing reasoning rather than reporting answers.</p>
+          </div>
+        </div>
+
+        <div class="note" style="margin-top:30px">
+          <b>Teaching with these?</b> Facilitator accounts are set up by invitation, and every simulation comes with a seven-day preview so you can play it before committing a class to it. Get in touch and we will send you a link.
+        </div>
       </div>
-      <div class="field">
-        <label class="f" for="pw">Password</label>
-        <input id="pw" type="password" autocomplete="current-password">
+
+      <div>
+        <div class="card">
+          <h2 style="margin-top:0">Sign in</h2>
+          <div class="field"><label class="f" for="em">Email</label>
+            <input id="em" type="email" autocomplete="username" placeholder="you@university.edu"></div>
+          <div class="field"><label class="f" for="pw">Password</label>
+            <input id="pw" type="password" autocomplete="current-password"></div>
+          <button class="btn pri" id="go">Sign in</button>
+          <div class="err" id="err">${msg ? esc(msg) : ''}</div>
+          <div class="tiny dim" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+            <b>Students:</b> use the link your instructor sent you — you do not need an account first.
+            <div style="margin-top:8px"><a href="/join.html">Or enter a course code</a></div>
+          </div>
+          <div class="tiny dim" style="margin-top:12px">Forgotten your password? Ask whoever set up your account for a reset link.</div>
+        </div>
       </div>
-      <div class="row">
-        <button class="btn pri" id="go">Sign in</button>
-        <span class="tiny dim">Students: use the link your instructor sent you.</span>
-      </div>
-      <div class="err" id="err">${msg ? esc(msg) : ''}</div>
     </div>`;
+
   const go = async () => {
     const btn = document.getElementById('go');
     btn.disabled = true; btn.textContent = 'Signing in…';
     try {
-      const d = await api('/api/auth', {
-        action: 'signin',
-        email: document.getElementById('em').value,
-        password: document.getElementById('pw').value
-      });
+      const d = await api('/api/auth', { action:'signin',
+        email: document.getElementById('em').value, password: document.getElementById('pw').value });
       location.href = home(d.user.role);
     } catch (e) {
       document.getElementById('err').textContent = e.message;
@@ -61,21 +106,22 @@ function signIn(msg) {
   };
   document.getElementById('go').onclick = go;
   ['em','pw'].forEach(k => document.getElementById(k).onkeydown = e => { if (e.key === 'Enter') go(); });
-  document.getElementById('em').focus();
 }
 
 (async () => {
   try {
-    const d = await api('/api/auth', { action: 'me' });
+    const d = await api('/api/auth', { action:'me' });
     if (d.user) { location.href = home(d.user.role); return; }
   } catch (e) {
     if (e.body && e.body.error === 'no_db') {
-      app.innerHTML = `<div class="eyebrow">Flexee Rapid Sims</div><h1>Not set up yet</h1>
-        <p class="lede">This deployment has no database configured. Add Postgres to the project, set the environment variables, and run the setup step.</p>`;
+      app.innerHTML = '<div class="hero"><div class="eyebrow">Flexee Rapid Sims</div>' +
+        '<h1>Not set up yet</h1><p class="lede">This deployment has no database configured.</p></div>';
       return;
     }
   }
-  signIn();
+  let sims = [];
+  try { sims = (await api('/api/auth', { action:'catalogue' })).sims || []; } catch (e) {}
+  page(sims);
 })();
 </script>
 </body>

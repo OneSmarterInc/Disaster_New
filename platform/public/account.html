@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your account — Flexee Rapid Sims</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="bar">
+  <div class="brand">Flexee Rapid <span>Sims</span></div>
+  <div class="who" id="who"></div>
+  <button class="btn sm" id="back">Back</button>
+  <button class="btn sm" id="out">Sign out</button>
+</div>
+<div class="narrow" id="app"></div>
+<script>
+const app = document.getElementById('app');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(path, payload) {
+  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
+  return d;
+}
+document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
+
+(async () => {
+  let me;
+  try {
+    me = (await api('/api/auth', { action:'me' })).user;
+    if (!me) { location.href = '/'; return; }
+  } catch (e) { location.href = '/'; return; }
+  const home = me.role === 'admin' ? '/admin.html' : me.role === 'faculty' ? '/faculty.html' : '/student.html';
+  document.getElementById('who').textContent = me.name;
+  document.getElementById('back').onclick = () => location.href = home;
+
+  app.innerHTML =
+    '<div class="eyebrow">Your account</div><h1>' + esc(me.name) + '</h1>' +
+    '<p class="lede">' + esc(me.email) + ' · ' + esc(me.role) + (me.institution ? ' · ' + esc(me.institution) : '') + '</p>' +
+    '<div class="card" style="margin-top:24px">' +
+      '<h2 style="margin-top:0">Change your password</h2>' +
+      '<div class="field"><label class="f">Current password</label><input id="c" type="password" autocomplete="current-password"></div>' +
+      '<div class="field"><label class="f">New password</label><input id="n" type="password" autocomplete="new-password" placeholder="at least 8 characters"></div>' +
+      '<button class="btn pri" id="go">Change it</button>' +
+      '<div id="out2"></div>' +
+    '</div>' +
+    '<div class="note">Changing your password signs you out of any other browser you are signed in on.</div>';
+
+  document.getElementById('go').onclick = async () => {
+    const btn = document.getElementById('go'), out = document.getElementById('out2');
+    btn.disabled = true; btn.textContent = 'Changing…';
+    out.innerHTML = '';
+    try {
+      await api('/api/auth', { action:'change_password',
+        currentPassword: document.getElementById('c').value,
+        newPassword: document.getElementById('n').value });
+      out.innerHTML = '<div class="ok">Done. Your new password is in use.</div>';
+      document.getElementById('c').value = ''; document.getElementById('n').value = '';
+    } catch (e) { out.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; }
+    btn.disabled = false; btn.textContent = 'Change it';
+  };
+})();
+</script>
+</body>
+</html>
