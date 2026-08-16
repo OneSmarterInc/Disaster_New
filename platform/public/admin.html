@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — Flexee Rapid Sims</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="bar">
+  <div class="brand">Flexee Rapid <span>Sims</span></div>
+  <div class="who" id="who"></div>
+  <button class="btn sm" id="out">Sign out</button>
+</div>
+<div class="wrap" id="app"></div>
+<script>
+const app = document.getElementById('app');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const D = { tab: 'faculty', data: null, detail: null, err: null };
+
+async function api(path, payload) {
+  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
+  return d;
+}
+const when = t => t ? new Date(t).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }) : '—';
+
+document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
+
+async function load() {
+  try { D.data = await api('/api/admin', { action:'overview' }); D.err = null; }
+  catch (e) { D.err = e.message; }
+  render();
+}
+
+function render() {
+  if (!D.data) { app.innerHTML = `<h1>Loading…</h1>${D.err ? `<div class="err">${esc(D.err)}</div>` : ''}`; return; }
+  if (D.detail) return renderDetail();
+
+  const t = D.data.totals || {};
+  const tabs = [['faculty','Faculty'],['catalogue','Catalogue']];
+
+  app.innerHTML = `
+    <div class="eyebrow">Administration</div>
+    <h1>Who's using <em>what</em></h1>
+
+    <div class="card">
+      <div class="stat">
+        <div><div class="n">${D.data.faculty.length}</div><div class="l">Faculty</div></div>
+        <div><div class="n">${t.students || 0}</div><div class="l">Students</div></div>
+        <div><div class="n">${t.courses || 0}</div><div class="l">Courses</div></div>
+        <div><div class="n">${t.paid_seats || 0}</div><div class="l">Paid seats</div></div>
+        <div><div class="n">${t.launches || 0}</div><div class="l">Launches</div></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin:26px 0 2px">
+      ${tabs.map(([k,l]) => `<button class="btn ${D.tab===k?'pri':''}" data-tab="${k}">${l}</button>`).join('')}
+    </div>
+    <div id="body"></div>`;
+
+  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { D.tab = b.dataset.tab; render(); });
+  document.getElementById('body').innerHTML = D.tab === 'faculty' ? facultyTab() : catalogueTab();
+  if (D.tab === 'faculty') wireFaculty(); else wireCatalogue();
+}
+
+function facultyTab() {
+  return `
+    <h2>Invite a facilitator</h2>
+    <div class="card">
+      <div class="row">
+        <div class="grow"><label class="f">Name</label><input id="in" type="text" placeholder="Chuck Rivera"></div>
+        <div class="grow"><label class="f">Email</label><input id="ie" type="email" placeholder="crivera@university.edu"></div>
+        <div class="grow"><label class="f">Institution</label><input id="ii" type="text" placeholder="optional"></div>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="btn pri" id="inv">Create invitation</button></div>
+      <div id="invout"></div>
+    </div>
+
+    <h2>Facilitators</h2>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Courses</th><th>Students</th><th>Paid</th><th>Last seen</th><th></th></tr></thead>
+        <tbody>
+        ${D.data.faculty.map(f => `<tr>
+          <td><b>${esc(f.name)}</b>${f.institution ? `<div class="tiny dim">${esc(f.institution)}</div>` : ''}</td>
+          <td class="mono">${esc(f.email)}</td>
+          <td>${f.disabled ? '<span class="pill bad">disabled</span>'
+                : f.accepted ? '<span class="pill ok">active</span>'
+                : '<span class="pill warn">invited</span>'}</td>
+          <td class="mono">${f.courses}</td>
+          <td class="mono">${f.students}</td>
+          <td class="mono">${f.paid_students}</td>
+          <td class="tiny dim">${when(f.last_seen_at)}</td>
+          <td><button class="btn sm" data-open="${esc(f.id)}">Open</button></td>
+        </tr>`).join('') || '<tr><td colspan="8" class="dim">Nobody yet. Invite someone above.</td></tr>'}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function wireFaculty() {
+  const inv = document.getElementById('inv');
+  if (inv) inv.onclick = async () => {
+    const out = document.getElementById('invout');
+    inv.disabled = true; inv.textContent = 'Creating…';
+    try {
+      const d = await api('/api/admin', {
+        action: 'invite_faculty',
+        name: document.getElementById('in').value,
+        email: document.getElementById('ie').value,
+        institution: document.getElementById('ii').value
+      });
+      out.innerHTML = `
+        <div class="note" style="margin-top:16px">
+          <b>Send them this link.</b> There's no email service yet, so copy it into your own message.
+          It works once and expires ${when(d.expiresAt)}.
+          <div class="copybox">
+            <input type="text" id="iurl" readonly value="${esc(d.inviteUrl)}">
+            <button class="btn" id="icopy">Copy</button>
+          </div>
+        </div>`;
+      document.getElementById('icopy').onclick = () => {
+        document.getElementById('iurl').select();
+        navigator.clipboard.writeText(d.inviteUrl);
+      };
+      load();
+    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+    inv.disabled = false; inv.textContent = 'Create invitation';
+  };
+  app.querySelectorAll('[data-open]').forEach(b => b.onclick = async () => {
+    try { D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: b.dataset.open }); render(); }
+    catch (e) { D.err = e.message; render(); }
+  });
+}
+
+function renderDetail() {
+  const { person, courses, students, courseSims } = D.detail;
+  app.innerHTML = `
+    <button class="btn sm" id="back">← All facilitators</button>
+    <div class="eyebrow" style="margin-top:20px">${esc(person.email)}</div>
+    <h1>${esc(person.name)}</h1>
+    <p class="lede">${person.accepted ? 'Active' : 'Invited but hasn\'t set a password yet'}${person.institution ? ' · ' + esc(person.institution) : ''} · joined ${when(person.created_at)}</p>
+
+    <h2>Courses</h2>
+    ${courses.length ? courses.map(c => {
+      const sims = courseSims.filter(cs => cs.course_id === c.id);
+      const inCourse = students.filter(st => st.course_id === c.id && !st.dropped);
+      return `<div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div><h3>${esc(c.title)}</h3><div class="tiny dim">${esc(c.term || '')} · join code <span class="mono">${esc(c.join_code)}</span></div></div>
+          <div class="row">
+            <span class="pill">${c.enrolled} enrolled</span>
+            <span class="pill ${c.paid == c.enrolled && c.enrolled > 0 ? 'ok' : 'warn'}">${c.paid} paid</span>
+          </div>
+        </div>
+        ${sims.length ? `<div class="tiny dim" style="margin-top:10px">Sims: ${sims.map(x => esc(x.title) + (x.expected_seats ? ` (expects ${x.expected_seats})` : '')).join(', ')}</div>` : ''}
+        ${inCourse.length ? `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:6px">
+          <table><tbody>
+          ${inCourse.map(st => `<tr>
+            <td>${esc(st.name)}<div class="tiny dim mono">${esc(st.email)}</div></td>
+            <td>${st.paid ? '<span class="pill ok">paid</span>' : '<span class="pill warn">unpaid</span>'}
+                ${st.paid_note ? `<div class="tiny dim">${esc(st.paid_note)}</div>` : ''}</td>
+            <td class="mono tiny">${st.launches} launch${st.launches == 1 ? '' : 'es'}</td>
+          </tr>`).join('')}
+          </tbody></table>
+        </div>` : '<div class="tiny dim" style="margin-top:10px">Nobody enrolled yet.</div>'}
+      </div>`;
+    }).join('') : '<div class="card dim">No courses yet.</div>'}
+
+    <div class="rule"></div>
+    <div class="row">
+      <button class="btn ${person.disabled ? '' : 'danger'}" id="tog">${person.disabled ? 'Re-enable this account' : 'Disable this account'}</button>
+      <span class="tiny dim">Disabling stops them signing in. Their courses and students are untouched.</span>
+    </div>`;
+
+  document.getElementById('back').onclick = () => { D.detail = null; render(); };
+  document.getElementById('tog').onclick = async () => {
+    await api('/api/admin', { action:'set_faculty_disabled', facultyId: person.id, disabled: !person.disabled });
+    D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: person.id });
+    load();
+  };
+}
+
+function catalogueTab() {
+  return `
+    <h2>Sims</h2>
+    ${(D.data.sims || []).map(si => `<div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div><h3>${esc(si.title)}</h3><div class="tiny dim">${esc(si.tagline || '')}</div></div>
+        <span class="pill ${si.published ? 'ok' : ''}">${si.published ? 'published' : 'draft'}</span>
+      </div>
+      <div class="tiny dim mono" style="margin-top:10px">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url)}</div>
+    </div>`).join('') || '<div class="card dim">Nothing in the catalogue yet.</div>'}
+
+    <h2>Add or update a sim</h2>
+    <div class="card">
+      <div class="row">
+        <div class="grow"><label class="f">Id</label><input id="s_id" type="text" placeholder="rapid-02-recall"></div>
+        <div class="grow"><label class="f">Title</label><input id="s_title" type="text" placeholder="Whose Defect Is It?"></div>
+      </div>
+      <div class="field" style="margin-top:14px"><label class="f">Tagline</label><input id="s_tag" type="text"></div>
+      <div class="row">
+        <div class="grow"><label class="f">Launch URL</label><input id="s_url" type="text" placeholder="https://…vercel.app"></div>
+        <div style="width:120px"><label class="f">Minutes</label><input id="s_min" type="number" value="20"></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <label class="row tiny" style="gap:7px"><input type="checkbox" id="s_pub" style="width:auto"> Published</label>
+        <button class="btn pri" id="s_save">Save</button>
+      </div>
+      <div id="s_out"></div>
+    </div>`;
+}
+
+function wireCatalogue() {
+  const b = document.getElementById('s_save');
+  if (!b) return;
+  b.onclick = async () => {
+    try {
+      await api('/api/admin', {
+        action: 'save_sim',
+        id: document.getElementById('s_id').value.trim(),
+        title: document.getElementById('s_title').value,
+        tagline: document.getElementById('s_tag').value,
+        launchUrl: document.getElementById('s_url').value,
+        minutes: document.getElementById('s_min').value,
+        published: document.getElementById('s_pub').checked
+      });
+      document.getElementById('s_out').innerHTML = '<div class="ok">Saved.</div>';
+      load();
+    } catch (e) { document.getElementById('s_out').innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  };
+}
+
+(async () => {
+  try {
+    const me = await api('/api/auth', { action:'me' });
+    if (!me.user) { location.href = '/'; return; }
+    if (me.user.role !== 'admin') { location.href = me.user.role === 'faculty' ? '/faculty.html' : '/student.html'; return; }
+    document.getElementById('who').textContent = me.user.name;
+  } catch (e) { location.href = '/'; return; }
+  load();
+})();
+</script>
+</body>
+</html>

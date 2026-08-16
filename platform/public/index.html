@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flexee Rapid Sims</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="narrow" id="app"></div>
+<script>
+const app = document.getElementById('app');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, payload) {
+  const r = await fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
+  return d;
+}
+
+const home = (role) => role === 'admin' ? '/admin.html' : role === 'faculty' ? '/faculty.html' : '/student.html';
+
+function signIn(msg) {
+  app.innerHTML = `
+    <div class="eyebrow">Flexee</div>
+    <h1>Rapid <em>Sims</em></h1>
+    <p class="lede">Short, sharp simulations for the classroom. Twenty minutes, one problem worth untangling, and a conversation afterwards.</p>
+    <div class="card" style="margin-top:28px">
+      <div class="field">
+        <label class="f" for="em">Email</label>
+        <input id="em" type="email" autocomplete="username" placeholder="you@university.edu">
+      </div>
+      <div class="field">
+        <label class="f" for="pw">Password</label>
+        <input id="pw" type="password" autocomplete="current-password">
+      </div>
+      <div class="row">
+        <button class="btn pri" id="go">Sign in</button>
+        <span class="tiny dim">Students: use the link your instructor sent you.</span>
+      </div>
+      <div class="err" id="err">${msg ? esc(msg) : ''}</div>
+    </div>`;
+  const go = async () => {
+    const btn = document.getElementById('go');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    try {
+      const d = await api('/api/auth', {
+        action: 'signin',
+        email: document.getElementById('em').value,
+        password: document.getElementById('pw').value
+      });
+      location.href = home(d.user.role);
+    } catch (e) {
+      document.getElementById('err').textContent = e.message;
+      btn.disabled = false; btn.textContent = 'Sign in';
+    }
+  };
+  document.getElementById('go').onclick = go;
+  ['em','pw'].forEach(k => document.getElementById(k).onkeydown = e => { if (e.key === 'Enter') go(); });
+  document.getElementById('em').focus();
+}
+
+(async () => {
+  try {
+    const d = await api('/api/auth', { action: 'me' });
+    if (d.user) { location.href = home(d.user.role); return; }
+  } catch (e) {
+    if (e.body && e.body.error === 'no_db') {
+      app.innerHTML = `<div class="eyebrow">Flexee Rapid Sims</div><h1>Not set up yet</h1>
+        <p class="lede">This deployment has no database configured. Add Postgres to the project, set the environment variables, and run the setup step.</p>`;
+      return;
+    }
+  }
+  signIn();
+})();
+</script>
+</body>
+</html>
