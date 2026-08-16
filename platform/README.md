@@ -1,0 +1,38 @@
+# Flexee Rapid Sims — platform
+
+Catalogue, faculty accounts, courses, student enrolment and entitlement for the
+Rapid Sims. Payment is handled outside this system: a faculty member marks a
+student or a whole section as paid, and that flag is what unlocks a launch.
+
+## How it fits together
+
+The platform never hosts a sim. Each sim is its own small deployment. When
+someone launches one, the platform signs a short-lived token saying who they are
+and in what capacity, and the sim verifies that signature with a shared secret.
+That's the entire contract — no shared database, no API between them — which is
+what lets each sim stay independent and lets older sims be brought in later by
+teaching them the same check.
+
+## Environment
+
+`DATABASE_URL` — Postgres. Add Neon from the Vercel marketplace and it's set for you.
+
+`LAUNCH_SECRET` — a long random string. The same value must be set on every sim
+deployment, or launches will be rejected.
+
+`PUBLIC_BASE_URL` — used to build invite and enrolment links.
+
+## Schema
+
+`lib/schema.sql` holds it. Nine tables: users, tokens, sessions, sims, previews,
+courses, course_sims, enrolments, launches. Run it once against a fresh database.
+
+Entitlement lives on `enrolments.paid`, along with who marked it, when, and a
+free-text note for reconciling against a purchase order. There are no payment
+tables — when Stripe arrives it becomes another thing that sets the same flag.
+
+## Status
+
+Foundation only: schema, database access, password hashing, login sessions and
+the launch token. The API layer and the admin, faculty and student interfaces
+are not built yet.
