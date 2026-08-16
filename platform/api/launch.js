@@ -1,0 +1,113 @@
+// The only door into a sim. Everything about entitlement is decided here:
+// admins always, faculty via a course or a live preview, students only when
+// their enrolment has been marked paid.
+const { sql, id } = require('../lib/db.js');
+const A = require('../lib/auth.js');
+const { launchToken } = require('../lib/launch.js');
+
+function deny(res, wants, title, message) {
+  if (wants === 'json') return res.status(403).json({ error: 'not_entitled', title, message });
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  return res.status(403).send(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${title}</title><link rel="stylesheet" href="/app.css"></head><body>
+    <div class="narrow">
+      <div class="eyebrow">Flexee Rapid Sims</div>
+      <h1>${title}</h1><p class="lede">${message}</p>
+      <p><a href="/">Back to your courses</a></p>
+    </div></body></html>`);
+}
+
+module.exports = async (req, res) => {
+  const q = req.query || {};
+  const wants = q.format === 'json' ? 'json' : 'html';
+  const simId = String(q.sim || '');
+  const courseId = String(q.course || '') || null;
+
+  const me = await A.currentUser(req);
+  if (!me) {
+    if (wants === 'json') return res.status(401).json({ error: 'not_signed_in' });
+    return res.redirect(302, '/');
+  }
+
+  const s = sql();
+  try {
+    const sim = (await s`SELECT * FROM sims WHERE id = ${simId}`)[0];
+    if (!sim) return deny(res, wants, 'No such simulation', "That simulation isn't in the catalogue.");
+    if (!sim.launch_url) return deny(res, wants, 'Not available yet', 'This simulation has no address set. Ask an administrator.');
+
+    let asRole = null;
+
+    if (me.role === 'admin') {
+      asRole = 'faculty';
+
+    } else if (me.role === 'faculty') {
+      if (courseId) {
+        const owns = await s`
+          SELECT 1 FROM course_sims cs JOIN courses c ON c.id = cs.course_id
+          WHERE cs.course_id = ${courseId} AND cs.sim_id = ${simId} AND c.faculty_id = ${me.id}`;
+        if (owns.length) asRole = 'faculty';
+      }
+      if (!asRole) {
+        const anyCourse = await s`
+          SELECT 1 FROM course_sims cs JOIN courses c ON c.id = cs.course_id
+          WHERE cs.sim_id = ${simId} AND c.faculty_id = ${me.id}`;
+        if (anyCourse.length) asRole = 'faculty';
+      }
+      if (!asRole) {
+        const prev = (await s`SELECT * FROM previews WHERE user_id = ${me.id} AND sim_id = ${simId}`)[0];
+        if (prev && new Date(prev.expires_at) > new Date()) asRole = 'faculty_preview';
+        else if (prev) return deny(res, wants, 'Your preview has ended',
+          'The seven days are up. Add this simulation to a course to keep using it.');
+      }
+      if (!asRole) return deny(res, wants, 'Not on your list yet',
+        'Start a preview from your dashboard, or add this simulation to one of your courses.');
+
+    } else {
+      // student
+      let rows;
+      if (courseId) {
+        rows = await s`
+          SELECT e.id, e.paid, e.dropped, c.title
+          FROM enrolments e
+          JOIN courses c ON c.id = e.course_id
+          JOIN course_sims cs ON cs.course_id = c.id AND cs.sim_id = ${simId}
+          WHERE e.student_id = ${me.id} AND e.course_id = ${courseId}
+          ORDER BY e.paid DESC LIMIT 1`;
+      } else {
+        rows = await s`
+          SELECT e.id, e.paid, e.dropped, c.title
+          FROM enrolments e
+          JOIN courses c ON c.id = e.course_id
+          JOIN course_sims cs ON cs.course_id = c.id AND cs.sim_id = ${simId}
+          WHERE e.student_id = ${me.id}
+          ORDER BY e.paid DESC LIMIT 1`;
+      }
+      const en = rows[0];
+      if (!en || en.dropped) return deny(res, wants, 'Not enrolled',
+        "You're not enrolled in a course that uses this simulation.");
+      if (!en.paid) return deny(res, wants, 'Waiting on your instructor',
+        'Your enrolment is confirmed, but access to this simulation hasn\'t been released yet. Your instructor releases it once your registration is settled.');
+      asRole = 'student';
+    }
+
+    await s`INSERT INTO launches (id, user_id, sim_id, course_id, as_role)
+            VALUES (${id('lch')}, ${me.id}, ${simId}, ${courseId}, ${asRole})`;
+
+    const token = launchToken({
+      userId: me.id, name: me.name, role: asRole,
+      simId, courseId, minutes: 10
+    });
+
+    const url = sim.launch_url.replace(/\/$/, '') + '/?lt=' + encodeURIComponent(token);
+    if (wants === 'json') return res.status(200).json({ url });
+    return res.redirect(302, url);
+
+  } catch (e) {
+    if (e.code === 'NO_SECRET') return deny(res, wants, 'Not configured',
+      'This deployment has no launch secret set, so it can\'t hand you over to a simulation.');
+    if (e.code === 'NO_DB') return deny(res, wants, 'Not configured', 'The database isn\'t set up.');
+    console.error('launch failure', e.message);
+    return deny(res, wants, 'Something went wrong', 'Try again in a moment.');
+  }
+};

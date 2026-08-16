@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your courses — Flexee Rapid Sims</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="bar">
+  <div class="brand">Flexee Rapid <span>Sims</span></div>
+  <div class="who" id="who"></div>
+  <button class="btn sm" id="out">Sign out</button>
+</div>
+<div class="wrap" id="app"></div>
+<script>
+const app = document.getElementById('app');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const F = { view: 'home', data: null, course: null, err: null, sel: new Set() };
+
+async function api(path, payload) {
+  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
+  return d;
+}
+const when = t => t ? new Date(t).toLocaleDateString(undefined, { day:'numeric', month:'short' }) : '—';
+const daysLeft = t => Math.max(0, Math.ceil((new Date(t) - Date.now()) / 86400000));
+
+document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
+
+async function loadHome() {
+  try { F.data = await api('/api/faculty', { action:'overview' }); F.err = null; }
+  catch (e) { F.err = e.message; }
+  F.view = 'home'; F.course = null; render();
+}
+async function openCourse(id) {
+  try { F.course = await api('/api/faculty', { action:'course_detail', courseId: id }); F.view = 'course'; F.sel.clear(); F.err = null; }
+  catch (e) { F.err = e.message; }
+  render();
+}
+
+function render() {
+  if (F.err && !F.data) { app.innerHTML = `<h1>Something's wrong</h1><div class="err">${esc(F.err)}</div>`; return; }
+  if (!F.data) { app.innerHTML = '<h1>Loading…</h1>'; return; }
+  if (F.view === 'course' && F.course) return renderCourse();
+  renderHome();
+}
+
+// ---------- home ----------
+function renderHome() {
+  const { courses, catalogue, previews } = F.data;
+  const prevOf = id => previews.find(p => p.sim_id === id);
+
+  app.innerHTML = `
+    <div class="eyebrow">Your teaching</div>
+    <h1>Courses and <em>simulations</em></h1>
+
+    <h2>Your courses</h2>
+    ${courses.map(c => `<div class="card">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div>
+          <h3>${esc(c.title)}</h3>
+          <div class="tiny dim">${esc(c.term || 'No term set')} · join code <span class="mono">${esc(c.join_code)}</span></div>
+        </div>
+        <div class="row">
+          <span class="pill">${c.enrolled} enrolled</span>
+          <span class="pill ${Number(c.paid) === Number(c.enrolled) && Number(c.enrolled) > 0 ? 'ok' : 'warn'}">${c.paid} released</span>
+          <span class="pill">${c.sims} sim${Number(c.sims) === 1 ? '' : 's'}</span>
+          <button class="btn sm" data-course="${esc(c.id)}">Open</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div class="card dim">No courses yet. Create one below.</div>'}
+
+    <div class="card tight">
+      <div class="row">
+        <div class="grow"><label class="f">Course title</label><input id="c_t" type="text" placeholder="Operations Management"></div>
+        <div style="width:180px"><label class="f">Term</label><input id="c_m" type="text" placeholder="Fall 2026"></div>
+        <button class="btn pri" id="c_go" style="align-self:flex-end">Create course</button>
+      </div>
+    </div>
+
+    <h2>Available simulations</h2>
+    ${catalogue.map(si => {
+      const p = prevOf(si.id);
+      const live = p && daysLeft(p.expires_at) > 0;
+      return `<div class="card">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div style="flex:1;min-width:240px">
+            <h3>${esc(si.title)}</h3>
+            <div class="tiny dim">${esc(si.tagline || '')}${si.minutes ? ' · about ' + si.minutes + ' minutes' : ''}</div>
+            ${si.description ? `<p class="tiny" style="margin-top:9px;max-width:60ch">${esc(si.description)}</p>` : ''}
+          </div>
+          <div class="row">
+            ${live ? `<span class="pill warn">preview · ${daysLeft(p.expires_at)}d left</span>
+                      <a class="btn" href="/api/launch?sim=${encodeURIComponent(si.id)}">Open it</a>`
+                   : p ? `<span class="pill bad">preview ended</span>`
+                   : `<button class="btn" data-prev="${esc(si.id)}">Preview for 7 days</button>`}
+          </div>
+        </div>
+      </div>`;
+    }).join('') || '<div class="card dim">Nothing published yet.</div>'}
+    ${F.err ? `<div class="err">${esc(F.err)}</div>` : ''}`;
+
+  document.getElementById('c_go').onclick = async () => {
+    const t = document.getElementById('c_t').value.trim();
+    if (!t) return;
+    await api('/api/faculty', { action:'create_course', title: t, term: document.getElementById('c_m').value });
+    loadHome();
+  };
+  app.querySelectorAll('[data-course]').forEach(b => b.onclick = () => openCourse(b.dataset.course));
+  app.querySelectorAll('[data-prev]').forEach(b => b.onclick = async () => {
+    await api('/api/faculty', { action:'start_preview', simId: b.dataset.prev });
+    loadHome();
+  });
+}
+
+// ---------- one course ----------
+function renderCourse() {
+  const { course, sims, roster, catalogue, enrolUrl } = F.course;
+  const active = roster.filter(r => !r.dropped);
+  const unpaid = active.filter(r => !r.paid);
+  const notAdded = catalogue.filter(si => !sims.find(x => x.sim_id === si.id));
+
+  app.innerHTML = `
+    <button class="btn sm" id="back">← All courses</button>
+    <div class="eyebrow" style="margin-top:20px">${esc(course.term || '')}</div>
+    <h1>${esc(course.title)}</h1>
+
+    <div class="note">
+      <b>Students join with this link.</b> Send it however you normally reach them — it's the only thing they need.
+      <div class="copybox">
+        <input type="text" id="eurl" readonly value="${esc(enrolUrl)}">
+        <button class="btn" id="ecopy">Copy</button>
+      </div>
+      <div class="tiny" style="margin-top:8px">Or they can enter the code <span class="mono">${esc(course.join_code)}</span> themselves.</div>
+    </div>
+
+    <h2>Simulations in this course</h2>
+    ${sims.map(x => `<div class="card tight">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <b>${esc(x.title)}</b>
+          <div class="tiny dim">${x.expected_seats ? 'expecting ' + x.expected_seats + ' students' : 'no expected number set'}${x.hard_cap ? ' · hard cap' : ''}
+            ${x.expected_seats && active.length > x.expected_seats ? ` · <span style="color:var(--rose)">${active.length} enrolled</span>` : ''}</div>
+        </div>
+        <div class="row">
+          <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Open</a>
+          <button class="btn sm" data-rmsim="${esc(x.sim_id)}">Remove</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div class="card dim tight">None yet — add one below.</div>'}
+
+    ${notAdded.length ? `<div class="card tight">
+      <div class="row">
+        <div class="grow"><label class="f">Add a simulation</label>
+          <select id="a_sim">${notAdded.map(si => `<option value="${esc(si.id)}">${esc(si.title)}</option>`).join('')}</select>
+        </div>
+        <div style="width:150px"><label class="f">Students expected</label><input id="a_seats" type="number" min="1" placeholder="e.g. 24"></div>
+        <button class="btn pri" id="a_go" style="align-self:flex-end">Add</button>
+      </div>
+      <div class="tiny dim" style="margin-top:9px">The number is a forecast, not a limit — nobody is turned away if more enrol.</div>
+    </div>` : ''}
+
+    <h2>Students</h2>
+    <div class="note" style="border-left-color:var(--line2);background:var(--sunk)">
+      Students can enrol straight away, but they can't open a simulation until you release them.
+      Release once their registration is settled — the platform doesn't handle payment.
+      ${unpaid.length ? `<div style="margin-top:10px"><b>${unpaid.length}</b> waiting.</div>` : ''}
+    </div>
+
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn pri" id="p_all" ${unpaid.length ? '' : 'disabled'}>Release everyone (${unpaid.length})</button>
+      <button class="btn" id="p_sel" disabled>Release selected</button>
+      <input type="text" id="p_note" placeholder="note, e.g. dept PO 4471" style="width:220px">
+    </div>
+
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th style="width:34px"></th><th>Student</th><th>Access</th><th>Joined</th><th>Played</th><th></th></tr></thead>
+        <tbody>
+        ${roster.map(r => `<tr style="${r.dropped ? 'opacity:.5' : ''}">
+          <td>${r.dropped ? '' : `<input type="checkbox" data-en="${esc(r.enrolment_id)}" style="width:auto">`}</td>
+          <td><b>${esc(r.name)}</b><div class="tiny dim mono">${esc(r.email)}</div></td>
+          <td>${r.dropped ? '<span class="pill">dropped</span>'
+                : r.paid ? `<span class="pill ok">released</span>${r.paid_note ? `<div class="tiny dim">${esc(r.paid_note)}</div>` : ''}`
+                : '<span class="pill warn">waiting</span>'}</td>
+          <td class="tiny dim">${when(r.created_at)}</td>
+          <td class="mono tiny">${r.launches || 0}</td>
+          <td><button class="btn sm" data-drop="${esc(r.enrolment_id)}" data-now="${r.dropped ? '1' : '0'}">${r.dropped ? 'Restore' : 'Drop'}</button></td>
+        </tr>`).join('') || '<tr><td colspan="6" class="dim">Nobody has joined yet.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+    ${F.err ? `<div class="err">${esc(F.err)}</div>` : ''}`;
+
+  document.getElementById('back').onclick = loadHome;
+  document.getElementById('ecopy').onclick = () => {
+    document.getElementById('eurl').select();
+    navigator.clipboard.writeText(enrolUrl);
+  };
+
+  const ago = document.getElementById('a_go');
+  if (ago) ago.onclick = async () => {
+    await api('/api/faculty', { action:'add_sim', courseId: course.id,
+      simId: document.getElementById('a_sim').value,
+      expectedSeats: document.getElementById('a_seats').value });
+    openCourse(course.id);
+  };
+  app.querySelectorAll('[data-rmsim]').forEach(b => b.onclick = async () => {
+    await api('/api/faculty', { action:'remove_sim', courseId: course.id, simId: b.dataset.rmsim });
+    openCourse(course.id);
+  });
+
+  const selBtn = document.getElementById('p_sel');
+  app.querySelectorAll('[data-en]').forEach(cb => cb.onchange = () => {
+    cb.checked ? F.sel.add(cb.dataset.en) : F.sel.delete(cb.dataset.en);
+    selBtn.disabled = F.sel.size === 0;
+    selBtn.textContent = F.sel.size ? `Release selected (${F.sel.size})` : 'Release selected';
+  });
+
+  document.getElementById('p_all').onclick = async () => {
+    await api('/api/faculty', { action:'set_paid', courseId: course.id, all: true, paid: true,
+      note: document.getElementById('p_note').value });
+    openCourse(course.id);
+  };
+  selBtn.onclick = async () => {
+    await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: true,
+      enrolmentIds: [...F.sel], note: document.getElementById('p_note').value });
+    openCourse(course.id);
+  };
+  app.querySelectorAll('[data-drop]').forEach(b => b.onclick = async () => {
+    await api('/api/faculty', { action:'set_dropped', courseId: course.id,
+      enrolmentId: b.dataset.drop, dropped: b.dataset.now !== '1' });
+    openCourse(course.id);
+  });
+}
+
+(async () => {
+  try {
+    const me = await api('/api/auth', { action:'me' });
+    if (!me.user) { location.href = '/'; return; }
+    if (me.user.role === 'student') { location.href = '/student.html'; return; }
+    document.getElementById('who').textContent = me.user.name;
+  } catch (e) { location.href = '/'; return; }
+  loadHome();
+})();
+</script>
+</body>
+</html>
