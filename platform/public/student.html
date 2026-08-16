@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your simulations — Flexee Rapid Sims</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="bar">
+  <div class="brand">Flexee Rapid <span>Sims</span></div>
+  <div class="who" id="who"></div>
+  <button class="btn sm" id="out">Sign out</button>
+</div>
+<div class="wrap" id="app"></div>
+<script>
+const app = document.getElementById('app');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, payload) {
+  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
+  return d;
+}
+document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
+
+(async () => {
+  let d;
+  try {
+    const me = await api('/api/auth', { action:'me' });
+    if (!me.user) { location.href = '/'; return; }
+    if (me.user.role !== 'student') { location.href = me.user.role === 'admin' ? '/admin.html' : '/faculty.html'; return; }
+    document.getElementById('who').textContent = me.user.name;
+    d = await api('/api/student', { action:'overview' });
+  } catch (e) { location.href = '/'; return; }
+
+  const { courses, sims } = d;
+
+  app.innerHTML = `
+    <div class="eyebrow">Your courses</div>
+    <h1>What you can <em>play</em></h1>
+
+    ${courses.length ? courses.map(c => {
+      const mine = sims.filter(x => x.course_id === c.id);
+      return `<div class="card">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div><h3>${esc(c.title)}</h3>
+            <div class="tiny dim">${esc(c.faculty_name)}${c.term ? ' · ' + esc(c.term) : ''}</div></div>
+          ${c.paid ? '<span class="pill ok">access released</span>' : '<span class="pill warn">waiting on your instructor</span>'}
+        </div>
+
+        ${mine.length ? `<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+          ${mine.map(x => `<div class="row" style="justify-content:space-between;padding:8px 0">
+            <div style="flex:1;min-width:200px">
+              <b>${esc(x.title)}</b>
+              <div class="tiny dim">${esc(x.tagline || '')}${x.minutes ? ' · about ' + x.minutes + ' minutes' : ''}</div>
+            </div>
+            <div class="row">
+              ${Number(x.played) > 0 ? `<span class="pill">played ${x.played}×</span>` : ''}
+              ${c.paid
+                ? `<a class="btn pri" href="/api/launch?sim=${encodeURIComponent(x.id)}&course=${encodeURIComponent(c.id)}">${Number(x.played) > 0 ? 'Play again' : 'Start'}</a>`
+                : `<button class="btn" disabled>Not yet</button>`}
+            </div>
+          </div>`).join('')}
+        </div>` : '<div class="tiny dim" style="margin-top:12px">Your instructor hasn\\'t added any simulations to this course yet.</div>'}
+
+        ${!c.paid ? `<div class="note" style="margin-top:14px">
+          You're enrolled and on the list. Your instructor releases access once your registration is settled — you don't need to do anything here.
+        </div>` : ''}
+      </div>`;
+    }).join('') : `<div class="card">
+      <p>You're not in any courses yet.</p>
+      <p class="tiny dim">If your instructor sent you a link, open it. Or enter the course code they gave you.</p>
+      <div class="row" style="margin-top:12px">
+        <input id="cc" type="text" placeholder="ABC123" style="width:160px;text-transform:uppercase;font-family:var(--mono)">
+        <button class="btn pri" id="join">Join</button>
+      </div>
+      <div class="err" id="err"></div>
+    </div>`}
+
+    <div class="rule"></div>
+    <p class="tiny dim">Simulations run in about twenty minutes and aren't marked. Nothing you do in one is stored once you close it, so download your transcript at the end if you want to keep it.</p>`;
+
+  const j = document.getElementById('join');
+  if (j) j.onclick = async () => {
+    try {
+      await api('/api/student', { action:'enrol', joinCode: document.getElementById('cc').value });
+      location.reload();
+    } catch (e) { document.getElementById('err').textContent = e.message; }
+  };
+})();
+</script>
+</body>
+</html>

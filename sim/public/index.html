@@ -363,9 +363,29 @@ let OFFLINE = false;
 let NEEDS_CODE = false;
 let ACCESS_CODE = (function () {
   const m = (location.hash + location.search).match(/code=([^&]+)/);
-  if (m) { history.replaceState(null, '', location.pathname); return decodeURIComponent(m[1]); }
+  if (m) return decodeURIComponent(m[1]);
   return null;
 })();
+
+// A launch token from the platform. It says who is playing and in what capacity,
+// and stands in for the access code entirely.
+let LAUNCH = null;
+let LAUNCH_TOKEN = (function () {
+  const m = (location.hash + location.search).match(/lt=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+})();
+if (LAUNCH_TOKEN) {
+  try {
+    LAUNCH = JSON.parse(atob(LAUNCH_TOKEN.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')));
+  } catch (e) { LAUNCH = null; }
+}
+// Tidy the address bar either way, so a token or code isn't sitting in it.
+if (LAUNCH_TOKEN || ACCESS_CODE) {
+  const keep = new URLSearchParams(location.search);
+  keep.delete('lt'); keep.delete('code');
+  const q = keep.toString();
+  history.replaceState(null, '', location.pathname + (q ? '?' + q : ''));
+}
 
 async function api(path, payload) {
   let r;
@@ -373,7 +393,8 @@ async function api(path, payload) {
     r = await fetch(path, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' },
-        ACCESS_CODE ? { 'x-access-code': ACCESS_CODE } : {}),
+        LAUNCH_TOKEN ? { 'x-launch-token': LAUNCH_TOKEN }
+                     : (ACCESS_CODE ? { 'x-access-code': ACCESS_CODE } : {})),
       body: JSON.stringify(payload)
     });
   } catch (e) {
@@ -1406,6 +1427,10 @@ mountSettings();
 mountHelp();
 
 (async function boot() {
+  if (LAUNCH && (LAUNCH.role === 'faculty' || LAUNCH.role === 'faculty_preview')) {
+    location.replace('/faculty.html?lt=' + encodeURIComponent(LAUNCH_TOKEN));
+    return;
+  }
   app.innerHTML = `<div class="doc"><div class="doc-in">
     <div class="eyebrow">Flexee Rapid Sim 01</div>
     <h1>Disaster, or <em>breach</em>?</h1>

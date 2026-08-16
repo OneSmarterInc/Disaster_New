@@ -75,6 +75,7 @@ const el = h => { const d = document.createElement('div'); d.innerHTML = h.trim(
 const F = {
   facultyCode: null,
   accessCode: (location.hash + location.search).match(/code=([^&]+)/)?.[1] || null,
+  launchToken: (location.hash + location.search).match(/lt=([^&]+)/)?.[1] || null,
   code: null,
   data: null,
   tab: 'room',
@@ -86,7 +87,8 @@ async function api(payload) {
   const r = await fetch('/api/session', {
     method: 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' },
-      F.accessCode ? { 'x-access-code': F.accessCode } : {},
+      F.launchToken ? { 'x-launch-token': decodeURIComponent(F.launchToken) }
+                    : (F.accessCode ? { 'x-access-code': F.accessCode } : {}),
       F.facultyCode ? { 'x-faculty-code': F.facultyCode } : {}),
     body: JSON.stringify(Object.assign({ facultyCode: F.facultyCode }, payload))
   });
@@ -143,7 +145,7 @@ function startPolling() {
 }
 
 function joinURL() {
-  return location.origin + '/?s=' + F.code + (F.accessCode ? '&code=' + encodeURIComponent(F.accessCode) : '');
+  return location.origin + '/?s=' + F.code + (F.accessCode ? '&code=' + decodeURIComponent(F.accessCode) : '');
 }
 
 function groupsOf() {
@@ -325,7 +327,9 @@ function tabCompare(groups, runs) {
 // action labels, fetched once so the table can show reversibility
 fetch('/api/scene', {
   method: 'POST',
-  headers: Object.assign({ 'Content-Type': 'application/json' }, F.accessCode ? { 'x-access-code': F.accessCode } : {}),
+  headers: Object.assign({ 'Content-Type': 'application/json' },
+    F.launchToken ? { 'x-launch-token': decodeURIComponent(F.launchToken) }
+                  : (F.accessCode ? { 'x-access-code': F.accessCode } : {})),
   body: JSON.stringify({ init: true })
 }).then(r => r.json()).then(d => {
   window.__ACTIONS = {};

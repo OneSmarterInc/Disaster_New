@@ -1,6 +1,17 @@
 // Shared guards for every endpoint. Server only.
 
+const { verifyLaunch } = require('./launch.js');
+
+// Two ways in: a launch token signed by the platform, or the shared access code
+// for standalone use. The token also tells us who is playing.
 function checkAccess(req, res) {
+  const lt = req.headers['x-launch-token'];
+  if (lt) {
+    const p = verifyLaunch(String(lt));
+    if (p) { req.launch = p; return true; }
+    res.status(401).json({ error: 'launch_token_invalid' });
+    return false;
+  }
   const required = process.env.ACCESS_CODE;
   if (!required) return true;
   if (req.headers['x-access-code'] !== required) {
