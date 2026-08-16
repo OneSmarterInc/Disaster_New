@@ -24,8 +24,13 @@ deployment, or launches will be rejected.
 
 ## Schema
 
-`lib/schema.sql` holds it. Nine tables: users, tokens, sessions, sims, previews,
-courses, course_sims, enrolments, launches. Run it once against a fresh database.
+`lib/schema.sql` is the source of truth. Nine tables: users, tokens, sessions,
+sims, previews, courses, course_sims, enrolments, launches.
+
+What actually ships is `lib/schema.js`, a generated module holding the same
+statements — Vercel only bundles files it can see being required, so a plain
+`.sql` file never reaches the function. After editing the SQL, run
+`node lib/build-schema.js` to regenerate it.
 
 Entitlement lives on `enrolments.paid`, along with who marked it, when, and a
 free-text note for reconciling against a purchase order. There are no payment
