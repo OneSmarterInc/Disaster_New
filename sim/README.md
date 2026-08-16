@@ -66,3 +66,20 @@ While it runs you can freeze the clock, which puts a hold screen over every stud
 The Compare tab shows every group's reading, action and tripwire for one moment at a time, plus who got the coverage admission and when. That last row is the best single indicator of how well a group ran it.
 
 Sessions delete themselves after 48 hours. Nothing is stored about a student except the name they type.
+
+
+## Editing the sim
+
+The browser file `public/index.html` is generated — don't edit it by hand. The
+sources are in `src/`:
+
+`shell.html` is the markup and stylesheet, `client-scenario.js` is a deliberately
+empty stub (the real scenario lives server-side), and `engine.js` is the client
+logic.
+
+After changing any of them run `node build.js`, which stitches them together and
+refuses to write the file if any scenario content has leaked into it.
+
+The scenario itself — ground truth, character contracts, knowledge sets, the
+debrief — lives in `lib/scenario.js` and is only ever read by the serverless
+functions. It must never be imported by anything under `public/`.
