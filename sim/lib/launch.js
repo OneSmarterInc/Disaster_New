@@ -41,12 +41,21 @@ async function reportCompletion({ launch, summary, metrics }) {
   });
   if (!token) return;
   try {
-    await fetch(base + '/api/complete', {
+    const r = await fetch(base + '/api/complete', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token })
+      body: JSON.stringify({ token }),
+      signal: AbortSignal.timeout(6000)
     });
+    if (!r.ok) {
+      let why = '';
+      try { why = JSON.stringify(await r.json()); } catch (e) {}
+      console.error('completion refused', r.status, why);
+    } else {
+      console.log('completion reported for', launch.sub, 'on', launch.sim);
+    }
   } catch (e) {
+    // Never let this spoil the debrief the student is waiting for.
     console.error('completion report failed', e.message);
   }
 }

@@ -104,10 +104,13 @@ ${arcText}`;
 
   // If they came from the platform, tell it they finished. The metrics are this
   // sim's own choosing — the platform stores them without interpreting them.
+  // Awaited deliberately. A serverless function can be frozen the moment the
+  // response is sent, so a fire-and-forget request may never leave the machine.
+  // The wait is one round trip and the student is reading the debrief anyway.
   if (req.launch) {
     const readingAtEnd = label(S.READINGS, positions[positions.length - 1].reading);
     const firedAndIgnored = verdicts.filter(v => v.verdict && !v.ok).length;
-    reportCompletion({
+    await reportCompletion({
       launch: req.launch,
       summary: `Finished all three decisions. Final reading: ${readingAtEnd}.`,
       metrics: {
@@ -119,7 +122,7 @@ ${arcText}`;
         'Went off the bridge': privateCount,
         'Tripwires not acted on': firedAndIgnored
       }
-    }).catch(() => {});
+    });
   }
 
   return res.status(200).json({
