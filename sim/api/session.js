@@ -159,6 +159,10 @@ module.exports = async (req, res) => {
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         const groupId = String(b.groupId || '');
         if (!groupId) return res.status(400).json({ error: 'group_required' });
+        // Only somebody who actually joined, and is in that group, may write to it.
+        const pid = String(b.participantId || '');
+        const who = (await store.getParticipants(code))[pid];
+        if (!who || who.groupId !== groupId) return res.status(403).json({ error: 'not_in_that_group' });
         const runs = await store.getRuns(code);
         const run = runs[groupId] || { groupId, positions: [], phase: 0, done: false };
         if (Array.isArray(b.positions)) run.positions = b.positions.slice(0, 3);

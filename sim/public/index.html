@@ -997,7 +997,7 @@ async function pushPosition(done) {
   if (!inSession() || !SESSION.groupId) return;
   try {
     await sessionApi({
-      action: 'submit', groupId: SESSION.groupId,
+      action: 'submit', groupId: SESSION.groupId, participantId: SESSION.participantId,
       positions: S.positions, phase: S.phase, done: !!done,
       coverageEarnedAt: S.coverageEarnedAt, privateCount: Object.keys(S.privateOpened).length
     });
