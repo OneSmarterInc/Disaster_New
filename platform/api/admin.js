@@ -101,6 +101,30 @@ module.exports = async (req, res) => {
         });
       }
 
+      // Cancels any unused invitation for this person, so a link sent to the
+      // wrong address stops working.
+      case 'revoke_invites': {
+        const uid = String(b.facultyId || '');
+        const r = await s`UPDATE tokens SET used_at = now()
+                          WHERE user_id = ${uid} AND purpose = 'invite' AND used_at IS NULL`;
+        return res.status(200).json({ ok: true });
+      }
+
+      // Only for accounts that never got used. Anyone with courses should be
+      // disabled instead, so their students' history survives.
+      case 'delete_faculty': {
+        const uid = String(b.facultyId || '');
+        const person = (await s`SELECT id, name, password_hash FROM users WHERE id = ${uid} AND role = 'faculty'`)[0];
+        if (!person) return res.status(404).json({ error: 'no_such_faculty' });
+        const courses = await s`SELECT id FROM courses WHERE faculty_id = ${uid}`;
+        if (courses.length) {
+          return res.status(409).json({ error: 'has_courses',
+            message: `${person.name} has ${courses.length} course${courses.length === 1 ? '' : 's'}. Disable the account instead — deleting would take their students' history with it.` });
+        }
+        await s`DELETE FROM users WHERE id = ${uid}`;
+        return res.status(200).json({ ok: true });
+      }
+
       case 'set_faculty_disabled': {
         await s`UPDATE users SET disabled = ${!!b.disabled} WHERE id = ${String(b.facultyId || '')} AND role = 'faculty'`;
         return res.status(200).json({ ok: true });

@@ -17,7 +17,7 @@
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const D = { tab: 'faculty', data: null, detail: null, err: null };
+const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null };
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -79,6 +79,18 @@ function facultyTab() {
       </div>
       <div class="row" style="margin-top:14px"><button class="btn pri" id="inv">Create invitation</button></div>
       <div id="invout"></div>
+      ${D.lastInvite ? `<div class="note" style="margin-top:16px">
+        <b>Send this to ${esc(D.lastInvite.name)}${D.lastInvite.email ? ' at ' + esc(D.lastInvite.email) : ''}.</b>
+        There's no email service, so copy it into your own message. It works once and expires ${when(D.lastInvite.expiresAt)}.
+        <div class="copybox">
+          <input type="text" id="iurl" readonly value="${esc(D.lastInvite.inviteUrl)}">
+          <button class="btn" id="icopy">Copy</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn sm" id="idone">Done — hide this</button>
+          <span class="tiny dim">Sent to the wrong address? Open the person below and cancel the invitation.</span>
+        </div>
+      </div>` : ''}
     </div>
 
     <h2>Facilitators</h2>
@@ -107,31 +119,30 @@ function wireFaculty() {
   const inv = document.getElementById('inv');
   if (inv) inv.onclick = async () => {
     const out = document.getElementById('invout');
+    const name = document.getElementById('in').value;
+    const email = document.getElementById('ie').value;
     inv.disabled = true; inv.textContent = 'Creating…';
+    out.innerHTML = '';
     try {
       const d = await api('/api/admin', {
-        action: 'invite_faculty',
-        name: document.getElementById('in').value,
-        email: document.getElementById('ie').value,
+        action: 'invite_faculty', name, email,
         institution: document.getElementById('ii').value
       });
-      out.innerHTML = `
-        <div class="note" style="margin-top:16px">
-          <b>Send them this link.</b> There's no email service yet, so copy it into your own message.
-          It works once and expires ${when(d.expiresAt)}.
-          <div class="copybox">
-            <input type="text" id="iurl" readonly value="${esc(d.inviteUrl)}">
-            <button class="btn" id="icopy">Copy</button>
-          </div>
-        </div>`;
-      document.getElementById('icopy').onclick = () => {
-        document.getElementById('iurl').select();
-        navigator.clipboard.writeText(d.inviteUrl);
-      };
-      load();
+      // Held in state so refreshing the list underneath can't take it away.
+      D.lastInvite = { name, email, inviteUrl: d.inviteUrl, expiresAt: d.expiresAt, facultyId: d.facultyId };
+      await load();
     } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
     inv.disabled = false; inv.textContent = 'Create invitation';
   };
+  const ic = document.getElementById('icopy');
+  if (ic) ic.onclick = () => {
+    const f = document.getElementById('iurl');
+    f.select(); navigator.clipboard.writeText(f.value);
+    ic.textContent = 'Copied';
+    setTimeout(() => { ic.textContent = 'Copy'; }, 1500);
+  };
+  const idone = document.getElementById('idone');
+  if (idone) idone.onclick = () => { D.lastInvite = null; render(); };
   app.querySelectorAll('[data-open]').forEach(b => b.onclick = async () => {
     try { D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: b.dataset.open }); render(); }
     catch (e) { D.err = e.message; render(); }
@@ -175,7 +186,9 @@ function renderDetail() {
     <div class="rule"></div>
     <div class="row">
       <button class="btn ${person.disabled ? '' : 'danger'}" id="tog">${person.disabled ? 'Re-enable this account' : 'Disable this account'}</button>
-      <button class="btn" id="rst">Issue a password reset link</button>
+      ${person.accepted ? '<button class="btn" id="rst">Issue a password reset link</button>'
+        : '<button class="btn" id="rst">Issue a fresh invitation link</button><button class="btn" id="rev">Cancel the invitation</button>'}
+      ${!person.accepted && !courses.length ? '<button class="btn danger" id="del">Delete this account</button>' : ''}
       <span class="tiny dim">Disabling stops them signing in. Their courses and students are untouched.</span>
     </div>
     <div id="rstout"></div>`;
