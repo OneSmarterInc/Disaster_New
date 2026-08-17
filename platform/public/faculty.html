@@ -124,7 +124,10 @@ function renderHome() {
           </div>
         </div>
       </div>`;
-    }).join('') || '<div class="card dim">Nothing published yet.</div>'}
+    }).join('') || `<div class="card dim">
+      <p style="margin:0">Nothing available to you at the moment.</p>
+      <p class="tiny" style="margin:8px 0 0">Simulations appear here once they are published. If one is still in preparation, an administrator can give you early access to review it.</p>
+    </div>`}
     ${F.err ? `<div class="err">${esc(F.err)}</div>` : ''}`;
 
   if (F.simsOverview === null) {
@@ -190,7 +193,11 @@ function renderCourse() {
       </div>
     </div>`).join('') || '<div class="card dim tight">None yet — add one below.</div>'}
 
-    ${!notAdded.length && sims.length ? '<div class="tiny dim" style="margin-bottom:16px">Every published simulation is already in this course.</div>' : ''}
+    ${!notAdded.length && sims.length ? '<div class="tiny dim" style="margin-bottom:16px">Every simulation available to you is already in this course.</div>' : ''}
+    ${sims.some(x => !catalogue.find(c => c.id === x.sim_id)) ? `<div class="note" style="margin-bottom:16px">
+      One of the simulations below is no longer in the catalogue — it has been withdrawn while it is worked on.
+      It stays in your course and your students keep their access; you just cannot add it anywhere new for now.
+    </div>` : ''}
     ${notAdded.length ? `<div class="card tight">
       <div class="row">
         <div class="grow"><label class="f">Add a simulation</label>
