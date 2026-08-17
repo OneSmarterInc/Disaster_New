@@ -17,7 +17,7 @@
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const F = { view: 'home', data: null, course: null, err: null, sel: new Set() };
+const F = { view: 'home', data: null, course: null, simsOverview: null, progress: null, err: null, sel: new Set() };
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -35,6 +35,11 @@ async function loadHome() {
   catch (e) { F.err = e.message; }
   F.view = 'home'; F.course = null; render();
 }
+async function openProgress(courseId, simId) {
+  try { F.progress = await api('/api/faculty', { action:'sim_progress', courseId, simId }); F.view = 'progress'; F.err = null; }
+  catch (e) { F.err = e.message; }
+  render();
+}
 async function openCourse(id) {
   try { F.course = await api('/api/faculty', { action:'course_detail', courseId: id }); F.view = 'course'; F.sel.clear(); F.err = null; }
   catch (e) { F.err = e.message; }
@@ -44,6 +49,7 @@ async function openCourse(id) {
 function render() {
   if (F.err && !F.data) { app.innerHTML = `<h1>Something's wrong</h1><div class="err">${esc(F.err)}</div>`; return; }
   if (!F.data) { app.innerHTML = '<h1>Loading…</h1>'; return; }
+  if (F.view === 'progress' && F.progress) return renderProgress();
   if (F.view === 'course' && F.course) return renderCourse();
   renderHome();
 }
@@ -56,6 +62,21 @@ function renderHome() {
   app.innerHTML = `
     <div class="eyebrow">Your teaching</div>
     <h1>Courses and <em>simulations</em></h1>
+
+    <h2>Your simulations</h2>
+    ${F.simsOverview === null
+      ? '<div class="card dim tight">Loading…</div>'
+      : (F.simsOverview.length ? `<div class="card" style="padding:0"><table>
+          <thead><tr><th>Simulation</th><th>Courses</th><th>Released</th><th>Started</th><th>Finished</th></tr></thead>
+          <tbody>${F.simsOverview.map(x => `<tr>
+            <td><b>${esc(x.title)}</b><div class="tiny dim">${esc(x.tagline || '')}</div></td>
+            <td class="mono">${x.courses}</td>
+            <td class="mono">${x.released} of ${x.enrolled}</td>
+            <td class="mono">${x.started}</td>
+            <td class="mono">${Number(x.finished) === Number(x.started) && Number(x.started) > 0
+                ? `<span class="pill ok">${x.finished}</span>` : `<span class="pill">${x.finished}</span>`}</td>
+          </tr>`).join('')}</tbody></table></div>`
+        : '<div class="card dim tight">None in use yet — add one to a course below.</div>')}
 
     <h2>Your courses</h2>
     ${courses.map(c => `<div class="card">
@@ -103,6 +124,11 @@ function renderHome() {
     }).join('') || '<div class="card dim">Nothing published yet.</div>'}
     ${F.err ? `<div class="err">${esc(F.err)}</div>` : ''}`;
 
+  if (F.simsOverview === null) {
+    api('/api/faculty', { action:'sims_overview' })
+      .then(d => { F.simsOverview = d.sims || []; render(); })
+      .catch(() => { F.simsOverview = []; });
+  }
   document.getElementById('c_go').onclick = async () => {
     const t = document.getElementById('c_t').value.trim();
     if (!t) return;
@@ -144,8 +170,13 @@ function renderCourse() {
           <b>${esc(x.title)}</b>
           <div class="tiny dim">${x.expected_seats ? 'expecting ' + x.expected_seats + ' students' : 'no expected number set'}${x.hard_cap ? ' · hard cap' : ''}
             ${x.expected_seats && active.length > x.expected_seats ? ` · <span style="color:var(--rose)">${active.length} enrolled</span>` : ''}</div>
+          <div class="tiny" style="margin-top:6px">
+            <span class="pill">${x.started || 0} started</span>
+            <span class="pill ${Number(x.finished) > 0 ? 'ok' : ''}">${x.finished || 0} finished</span>
+          </div>
         </div>
         <div class="row">
+          <button class="btn sm" data-prog="${esc(x.sim_id)}">Who has played</button>
           <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Open</a>
           <button class="btn sm" data-rmsim="${esc(x.sim_id)}">Remove</button>
         </div>
@@ -208,6 +239,7 @@ function renderCourse() {
       expectedSeats: document.getElementById('a_seats').value });
     openCourse(course.id);
   };
+  app.querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProgress(course.id, b.dataset.prog));
   app.querySelectorAll('[data-rmsim]').forEach(b => b.onclick = async () => {
     await api('/api/faculty', { action:'remove_sim', courseId: course.id, simId: b.dataset.rmsim });
     openCourse(course.id);
@@ -235,6 +267,46 @@ function renderCourse() {
       enrolmentId: b.dataset.drop, dropped: b.dataset.now !== '1' });
     openCourse(course.id);
   });
+}
+
+function renderProgress() {
+  const { sim, course, rows } = F.progress;
+  const active = rows.filter(r => !r.dropped);
+  const done = active.filter(r => r.completed_at);
+  const started = active.filter(r => Number(r.starts) > 0 && !r.completed_at);
+  const mins = sec => sec ? Math.round(sec / 60) + ' min' : '—';
+
+  app.innerHTML = `
+    <button class="btn sm" id="back">← ${esc(course.title)}</button>
+    <div class="eyebrow" style="margin-top:20px">${esc(course.title)}</div>
+    <h1>${esc(sim ? sim.title : 'Simulation')}</h1>
+    <p class="lede">${done.length} of ${active.length} have finished it${started.length ? `, ${started.length} started and didn't` : ''}.</p>
+
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>Student</th><th>Status</th><th>Took</th><th>What came back</th></tr></thead>
+        <tbody>
+        ${rows.map(r => {
+          const m = r.metrics || {};
+          return `<tr style="${r.dropped ? 'opacity:.5' : ''}">
+            <td><b>${esc(r.name)}</b><div class="tiny dim mono">${esc(r.email)}</div></td>
+            <td>${r.dropped ? '<span class="pill">dropped</span>'
+                 : r.completed_at ? '<span class="pill ok">finished</span>'
+                 : Number(r.starts) > 0 ? '<span class="pill warn">started</span>'
+                 : !r.paid ? '<span class="pill">not released</span>'
+                 : '<span class="pill">not started</span>'}</td>
+            <td class="mono tiny">${mins(r.duration_seconds)}</td>
+            <td class="tiny">${Object.keys(m).length
+              ? Object.entries(m).map(([k, v]) => `<div><span class="dim">${esc(k)}:</span> ${esc(v)}</div>`).join('')
+              : '<span class="dim">—</span>'}</td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="4" class="dim">Nobody enrolled yet.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+    <div class="note">What comes back is whatever the simulation chose to report — a short summary, not a transcript. Students keep their own transcript; nothing they said is stored here.</div>`;
+
+  document.getElementById('back').onclick = () => openCourse(course.id);
 }
 
 (async () => {

@@ -1,6 +1,7 @@
 // The whole debrief, including the resolution. None of this exists in the
 // browser until the student has finished all three decisions.
 const { checkAccess, requireKey, anthropic, body } = require('../lib/guard.js');
+const { reportCompletion } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
 
 const EVIDENCE = [
@@ -99,6 +100,26 @@ ${arcText}`;
     coverage = { tone: '', text: `It reached you on Day 3, which is to say far too late to have changed anything you decided. The gap existed from the first minute of this incident.` };
   } else {
     coverage = { tone: '', text: `You never got it. She would have told you — she tells anyone who asks a question sharp enough to deserve it, and she'd have told you privately for less. "How's your coverage?" isn't that question. "Where would you not have seen it?" is. The difference between those two sentences is most of what separates people who run incidents well from people who preside over them.` };
+  }
+
+  // If they came from the platform, tell it they finished. The metrics are this
+  // sim's own choosing — the platform stores them without interpreting them.
+  if (req.launch) {
+    const readingAtEnd = label(S.READINGS, positions[positions.length - 1].reading);
+    const firedAndIgnored = verdicts.filter(v => v.verdict && !v.ok).length;
+    reportCompletion({
+      launch: req.launch,
+      summary: `Finished all three decisions. Final reading: ${readingAtEnd}.`,
+      metrics: {
+        'Final reading': readingAtEnd,
+        'Sequencing': anyIrreversibleEarly ? 'Acted irreversibly before Day 3' : 'Kept options open',
+        'Coverage admission': coverageEarnedAt === null ? 'Never obtained'
+          : (S.PHASES[coverageEarnedAt] ? S.PHASES[coverageEarnedAt].label : 'Obtained')
+            + (coveragePrivate ? ' (privately)' : ''),
+        'Went off the bridge': privateCount,
+        'Tripwires not acted on': firedAndIgnored
+      }
+    }).catch(() => {});
   }
 
   return res.status(200).json({

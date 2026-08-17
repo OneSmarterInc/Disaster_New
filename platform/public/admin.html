@@ -236,6 +236,15 @@ function catalogueTab() {
       <div class="tiny dim mono" style="margin-top:10px">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url)}</div>
     </div>`).join('') || '<div class="card dim">Nothing in the catalogue yet.</div>'}
 
+    <h2>Database</h2>
+    <div class="card tight">
+      <div class="row">
+        <button class="btn" id="mig">Bring the database up to date</button>
+        <span class="tiny dim">Run this after a release that adds tables. It only creates what's missing and never drops anything.</span>
+      </div>
+      <div id="migout"></div>
+    </div>
+
     <h2>Add or update a sim</h2>
     <div class="card">
       <div class="row">
@@ -256,6 +265,16 @@ function catalogueTab() {
 }
 
 function wireCatalogue() {
+  const mb = document.getElementById('mig');
+  if (mb) mb.onclick = async () => {
+    const out = document.getElementById('migout');
+    mb.disabled = true; mb.textContent = 'Running…';
+    try {
+      const d = await api('/api/admin', { action:'migrate' });
+      out.innerHTML = `<div class="ok">Up to date — ${d.statements} statements checked.</div>`;
+    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+    mb.disabled = false; mb.textContent = 'Bring the database up to date';
+  };
   const b = document.getElementById('s_save');
   if (!b) return;
   b.onclick = async () => {

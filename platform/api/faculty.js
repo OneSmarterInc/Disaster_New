@@ -38,6 +38,50 @@ module.exports = async (req, res) => {
         return res.status(200).json({ courses, catalogue, previews, baseUrl: baseUrl(), me: A.publicUser(me) });
       }
 
+      // Every simulation this person is using, across all their courses, with
+      // how many students have actually played it.
+      case 'sims_overview': {
+        const rows = await s`
+          SELECT si.id, si.title, si.tagline, si.minutes,
+                 count(DISTINCT c.id) AS courses,
+                 count(DISTINCT e.student_id) FILTER (WHERE e.dropped = false) AS enrolled,
+                 count(DISTINCT e.student_id) FILTER (WHERE e.dropped = false AND e.paid = true) AS released,
+                 count(DISTINCT l.user_id) FILTER (WHERE l.as_role = 'student') AS started,
+                 count(DISTINCT cp.user_id) AS finished
+          FROM course_sims cs
+          JOIN courses c ON c.id = cs.course_id AND c.faculty_id = ${me.id} AND c.archived = false
+          JOIN sims si ON si.id = cs.sim_id
+          LEFT JOIN enrolments e ON e.course_id = c.id
+          LEFT JOIN launches l ON l.course_id = c.id AND l.sim_id = si.id
+          LEFT JOIN completions cp ON cp.course_id = c.id AND cp.sim_id = si.id
+          GROUP BY si.id, si.title, si.tagline, si.minutes
+          ORDER BY si.title`;
+        return res.status(200).json({ sims: rows });
+      }
+
+      // Who in this course has played this sim, and what came back.
+      case 'sim_progress': {
+        const course = await ownCourse(s, me.id, String(b.courseId || ''));
+        if (!course) return res.status(404).json({ error: 'no_such_course' });
+        const simId = String(b.simId || '');
+        const rows = await s`
+          SELECT u.id AS student_id, u.name, u.email, e.paid, e.dropped,
+                 (SELECT count(*) FROM launches l
+                   WHERE l.user_id = u.id AND l.course_id = ${course.id} AND l.sim_id = ${simId}) AS starts,
+                 cp.completed_at, cp.duration_seconds, cp.summary, cp.metrics
+          FROM enrolments e
+          JOIN users u ON u.id = e.student_id
+          LEFT JOIN LATERAL (
+            SELECT * FROM completions c2
+            WHERE c2.user_id = u.id AND c2.course_id = ${course.id} AND c2.sim_id = ${simId}
+            ORDER BY c2.completed_at DESC LIMIT 1
+          ) cp ON true
+          WHERE e.course_id = ${course.id}
+          ORDER BY e.dropped, u.name`;
+        const sim = (await s`SELECT id, title FROM sims WHERE id = ${simId}`)[0];
+        return res.status(200).json({ sim, course, rows });
+      }
+
       case 'create_course': {
         const title = String(b.title || '').trim();
         if (!title) return res.status(400).json({ error: 'need_title' });
@@ -58,7 +102,11 @@ module.exports = async (req, res) => {
         const course = await ownCourse(s, me.id, String(b.courseId || ''));
         if (!course) return res.status(404).json({ error: 'no_such_course' });
         const sims = await s`
-          SELECT cs.*, si.title, si.minutes, si.tagline
+          SELECT cs.*, si.title, si.minutes, si.tagline,
+            (SELECT count(DISTINCT l.user_id) FROM launches l
+              WHERE l.course_id = ${course.id} AND l.sim_id = cs.sim_id AND l.as_role = 'student') AS started,
+            (SELECT count(DISTINCT c2.user_id) FROM completions c2
+              WHERE c2.course_id = ${course.id} AND c2.sim_id = cs.sim_id) AS finished
           FROM course_sims cs JOIN sims si ON si.id = cs.sim_id
           WHERE cs.course_id = ${course.id} ORDER BY cs.added_at`;
         const roster = await s`

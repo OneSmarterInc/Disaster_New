@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const SCHEMA = require('../lib/schema.js');
 const { sql, id } = require('../lib/db.js');
 const A = require('../lib/auth.js');
 
@@ -148,6 +149,20 @@ module.exports = async (req, res) => {
           resetUrl: `${baseUrl()}/reset.html?t=${token}`,
           who: person.name, expiresAt: expires
         });
+      }
+
+      // Brings the database up to date after a release that adds tables or
+      // indexes. Every statement is CREATE ... IF NOT EXISTS, so running it
+      // repeatedly is harmless and it never drops anything.
+      case 'migrate': {
+        const runRaw = (text) => {
+          if (typeof s.query === 'function') return s.query(text);
+          const parts = [text]; parts.raw = [text];
+          return s(parts);
+        };
+        let done = 0;
+        for (const stmt of SCHEMA) { await runRaw(stmt); done++; }
+        return res.status(200).json({ ok: true, statements: done });
       }
 
       default:

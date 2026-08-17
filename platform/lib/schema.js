@@ -103,4 +103,21 @@ module.exports = [
 `CREATE INDEX IF NOT EXISTS launches_user_idx ON launches(user_id)`,
 
 `CREATE INDEX IF NOT EXISTS launches_course_idx ON launches(course_id)`,
+
+`CREATE TABLE IF NOT EXISTS completions (
+  id               TEXT PRIMARY KEY,
+  user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sim_id           TEXT NOT NULL REFERENCES sims(id) ON DELETE CASCADE,
+  course_id        TEXT REFERENCES courses(id) ON DELETE SET NULL,
+  completed_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  duration_seconds INTEGER,
+  summary          TEXT,
+  metrics          JSONB
+)`,
+
+`CREATE INDEX IF NOT EXISTS completions_user_idx ON completions(user_id)`,
+
+`CREATE INDEX IF NOT EXISTS completions_course_idx ON completions(course_id)`,
+
+`CREATE INDEX IF NOT EXISTS completions_sim_idx ON completions(sim_id)`,
 ];
