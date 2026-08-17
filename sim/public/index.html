@@ -361,6 +361,7 @@ const roleOf = (w) => w === 'priya' ? 'On-call engineer' : (CAST[w] ? CAST[w].ro
 let LAST_ERROR = null;
 let OFFLINE = false;
 let NEEDS_CODE = false;
+let BAD_LAUNCH = false;
 let ACCESS_CODE = (function () {
   const m = (location.hash + location.search).match(/code=([^&]+)/);
   if (m) return decodeURIComponent(m[1]);
@@ -402,8 +403,18 @@ async function api(path, payload) {
     throw new Error(LAST_ERROR);
   }
   if (r.status === 401) {
-    NEEDS_CODE = true;
-    LAST_ERROR = 'This sim needs an access code. Enter the one you were given.';
+    let why = '';
+    try { why = (await r.json()).error || ''; } catch (e) { why = ''; }
+    if (why === 'launch_token_invalid') {
+      // Arrived from the platform but the sim wouldn't accept the handover.
+      // Almost always a mismatched or missing shared secret between the two.
+      BAD_LAUNCH = true;
+      NEEDS_CODE = false;
+      LAST_ERROR = 'This sim did not accept the link you arrived on. It may have expired — go back and start it again from your course. If it keeps happening, the two systems are not sharing the same launch secret.';
+    } else {
+      NEEDS_CODE = true;
+      LAST_ERROR = 'This sim needs an access code. Enter the one you were given.';
+    }
     throw new Error(LAST_ERROR);
   }
   if (!r.ok) {
@@ -449,7 +460,7 @@ function goOffline() {
 
 function showBanner() {
   if (document.getElementById('keybar')) return;
-  const needCode = NEEDS_CODE;
+  const needCode = NEEDS_CODE && !BAD_LAUNCH;
   const bar = el(`<div id="keybar" style="position:fixed;left:0;right:0;bottom:0;z-index:60;border-top:1px solid var(--sophia);background:#1A1420;padding:12px 18px">
     <div style="max-width:1100px;margin:0 auto">
       <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:7px">
@@ -1447,7 +1458,14 @@ mountHelp();
     }
   } catch (e) {
     showBanner();
-    app.innerHTML = NEEDS_CODE
+    app.innerHTML = BAD_LAUNCH
+      ? `<div class="doc"><div class="doc-in">
+          <div class="eyebrow">Flexee Rapid Sim 01</div>
+          <h1>That link wasn't <em>accepted</em></h1>
+          <p>${esc(LAST_ERROR || '')}</p>
+          <p style="color:var(--dimmer);font-size:14px">Nothing is lost — go back to your course and press Start again.</p>
+        </div></div>`
+      : NEEDS_CODE
       ? `<div class="doc"><div class="doc-in">
           <div class="eyebrow">Flexee Rapid Sim 01</div>
           <h1>You'll need an <em>access code</em></h1>
