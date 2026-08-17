@@ -28,4 +28,4 @@ fs.writeFileSync(path.join(__dirname, 'schema.js'), out);
 const tables = stmts.filter(s => /^CREATE TABLE/i.test(s)).length;
 const indexes = stmts.filter(s => /^CREATE INDEX/i.test(s)).length;
 console.log(`schema.js written — ${stmts.length} statements (${tables} tables, ${indexes} indexes)`);
-if (tables !== 10) { console.error(`expected 10 tables, found ${tables}`); process.exit(1); }
+if (tables !== 11) { console.error(`expected 11 tables, found ${tables}`); process.exit(1); }

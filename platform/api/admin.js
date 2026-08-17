@@ -141,6 +141,9 @@ module.exports = async (req, res) => {
           ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title, tagline = EXCLUDED.tagline, description = EXCLUDED.description,
             minutes = EXCLUDED.minutes, launch_url = EXCLUDED.launch_url, published = EXCLUDED.published`;
+        // Once it's published, review grants mean nothing and would otherwise
+        // accumulate as rows nobody reads.
+        if (b.published) await s`DELETE FROM sim_access WHERE sim_id = ${sid}`;
         return res.status(200).json({ ok: true });
       }
 
@@ -217,6 +220,51 @@ module.exports = async (req, res) => {
         }
         await s`DELETE FROM sims WHERE id = ${sid}`;
         return res.status(200).json({ ok: true });
+      }
+
+      // ---------- pre-publication review ----------
+      case 'grant_sim_access': {
+        const simId = String(b.simId || '');
+        const email = String(b.email || '').trim().toLowerCase();
+        const sim = (await s`SELECT id, title, published FROM sims WHERE id = ${simId}`)[0];
+        if (!sim) return res.status(404).json({ error: 'no_such_sim' });
+        const person = (await s`SELECT id, name, role FROM users WHERE email = ${email}`)[0];
+        if (!person) return res.status(404).json({ error: 'no_such_user',
+          message: 'Nobody with that email has an account yet. Invite them first.' });
+        if (person.role === 'student') return res.status(409).json({ error: 'is_a_student',
+          message: 'Review access is for facilitators and administrators.' });
+        await s`INSERT INTO sim_access (id, user_id, sim_id, granted_by, note)
+                VALUES (${id('acc')}, ${person.id}, ${simId}, ${me.id}, ${String(b.note || '').trim() || null})
+                ON CONFLICT (user_id, sim_id) DO UPDATE SET note = EXCLUDED.note, granted_by = EXCLUDED.granted_by`;
+        return res.status(200).json({ ok: true, who: person.name });
+      }
+
+      case 'revoke_sim_access': {
+        await s`DELETE FROM sim_access WHERE id = ${String(b.grantId || '')}`;
+        return res.status(200).json({ ok: true });
+      }
+
+      case 'sim_access_list': {
+        // Two statements rather than one composed query — the neon driver's
+        // tagged templates can't be nested.
+        const simId = String(b.simId || '');
+        const rows = simId
+          ? await s`
+              SELECT sa.id, sa.sim_id, sa.note, sa.created_at,
+                     u.id AS user_id, u.name, u.email, u.role, g.name AS granted_by_name
+              FROM sim_access sa
+              JOIN users u ON u.id = sa.user_id
+              LEFT JOIN users g ON g.id = sa.granted_by
+              WHERE sa.sim_id = ${simId}
+              ORDER BY sa.created_at DESC`
+          : await s`
+              SELECT sa.id, sa.sim_id, sa.note, sa.created_at,
+                     u.id AS user_id, u.name, u.email, u.role, g.name AS granted_by_name
+              FROM sim_access sa
+              JOIN users u ON u.id = sa.user_id
+              LEFT JOIN users g ON g.id = sa.granted_by
+              ORDER BY sa.created_at DESC`;
+        return res.status(200).json({ grants: rows });
       }
 
       default:

@@ -120,4 +120,18 @@ module.exports = [
 `CREATE INDEX IF NOT EXISTS completions_course_idx ON completions(course_id)`,
 
 `CREATE INDEX IF NOT EXISTS completions_sim_idx ON completions(sim_id)`,
+
+`CREATE TABLE IF NOT EXISTS sim_access (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sim_id      TEXT NOT NULL REFERENCES sims(id) ON DELETE CASCADE,
+  granted_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+  note        TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, sim_id)
+)`,
+
+`CREATE INDEX IF NOT EXISTS sim_access_user_idx ON sim_access(user_id)`,
+
+`CREATE INDEX IF NOT EXISTS sim_access_sim_idx ON sim_access(sim_id)`,
 ];

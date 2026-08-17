@@ -102,7 +102,8 @@ module.exports = async (req, res) => {
           FROM course_sims cs
           JOIN sims si ON si.id = cs.sim_id
           JOIN enrolments e ON e.course_id = cs.course_id AND e.student_id = ${me.id} AND e.dropped = false
-          WHERE si.published = true
+          WHERE (si.published = true
+                 OR EXISTS (SELECT 1 FROM sim_access sa WHERE sa.sim_id = si.id AND sa.user_id = ${me.id}))
           ORDER BY cs.added_at`;
         return res.status(200).json({ me: A.publicUser(me), courses, sims });
       }

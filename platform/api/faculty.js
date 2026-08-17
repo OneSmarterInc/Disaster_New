@@ -8,6 +8,24 @@ function body(req) {
 }
 const baseUrl = () => (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
 
+// A sim is visible to someone if it's published, or if an admin granted them
+// access while it is still in draft. Repeated in every place a sim is listed
+// or attached, so a reviewer sees exactly what a faculty member would.
+const visibleSims = (s, userId) => s`
+  SELECT * FROM sims si
+  WHERE si.published = true
+     OR EXISTS (SELECT 1 FROM sim_access sa WHERE sa.sim_id = si.id AND sa.user_id = ${userId})
+  ORDER BY si.created_at`;
+
+const simVisibleTo = async (s, userId, simId) => {
+  const rows = await s`
+    SELECT id FROM sims si
+    WHERE si.id = ${simId}
+      AND (si.published = true
+           OR EXISTS (SELECT 1 FROM sim_access sa WHERE sa.sim_id = si.id AND sa.user_id = ${userId}))`;
+  return rows.length > 0;
+};
+
 // Confirms this course belongs to the person asking.
 async function ownCourse(s, facultyId, courseId) {
   const rows = await s`SELECT * FROM courses WHERE id = ${courseId} AND faculty_id = ${facultyId}`;
@@ -33,7 +51,7 @@ module.exports = async (req, res) => {
             (SELECT count(*) FROM course_sims cs WHERE cs.course_id = c.id) AS sims
           FROM courses c WHERE c.faculty_id = ${me.id} AND c.archived = false
           ORDER BY c.created_at DESC`;
-        const catalogue = await s`SELECT * FROM sims WHERE published = true ORDER BY created_at`;
+        const catalogue = await visibleSims(s, me.id);
         const previews = await s`SELECT * FROM previews WHERE user_id = ${me.id}`;
         return res.status(200).json({ courses, catalogue, previews, baseUrl: baseUrl(), me: A.publicUser(me) });
       }
@@ -116,7 +134,7 @@ module.exports = async (req, res) => {
           FROM enrolments e JOIN users u ON u.id = e.student_id
           WHERE e.course_id = ${course.id}
           ORDER BY e.dropped, u.name`;
-        const catalogue = await s`SELECT * FROM sims WHERE published = true ORDER BY created_at`;
+        const catalogue = await visibleSims(s, me.id);
         return res.status(200).json({
           course, sims, roster, catalogue,
           enrolUrl: `${baseUrl()}/join.html?c=${course.join_code}`
@@ -148,6 +166,9 @@ module.exports = async (req, res) => {
         const course = await ownCourse(s, me.id, String(b.courseId || ''));
         if (!course) return res.status(404).json({ error: 'no_such_course' });
         const simId = String(b.simId || '');
+        // Previously this inserted whatever id it was given. The foreign key meant
+        // the sim had to exist, but not that this person was allowed to see it.
+        if (!await simVisibleTo(s, me.id, simId)) return res.status(404).json({ error: 'no_such_sim' });
         const seats = b.expectedSeats ? parseInt(b.expectedSeats, 10) : null;
         await s`INSERT INTO course_sims (course_id, sim_id, expected_seats, hard_cap)
                 VALUES (${course.id}, ${simId}, ${seats}, ${!!b.hardCap})
@@ -203,8 +224,7 @@ module.exports = async (req, res) => {
       // Seven days to look at a sim before committing a course to it.
       case 'start_preview': {
         const simId = String(b.simId || '');
-        const exists = await s`SELECT id FROM sims WHERE id = ${simId} AND published = true`;
-        if (!exists.length) return res.status(404).json({ error: 'no_such_sim' });
+        if (!await simVisibleTo(s, me.id, simId)) return res.status(404).json({ error: 'no_such_sim' });
         const expires = new Date(Date.now() + 7 * 86400000);
         await s`INSERT INTO previews (id, user_id, sim_id, expires_at)
                 VALUES (${id('prv')}, ${me.id}, ${simId}, ${expires})

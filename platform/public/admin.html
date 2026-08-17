@@ -18,7 +18,7 @@
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null };
+const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null, grants: null };
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -31,8 +31,11 @@ const when = t => t ? new Date(t).toLocaleDateString(undefined, { day:'numeric',
 document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
 
 async function load() {
-  try { D.data = await api('/api/admin', { action:'overview' }); D.err = null; }
-  catch (e) { D.err = e.message; }
+  try {
+    D.data = await api('/api/admin', { action:'overview' });
+    D.grants = (await api('/api/admin', { action:'sim_access_list' })).grants || [];
+    D.err = null;
+  } catch (e) { D.err = e.message; }
   render();
 }
 
@@ -286,9 +289,28 @@ function catalogueTab() {
     ${(D.data.sims || []).map(si => `<div class="card">
       <div class="row" style="justify-content:space-between">
         <div><h3>${esc(si.title)}</h3><div class="tiny dim">${esc(si.tagline || '')}</div></div>
-        <span class="pill ${si.published ? 'ok' : ''}">${si.published ? 'published' : 'draft'}</span>
+        ${(() => {
+          if (si.published) return '<span class="pill ok">published</span>';
+          const n = (D.grants || []).filter(g => g.sim_id === si.id).length;
+          return `<span class="pill warn">draft${n ? ' · ' + n + ' reviewing' : ' · nobody reviewing'}</span>`;
+        })()}
       </div>
       <div class="tiny dim mono" style="margin-top:10px">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url)}</div>
+
+      ${!si.published ? `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+        <div class="eyebrow" style="margin-bottom:8px">Who can see it before it's published</div>
+        ${(D.grants || []).filter(g => g.sim_id === si.id).map(g => `<div class="row" style="justify-content:space-between;padding:5px 0">
+          <div><b>${esc(g.name)}</b> <span class="tiny dim mono">${esc(g.email)}</span>
+            ${g.note ? `<div class="tiny dim">${esc(g.note)}</div>` : ''}</div>
+          <button class="btn sm" data-revgrant="${esc(g.id)}">Revoke</button>
+        </div>`).join('') || '<div class="tiny dim">Nobody yet — it is invisible to everyone but administrators.</div>'}
+        <div class="row" style="margin-top:12px">
+          <input type="email" data-grantmail="${esc(si.id)}" placeholder="their email" style="width:220px">
+          <input type="text" data-grantnote="${esc(si.id)}" placeholder="why, e.g. reviewing before we ship" style="width:250px">
+          <button class="btn" data-grant="${esc(si.id)}">Give review access</button>
+        </div>
+        <div class="tiny dim" style="margin-top:8px">They must already have a facilitator account. Grants disappear when the simulation is published.</div>
+      </div>` : ''}
       <div class="row" style="margin-top:12px">
         <button class="btn sm" data-editsim="${esc(si.id)}">Edit this</button>
         <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published ? '1' : '0'}">${si.published ? 'Unpublish' : 'Publish'}</button>
@@ -364,6 +386,22 @@ function wireCatalogue() {
     await api('/api/admin', { action:'save_sim', id: si.id, title: si.title, tagline: si.tagline,
       description: si.description, launchUrl: si.launch_url, minutes: si.minutes,
       published: btn.dataset.now !== '1' });
+    load();
+  });
+  app.querySelectorAll('[data-grant]').forEach(btn => btn.onclick = async () => {
+    const sid = btn.dataset.grant;
+    const mail = app.querySelector(`[data-grantmail="${sid}"]`);
+    const note = app.querySelector(`[data-grantnote="${sid}"]`);
+    const out = document.getElementById('s_out');
+    try {
+      const d = await api('/api/admin', { action:'grant_sim_access',
+        simId: sid, email: mail ? mail.value : '', note: note ? note.value : '' });
+      if (out) out.innerHTML = `<div class="ok">${esc(d.who)} can now see it.</div>`;
+      load();
+    } catch (e) { if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  });
+  app.querySelectorAll('[data-revgrant]').forEach(btn => btn.onclick = async () => {
+    await api('/api/admin', { action:'revoke_sim_access', grantId: btn.dataset.revgrant });
     load();
   });
   app.querySelectorAll('[data-delsim]').forEach(btn => btn.onclick = async () => {
