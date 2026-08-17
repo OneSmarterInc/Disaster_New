@@ -114,7 +114,7 @@ module.exports = async (req, res) => {
       // disabled instead, so their students' history survives.
       case 'delete_faculty': {
         const uid = String(b.facultyId || '');
-        const person = (await s`SELECT id, name, password_hash FROM users WHERE id = ${uid} AND role = 'faculty'`)[0];
+        const person = (await s`SELECT id, name FROM users WHERE id = ${uid} AND role = 'faculty'`)[0];
         if (!person) return res.status(404).json({ error: 'no_such_faculty' });
         const courses = await s`SELECT id FROM courses WHERE faculty_id = ${uid}`;
         if (courses.length) {

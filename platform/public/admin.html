@@ -289,6 +289,10 @@ function catalogueTab() {
         <span class="pill ${si.published ? 'ok' : ''}">${si.published ? 'published' : 'draft'}</span>
       </div>
       <div class="tiny dim mono" style="margin-top:10px">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url)}</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn sm" data-editsim="${esc(si.id)}">Edit this</button>
+        <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published ? '1' : '0'}">${si.published ? 'Unpublish' : 'Publish'}</button>
+      </div>
     </div>`).join('') || '<div class="card dim">Nothing in the catalogue yet.</div>'}
 
     <h2>Database</h2>
@@ -307,6 +311,7 @@ function catalogueTab() {
         <div class="grow"><label class="f">Title</label><input id="s_title" type="text" placeholder="Whose Defect Is It?"></div>
       </div>
       <div class="field" style="margin-top:14px"><label class="f">Tagline</label><input id="s_tag" type="text"></div>
+      <div class="field"><label class="f">Description</label><textarea id="s_desc" rows="3" placeholder="What the simulation is about — this is what faculty read on the landing page"></textarea></div>
       <div class="row">
         <div class="grow"><label class="f">Launch URL</label><input id="s_url" type="text" placeholder="https://…vercel.app"></div>
         <div style="width:120px"><label class="f">Minutes</label><input id="s_min" type="number" value="20"></div>
@@ -330,6 +335,26 @@ function wireCatalogue() {
     } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
     mb.disabled = false; mb.textContent = 'Bring the database up to date';
   };
+  app.querySelectorAll('[data-editsim]').forEach(btn => btn.onclick = () => {
+    const si = (D.data.sims || []).find(x => x.id === btn.dataset.editsim);
+    if (!si) return;
+    document.getElementById('s_id').value = si.id;
+    document.getElementById('s_title').value = si.title || '';
+    document.getElementById('s_tag').value = si.tagline || '';
+    document.getElementById('s_desc').value = si.description || '';
+    document.getElementById('s_url').value = si.launch_url || '';
+    document.getElementById('s_min').value = si.minutes || '';
+    document.getElementById('s_pub').checked = !!si.published;
+    document.getElementById('s_out').innerHTML = '<div class="ok">Loaded — change what you need and save.</div>';
+  });
+  app.querySelectorAll('[data-pub]').forEach(btn => btn.onclick = async () => {
+    const si = (D.data.sims || []).find(x => x.id === btn.dataset.pub);
+    if (!si) return;
+    await api('/api/admin', { action:'save_sim', id: si.id, title: si.title, tagline: si.tagline,
+      description: si.description, launchUrl: si.launch_url, minutes: si.minutes,
+      published: btn.dataset.now !== '1' });
+    load();
+  });
   const b = document.getElementById('s_save');
   if (!b) return;
   b.onclick = async () => {
@@ -341,6 +366,7 @@ function wireCatalogue() {
         tagline: document.getElementById('s_tag').value,
         launchUrl: document.getElementById('s_url').value,
         minutes: document.getElementById('s_min').value,
+        description: document.getElementById('s_desc').value,
         published: document.getElementById('s_pub').checked
       });
       document.getElementById('s_out').innerHTML = '<div class="ok">Saved.</div>';

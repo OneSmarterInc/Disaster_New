@@ -164,7 +164,7 @@ module.exports = async (req, res) => {
                     WHERE course_id = ${course.id} AND dropped = false AND paid = false`;
           } else {
             await s`UPDATE enrolments SET paid = false, paid_at = NULL, paid_by = NULL
-                    WHERE course_id = ${course.id}`;
+                    WHERE course_id = ${course.id} AND dropped = false`;
           }
         } else {
           const ids = Array.isArray(b.enrolmentIds) ? b.enrolmentIds.map(String) : [];

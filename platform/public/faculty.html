@@ -156,6 +156,12 @@ function renderCourse() {
     <button class="btn sm" id="back">← All courses</button>
     <div class="eyebrow" style="margin-top:20px">${esc(course.term || '')}</div>
     <h1>${esc(course.title)}</h1>
+    <div class="row" style="margin-bottom:18px">
+      <button class="btn sm" id="c_edit">Rename this course</button>
+      <button class="btn sm" id="c_arch">Archive it</button>
+      <span class="tiny dim">Archiving hides it from your list and stops new students joining. Nothing is deleted.</span>
+    </div>
+    <div id="c_editbox"></div>
 
     <div class="note">
       <b>Students join with this link.</b> Send it however you normally reach them — it's the only thing they need.
@@ -178,10 +184,12 @@ function renderCourse() {
       <div class="row" style="margin-top:14px">
         <a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Open the simulation</a>
         <button class="btn sm" data-prog="${esc(x.sim_id)}">See who has played</button>
+        <button class="btn sm" data-seats="${esc(x.sim_id)}" data-cur="${x.expected_seats || ''}">Change expected number</button>
         <button class="btn sm" data-rmsim="${esc(x.sim_id)}">Remove from course</button>
       </div>
     </div>`).join('') || '<div class="card dim tight">None yet — add one below.</div>'}
 
+    ${!notAdded.length && sims.length ? '<div class="tiny dim" style="margin-bottom:16px">Every published simulation is already in this course.</div>' : ''}
     ${notAdded.length ? `<div class="card tight">
       <div class="row">
         <div class="grow"><label class="f">Add a simulation</label>
@@ -244,6 +252,34 @@ function renderCourse() {
       expectedSeats: document.getElementById('a_seats').value });
     openCourse(course.id);
   };
+  document.getElementById('c_edit').onclick = () => {
+    const box = document.getElementById('c_editbox');
+    box.innerHTML = `<div class="card tight">
+      <div class="row">
+        <div class="grow"><label class="f">Course title</label><input id="e_t" type="text" value="${esc(course.title)}"></div>
+        <div style="width:180px"><label class="f">Term</label><input id="e_m" type="text" value="${esc(course.term || '')}"></div>
+        <button class="btn pri" id="e_go" style="align-self:flex-end">Save</button>
+        <button class="btn" id="e_no" style="align-self:flex-end">Cancel</button>
+      </div></div>`;
+    document.getElementById('e_no').onclick = () => { box.innerHTML = ''; };
+    document.getElementById('e_go').onclick = async () => {
+      await api('/api/faculty', { action:'update_course', courseId: course.id,
+        title: document.getElementById('e_t').value, term: document.getElementById('e_m').value });
+      openCourse(course.id);
+    };
+  };
+  document.getElementById('c_arch').onclick = async () => {
+    if (!confirm('Archive this course? It disappears from your list and nobody new can join. Nothing is deleted.')) return;
+    await api('/api/faculty', { action:'update_course', courseId: course.id, archived: true });
+    loadHome();
+  };
+  app.querySelectorAll('[data-seats]').forEach(b => b.onclick = async () => {
+    const cur = b.dataset.cur || '';
+    const v = prompt('How many students do you expect for this simulation?\n\nThis is a forecast, not a limit — nobody is turned away if more enrol.', cur);
+    if (v === null) return;
+    await api('/api/faculty', { action:'add_sim', courseId: course.id, simId: b.dataset.seats, expectedSeats: v });
+    openCourse(course.id);
+  });
   app.querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProgress(course.id, b.dataset.prog));
   app.querySelectorAll('[data-rmsim]').forEach(b => b.onclick = async () => {
     await api('/api/faculty', { action:'remove_sim', courseId: course.id, simId: b.dataset.rmsim });
