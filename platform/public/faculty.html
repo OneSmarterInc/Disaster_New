@@ -196,30 +196,36 @@ function renderCourse() {
 
     <h2>Students</h2>
     <div class="note" style="border-left-color:var(--line2);background:var(--sunk)">
-      Students can enrol straight away, but they can't open a simulation until you release them.
-      Release once their registration is settled — the platform doesn't handle payment.
-      ${unpaid.length ? `<div style="margin-top:10px"><b>${unpaid.length}</b> waiting.</div>` : ''}
+      Anyone with your link can enrol, but they cannot open a simulation until you give them access.
+      Do that once their registration is settled — payment happens outside this system, so this switch is yours.
+      ${unpaid.length ? `<div style="margin-top:10px"><b>${unpaid.length}</b> ${unpaid.length === 1 ? 'person is' : 'people are'} waiting for access.</div>`
+        : (active.length ? '<div style="margin-top:10px">Everyone enrolled has access.</div>' : '')}
     </div>
 
     <div class="row" style="margin-bottom:12px">
-      <button class="btn pri" id="p_all" ${unpaid.length ? '' : 'disabled'}>Release everyone (${unpaid.length})</button>
-      <button class="btn" id="p_sel" disabled>Release selected</button>
-      <input type="text" id="p_note" placeholder="note, e.g. dept PO 4471" style="width:220px">
+      <button class="btn pri" id="p_all" ${unpaid.length ? '' : 'disabled'}>Give access to all ${unpaid.length} waiting</button>
+      <button class="btn" id="p_sel" disabled>Give access to selected</button>
+      <input type="text" id="p_note" placeholder="note to yourself, e.g. dept PO 4471" style="width:240px">
     </div>
 
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th style="width:34px"></th><th>Student</th><th>Access</th><th>Joined</th><th>Played</th><th></th></tr></thead>
+        <thead><tr><th style="width:34px"></th><th>Student</th><th>Can open sims?</th><th>Joined</th><th>Times played</th><th></th></tr></thead>
         <tbody>
         ${roster.map(r => `<tr style="${r.dropped ? 'opacity:.5' : ''}">
           <td>${r.dropped ? '' : `<input type="checkbox" data-en="${esc(r.enrolment_id)}" style="width:auto">`}</td>
           <td><b>${esc(r.name)}</b><div class="tiny dim mono">${esc(r.email)}</div></td>
-          <td>${r.dropped ? '<span class="pill">dropped</span>'
-                : r.paid ? `<span class="pill ok">released</span>${r.paid_note ? `<div class="tiny dim">${esc(r.paid_note)}</div>` : ''}`
-                : '<span class="pill warn">waiting</span>'}</td>
+          <td>${r.dropped ? '<span class="pill">removed from course</span>'
+                : r.paid ? `<span class="pill ok">yes</span>${r.paid_note ? `<div class="tiny dim">${esc(r.paid_note)}</div>` : ''}`
+                : '<span class="pill warn">not yet</span>'}</td>
           <td class="tiny dim">${when(r.created_at)}</td>
           <td class="mono tiny">${r.launches || 0}</td>
-          <td><button class="btn sm" data-drop="${esc(r.enrolment_id)}" data-now="${r.dropped ? '1' : '0'}">${r.dropped ? 'Restore' : 'Drop'}</button></td>
+          <td class="row" style="gap:6px">
+            ${r.dropped ? '' : (r.paid
+              ? `<button class="btn sm" data-revoke="${esc(r.enrolment_id)}">Take access away</button>`
+              : `<button class="btn sm" data-give="${esc(r.enrolment_id)}">Give access</button>`)}
+            <button class="btn sm" data-drop="${esc(r.enrolment_id)}" data-now="${r.dropped ? '1' : '0'}">${r.dropped ? 'Put back in course' : 'Remove from course'}</button>
+          </td>
         </tr>`).join('') || '<tr><td colspan="6" class="dim">Nobody has joined yet.</td></tr>'}
         </tbody>
       </table>
@@ -262,6 +268,16 @@ function renderCourse() {
       enrolmentIds: [...F.sel], note: document.getElementById('p_note').value });
     openCourse(course.id);
   };
+  app.querySelectorAll('[data-give]').forEach(b => b.onclick = async () => {
+    await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: true,
+      enrolmentIds: [b.dataset.give], note: document.getElementById('p_note').value });
+    openCourse(course.id);
+  });
+  app.querySelectorAll('[data-revoke]').forEach(b => b.onclick = async () => {
+    if (!confirm('Take access away? If they have already played, that does not undo it.')) return;
+    await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: false, enrolmentIds: [b.dataset.revoke] });
+    openCourse(course.id);
+  });
   app.querySelectorAll('[data-drop]').forEach(b => b.onclick = async () => {
     await api('/api/faculty', { action:'set_dropped', courseId: course.id,
       enrolmentId: b.dataset.drop, dropped: b.dataset.now !== '1' });

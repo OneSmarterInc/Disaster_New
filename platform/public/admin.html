@@ -193,20 +193,61 @@ function renderDetail() {
     </div>
     <div id="rstout"></div>`;
 
-  document.getElementById('back').onclick = () => { D.detail = null; render(); };
-  document.getElementById('rst').onclick = async () => {
-    const out = document.getElementById('rstout');
-    try {
-      const d = await api('/api/admin', { action:'issue_reset', userId: person.id });
-      out.innerHTML = `<div class="note" style="margin-top:14px"><b>Send this to ${esc(d.who)}.</b> It works once and expires in three days.
-        <div class="copybox"><input type="text" id="rurl" readonly value="${esc(d.resetUrl)}"><button class="btn" id="rcopy">Copy</button></div></div>`;
-      document.getElementById('rcopy').onclick = () => { document.getElementById('rurl').select(); navigator.clipboard.writeText(d.resetUrl); };
-    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  const $ = (id) => document.getElementById(id);
+  const out = () => $('rstout');
+  const showLink = (label, url, note) => {
+    out().innerHTML = `<div class="note" style="margin-top:14px"><b>${esc(label)}</b> ${esc(note || '')}
+      <div class="copybox"><input type="text" id="rurl" readonly value="${esc(url)}"><button class="btn" id="rcopy">Copy</button></div></div>`;
+    $('rcopy').onclick = () => {
+      $('rurl').select(); navigator.clipboard.writeText(url);
+      $('rcopy').textContent = 'Copied';
+      setTimeout(() => { const b = $('rcopy'); if (b) b.textContent = 'Copy'; }, 1500);
+    };
   };
-  document.getElementById('tog').onclick = async () => {
-    await api('/api/admin', { action:'set_faculty_disabled', facultyId: person.id, disabled: !person.disabled });
+  const refresh = async () => {
     D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: person.id });
-    load();
+    await load();
+  };
+
+  $('back').onclick = () => { D.detail = null; render(); };
+
+  $('rst').onclick = async () => {
+    try {
+      if (person.accepted) {
+        const d = await api('/api/admin', { action:'issue_reset', userId: person.id });
+        showLink(`Send this to ${d.who}.`, d.resetUrl, 'It works once and expires in three days.');
+      } else {
+        const d = await api('/api/admin', { action:'invite_faculty',
+          name: person.name, email: person.email, institution: person.institution });
+        showLink(`Send this to ${person.name}.`, d.inviteUrl, 'A fresh invitation. It works once; any earlier link is replaced.');
+      }
+    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  };
+
+  const rev = $('rev');
+  if (rev) rev.onclick = async () => {
+    if (!confirm('Cancel the invitation? Any link already sent will stop working.')) return;
+    try {
+      await api('/api/admin', { action:'revoke_invites', facultyId: person.id });
+      D.lastInvite = null;
+      out().innerHTML = '<div class="ok">Invitation cancelled. Any link already sent is now dead.</div>';
+    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  };
+
+  const del = $('del');
+  if (del) del.onclick = async () => {
+    if (!confirm(`Delete ${person.name} entirely? Only possible because they have no courses.`)) return;
+    try {
+      await api('/api/admin', { action:'delete_faculty', facultyId: person.id });
+      D.detail = null; D.lastInvite = null; await load();
+    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  };
+
+  $('tog').onclick = async () => {
+    try {
+      await api('/api/admin', { action:'set_faculty_disabled', facultyId: person.id, disabled: !person.disabled });
+      await refresh();
+    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; }
   };
 }
 

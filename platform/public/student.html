@@ -26,15 +26,18 @@ async function api(path, payload) {
 }
 document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
 
-(async () => {
+let LAST = '';
+
+async function draw() {
   let d;
-  try {
-    const me = await api('/api/auth', { action:'me' });
-    if (!me.user) { location.href = '/'; return; }
-    if (me.user.role !== 'student') { location.href = me.user.role === 'admin' ? '/admin.html' : '/faculty.html'; return; }
-    document.getElementById('who').textContent = me.user.name;
-    d = await api('/api/student', { action:'overview' });
-  } catch (e) { location.href = '/'; return; }
+  try { d = await api('/api/student', { action:'overview' }); }
+  catch (e) { return; }
+
+  // Only repaint when something actually changed, so a poll doesn't
+  // interrupt someone mid-click.
+  const fingerprint = JSON.stringify(d.courses.map(c => [c.id, c.paid])) + JSON.stringify(d.sims.map(x => [x.id, x.played]));
+  if (fingerprint === LAST) return;
+  LAST = fingerprint;
 
   const { courses, sims } = d;
 
@@ -67,7 +70,7 @@ document.getElementById('out').onclick = async () => { await api('/api/auth', { 
         </div>` : '<div class="tiny dim" style="margin-top:12px">Your instructor has not added any simulations to this course yet.</div>'}
 
         ${!c.paid ? `<div class="note" style="margin-top:14px">
-          You're enrolled and on the list. Your instructor releases access once your registration is settled — you don't need to do anything here.
+          You're enrolled and on the list. Your instructor opens this up once your registration is settled — you don't need to do anything, and this page will change by itself when they do.
         </div>` : ''}
       </div>`;
     }).join('') : `<div class="card">
@@ -87,9 +90,21 @@ document.getElementById('out').onclick = async () => { await api('/api/auth', { 
   if (j) j.onclick = async () => {
     try {
       await api('/api/student', { action:'enrol', joinCode: document.getElementById('cc').value });
-      location.reload();
+      LAST = ''; draw();
     } catch (e) { document.getElementById('err').textContent = e.message; }
   };
+}
+
+(async () => {
+  try {
+    const me = await api('/api/auth', { action:'me' });
+    if (!me.user) { location.href = '/'; return; }
+    if (me.user.role !== 'student') { location.href = me.user.role === 'admin' ? '/admin.html' : '/faculty.html'; return; }
+    document.getElementById('who').textContent = me.user.name;
+  } catch (e) { location.href = '/'; return; }
+  await draw();
+  // Instructors release access while students are already looking at this page.
+  setInterval(draw, 12000);
 })();
 </script>
 </body>
