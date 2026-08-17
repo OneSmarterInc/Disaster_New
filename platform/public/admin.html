@@ -292,8 +292,19 @@ function catalogueTab() {
       <div class="row" style="margin-top:12px">
         <button class="btn sm" data-editsim="${esc(si.id)}">Edit this</button>
         <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published ? '1' : '0'}">${si.published ? 'Unpublish' : 'Publish'}</button>
+        <button class="btn sm danger" data-delsim="${esc(si.id)}">Delete</button>
       </div>
     </div>`).join('') || '<div class="card dim">Nothing in the catalogue yet.</div>'}
+
+    <h2>Starting over</h2>
+    <div class="card tight">
+      <p class="tiny">Deletes every facilitator, student, course, enrolment and record of play. Administrators and the catalogue survive. There is no undo.</p>
+      <div class="row" style="margin-top:10px">
+        <input type="text" id="rst_confirm" placeholder="type DELETE EVERYTHING" style="width:240px">
+        <button class="btn danger" id="rst_go">Wipe the test data</button>
+      </div>
+      <div id="rst_out"></div>
+    </div>
 
     <h2>Database</h2>
     <div class="card tight">
@@ -355,6 +366,30 @@ function wireCatalogue() {
       published: btn.dataset.now !== '1' });
     load();
   });
+  app.querySelectorAll('[data-delsim]').forEach(btn => btn.onclick = async () => {
+    if (!confirm('Delete this simulation from the catalogue?')) return;
+    try {
+      await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim });
+      load();
+    } catch (e) {
+      if (confirm(e.message + '\n\nDelete it anyway?')) {
+        await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim, force: true });
+        load();
+      }
+    }
+  });
+  const rg = document.getElementById('rst_go');
+  if (rg) rg.onclick = async () => {
+    const out = document.getElementById('rst_out');
+    rg.disabled = true; rg.textContent = 'Wiping…';
+    try {
+      await api('/api/admin', { action:'reset_test_data', confirm: document.getElementById('rst_confirm').value });
+      out.innerHTML = '<div class="ok">Done. Everything except administrators and the catalogue is gone.</div>';
+      D.detail = null; D.lastInvite = null; D.allCourses = null;
+      load();
+    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+    rg.disabled = false; rg.textContent = 'Wipe the test data';
+  };
   const b = document.getElementById('s_save');
   if (!b) return;
   b.onclick = async () => {

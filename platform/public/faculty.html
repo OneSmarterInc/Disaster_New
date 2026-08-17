@@ -159,6 +159,7 @@ function renderCourse() {
     <div class="row" style="margin-bottom:18px">
       <button class="btn sm" id="c_edit">Rename this course</button>
       <button class="btn sm" id="c_arch">Archive it</button>
+      <button class="btn sm danger" id="c_del">Delete it</button>
       <span class="tiny dim">Archiving hides it from your list and stops new students joining. Nothing is deleted.</span>
     </div>
     <div id="c_editbox"></div>
@@ -267,6 +268,18 @@ function renderCourse() {
         title: document.getElementById('e_t').value, term: document.getElementById('e_m').value });
       openCourse(course.id);
     };
+  };
+  document.getElementById('c_del').onclick = async () => {
+    if (!confirm('Delete this course? Everyone enrolled loses it.')) return;
+    try {
+      await api('/api/faculty', { action:'delete_course', courseId: course.id });
+      loadHome();
+    } catch (e) {
+      if (confirm(e.message + '\n\nDelete it anyway?')) {
+        await api('/api/faculty', { action:'delete_course', courseId: course.id, force: true });
+        loadHome();
+      }
+    }
   };
   document.getElementById('c_arch').onclick = async () => {
     if (!confirm('Archive this course? It disappears from your list and nobody new can join. Nothing is deleted.')) return;

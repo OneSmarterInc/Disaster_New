@@ -189,6 +189,36 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, statements: done });
       }
 
+      // Wipes everything except administrators and the catalogue, so a pilot
+      // can be run again from nothing. Guarded by typing the phrase out.
+      case 'reset_test_data': {
+        if (String(b.confirm || '') !== 'DELETE EVERYTHING') {
+          return res.status(400).json({ error: 'not_confirmed',
+            message: 'Type DELETE EVERYTHING exactly to confirm.' });
+        }
+        await s`DELETE FROM completions`;
+        await s`DELETE FROM launches`;
+        await s`DELETE FROM enrolments`;
+        await s`DELETE FROM course_sims`;
+        await s`DELETE FROM courses`;
+        await s`DELETE FROM previews`;
+        await s`DELETE FROM tokens WHERE user_id IN (SELECT id FROM users WHERE role <> 'admin')`;
+        await s`DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE role <> 'admin')`;
+        await s`DELETE FROM users WHERE role <> 'admin'`;
+        return res.status(200).json({ ok: true });
+      }
+
+      case 'delete_sim': {
+        const sid = String(b.simId || '');
+        const used = await s`SELECT count(*)::int AS n FROM course_sims WHERE sim_id = ${sid}`;
+        if (used[0] && used[0].n > 0 && !b.force) {
+          return res.status(409).json({ error: 'in_use',
+            message: `That simulation is in ${used[0].n} course${used[0].n === 1 ? '' : 's'}. Unpublish it instead, or confirm to remove it from them.` });
+        }
+        await s`DELETE FROM sims WHERE id = ${sid}`;
+        return res.status(200).json({ ok: true });
+      }
+
       default:
         return res.status(400).json({ error: 'unknown_action' });
     }

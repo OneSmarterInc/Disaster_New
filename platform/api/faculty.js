@@ -132,6 +132,18 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true });
       }
 
+      case 'delete_course': {
+        const course = await ownCourse(s, me.id, String(b.courseId || ''));
+        if (!course) return res.status(404).json({ error: 'no_such_course' });
+        const played = await s`SELECT count(*)::int AS n FROM launches WHERE course_id = ${course.id}`;
+        if (played[0] && played[0].n > 0 && !b.force) {
+          return res.status(409).json({ error: 'has_history',
+            message: `Students have opened simulations in this course ${played[0].n} time${played[0].n === 1 ? '' : 's'}. Archive it instead to keep the record, or confirm to delete it and that history.` });
+        }
+        await s`DELETE FROM courses WHERE id = ${course.id}`;
+        return res.status(200).json({ ok: true });
+      }
+
       case 'add_sim': {
         const course = await ownCourse(s, me.id, String(b.courseId || ''));
         if (!course) return res.status(404).json({ error: 'no_such_course' });
