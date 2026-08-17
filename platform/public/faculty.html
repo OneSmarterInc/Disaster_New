@@ -80,17 +80,15 @@ function renderHome() {
 
     <h2>Your courses</h2>
     ${courses.map(c => `<div class="card">
-      <div class="row" style="justify-content:space-between;align-items:flex-start">
-        <div>
-          <h3>${esc(c.title)}</h3>
-          <div class="tiny dim">${esc(c.term || 'No term set')} · join code <span class="mono">${esc(c.join_code)}</span></div>
-        </div>
-        <div class="row">
-          <span class="pill">${c.enrolled} enrolled</span>
-          <span class="pill ${Number(c.paid) === Number(c.enrolled) && Number(c.enrolled) > 0 ? 'ok' : 'warn'}">${c.paid} released</span>
-          <span class="pill">${c.sims} sim${Number(c.sims) === 1 ? '' : 's'}</span>
-          <button class="btn sm" data-course="${esc(c.id)}">Open</button>
-        </div>
+      <h3>${esc(c.title)}</h3>
+      <div class="tiny dim">${esc(c.term || 'No term set')} · join code <span class="mono">${esc(c.join_code)}</span></div>
+      <div class="row" style="margin-top:12px">
+        <span class="pill">${c.enrolled} enrolled</span>
+        <span class="pill ${Number(c.paid) === Number(c.enrolled) && Number(c.enrolled) > 0 ? 'ok' : 'warn'}">${c.paid} with access</span>
+        <span class="pill">${c.sims} simulation${Number(c.sims) === 1 ? '' : 's'}</span>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn pri sm" data-course="${esc(c.id)}">Open this course</button>
       </div>
     </div>`).join('') || '<div class="card dim">No courses yet. Create one below.</div>'}
 
@@ -164,22 +162,18 @@ function renderCourse() {
     </div>
 
     <h2>Simulations in this course</h2>
-    ${sims.map(x => `<div class="card tight">
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <b>${esc(x.title)}</b>
-          <div class="tiny dim">${x.expected_seats ? 'expecting ' + x.expected_seats + ' students' : 'no expected number set'}${x.hard_cap ? ' · hard cap' : ''}
-            ${x.expected_seats && active.length > x.expected_seats ? ` · <span style="color:var(--rose)">${active.length} enrolled</span>` : ''}</div>
-          <div class="tiny" style="margin-top:6px">
-            <span class="pill">${x.started || 0} started</span>
-            <span class="pill ${Number(x.finished) > 0 ? 'ok' : ''}">${x.finished || 0} finished</span>
-          </div>
-        </div>
-        <div class="row">
-          <button class="btn sm" data-prog="${esc(x.sim_id)}">Who has played</button>
-          <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Open</a>
-          <button class="btn sm" data-rmsim="${esc(x.sim_id)}">Remove</button>
-        </div>
+    ${sims.map(x => `<div class="card">
+      <h3>${esc(x.title)}</h3>
+      <div class="tiny dim">${x.expected_seats ? 'expecting ' + x.expected_seats + ' students' : 'no expected number set'}${x.hard_cap ? ' · hard cap' : ''}
+        ${x.expected_seats && active.length > x.expected_seats ? ` · <span style="color:var(--rose)">${active.length} enrolled</span>` : ''}</div>
+      <div class="row" style="margin-top:10px">
+        <span class="pill">${x.started || 0} started it</span>
+        <span class="pill ${Number(x.finished) > 0 ? 'ok' : ''}">${x.finished || 0} finished it</span>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Open the simulation</a>
+        <button class="btn sm" data-prog="${esc(x.sim_id)}">See who has played</button>
+        <button class="btn sm" data-rmsim="${esc(x.sim_id)}">Remove from course</button>
       </div>
     </div>`).join('') || '<div class="card dim tight">None yet — add one below.</div>'}
 

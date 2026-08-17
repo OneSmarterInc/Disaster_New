@@ -74,6 +74,18 @@ module.exports = async (req, res) => {
         return res.status(200).json({ user: A.publicUser(u) });
       }
 
+      case 'update_profile': {
+        const u = await A.currentUser(req);
+        if (!u) return res.status(401).json({ error: 'not_signed_in' });
+        const name = String(b.name || '').trim();
+        if (name) await s`UPDATE users SET name = ${name} WHERE id = ${u.id}`;
+        if (b.institution !== undefined) {
+          await s`UPDATE users SET institution = ${String(b.institution).trim() || null} WHERE id = ${u.id}`;
+        }
+        const fresh = (await s`SELECT * FROM users WHERE id = ${u.id}`)[0];
+        return res.status(200).json({ user: A.publicUser(fresh) });
+      }
+
       // ---------- password management ----------
       case 'change_password': {
         const u = await A.currentUser(req);

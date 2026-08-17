@@ -35,10 +35,26 @@ document.getElementById('out').onclick = async () => { await api('/api/auth', { 
   document.getElementById('who').textContent = me.name;
   document.getElementById('back').onclick = () => location.href = home;
 
+  const roleWord = me.role === 'admin' ? 'Administrator' : me.role === 'faculty' ? 'Facilitator' : 'Student';
+
   app.innerHTML =
     '<div class="eyebrow">Your account</div><h1>' + esc(me.name) + '</h1>' +
-    '<p class="lede">' + esc(me.email) + ' · ' + esc(me.role) + (me.institution ? ' · ' + esc(me.institution) : '') + '</p>' +
+    '<p class="lede">' + esc(roleWord) + ' · signed in as ' + esc(me.email) + '</p>' +
+
     '<div class="card" style="margin-top:24px">' +
+      '<h2 style="margin-top:0">Your details</h2>' +
+      '<div class="field"><label class="f">Name</label><input id="pn" type="text" value="' + esc(me.name) + '"></div>' +
+      '<div class="field"><label class="f">Email</label>' +
+        '<input type="email" value="' + esc(me.email) + '" disabled style="background:var(--sunk);color:var(--ink3)">' +
+        '<div class="tiny dim" style="margin-top:5px">Your email is how you sign in and cannot be changed here.</div></div>' +
+      (me.role !== 'student'
+        ? '<div class="field"><label class="f">Institution</label><input id="pi" type="text" value="' + esc(me.institution || '') + '" placeholder="optional"></div>'
+        : '') +
+      '<button class="btn pri" id="psave">Save changes</button>' +
+      '<div id="pout"></div>' +
+    '</div>' +
+
+    '<div class="card">' +
       '<h2 style="margin-top:0">Change your password</h2>' +
       '<div class="field"><label class="f">Current password</label><input id="c" type="password" autocomplete="current-password"></div>' +
       '<div class="field"><label class="f">New password</label><input id="n" type="password" autocomplete="new-password" placeholder="at least 8 characters"></div>' +
@@ -46,6 +62,21 @@ document.getElementById('out').onclick = async () => { await api('/api/auth', { 
       '<div id="out2"></div>' +
     '</div>' +
     '<div class="note">Changing your password signs you out of any other browser you are signed in on.</div>';
+
+  document.getElementById('psave').onclick = async () => {
+    const btn = document.getElementById('psave'), out = document.getElementById('pout');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    out.innerHTML = '';
+    try {
+      const pi = document.getElementById('pi');
+      const d = await api('/api/auth', { action:'update_profile',
+        name: document.getElementById('pn').value,
+        institution: pi ? pi.value : undefined });
+      document.getElementById('who').textContent = d.user.name;
+      out.innerHTML = '<div class="ok">Saved.</div>';
+    } catch (e) { out.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; }
+    btn.disabled = false; btn.textContent = 'Save changes';
+  };
 
   document.getElementById('go').onclick = async () => {
     const btn = document.getElementById('go'), out = document.getElementById('out2');
