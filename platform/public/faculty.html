@@ -10,6 +10,7 @@
 <div class="bar">
   <div class="brand">Flexee Rapid <span>Sims</span></div>
   <div class="who" id="who"></div>
+  <a class="btn sm" id="adminlink" href="/admin.html" style="display:none">Admin console</a>
   <a class="btn sm" href="/account.html">Account</a>
   <button class="btn sm" id="out">Sign out</button>
 </div>
@@ -17,7 +18,7 @@
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const F = { view: 'home', data: null, course: null, simsOverview: null, progress: null, err: null, sel: new Set() };
+const F = { view: 'home', data: null, course: null, simsOverview: null, progress: null, err: null, sel: new Set(), me: null };
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -62,6 +63,10 @@ function renderHome() {
   app.innerHTML = `
     <div class="eyebrow">Your teaching</div>
     <h1>Courses and <em>simulations</em></h1>
+    ${F.me && F.me.role === 'admin' ? `<div class="note">
+      You're signed in as an administrator, so this page shows only courses <b>you</b> run — probably none.
+      To see every facilitator's courses and students, use the <a href="/admin.html">admin console</a>.
+    </div>` : ''}
 
     <h2>Your simulations</h2>
     ${F.simsOverview === null
@@ -125,7 +130,7 @@ function renderHome() {
   if (F.simsOverview === null) {
     api('/api/faculty', { action:'sims_overview' })
       .then(d => { F.simsOverview = d.sims || []; render(); })
-      .catch(() => { F.simsOverview = []; });
+      .catch(() => { F.simsOverview = []; render(); });
   }
   document.getElementById('c_go').onclick = async () => {
     const t = document.getElementById('c_t').value.trim();
@@ -324,7 +329,9 @@ function renderProgress() {
     const me = await api('/api/auth', { action:'me' });
     if (!me.user) { location.href = '/'; return; }
     if (me.user.role === 'student') { location.href = '/student.html'; return; }
+    F.me = me.user;
     document.getElementById('who').textContent = me.user.name;
+    if (me.user.role === 'admin') document.getElementById('adminlink').style.display = '';
   } catch (e) { location.href = '/'; return; }
   loadHome();
 })();
