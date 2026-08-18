@@ -29,3 +29,21 @@ for (const f of files) {
 }
 if (bad) { console.error(`\n${bad} row/header mismatch${bad === 1 ? '' : 'es'}.`); process.exit(1); }
 console.log('column check: every row matches its header');
+
+// A table that is not inside a scroll container will widen its card and push
+// the page sideways — content disappears off the left edge, which is what
+// happened when the action column was told never to wrap.
+{
+  let loose = 0;
+  for (const f of files) {
+    const s = fs.readFileSync(path.join(dir, f), 'utf8');
+    const tables = (s.match(/<table>/g) || []).length;
+    const wrapped = (s.match(/<div class="tablewrap"><table>/g) || []).length;
+    if (tables !== wrapped) {
+      loose += tables - wrapped;
+      console.log(`  ${f}: ${tables - wrapped} table(s) not inside a .tablewrap`);
+    }
+  }
+  if (loose) { console.error(`\n${loose} table(s) can overflow their card.`); process.exit(1); }
+  console.log('overflow check: every table is contained');
+}
