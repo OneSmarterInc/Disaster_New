@@ -470,7 +470,10 @@ function renderPlayed() {
       <div class="cell"><div class="n">${active.length - done.length - started.length}</div><div class="l">Not started</div></div>
     </div>
     <div class="panel"><div class="tablewrap"><table>
-      <thead><tr><th style="width:24%">Student</th><th style="width:1%">Status</th><th class="num">Took</th><th>What came back</th></tr></thead>
+      <thead><tr>
+        <th style="width:30%">Student</th>
+        <th>What came back</th>
+      </tr></thead>
       <tbody>
       ${rows.length ? rows.map(r => {
         const m = r.metrics || {};
@@ -479,14 +482,23 @@ function renderPlayed() {
           : Number(r.starts) > 0 ? ['warn','started']
           : !r.paid ? ['off','not released'] : ['off','not started'];
         return `<tr style="${r.dropped?'opacity:.5':''}">
-          <td data-l="Student"><div class="nm">${esc(r.name)}</div><div class="sub">${esc(r.email)}</div></td>
-          <td data-l="Status">${dot(st[0], st[1])}</td>
-          <td data-l="Took" class="num">${mins(r.duration_seconds)}</td>
-          <td data-l="What came back" class="meta">${Object.keys(m).length
-            ? Object.entries(m).map(([k,v]) => `<div><span class="dim">${esc(k)}:</span> ${esc(v)}</div>`).join('')
-            : '<span class="dim">—</span>'}</td>
+          <td data-l="Student" style="vertical-align:top">
+            <div class="nm">${esc(r.name)}</div>
+            <div class="sub">${esc(r.email)}</div>
+            <div style="margin-top:7px">${dot(st[0], st[1])}</div>
+            ${r.completed_at ? `<div class="sub" style="margin-top:4px">${when(r.completed_at)}${mins(r.duration_seconds) ? ' · ' + mins(r.duration_seconds) : ''}</div>` : ''}
+          </td>
+          <td data-l="What came back" style="vertical-align:top">
+            ${Object.keys(m).length
+              ? `<div class="metrics">${Object.entries(m).map(([k,v]) =>
+                  `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`
+              : `<span class="dim" style="font-size:13.5px">${r.completed_at ? 'Finished, but reported nothing.'
+                  : Number(r.starts) > 0 ? 'Started but has not reached the end yet.'
+                  : !r.paid ? 'Waiting for you to give them access.'
+                  : 'Has not opened it yet.'}</span>`}
+          </td>
         </tr>`;
-      }).join('') : '<tr><td colspan="4" class="empty">Nobody enrolled yet.</td></tr>'}
+      }).join('') : '<tr><td colspan="2" class="empty">Nobody enrolled yet.</td></tr>'}
       </tbody></table></div>
       <div class="foot"><span class="info">${done.length} of ${active.length} finished</span><span class="info">Page 1 of 1</span></div>
     </div>
