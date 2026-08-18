@@ -92,7 +92,7 @@ function renderHome() {
     ${F.simsOverview === null
       ? '<div class="card dim tight">Loading…</div>'
       : (F.simsOverview.length ? `<div class="card" style="padding:0"><table>
-          <thead><tr><th>Simulation</th><th>Courses</th><th>Released</th><th>Started</th><th>Finished</th></tr></thead>
+          <thead><tr><th>Simulation</th><th class="mono">Courses</th><th class="mono">Released</th><th class="mono">Started</th><th class="mono">Finished</th></tr></thead>
           <tbody>${F.simsOverview.map(x => `<tr>
             <td data-l="Simulation"><b>${esc(simLabel(x))}</b><div class="tiny dim">${esc(x.tagline || '')}</div></td>
             <td data-l="Courses" class="mono">${x.courses}</td>
@@ -250,7 +250,7 @@ function renderCourse() {
 
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th style="width:34px"></th><th>Student</th><th>Can open sims?</th><th>Joined</th><th>Times played</th><th></th></tr></thead>
+        <thead><tr><th style="width:34px"></th><th>Student</th><th>Can open sims?</th><th>Joined</th><th class="mono">Times played</th><th></th></tr></thead>
         <tbody>
         ${roster.map(r => `<tr style="${r.dropped ? 'opacity:.5' : ''}">
           <td data-l="">${r.dropped ? '' : `<input type="checkbox" data-en="${esc(r.enrolment_id)}" style="width:auto">`}</td>
@@ -396,7 +396,7 @@ function renderProgress() {
 
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>Student</th><th>Status</th><th>Took</th><th>What came back</th></tr></thead>
+        <thead><tr><th>Student</th><th>Status</th><th class="mono">Took</th><th>What came back</th></tr></thead>
         <tbody>
         ${rows.map(r => {
           const m = r.metrics || {};

@@ -63,7 +63,7 @@ p{color:var(--ink2);margin-bottom:14px}
 .btn:hover{border-color:var(--ink);color:var(--ink)}
 .btn.pri{background:var(--amber);border-color:var(--amber);color:#fff}
 .btn.pri:hover{background:#9C6111;border-color:#9C6111;color:#fff}
-.btn.sm{padding:6px 11px;font-size:9.5px}
+.btn.sm{padding:6px 11px;font-size:9.5px;line-height:1.4}
 .btn.danger{color:var(--rose);border-color:var(--rose)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 
@@ -78,18 +78,46 @@ input:focus,select:focus,textarea:focus{border-color:var(--amber);outline:none}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .grow{flex:1;min-width:180px}
 
-/* tables */
-table{width:100%;border-collapse:collapse}
-th{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
-   color:var(--ink3);text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);font-weight:500}
-td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:15px}
+/* --- tables ----------------------------------------------------------------
+   One type size for data, one for supporting detail. Numeric columns are narrow
+   and monospaced so they line up; the action column is sized to its buttons and
+   pinned right, so it stops competing with the content for width. */
+table{width:100%;border-collapse:collapse;table-layout:auto}
+th{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ink3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);
+  font-weight:500;white-space:nowrap;
+}
+td{
+  padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:top;
+  font-size:14.5px;line-height:1.45;
+}
 tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:var(--sunk)}
-td.mono,th.mono{font-family:var(--mono);font-size:13px}
+
+/* supporting lines inside a cell — one size, everywhere */
+td .tiny,td.tiny{font-size:12.5px;line-height:1.45}
+td b{font-weight:500}
+
+/* numbers: narrow, aligned, never wrapping */
+td.mono,th.mono{font-family:var(--mono);font-size:13px;white-space:nowrap}
+th.mono,td.mono{width:1%}
+
+/* the action column: only as wide as its buttons, and out of the way */
+td[data-l=""],th:last-child{width:1%;white-space:nowrap}
+td[data-l=""]{padding-top:11px}
+td[data-l=""] .btn{margin:1px 0}
+
+/* the first column carries the person or thing, so give it the room */
+td:first-child{min-width:180px}
+
+/* inputs sitting inside a table row shouldn't inherit the row's font size */
+td input,td select,td textarea{font-size:14.5px}
 
 /* pills */
 .pill{font-family:var(--mono);font-size:9px;letter-spacing:.11em;text-transform:uppercase;
-      padding:3px 8px;border:1px solid var(--line2);color:var(--ink3);white-space:nowrap}
+      padding:3px 8px;border:1px solid var(--line2);color:var(--ink3);white-space:nowrap;
+      display:inline-block;line-height:1.5}
 .pill.ok{border-color:var(--green);color:var(--green);background:var(--green-soft)}
 .pill.warn{border-color:var(--amber-line);color:var(--amber);background:var(--amber-soft)}
 .pill.bad{border-color:var(--rose);color:var(--rose);background:var(--rose-soft)}
