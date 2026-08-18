@@ -19,7 +19,7 @@
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null, grants: null,
-            simSearch: '', simFilter: 'all', simOpen: null, simEdit: null };
+            simSearch: '', simFilter: 'all', simOpen: null, simEdit: null, maintOpen: false };
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -433,24 +433,34 @@ function catalogueTab() {
       </div>`;
     }).join('') || `<div class="card dim">${all.length ? 'Nothing matches that.' : 'Nothing in the catalogue yet — add one below.'}</div>`}
 
-    <h2>Starting over</h2>
-    <div class="card tight">
-      <p class="tiny">Deletes every facilitator, student, course, enrolment and record of play. Administrators and the catalogue survive. There is no undo.</p>
-      <div class="row" style="margin-top:10px">
-        <input type="text" id="rst_confirm" placeholder="type DELETE EVERYTHING" style="width:240px">
-        <button class="btn danger" id="rst_go">Wipe the test data</button>
-      </div>
-      <div id="rst_out"></div>
+    <div class="rule" style="margin:34px 0 0"></div>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-top:18px">
+      <div class="eyebrow">Maintenance</div>
+      <button class="btn sm" id="maint_toggle">${D.maintOpen ? 'Hide' : 'Show'}</button>
     </div>
 
-    <h2>Database</h2>
-    <div class="card tight">
-      <div class="row">
-        <button class="btn" id="mig">Bring the database up to date</button>
-        <span class="tiny dim">Run this after a release that adds tables. It only creates what's missing and never drops anything.</span>
+    ${D.maintOpen ? `<div class="card tight" style="margin-top:12px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;padding:4px 0 14px;border-bottom:1px solid var(--line)">
+        <div style="flex:1;min-width:240px">
+          <b>Update the database</b>
+          <div class="tiny dim" style="margin-top:3px">Run after a release that adds tables or columns. Creates only what is missing and never drops anything, so running it again is harmless.</div>
+        </div>
+        <button class="btn" id="mig">Update</button>
       </div>
       <div id="migout"></div>
-    </div>
+
+      <div class="row" style="justify-content:space-between;align-items:flex-start;padding:14px 0 4px">
+        <div style="flex:1;min-width:240px">
+          <b style="color:var(--rose)">Clear the pilot data</b>
+          <div class="tiny dim" style="margin-top:3px">Deletes every facilitator, student, course, enrolment and record of play, so a trial can be run again from nothing. Administrators and the catalogue survive. There is no undo.</div>
+        </div>
+        <div class="row">
+          <input type="text" id="rst_confirm" placeholder="type DELETE EVERYTHING" style="width:200px">
+          <button class="btn danger" id="rst_go">Clear</button>
+        </div>
+      </div>
+      <div id="rst_out"></div>
+    </div>` : ''}
 
     <div class="note">
       Simulations appear here on their own. Each deployment tells the platform it exists the first time it is used, and arrives unpublished — invisible to everyone but you until you publish it or grant someone review access. There is nothing to add by hand.
@@ -552,6 +562,9 @@ function wireCatalogue() {
       done(); load();
     } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; done('Failed', 'bad'); }
   };
+
+  const mt = document.getElementById('maint_toggle');
+  if (mt) mt.onclick = () => { D.maintOpen = !D.maintOpen; repaint(); };
 
   const mb = document.getElementById('mig');
   if (mb) mb.onclick = async () => {
