@@ -2,6 +2,7 @@
 // Renders every view of the admin console against a recording DOM and checks
 // each button that appears receives a handler. Syntax and boot checks pass on a
 // button that does nothing, which is how that fault kept shipping.
+const fs = require('fs');
 const html=fs.readFileSync(require('path').join(__dirname, '../public/admin.html'),'utf8');
 const js=html.slice(html.indexOf('<script>')+8, html.lastIndexOf('</script>'));
 const REG=new Map(); let LAST='', BODY='';
