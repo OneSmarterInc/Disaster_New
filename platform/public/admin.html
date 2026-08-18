@@ -3,23 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin — Flexee Rapid Sims</title>
+<title>Administration — Flexee Rapid Sims</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<div class="bar">
+<div class="top">
   <div class="brand">Flexee Rapid <span>Sims</span></div>
-  <div class="who" id="who"></div>
-  <a class="btn sm" href="/account.html">Account</a>
-  <button class="btn sm" id="out">Sign out</button>
+  <div class="sep"></div>
+  <div class="role" id="who"></div>
+  <div class="right">
+    <a class="btn sm" href="/account.html">Account</a>
+    <button class="btn sm" id="out">Sign out</button>
+  </div>
 </div>
 <div class="wrap" id="app"></div>
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null, grants: null,
-            simSearch: '', simFilter: 'all', simOpen: null, simEdit: null, maintOpen: false, inviteOpen: false, page: {}, courseSearch: '', linkFor: null, linkUrl: '', linkNote: '', detailSearch: '',
-            facSearch: '', students: null, stuSearch: '', personEdit: null };
+
+const D = {
+  tab: 'fac', data: null, grants: null, students: null, allCourses: null,
+  detail: null, err: null,
+  q: {}, filter: {}, page: {},
+  open: null, personEdit: null, invite: false, lastInvite: null,
+  link: null, simEdit: null, reviewersFor: null, maint: false
+};
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -27,63 +35,62 @@ async function api(path, payload) {
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
 }
-// Tables stay one screen tall. Twenty-five rows a page, with a footer only when
-// there is more than one page — so a small pilot never sees paging machinery.
+
+// Short enough not to squeeze the column beside it.
+const when = (t) => {
+  if (!t) return '—';
+  const d = new Date(t);
+  const o = d.getFullYear() === new Date().getFullYear()
+    ? { day:'numeric', month:'short' } : { day:'numeric', month:'short', year:'2-digit' };
+  return d.toLocaleDateString(undefined, o);
+};
+const simLabel = (x) => (x.number ? String(x.number).padStart(2,'0') + ' · ' : '') + x.title;
+const dot = (k, label) => `<span class="st ${k}">${esc(label)}</span>`;
+
+// Every action says what happened, where it was pressed.
+function flash(btn, msg, kind) {
+  if (!btn) return;
+  const was = btn.textContent;
+  btn.textContent = msg;
+  btn.style.color = kind === 'bad' ? 'var(--rose)' : 'var(--green)';
+  btn.style.borderColor = kind === 'bad' ? 'var(--rose)' : 'var(--green)';
+  setTimeout(() => { btn.textContent = was; btn.style.color=''; btn.style.borderColor=''; }, 1700);
+}
+function acting(btn, working) {
+  if (!btn) return () => {};
+  const was = btn.textContent;
+  btn.disabled = true; btn.textContent = working || 'Working…';
+  return (msg, kind) => { btn.disabled = false; btn.textContent = was; if (msg) flash(btn, msg, kind); };
+}
+
 const PER_PAGE = 25;
 function paged(key, rows) {
   const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const p = Math.min(Math.max(1, D.page[key] || 1), pages);
   D.page[key] = p;
-  return { rows: rows.slice((p - 1) * PER_PAGE, p * PER_PAGE), page: p, pages, total: rows.length };
+  return { rows: rows.slice((p-1)*PER_PAGE, p*PER_PAGE), page:p, pages, total: rows.length };
 }
-function pager(key, r) {
-  if (r.pages < 2) return '';
-  return `<div class="row" style="justify-content:space-between;padding:12px 14px;border-top:1px solid var(--line)">
-    <span class="tiny dim">Showing ${(r.page-1)*PER_PAGE+1}–${Math.min(r.page*PER_PAGE, r.total)} of ${r.total}</span>
-    <div class="row" style="gap:6px">
+function foot(key, r, noun) {
+  return `<div class="foot">
+    <span class="info">${r.total} ${noun}${r.total === 1 ? '' : 's'}</span>
+    ${r.pages > 1 ? `<span style="display:flex;gap:6px;align-items:center">
       <button class="btn sm" data-page="${key}:${r.page-1}" ${r.page<=1?'disabled':''}>Previous</button>
-      <span class="tiny dim mono" style="align-self:center">${r.page} / ${r.pages}</span>
+      <span class="info">Page ${r.page} of ${r.pages}</span>
       <button class="btn sm" data-page="${key}:${r.page+1}" ${r.page>=r.pages?'disabled':''}>Next</button>
-    </div>
+    </span>` : `<span class="info">Page 1 of 1</span>`}
   </div>`;
 }
-
-const simLabel = (x) => (x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
-
-// Every action button says what happened, where it was pressed. A button that
-// works silently is indistinguishable from one that is broken.
-function flash(btn, msg, kind) {
-  if (!btn) return;
-  const original = btn.textContent;
-  btn.textContent = msg;
-  btn.style.borderColor = kind === 'bad' ? 'var(--rose)' : 'var(--green)';
-  btn.style.color = kind === 'bad' ? 'var(--rose)' : 'var(--green)';
-  setTimeout(() => { btn.textContent = original; btn.style.borderColor = ''; btn.style.color = ''; }, 1800);
+function toolbar(key, placeholder, segs, action) {
+  return `<div class="toolbar">
+    <div class="search"><input data-q="${key}" type="text" placeholder="${placeholder}" value="${esc(D.q[key]||'')}"></div>
+    ${segs ? `<div class="seg">${segs.map(x =>
+      `<button data-f="${key}:${x}" class="${(D.filter[key]||segs[0])===x?'on':''}">${x}</button>`).join('')}</div>` : ''}
+    ${action || ''}
+  </div>`;
 }
-// Wraps an async click: disables, shows progress, then says what happened.
-function acting(btn, working) {
-  if (!btn) return () => {};
-  const original = btn.textContent;
-  btn.disabled = true; btn.textContent = working || 'Working…';
-  return (msg, kind) => {
-    btn.disabled = false;
-    if (msg) { btn.textContent = original; flash(btn, msg, kind); }
-    else btn.textContent = original;
-  };
-}
-function scrollTo(id) {
-  const el = document.getElementById(id);
-  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-// Short enough not to squeeze the columns beside it; the year only when it
-// isn't this one.
-const when = (t) => {
-  if (!t) return '—';
-  const d = new Date(t);
-  const opts = d.getFullYear() === new Date().getFullYear()
-    ? { day:'numeric', month:'short' }
-    : { day:'numeric', month:'short', year:'2-digit' };
-  return d.toLocaleDateString(undefined, opts);
+const matches = (key, fields) => {
+  const q = (D.q[key]||'').toLowerCase().trim();
+  return !q || fields.filter(Boolean).join(' ').toLowerCase().includes(q);
 };
 
 document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
@@ -98,184 +105,236 @@ async function load() {
 }
 
 function render() {
-  if (!D.data) {
-    // A release that adds a column and queries it will fail here until the
-    // schema catches up — and the migrate button used to live on this page,
-    // which made it unreachable exactly when it was needed.
-    const schemaBehind = D.err && /does not exist|column|relation/i.test(D.err);
-    app.innerHTML = D.err
-      ? `<div class="eyebrow">Administration</div>
-         <h1>${schemaBehind ? 'The database is behind the code' : 'Something went wrong'}</h1>
-         <p class="lede">${esc(D.err)}</p>
-         ${schemaBehind ? `<p>This release expects something the database has not got yet. Bringing it up to date creates only what is missing and drops nothing.</p>
-         <div class="card"><button class="btn pri" id="fixdb">Bring the database up to date</button><div id="fixout"></div></div>`
-         : '<div class="card"><button class="btn" id="retry">Try again</button></div>'}`
-      : '<h1>Loading…</h1>';
-    const fd = document.getElementById('fixdb');
-    if (fd) fd.onclick = async () => {
-      const out = document.getElementById('fixout');
-      fd.disabled = true; fd.textContent = 'Running…';
-      try {
-        const d = await api('/api/admin', { action:'migrate' });
-        out.innerHTML = `<div class="ok">Up to date — ${d.statements} statements checked.</div>`;
-        D.err = null; load();
-      } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
-        fd.disabled = false; fd.textContent = 'Bring the database up to date'; }
-    };
-    const rt = document.getElementById('retry');
-    if (rt) rt.onclick = () => { D.err = null; load(); };
-    return;
-  }
+  if (!D.data) return renderBlocked();
   if (D.detail) return renderDetail();
-
   const t = D.data.totals || {};
-  const tabs = [['faculty','Faculty'],['students','Students'],['courses','All courses'],['catalogue','Catalogue']];
-
+  const tabs = [['fac','Facilitators',D.data.faculty.length],
+                ['stu','Students',t.students||0],
+                ['crs','Courses',t.courses||0],
+                ['cat','Catalogue',(D.data.sims||[]).length]];
   app.innerHTML = `
-    <div class="row" style="justify-content:space-between;align-items:center;gap:20px;margin-bottom:16px">
-      <div class="stat" style="gap:26px;margin:0">
-        <div><div class="n">${D.data.faculty.length}</div><div class="l">Faculty</div></div>
-        <div><div class="n">${t.students || 0}</div><div class="l">Students</div></div>
-        <div><div class="n">${t.courses || 0}</div><div class="l">Courses</div></div>
-        <div><div class="n">${t.paid_seats || 0}</div><div class="l">Released</div></div>
-        <div><div class="n">${t.launches || 0}</div><div class="l">Launches</div></div>
-      </div>
-      <div class="row" style="gap:6px">
-        ${tabs.map(([k,l]) => `<button class="btn ${D.tab===k?'pri':''}" data-tab="${k}">${l}</button>`).join('')}
-      </div>
+    <div class="strip">
+      <div class="cell"><div class="n">${D.data.faculty.length}</div><div class="l">Facilitators</div></div>
+      <div class="cell"><div class="n">${t.students||0}</div><div class="l">Students</div></div>
+      <div class="cell"><div class="n">${t.courses||0}</div><div class="l">Courses</div></div>
+      <div class="cell"><div class="n">${t.paid_seats||0}</div><div class="l">Released</div></div>
+      <div class="cell"><div class="n">${t.launches||0}</div><div class="l">Launches</div></div>
+      <div class="cell quiet"><div class="n">${(D.data.sims||[]).length}</div><div class="l">Simulations</div></div>
+    </div>
+    <div class="tabs">
+      ${tabs.map(([k,l,n]) => `<button class="tab ${D.tab===k?'on':''}" data-tab="${k}">${l} <span class="count">${n}</span></button>`).join('')}
     </div>
     <div id="body"></div>`;
-
-  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { D.tab = b.dataset.tab; render(); });
-  app.querySelectorAll('[data-page]').forEach(b => b.onclick = () => {
-    const [key, n] = b.dataset.page.split(':');
-    D.page[key] = parseInt(n, 10);
-    render();
-  });
+  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { D.tab = b.dataset.tab; D.open = null; render(); });
   const body = document.getElementById('body');
-  if (D.tab === 'faculty') { body.innerHTML = facultyTab(); wireFaculty(); }
-  else if (D.tab === 'students') { body.innerHTML = studentsTab(); wireStudents(); }
-  else if (D.tab === 'courses') { body.innerHTML = coursesTab(); wireCourses(); }
-  else { body.innerHTML = catalogueTab(); wireCatalogue(); }
+  body.innerHTML = ({ fac:facTab, stu:stuTab, crs:crsTab, cat:catTab })[D.tab]();
+  ({ fac:wireFac, stu:wireStu, crs:wireCrs, cat:wireCat })[D.tab]();
+  wireCommon();
 }
 
-function facultyTab() {
-  const fq = (D.facSearch || '').toLowerCase().trim();
-  const facPage = paged('fac', D.data.faculty.filter(f =>
-    !fq || [f.name, f.email, f.institution].filter(Boolean).join(' ').toLowerCase().includes(fq)));
-  return `
-    <div class="row" style="justify-content:space-between;align-items:center;margin:4px 0 12px">
-      <div class="eyebrow">Facilitators</div>
-      <button class="btn ${D.inviteOpen ? '' : 'pri'} sm" id="inv_toggle">${D.inviteOpen ? 'Cancel' : 'Invite a facilitator'}</button>
-    </div>
+// The database can be behind a release that queries something new, and the fix
+// used to live on the page that would not load.
+function renderBlocked() {
+  const behind = D.err && /does not exist|column|relation/i.test(D.err);
+  app.innerHTML = D.err ? `
+    <div class="crumb" style="margin-top:34px">Administration</div>
+    <div class="head"><div><h1>${behind ? 'The database is behind the code' : 'Something went wrong'}</h1>
+      <p class="hint" style="margin-top:8px">${esc(D.err)}</p></div></div>
+    <div class="panel"><div style="padding:18px">
+      ${behind ? `<p class="hint" style="margin:0 0 12px">This release expects something the database has not got yet. Updating creates only what is missing and drops nothing.</p>
+        <button class="btn pri" id="fixdb">Update the database</button>`
+        : `<button class="btn" id="retry">Try again</button>`}
+      <div id="fixout"></div>
+    </div></div>` : `<div class="empty" style="margin-top:40px">Loading…</div>`;
+  const fd = document.getElementById('fixdb');
+  if (fd) fd.onclick = async () => {
+    const done = acting(fd, 'Updating…');
+    try { const d = await api('/api/admin', { action:'migrate' });
+      document.getElementById('fixout').innerHTML = `<div class="hint" style="color:var(--green)">Up to date — ${d.statements} statements checked.</div>`;
+      D.err = null; load(); }
+    catch (e) { document.getElementById('fixout').innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Failed','bad'); }
+  };
+  const rt = document.getElementById('retry');
+  if (rt) rt.onclick = () => { D.err = null; load(); };
+}
 
-    ${D.inviteOpen ? `<div class="card tight" style="margin-bottom:12px">
-      <div class="row" style="align-items:flex-end">
-        <div class="grow"><label class="f">Name</label><input id="in" type="text" placeholder="Chuck Rivera"></div>
-        <div class="grow"><label class="f">Email</label><input id="ie" type="email" placeholder="crivera@university.edu"></div>
-        <div class="grow"><label class="f">Institution</label><input id="ii" type="text" placeholder="optional"></div>
-        <button class="btn pri" id="inv">Create invitation</button>
+/* ── facilitators ───────────────────────────────────────────────────────── */
+function facTab() {
+  const f0 = D.filter.fac || 'All';
+  const statusOf = f => f.disabled ? 'disabled' : f.accepted ? 'active' : 'invited';
+  const list = D.data.faculty
+    .filter(f => f0 === 'All' || statusOf(f) === f0.toLowerCase())
+    .filter(f => matches('fac', [f.name, f.email, f.institution, f.course_titles, f.sim_titles]));
+  const P = paged('fac', list);
+  return `
+    ${toolbar('fac','Search facilitators',['All','Active','Invited','Disabled'],
+      `<button class="btn ${D.invite?'':'pri'}" id="inv">${D.invite?'Cancel':'Invite a facilitator'}</button>`)}
+
+    ${D.invite ? `<div class="cbox"><div style="padding:15px 16px">
+      <div class="field">
+        <div><label class="f">Name</label><input id="in" type="text" placeholder="Chuck Rivera"></div>
+        <div><label class="f">Email</label><input id="ie" type="email" placeholder="crivera@university.edu"></div>
+        <div><label class="f">Institution</label><input id="ii" type="text" placeholder="optional"></div>
+        <div style="flex:0 0 auto;min-width:0;align-self:flex-end"><button class="btn pri" id="invgo">Create invitation</button></div>
       </div>
       <div id="invout"></div>
-      ${D.lastInvite ? `<div class="note" style="margin-top:14px">
+      ${D.lastInvite ? `<div class="note" style="margin-top:12px">
         <b>Send this to ${esc(D.lastInvite.name)}${D.lastInvite.email ? ' at ' + esc(D.lastInvite.email) : ''}.</b>
-        There's no email service, so copy it into your own message. It works once and expires ${when(D.lastInvite.expiresAt)}.
-        <div class="copybox">
-          <input type="text" id="iurl" readonly value="${esc(D.lastInvite.inviteUrl)}">
-          <button class="btn" id="icopy">Copy</button>
-          <button class="btn" id="idone">Done</button>
-        </div>
+        There is no email service, so copy it into your own message. It works once and expires ${when(D.lastInvite.expiresAt)}.
+        <div class="copyrow"><input id="iurl" readonly value="${esc(D.lastInvite.inviteUrl)}">
+          <button class="btn" id="icopy">Copy</button><button class="btn" id="idone">Done</button></div>
       </div>` : ''}
-    </div>` : ''}
+    </div></div>` : ''}
 
-    <div class="card tight" style="margin-bottom:10px">
-      <input id="fac_q" type="text" placeholder="Search by name, email or institution" value="${esc(D.facSearch || '')}">
-    </div>
-    <div class="card" style="padding:0">
-      <div class="tablewrap"><table>
-        <thead><tr><th>Name</th><th>Courses and simulations</th><th>Status</th><th class="mono">Students</th><th class="mono">Launches</th><th class="when">Last seen</th><th></th></tr></thead>
-        <tbody>
-        ${facPage.rows.map(f => `<tr>
-          <td data-l="Name"><b>${esc(f.name)}</b>
-            <div class="tiny dim mono">${esc(f.email)}</div>
-            ${f.institution ? `<div class="tiny dim">${esc(f.institution)}</div>` : ''}</td>
-          <td data-l="Courses" class="tiny">
-            ${f.course_titles ? esc(f.course_titles) : '<span class="dim">no courses yet</span>'}
-            ${f.sim_titles ? `<div class="dim" style="margin-top:4px">${esc(f.sim_titles)}</div>` : ''}</td>
-          <td data-l="Status">${f.disabled ? '<span class="pill bad">disabled</span>'
-                : f.accepted ? '<span class="pill ok">active</span>'
-                : '<span class="pill warn">invited</span>'}</td>
-          <td data-l="Students" class="mono">${f.paid_students} of ${f.students}</td>
-          <td data-l="Launches" class="mono">${f.launches || 0}</td>
-          <td data-l="Last seen" class="tiny dim when">${when(f.last_seen_at)}</td>
-          <td data-l="">
+    <div class="panel"><div class="tablewrap"><table>
+      <thead><tr>
+        <th style="width:25%">Name</th><th>Courses and simulations</th><th style="width:1%">Status</th>
+        <th class="num">Released</th><th class="num">Launches</th><th class="num">Last seen</th><th class="act"></th>
+      </tr></thead>
+      <tbody>
+      ${P.rows.length ? P.rows.map(f => {
+        const st = statusOf(f);
+        return `
+        <tr>
+          <td data-l="Name"><div class="nm">${esc(f.name)}</div><div class="sub">${esc(f.email)}</div>
+            ${f.institution ? `<div class="sub">${esc(f.institution)}</div>` : ''}</td>
+          <td data-l="Courses" class="meta">${f.course_titles ? esc(f.course_titles) : '<span class="dim">No courses yet</span>'}
+            ${f.sim_titles ? `<div class="dim">${esc(f.sim_titles)}</div>` : ''}</td>
+          <td data-l="Status">${dot(st === 'active' ? 'ok' : st === 'invited' ? 'warn' : 'off', st)}</td>
+          <td data-l="Released" class="num"><span class="ratio ${Number(f.paid_students) < Number(f.students) ? 'part' : ''}">${f.paid_students} <span class="of">of ${f.students}</span></span></td>
+          <td data-l="Launches" class="num">${f.launches || 0}</td>
+          <td data-l="Last seen" class="num">${when(f.last_seen_at)}</td>
+          <td data-l="" class="act">
             <button class="btn sm" data-open="${esc(f.id)}">Open</button>
-            <button class="btn sm" data-pedit="${esc(f.id)}">Edit</button>
-            <button class="btn sm" data-prow="${esc(f.id)}" data-acc="${f.accepted ? '1' : '0'}">${f.accepted ? 'Reset' : 'Re-invite'}</button>
+            <button class="btn sm" data-pedit="${esc(f.id)}">${D.personEdit===f.id?'Close':'Edit'}</button>
+            <button class="btn sm" data-prow="${esc(f.id)}" data-acc="${f.accepted?'1':'0'}">${f.accepted?'Reset':'Re-invite'}</button>
           </td>
         </tr>
-        ${D.linkFor === f.id ? `<tr><td colspan="7" style="background:var(--amber-soft);padding:14px 12px">
-          <b>Send this to ${esc(f.name)}.</b> ${esc(D.linkNote || '')}
-          <div class="copybox"><input type="text" id="rowurl" readonly value="${esc(D.linkUrl || '')}">
-            <button class="btn" id="rowcopy">Copy</button>
-            <button class="btn" id="rowhide">Done</button></div>
-        </td></tr>` : ''}
-        ${D.personEdit === f.id ? `<tr><td colspan="7" style="background:var(--sunk);padding:16px 12px">
-          <div class="row" style="align-items:flex-start">
-            <div class="grow"><label class="f">Name</label><input type="text" data-pf="name" value="${esc(f.name)}"></div>
-            <div class="grow"><label class="f">Email</label><input type="email" data-pf="email" value="${esc(f.email)}"></div>
-            <div class="grow"><label class="f">Institution</label><input type="text" data-pf="institution" value="${esc(f.institution || '')}"></div>
+        ${D.personEdit === f.id ? `<tr class="expand"><td colspan="7">
+          <div class="field">
+            <div><label class="f">Name</label><input data-pf="name" value="${esc(f.name)}"></div>
+            <div><label class="f">Email</label><input data-pf="email" value="${esc(f.email)}"></div>
+            <div><label class="f">Institution</label><input data-pf="institution" value="${esc(f.institution||'')}" placeholder="optional"></div>
           </div>
-          <div class="tiny dim" style="margin-top:8px">Correcting a mistyped email here keeps their courses and students. If they never accepted the invitation, issue a fresh one afterwards — the old link points at the old address.</div>
-          <div class="row" style="margin-top:12px">
-            <button class="btn pri sm" data-psave="${esc(f.id)}">Save</button>
-            <button class="btn sm" data-pcancel="1">Cancel</button>
-            ${Number(f.courses) === 0 ? `<button class="btn sm danger" data-pdel="${esc(f.id)}">Delete this account</button>` : ''}
-          </div>
+          <div class="hint">Correcting an email keeps their courses and students. If they never accepted the invitation, issue a fresh one afterwards — the old link points at the old address.</div>
+          <button class="btn pri sm" data-psave="${esc(f.id)}">Save changes</button>
+          <button class="btn sm" data-pedit="${esc(f.id)}">Cancel</button>
+          ${Number(f.courses) === 0 ? `<button class="btn sm danger" style="margin-left:6px" data-pdel="${esc(f.id)}">Delete account</button>` : ''}
           <div data-pout="${esc(f.id)}"></div>
-        </td></tr>` : ''}`).join('') || '<tr><td colspan="7" class="dim">Nobody yet. Invite someone above.</td></tr>'}
-        </tbody>
-      </table></div>
-      ${pager('fac', facPage)}
+        </td></tr>` : ''}
+        ${D.link && D.link.for === f.id ? `<tr class="expand"><td colspan="7">
+          <b>Send this to ${esc(f.name)}.</b> ${esc(D.link.note)}
+          <div class="copyrow"><input id="rowurl" readonly value="${esc(D.link.url)}">
+            <button class="btn" id="rowcopy">Copy</button><button class="btn" id="rowhide">Done</button></div>
+        </td></tr>` : ''}`;
+      }).join('') : `<tr><td colspan="7" class="empty">${D.data.faculty.length ? 'Nobody matches that.' : 'Nobody yet. Invite someone above.'}</td></tr>`}
+      </tbody></table></div>
+      ${foot('fac', P, 'facilitator')}
     </div>`;
 }
-
-// Editing a person is the same job whether they facilitate or study, so both
-// tables share it.
-function wirePersonEditing(reloadAfter) {
-  const repaint = () => render();
-  app.querySelectorAll('[data-pedit]').forEach(b => b.onclick = () => {
-    D.personEdit = D.personEdit === b.dataset.pedit ? null : b.dataset.pedit; repaint(); });
-  app.querySelectorAll('[data-pcancel]').forEach(b => b.onclick = () => { D.personEdit = null; repaint(); });
-
-  app.querySelectorAll('[data-psave]').forEach(btn => btn.onclick = async () => {
-    const uid = btn.dataset.psave;
-    const row = btn.closest('td');
-    const val = (f) => { const el = row.querySelector(`[data-pf="${f}"]`); return el ? el.value : undefined; };
-    const out = app.querySelector(`[data-pout="${uid}"]`);
-    const done = acting(btn, 'Saving…');
+function wireFac() {
+  const inv = document.getElementById('inv');
+  if (inv) inv.onclick = () => { D.invite = !D.invite; if (!D.invite) D.lastInvite = null; render();
+    const n = document.getElementById('in'); if (n) n.focus(); };
+  const go = document.getElementById('invgo');
+  if (go) go.onclick = async () => {
+    const name = document.getElementById('in').value, email = document.getElementById('ie').value;
+    const out = document.getElementById('invout');
+    const done = acting(go, 'Creating…'); out.innerHTML = '';
     try {
-      await api('/api/admin', { action:'update_person', userId: uid,
-        name: val('name'), email: val('email'), institution: val('institution') });
-      done('Saved'); D.personEdit = null; D.students = null; await load();
-    } catch (e) {
-      if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
-      done('Not saved', 'bad');
-    }
-  });
+      const d = await api('/api/admin', { action:'invite_faculty', name, email,
+        institution: document.getElementById('ii').value });
+      D.lastInvite = { name, email, inviteUrl: d.inviteUrl, expiresAt: d.expiresAt };
+      done(); await load();
+    } catch (e) { out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Failed','bad'); }
+  };
+  const ic = document.getElementById('icopy');
+  if (ic) ic.onclick = () => { const f = document.getElementById('iurl'); f.select();
+    navigator.clipboard.writeText(f.value); flash(ic, 'Copied'); };
+  const idn = document.getElementById('idone');
+  if (idn) idn.onclick = () => { D.lastInvite = null; render(); };
 
-  app.querySelectorAll('[data-pdel]').forEach(btn => btn.onclick = async () => {
-    if (!confirm('Delete this account? Only possible because they have no courses.')) return;
-    const done = acting(btn, 'Deleting…');
-    try { await api('/api/admin', { action:'delete_faculty', facultyId: btn.dataset.pdel });
-      done(); D.personEdit = null; await load(); }
-    catch (e) {
-      const out = app.querySelector(`[data-pout="${btn.dataset.pdel}"]`);
-      if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
-      done('Refused', 'bad');
-    }
+  app.querySelectorAll('[data-open]').forEach(b => b.onclick = async () => {
+    const done = acting(b, 'Opening…');
+    try { D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: b.dataset.open }); done(); render(); }
+    catch (e) { done('Failed','bad'); }
   });
+  app.querySelectorAll('[data-prow]').forEach(btn => btn.onclick = async () => {
+    const fid = btn.dataset.prow, person = D.data.faculty.find(x => x.id === fid);
+    const done = acting(btn, 'Creating…');
+    try {
+      if (btn.dataset.acc === '1') {
+        const d = await api('/api/admin', { action:'issue_reset', userId: fid });
+        D.link = { for:fid, url:d.resetUrl, note:'A password reset. It works once and expires in three days.' };
+      } else {
+        const d = await api('/api/admin', { action:'invite_faculty', name: person.name, email: person.email, institution: person.institution });
+        D.link = { for:fid, url:d.inviteUrl, note:'A fresh invitation. It works once and replaces any earlier link.' };
+      }
+      D.personEdit = null; done(); render();
+    } catch (e) { done('Failed','bad'); }
+  });
+  const rc = document.getElementById('rowcopy');
+  if (rc) rc.onclick = () => { const f = document.getElementById('rowurl'); f.select();
+    navigator.clipboard.writeText(f.value); flash(rc, 'Copied'); };
+  const rh = document.getElementById('rowhide');
+  if (rh) rh.onclick = () => { D.link = null; render(); };
+  wirePerson();
+}
 
+/* ── students ───────────────────────────────────────────────────────────── */
+function stuTab() {
+  if (!D.students) { loadStudents(); return '<div class="panel"><div class="empty">Loading…</div></div>'; }
+  const f0 = D.filter.stu || 'All';
+  const accessOf = st => Number(st.with_access) > 0 ? 'released' : 'waiting';
+  const list = D.students
+    .filter(st => f0 === 'All' || accessOf(st) === f0.toLowerCase())
+    .filter(st => matches('stu', [st.name, st.email, st.course_titles, st.faculty_names, st.sim_titles]));
+  const P = paged('stu', list);
+  return `
+    ${toolbar('stu','Search students, courses or facilitators',['All','Released','Waiting'])}
+    <div class="panel"><div class="tablewrap"><table>
+      <thead><tr>
+        <th style="width:23%">Student</th><th>Course</th><th>Simulations</th><th style="width:1%">Access</th>
+        <th class="num">Played</th><th class="num">Finished</th><th class="act"></th>
+      </tr></thead>
+      <tbody>
+      ${P.rows.length ? P.rows.map(st => `
+        <tr>
+          <td data-l="Student"><div class="nm">${esc(st.name)}</div><div class="sub">${esc(st.email)}</div>
+            <div class="sub">joined ${when(st.created_at)}</div></td>
+          <td data-l="Course" class="meta">${esc(st.course_titles || '—')}
+            ${st.faculty_names ? `<div class="dim">${esc(st.faculty_names)}</div>` : ''}</td>
+          <td data-l="Simulations" class="meta">${st.sim_titles ? esc(st.sim_titles) : '<span class="dim">none yet</span>'}</td>
+          <td data-l="Access">${dot(Number(st.with_access) === Number(st.courses) && Number(st.courses) > 0 ? 'ok' : 'warn',
+            `${st.with_access} of ${st.courses}`)}</td>
+          <td data-l="Played" class="num">${st.launches}</td>
+          <td data-l="Finished" class="num">${st.finished}</td>
+          <td data-l="" class="act">
+            <button class="btn sm" data-pedit="${esc(st.id)}">${D.personEdit===st.id?'Close':'Edit'}</button>
+            <button class="btn sm danger" data-sdel="${esc(st.id)}">Delete</button>
+          </td>
+        </tr>
+        ${D.personEdit === st.id ? `<tr class="expand"><td colspan="7">
+          <div class="field">
+            <div><label class="f">Name</label><input data-pf="name" value="${esc(st.name)}"></div>
+            <div><label class="f">Email</label><input data-pf="email" value="${esc(st.email)}"></div>
+          </div>
+          <div class="hint">Their email is how they sign in. Changing it does not tell them.</div>
+          <button class="btn pri sm" data-psave="${esc(st.id)}">Save changes</button>
+          <button class="btn sm" data-pedit="${esc(st.id)}">Cancel</button>
+          <div data-pout="${esc(st.id)}"></div>
+        </td></tr>` : ''}`).join('')
+        : `<tr><td colspan="7" class="empty">${D.students.length ? 'Nobody matches that.' : 'No students yet. They appear when a facilitator shares a course link.'}</td></tr>`}
+      </tbody></table></div>
+      ${foot('stu', P, 'student')}
+    </div>`;
+}
+async function loadStudents() {
+  try { D.students = (await api('/api/admin', { action:'all_students' })).students; }
+  catch (e) { D.students = []; D.err = e.message; }
+  render();
+}
+function wireStu() {
   app.querySelectorAll('[data-sdel]').forEach(btn => btn.onclick = async () => {
     if (!confirm('Delete this student? Their enrolments go with them.')) return;
     const done = acting(btn, 'Deleting…');
@@ -283,561 +342,357 @@ function wirePersonEditing(reloadAfter) {
       done(); D.students = null; await load(); }
     catch (e) {
       if (confirm(e.message + '\n\nDelete anyway?')) {
-        await api('/api/admin', { action:'delete_student', userId: btn.dataset.sdel, force: true });
+        await api('/api/admin', { action:'delete_student', userId: btn.dataset.sdel, force:true });
         done(); D.students = null; await load();
-      } else done('Kept', 'bad');
+      } else done('Kept','bad');
     }
   });
+  wirePerson();
 }
 
-function wireStudents() {
-  app.querySelectorAll('[data-page]').forEach(b => b.onclick = () => {
-    const [key, n] = b.dataset.page.split(':');
-    D.page[key] = parseInt(n, 10); render();
-  });
-  const sq = document.getElementById('stu_q');
-  if (sq) sq.oninput = () => {
-    D.stuSearch = sq.value; D.page.stu = 1;
-    const body = document.getElementById('body');
-    body.innerHTML = studentsTab(); wireStudents();
-    const again = document.getElementById('stu_q');
-    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
-  };
-  wirePersonEditing();
+/* ── courses ────────────────────────────────────────────────────────────── */
+function crsTab() {
+  if (!D.allCourses) { loadCourses(); return '<div class="panel"><div class="empty">Loading…</div></div>'; }
+  const f0 = D.filter.crs || 'Active';
+  const list = D.allCourses
+    .filter(c => f0 === 'Active' ? !c.archived : c.archived)
+    .filter(c => matches('crs', [c.title, c.term, c.join_code, c.faculty_name, c.sim_titles]));
+  const P = paged('crs', list);
+  return `
+    ${toolbar('crs','Search courses, terms or join codes',['Active','Archived'])}
+    <div class="panel"><div class="tablewrap"><table>
+      <thead><tr>
+        <th style="width:25%">Course</th><th>Facilitator</th><th>Simulations</th>
+        <th class="num">Enrolled</th><th class="num">Released</th><th class="num">Launches</th>
+      </tr></thead>
+      <tbody>
+      ${P.rows.length ? P.rows.map(c => `<tr>
+        <td data-l="Course"><div class="nm">${esc(c.title)}</div>
+          <div class="sub">${esc(c.term || 'no term')} · ${esc(c.join_code)}</div></td>
+        <td data-l="Facilitator" class="meta">${esc(c.faculty_name)}
+          ${c.institution ? `<div class="dim">${esc(c.institution)}</div>` : ''}</td>
+        <td data-l="Simulations" class="meta">${esc(c.sim_titles || '—')}</td>
+        <td data-l="Enrolled" class="num">${c.enrolled}</td>
+        <td data-l="Released" class="num"><span class="ratio ${Number(c.paid) < Number(c.enrolled) ? 'part' : ''}">${c.paid}</span></td>
+        <td data-l="Launches" class="num">${c.launches}</td>
+      </tr>`).join('') : `<tr><td colspan="6" class="empty">Nothing matches that.</td></tr>`}
+      </tbody></table></div>
+      ${foot('crs', P, 'course')}
+    </div>`;
 }
-
-function wireFaculty() {
-  const it = document.getElementById('inv_toggle');
-  if (it) it.onclick = () => {
-    D.inviteOpen = !D.inviteOpen;
-    if (!D.inviteOpen) D.lastInvite = null;
-    render();
-    const n = document.getElementById('in'); if (n) n.focus();
-  };
-  app.querySelectorAll('[data-prow]').forEach(btn => btn.onclick = async () => {
-    const fid = btn.dataset.prow;
-    const person = D.data.faculty.find(x => x.id === fid);
-    const done = acting(btn, 'Creating…');
-    try {
-      if (btn.dataset.acc === '1') {
-        const d = await api('/api/admin', { action:'issue_reset', userId: fid });
-        D.linkUrl = d.resetUrl;
-        D.linkNote = 'A password reset. It works once and expires in three days.';
-      } else {
-        const d = await api('/api/admin', { action:'invite_faculty',
-          name: person.name, email: person.email, institution: person.institution });
-        D.linkUrl = d.inviteUrl;
-        D.linkNote = 'A fresh invitation. It works once, and replaces any earlier link.';
-      }
-      D.linkFor = fid; D.personEdit = null;
-      done(); render();
-    } catch (e) { done('Failed', 'bad'); }
-  });
-  const rc = document.getElementById('rowcopy');
-  if (rc) rc.onclick = () => {
-    const f = document.getElementById('rowurl');
-    f.select(); navigator.clipboard.writeText(f.value);
-    flash(rc, 'Copied');
-  };
-  const rh = document.getElementById('rowhide');
-  if (rh) rh.onclick = () => { D.linkFor = null; render(); };
-
-  const fq = document.getElementById('fac_q');
-  if (fq) fq.oninput = () => {
-    D.facSearch = fq.value; D.page.fac = 1;
-    const body = document.getElementById('body');
-    body.innerHTML = facultyTab(); wireFaculty();
-    const again = document.getElementById('fac_q');
-    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
-  };
-  wirePersonEditing();
-  const inv = document.getElementById('inv');
-  if (inv) inv.onclick = async () => {
-    const out = document.getElementById('invout');
-    const name = document.getElementById('in').value;
-    const email = document.getElementById('ie').value;
-    const doneInv = acting(inv, 'Creating…');
-    out.innerHTML = '';
-    try {
-      const d = await api('/api/admin', {
-        action: 'invite_faculty', name, email,
-        institution: document.getElementById('ii').value
-      });
-      // Held in state so refreshing the list underneath can't take it away.
-      D.lastInvite = { name, email, inviteUrl: d.inviteUrl, expiresAt: d.expiresAt, facultyId: d.facultyId };
-      doneInv(); await load();
-    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; doneInv('Failed', 'bad'); }
-  };
-  const ic = document.getElementById('icopy');
-  if (ic) ic.onclick = () => {
-    const f = document.getElementById('iurl');
-    f.select(); navigator.clipboard.writeText(f.value);
-    ic.textContent = 'Copied';
-    setTimeout(() => { ic.textContent = 'Copy'; }, 1500);
-  };
-  const idone = document.getElementById('idone');
-  if (idone) idone.onclick = () => { D.lastInvite = null; render(); };   // visible: the panel disappears
-  app.querySelectorAll('[data-open]').forEach(b => b.onclick = async () => {
-    const done = acting(b, 'Opening…');
-    try { D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: b.dataset.open }); done(); render(); }
-    catch (e) { done('Failed', 'bad'); D.err = e.message; render(); }
-  });
+async function loadCourses() {
+  try { D.allCourses = (await api('/api/admin', { action:'all_courses' })).courses; }
+  catch (e) { D.allCourses = []; D.err = e.message; }
+  render();
 }
+function wireCrs() {}
 
-function renderDetail() {
-  const { person, courses, students, courseSims } = D.detail;
-  app.innerHTML = `
-    <button class="btn sm" id="back">← All facilitators</button>
-    <div class="eyebrow" style="margin-top:20px">${esc(person.email)}</div>
-    <h1>${esc(person.name)}</h1>
-    <p class="lede">${person.accepted ? 'Active' : 'Invited but hasn\'t set a password yet'}${person.institution ? ' · ' + esc(person.institution) : ''} · joined ${when(person.created_at)}</p>
+/* ── catalogue ──────────────────────────────────────────────────────────── */
+function catTab() {
+  const all = D.data.sims || [];
+  const f0 = D.filter.cat || 'All';
+  const list = all
+    .filter(si => f0 === 'All' || (f0 === 'Published') === !!si.published)
+    .filter(si => matches('cat', [si.title, si.id, si.tagline, si.description, String(si.number||'')]));
+  return `
+    ${toolbar('cat','Search simulations',['All','Published','Draft'])}
+    <div class="panel">
+    ${list.length ? list.map(si => {
+      const revs = (D.grants || []).filter(g => g.sim_id === si.id);
+      return `<div class="sim">
+        <div class="no">${si.number ? String(si.number).padStart(2,'0') : '··'}</div>
+        <div class="body">
+          <div class="t">${esc(si.title)}</div>
+          <div class="tag">${esc(si.tagline || '')}</div>
+          <div class="id">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url || '')}</div>
 
-    <h2>Courses and students</h2>
-    ${students.filter(st => !st.dropped).length > 6 ? `<div class="card tight" style="margin-bottom:12px">
-      <input id="det_q" type="text" placeholder="Search this facilitator's students" value="${esc(D.detailSearch || '')}">
-    </div>` : ''}
-    ${courses.length ? courses.map(c => {
-      const sims = courseSims.filter(cs => cs.course_id === c.id);
-      const dq = (D.detailSearch || '').toLowerCase().trim();
-      const inCourse = students.filter(st => st.course_id === c.id && !st.dropped)
-        .filter(st => !dq || [st.name, st.email].filter(Boolean).join(' ').toLowerCase().includes(dq));
-      return `<div class="card">
-        <div class="row" style="justify-content:space-between">
-          <div><h3>${esc(c.title)}</h3><div class="tiny dim">${esc(c.term || '')} · join code <span class="mono">${esc(c.join_code)}</span></div></div>
-          <div class="row">
-            <span class="pill">${c.enrolled} enrolled</span>
-            <span class="pill ${c.paid == c.enrolled && c.enrolled > 0 ? 'ok' : 'warn'}">${c.paid} paid</span>
+          ${D.simEdit === si.id ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+            <div class="field">
+              <div style="flex:0 0 90px;min-width:90px"><label class="f">Number</label><input type="number" min="1" data-sf="number" value="${si.number||''}"></div>
+              <div><label class="f">Title</label><input data-sf="title" value="${esc(si.title||'')}"></div>
+              <div style="flex:0 0 100px;min-width:100px"><label class="f">Minutes</label><input type="number" data-sf="minutes" value="${si.minutes||''}"></div>
+            </div>
+            <div class="field"><div><label class="f">Tagline</label><input data-sf="tagline" value="${esc(si.tagline||'')}"></div></div>
+            <div class="field"><div><label class="f">Description</label><textarea rows="3" data-sf="description">${esc(si.description||'')}</textarea></div></div>
+            <div class="hint">The id and address come from the deployment itself. Anything you write here is yours — the simulation will not overwrite it when it next announces itself.</div>
+            <button class="btn pri sm" data-simsave="${esc(si.id)}">Save changes</button>
+            <button class="btn sm" data-simedit="${esc(si.id)}">Cancel</button>
+            <div data-simout="${esc(si.id)}"></div>
+          </div>` : ''}
+
+          ${D.reviewersFor === si.id ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+            <div class="mini">Who can see it before it is published</div>
+            ${revs.length ? revs.map(g => `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 0">
+              <div><b>${esc(g.name)}</b> <span class="sub" style="display:inline">${esc(g.email)}</span>
+                ${g.note ? `<div class="hint" style="margin:2px 0 0">${esc(g.note)}</div>` : ''}</div>
+              <button class="btn sm" data-revgrant="${esc(g.id)}">Revoke</button>
+            </div>`).join('') : '<div class="hint" style="margin:0">Nobody yet — it is invisible to everyone but administrators.</div>'}
+            <div class="field" style="margin-top:12px">
+              <div><label class="f">Their email</label><input type="email" data-grantmail="${esc(si.id)}" placeholder="they must already have an account"></div>
+              <div><label class="f">Why</label><input data-grantnote="${esc(si.id)}" placeholder="reviewing before we ship"></div>
+              <div style="flex:0 0 auto;align-self:flex-end"><button class="btn sm" data-grant="${esc(si.id)}">Give access</button></div>
+            </div>
+            <div data-grantout="${esc(si.id)}"></div>
+          </div>` : ''}
+        </div>
+        <div class="side">
+          ${si.published ? dot('ok','Published') : dot('warn', revs.length ? `Draft · ${revs.length} reviewing` : 'Draft')}
+          <div>
+            <button class="btn sm" data-simedit="${esc(si.id)}">${D.simEdit===si.id?'Close':'Edit'}</button>
+            ${!si.published ? `<button class="btn sm" data-rev="${esc(si.id)}">${D.reviewersFor===si.id?'Hide':'Reviewers'}</button>` : ''}
+            <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published?'1':'0'}">${si.published?'Unpublish':'Publish'}</button>
+            <button class="btn sm danger" data-simdel="${esc(si.id)}">Delete</button>
           </div>
         </div>
-        ${sims.length ? `<div class="tiny dim" style="margin-top:10px">Sims: ${sims.map(x => esc(x.title) + (x.expected_seats ? ` (expects ${x.expected_seats})` : '')).join(', ')}</div>` : ''}
-        ${inCourse.length ? `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:6px">
-          <div class="tablewrap"><table><tbody>
-          ${inCourse.map(st => `<tr>
-            <td data-l="Student">${esc(st.name)}<div class="tiny dim mono">${esc(st.email)}</div></td>
-            <td data-l="Access">${st.paid ? '<span class="pill ok">released</span>' : '<span class="pill warn">not yet</span>'}
-                ${st.paid_note ? `<div class="tiny dim">${esc(st.paid_note)}</div>` : ''}</td>
-            <td data-l="Played" class="mono tiny">${st.launches} launch${st.launches == 1 ? '' : 'es'}</td>
-          </tr>`).join('')}
-          </tbody></table></div>
-        </div>` : '<div class="tiny dim" style="margin-top:10px">Nobody enrolled yet.</div>'}
       </div>`;
-    }).join('') : '<div class="card dim">No courses yet.</div>'}
-
-    <div class="rule"></div>
-    <div class="row">
-      <button class="btn ${person.disabled ? '' : 'danger'}" id="tog">${person.disabled ? 'Re-enable this account' : 'Disable this account'}</button>
-      ${person.accepted ? '<button class="btn" id="rst">Issue a password reset link</button>'
-        : '<button class="btn" id="rst">Issue a fresh invitation link</button><button class="btn" id="rev">Cancel the invitation</button>'}
-      <button class="btn danger" id="del">Delete this account</button>
-      <span class="tiny dim">Disabling stops them signing in. Their courses and students are untouched.</span>
+    }).join('') : `<div class="empty">${all.length ? 'Nothing matches that.' : 'Nothing yet. A simulation appears here the first time its deployment is used.'}</div>`}
     </div>
-    <div id="rstout"></div>`;
 
-  const $ = (id) => document.getElementById(id);
-  const out = () => $('rstout');
+    <div class="note">Simulations appear here on their own. Each deployment tells the platform it exists the first time it is used, and arrives unpublished — invisible to everyone but you until you publish it or grant someone review access.</div>
+
+    <div class="section"><span>Maintenance</span><button class="btn sm" id="mt">${D.maint?'Hide':'Show'}</button></div>
+    ${D.maint ? `<div class="panel">
+      <div class="chead">
+        <div><b>Update the database</b>
+          <div class="hint" style="margin:2px 0 0">Run after a release that adds tables or columns. Creates only what is missing and never drops anything.</div></div>
+        <button class="btn" id="mig">Update</button>
+      </div>
+      <div id="migout" style="padding:0 16px"></div>
+      <div class="chead" style="border-bottom:none">
+        <div><b style="color:var(--rose)">Clear the pilot data</b>
+          <div class="hint" style="margin:2px 0 0">Deletes every facilitator, student, course and record of play, so a trial can be run again from nothing. Administrators and the catalogue survive. There is no undo.</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="rst_confirm" placeholder="type DELETE EVERYTHING" style="width:190px;border:1px solid var(--line2);padding:7px 10px;font-size:13px">
+          <button class="btn danger" id="rst_go">Clear</button></div>
+      </div>
+      <div id="rst_out" style="padding:0 16px 14px"></div>
+    </div>` : ''}`;
+}
+function wireCat() {
+  app.querySelectorAll('[data-simedit]').forEach(b => b.onclick = () => {
+    D.simEdit = D.simEdit === b.dataset.simedit ? null : b.dataset.simedit; D.reviewersFor = null; render(); });
+  app.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => {
+    D.reviewersFor = D.reviewersFor === b.dataset.rev ? null : b.dataset.rev; D.simEdit = null; render(); });
+
+  app.querySelectorAll('[data-simsave]').forEach(btn => btn.onclick = async () => {
+    const id = btn.dataset.simsave, si = (D.data.sims||[]).find(x => x.id === id);
+    const panel = btn.parentElement;
+    const v = f => { const el = panel.querySelector(`[data-sf="${f}"]`); return el ? el.value : ''; };
+    const out = app.querySelector(`[data-simout="${id}"]`);
+    const done = acting(btn, 'Saving…');
+    try {
+      await api('/api/admin', { action:'save_sim', id, number:v('number'), title:v('title'),
+        tagline:v('tagline'), description:v('description'), minutes:v('minutes'),
+        launchUrl: si.launch_url, published: !!si.published });
+      done('Saved'); D.simEdit = null; load();
+    } catch (e) { if (out) out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Not saved','bad'); }
+  });
+
+  app.querySelectorAll('[data-pub]').forEach(btn => btn.onclick = async () => {
+    const si = (D.data.sims||[]).find(x => x.id === btn.dataset.pub);
+    const done = acting(btn, 'Saving…');
+    try {
+      await api('/api/admin', { action:'save_sim', id:si.id, number:si.number, title:si.title,
+        tagline:si.tagline, description:si.description, launchUrl:si.launch_url,
+        minutes:si.minutes, published: btn.dataset.now !== '1' });
+      done(); load();
+    } catch (e) { done('Failed','bad'); }
+  });
+
+  app.querySelectorAll('[data-grant]').forEach(btn => btn.onclick = async () => {
+    const sid = btn.dataset.grant;
+    const mail = app.querySelector(`[data-grantmail="${sid}"]`), note = app.querySelector(`[data-grantnote="${sid}"]`);
+    const out = app.querySelector(`[data-grantout="${sid}"]`);
+    const done = acting(btn, 'Granting…');
+    try { await api('/api/admin', { action:'grant_sim_access', simId:sid,
+        email: mail?mail.value:'', note: note?note.value:'' });
+      done('Granted'); load(); }
+    catch (e) { if (out) out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Failed','bad'); }
+  });
+  app.querySelectorAll('[data-revgrant]').forEach(btn => btn.onclick = async () => {
+    const done = acting(btn, 'Revoking…');
+    try { await api('/api/admin', { action:'revoke_sim_access', grantId: btn.dataset.revgrant }); done(); load(); }
+    catch (e) { done('Failed','bad'); }
+  });
+
+  app.querySelectorAll('[data-simdel]').forEach(btn => btn.onclick = async () => {
+    if (!confirm('Delete this simulation from the catalogue? It will reappear, unpublished, the next time that deployment is used.')) return;
+    const done = acting(btn, 'Deleting…');
+    try { await api('/api/admin', { action:'delete_sim', simId: btn.dataset.simdel }); done(); load(); }
+    catch (e) {
+      if (confirm(e.message + '\n\nDelete it anyway?')) {
+        await api('/api/admin', { action:'delete_sim', simId: btn.dataset.simdel, force:true }); done(); load();
+      } else done('Kept','bad');
+    }
+  });
+
+  const mt = document.getElementById('mt');
+  if (mt) mt.onclick = () => { D.maint = !D.maint; render(); };
+  const mb = document.getElementById('mig');
+  if (mb) mb.onclick = async () => {
+    const out = document.getElementById('migout');
+    const done = acting(mb, 'Updating…');
+    try { const d = await api('/api/admin', { action:'migrate' });
+      out.innerHTML = `<div class="hint" style="color:var(--green)">Up to date — ${d.statements} statements checked.</div>`; done(); }
+    catch (e) { out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Failed','bad'); }
+  };
+  const rg = document.getElementById('rst_go');
+  if (rg) rg.onclick = async () => {
+    const out = document.getElementById('rst_out');
+    const done = acting(rg, 'Clearing…');
+    try {
+      await api('/api/admin', { action:'reset_test_data', confirm: document.getElementById('rst_confirm').value });
+      out.innerHTML = '<div class="hint" style="color:var(--green)">Done. Everything except administrators and the catalogue is gone.</div>';
+      D.detail = null; D.lastInvite = null; D.allCourses = null; D.students = null; done(); load();
+    } catch (e) { out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Failed','bad'); }
+  };
+}
+
+/* ── one facilitator ────────────────────────────────────────────────────── */
+function renderDetail() {
+  const { person, courses, students, courseSims } = D.detail;
+  const q = (D.q.det || '').toLowerCase().trim();
+  const st = person.disabled ? 'disabled' : person.accepted ? 'active' : 'invited';
+  const totals = {
+    students: students.filter(s => !s.dropped).length,
+    paid: students.filter(s => !s.dropped && s.paid).length,
+    launches: students.reduce((n, s) => n + Number(s.launches || 0), 0)
+  };
+  app.innerHTML = `
+    <div class="crumb"><a id="back">← Facilitators</a></div>
+    <div class="head">
+      <div>
+        <h1>${esc(person.name)}</h1>
+        <div class="sub" style="font-size:12px;margin-top:5px">${esc(person.email)}${person.institution?' · '+esc(person.institution):''}</div>
+        <div style="margin-top:9px">${dot(st==='active'?'ok':st==='invited'?'warn':'off', st)}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn sm" id="rst">${person.accepted ? 'Reset password' : 'Fresh invitation'}</button>
+        ${!person.accepted ? '<button class="btn sm" id="rev">Cancel invitation</button>' : ''}
+        <button class="btn sm" id="tog">${person.disabled ? 'Re-enable' : 'Disable'}</button>
+        ${courses.length ? '' : '<button class="btn sm danger" id="del">Delete</button>'}
+      </div>
+    </div>
+    <div id="rstout"></div>
+
+    <div class="strip" style="border-top:1px solid var(--line);margin-bottom:24px">
+      <div class="cell"><div class="n">${courses.length}</div><div class="l">Courses</div></div>
+      <div class="cell"><div class="n">${totals.students}</div><div class="l">Students</div></div>
+      <div class="cell"><div class="n">${totals.paid}</div><div class="l">Released</div></div>
+      <div class="cell"><div class="n">${totals.launches}</div><div class="l">Launches</div></div>
+    </div>
+
+    ${courses.length ? `
+      ${students.filter(s => !s.dropped).length > 6 ? `<div class="toolbar">
+        <div class="search"><input data-q="det" type="text" placeholder="Search this facilitator's students" value="${esc(D.q.det||'')}"></div>
+      </div>` : ''}
+      ${courses.map(c => {
+        const sims = courseSims.filter(cs => cs.course_id === c.id);
+        const inCourse = students.filter(s => s.course_id === c.id && !s.dropped)
+          .filter(s => !q || [s.name, s.email].join(' ').toLowerCase().includes(q));
+        return `<div class="cbox">
+          <div class="chead">
+            <div><b>${esc(c.title)}</b><div class="sub">${esc(c.term||'no term')} · join code ${esc(c.join_code)}</div></div>
+            <div class="meta">${sims.length ? esc(sims.map(x => x.title).join(', ')) : '<span class="dim">no simulations yet</span>'}</div>
+          </div>
+          ${inCourse.length ? `<div class="tablewrap"><table>
+            <thead><tr><th style="width:34%">Student</th><th style="width:1%">Access</th><th>Note</th><th class="num">Played</th></tr></thead>
+            <tbody>${inCourse.map(s => `<tr>
+              <td data-l="Student"><div class="nm">${esc(s.name)}</div><div class="sub">${esc(s.email)}</div></td>
+              <td data-l="Access">${dot(s.paid?'ok':'warn', s.paid?'released':'waiting')}</td>
+              <td data-l="Note" class="meta">${s.paid_note ? esc(s.paid_note) : '<span class="dim">—</span>'}</td>
+              <td data-l="Played" class="num">${s.launches}</td>
+            </tr>`).join('')}</tbody></table></div>`
+            : `<div class="empty">${q ? 'Nobody in this course matches that.' : 'Nobody enrolled yet.'}</div>`}
+        </div>`;
+      }).join('')}`
+      : '<div class="panel"><div class="empty">No courses yet. Nothing to show until they create one.</div></div>'}`;
+
+  const out = () => document.getElementById('rstout');
   const showLink = (label, url, note) => {
-    out().innerHTML = `<div class="note" style="margin-top:14px"><b>${esc(label)}</b> ${esc(note || '')}
-      <div class="copybox"><input type="text" id="rurl" readonly value="${esc(url)}"><button class="btn" id="rcopy">Copy</button></div></div>`;
-    $('rcopy').onclick = () => {
-      $('rurl').select(); navigator.clipboard.writeText(url);
-      $('rcopy').textContent = 'Copied';
-      setTimeout(() => { const b = $('rcopy'); if (b) b.textContent = 'Copy'; }, 1500);
-    };
+    out().innerHTML = `<div class="note"><b>${esc(label)}</b> ${esc(note||'')}
+      <div class="copyrow"><input id="rurl" readonly value="${esc(url)}"><button class="btn" id="rcopy">Copy</button></div></div>`;
+    document.getElementById('rcopy').onclick = () => {
+      document.getElementById('rurl').select(); navigator.clipboard.writeText(url);
+      flash(document.getElementById('rcopy'), 'Copied'); };
   };
-  const refresh = async () => {
-    D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: person.id });
-    await load();
-  };
-
-  $('back').onclick = () => { D.detail = null; D.detailSearch = ''; render(); };
-  const dq = $('det_q');
-  if (dq && dq.oninput === null) dq.oninput = () => {
-    D.detailSearch = dq.value; render();
-    const again = document.getElementById('det_q');
-    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
-  };   // visible: the whole view changes
-
-  $('rst').onclick = async () => {
-    const doneR = acting($('rst'), 'Creating…');
+  document.getElementById('back').onclick = () => { D.detail = null; D.q.det = ''; render(); };
+  document.getElementById('rst').onclick = async () => {
+    const b = document.getElementById('rst'); const done = acting(b, 'Creating…');
     try {
       if (person.accepted) {
         const d = await api('/api/admin', { action:'issue_reset', userId: person.id });
         showLink(`Send this to ${d.who}.`, d.resetUrl, 'It works once and expires in three days.');
       } else {
-        const d = await api('/api/admin', { action:'invite_faculty',
-          name: person.name, email: person.email, institution: person.institution });
+        const d = await api('/api/admin', { action:'invite_faculty', name:person.name, email:person.email, institution:person.institution });
         showLink(`Send this to ${person.name}.`, d.inviteUrl, 'A fresh invitation. It works once; any earlier link is replaced.');
       }
-      doneR();
-    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneR('Failed', 'bad'); }
+      done();
+    } catch (e) { out().innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Failed','bad'); }
   };
-
-  const rev = $('rev');
+  const rev = document.getElementById('rev');
   if (rev) rev.onclick = async () => {
     if (!confirm('Cancel the invitation? Any link already sent will stop working.')) return;
-    const doneV = acting(rev, 'Cancelling…');
-    try {
-      await api('/api/admin', { action:'revoke_invites', facultyId: person.id });
-      D.lastInvite = null;
-      out().innerHTML = '<div class="ok">Invitation cancelled. Any link already sent is now dead.</div>';
-      doneV();
-    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneV('Failed', 'bad'); }
+    const done = acting(rev, 'Cancelling…');
+    try { await api('/api/admin', { action:'revoke_invites', facultyId: person.id });
+      out().innerHTML = '<div class="hint" style="color:var(--green)">Invitation cancelled. Any link already sent is now dead.</div>'; done(); }
+    catch (e) { done('Failed','bad'); }
   };
-
-  const del = $('del');
+  document.getElementById('tog').onclick = async () => {
+    const b = document.getElementById('tog'); const done = acting(b, 'Saving…');
+    try { await api('/api/admin', { action:'set_faculty_disabled', facultyId: person.id, disabled: !person.disabled });
+      D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: person.id });
+      done(); await load(); }
+    catch (e) { done('Failed','bad'); }
+  };
+  const del = document.getElementById('del');
   if (del) del.onclick = async () => {
-    if (!confirm(`Delete ${person.name} entirely? This is refused if they have courses.`)) return;
-    const doneDel = acting(del, 'Deleting…');
-    try {
-      await api('/api/admin', { action:'delete_faculty', facultyId: person.id });
-      doneDel(); D.detail = null; D.lastInvite = null; await load();
-    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneDel('Not deleted', 'bad'); }
+    if (!confirm(`Delete ${person.name}? Only possible because they have no courses.`)) return;
+    const done = acting(del, 'Deleting…');
+    try { await api('/api/admin', { action:'delete_faculty', facultyId: person.id });
+      done(); D.detail = null; await load(); }
+    catch (e) { out().innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Refused','bad'); }
   };
-
-  $('tog').onclick = async () => {
-    const doneT = acting($('tog'), 'Saving…');
-    try {
-      await api('/api/admin', { action:'set_faculty_disabled', facultyId: person.id, disabled: !person.disabled });
-      doneT(); await refresh();
-    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneT('Failed', 'bad'); }
-  };
+  wireCommon();
 }
 
-function studentsTab() {
-  if (!D.students) { loadStudents(); return '<div class="card dim">Loading…</div>'; }
-  const q = (D.stuSearch || '').toLowerCase().trim();
-  const stuPage = paged('stu', D.students.filter(st => !q ||
-    [st.name, st.email, st.course_titles, st.faculty_names, st.sim_titles]
-      .filter(Boolean).join(' ').toLowerCase().includes(q)));
-  const shown = stuPage.rows;
-  return `
-    <h2>Students</h2>
-    <div class="card tight" style="margin-bottom:12px">
-      <input id="stu_q" type="text" placeholder="Search by name, email or course" value="${esc(D.stuSearch || '')}">
-    </div>
-    <div class="card" style="padding:0">
-      <div class="tablewrap"><table>
-        <thead><tr><th>Student</th><th>Course and facilitator</th><th>Simulations</th><th class="mono">Access</th><th class="mono">Played</th><th class="mono">Finished</th><th></th></tr></thead>
-        <tbody>
-        ${shown.map(st => `<tr>
-          <td data-l="Student"><b>${esc(st.name)}</b>
-            <div class="tiny dim mono">${esc(st.email)}</div>
-            <div class="tiny dim">joined ${when(st.created_at)}</div></td>
-          <td data-l="Course" class="tiny">${esc(st.course_titles || '—')}
-            ${st.faculty_names ? `<div class="dim" style="margin-top:3px">${esc(st.faculty_names)}</div>` : ''}</td>
-          <td data-l="Simulations" class="tiny">${st.sim_titles ? esc(st.sim_titles) : '<span class="dim">none yet</span>'}</td>
-          <td data-l="Access" class="mono">${Number(st.with_access) === Number(st.courses) && Number(st.courses) > 0
-              ? `<span class="pill ok">${st.with_access} of ${st.courses}</span>`
-              : `<span class="pill warn">${st.with_access} of ${st.courses}</span>`}</td>
-          <td data-l="Played" class="mono">${st.launches}</td>
-          <td data-l="Finished" class="mono">${Number(st.finished) > 0 ? `<span class="pill ok">${st.finished}</span>` : '0'}</td>
-          <td data-l="">
-            <button class="btn sm" data-pedit="${esc(st.id)}">Edit</button>
-            <button class="btn sm danger" data-sdel="${esc(st.id)}">Delete</button>
-          </td>
-        </tr>
-        ${D.personEdit === st.id ? `<tr><td colspan="7" style="background:var(--sunk);padding:16px 12px">
-          <div class="row" style="align-items:flex-start">
-            <div class="grow"><label class="f">Name</label><input type="text" data-pf="name" value="${esc(st.name)}"></div>
-            <div class="grow"><label class="f">Email</label><input type="email" data-pf="email" value="${esc(st.email)}"></div>
-          </div>
-          <div class="tiny dim" style="margin-top:8px">Their email is how they sign in. Changing it does not tell them.</div>
-          <div class="row" style="margin-top:12px">
-            <button class="btn pri sm" data-psave="${esc(st.id)}">Save</button>
-            <button class="btn sm" data-pcancel="1">Cancel</button>
-          </div>
-          <div data-pout="${esc(st.id)}"></div>
-        </td></tr>` : ''}`).join('') || `<tr><td colspan="7" class="dim">${D.students.length ? 'Nobody matches that.' : 'No students yet.'}</td></tr>`}
-        </tbody>
-      </table></div>
-      ${pager('stu', stuPage)}
-    </div>`;
-}
-async function loadStudents() {
-  try { D.students = (await api('/api/admin', { action:'all_students' })).students; render(); }
-  catch (e) { D.students = []; D.err = e.message; render(); }
-}
-
-function coursesTab() {
-  if (!D.allCourses) { load_courses(); return '<div class="card dim">Loading…</div>'; }
-  const cq = (D.courseSearch || '').toLowerCase().trim();
-  const cPage = paged('crs', D.allCourses.filter(c =>
-    !cq || [c.title, c.term, c.join_code, c.faculty_name, c.sim_titles]
-      .filter(Boolean).join(' ').toLowerCase().includes(cq)));
-  const rows = cPage.rows;
-  return `
-    <div class="card tight" style="margin:4px 0 10px">
-      <input id="crs_q" type="text" placeholder="Search by course, term, code, facilitator or simulation" value="${esc(D.courseSearch || '')}">
-    </div>
-    <div class="card" style="padding:0">
-      <div class="tablewrap"><table>
-        <thead><tr><th>Course</th><th>Facilitator</th><th>Simulations</th><th class="mono">Enrolled</th><th class="mono">Released</th><th class="mono">Launches</th></tr></thead>
-        <tbody>
-        ${rows.map(c => `<tr${c.archived ? ' style="opacity:.5"' : ''}>
-          <td data-l="Course"><b>${esc(c.title)}</b><div class="tiny dim">${esc(c.term || '')} · <span class="mono">${esc(c.join_code)}</span>${c.archived ? ' · archived' : ''}</div></td>
-          <td data-l="Facilitator">${esc(c.faculty_name)}${c.institution ? `<div class="tiny dim">${esc(c.institution)}</div>` : ''}</td>
-          <td data-l="Simulations" class="tiny">${esc(c.sim_titles || '—')}</td>
-          <td data-l="Enrolled" class="mono">${c.enrolled}</td>
-          <td data-l="Released" class="mono">${Number(c.paid) === Number(c.enrolled) && Number(c.enrolled) > 0
-              ? `<span class="pill ok">${c.paid}</span>` : `<span class="pill warn">${c.paid}</span>`}</td>
-          <td data-l="Launches" class="mono">${c.launches}</td>
-        </tr>`).join('') || '<tr><td colspan="6" class="dim">No courses yet.</td></tr>'}
-        </tbody>
-      </table></div>
-      ${pager('crs', cPage)}
-    </div>`;
-}
-async function load_courses() {
-  try { D.allCourses = (await api('/api/admin', { action:'all_courses' })).courses; render(); }
-  catch (e) { D.err = e.message; }
-}
-function wireCourses() {
-  const cq = document.getElementById('crs_q');
-  if (cq) cq.oninput = () => {
-    D.courseSearch = cq.value; D.page.crs = 1;
-    const body = document.getElementById('body');
-    body.innerHTML = coursesTab(); wireCourses();
-    const again = document.getElementById('crs_q');
-    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
-  };
-  app.querySelectorAll('[data-page]').forEach(b => b.onclick = () => {
-    const [key, n] = b.dataset.page.split(':');
-    D.page[key] = parseInt(n, 10); render();
-  });
-}
-
-function catalogueTab() {
-  const all = (D.data.sims || []);
-  const q = (D.simSearch || '').toLowerCase().trim();
-  const shown = all.filter(si => {
-    if (D.simFilter === 'published' && !si.published) return false;
-    if (D.simFilter === 'draft' && si.published) return false;
-    if (!q) return true;
-    return [si.title, si.id, si.tagline, si.description, si.number]
-      .filter(Boolean).join(' ').toLowerCase().includes(q);
-  });
-  const counts = { all: all.length,
-    published: all.filter(x => x.published).length,
-    draft: all.filter(x => !x.published).length };
-
-  return `
-    <h2>Sims</h2>
-    <div class="card tight" style="margin-bottom:16px">
-      <div class="row">
-        <div class="grow">
-          <input id="sim_q" type="text" placeholder="Search by title, id or number" value="${esc(D.simSearch || '')}">
-        </div>
-        ${[['all','Everything'],['published','Published'],['draft','Draft']].map(([k,l]) =>
-          `<button class="btn ${D.simFilter === k ? 'pri' : ''}" data-simfilter="${k}">${l} (${counts[k]})</button>`).join('')}
-      </div>
-    </div>
-
-    ${shown.map(si => {
-      const reviewers = (D.grants || []).filter(g => g.sim_id === si.id);
-      const open = D.simOpen === si.id;
-      return `<div class="card" style="padding:0;margin-bottom:10px">
-        <div class="row" style="justify-content:space-between;align-items:flex-start;padding:16px 20px;gap:14px">
-          <div style="flex:1;min-width:220px">
-            <div class="row" style="gap:10px;align-items:baseline">
-              <span class="mono" style="font-size:13px;color:var(--ink3);min-width:26px">${si.number ? String(si.number).padStart(2,'0') : '··'}</span>
-              <h3 style="margin:0">${esc(si.title)}</h3>
-              ${si.published ? '<span class="pill ok">published</span>'
-                : `<span class="pill warn">draft${reviewers.length ? ' · ' + reviewers.length + ' reviewing' : ''}</span>`}
-            </div>
-            <div class="tiny dim" style="margin-top:5px">${esc(si.tagline || '')}</div>
-            <div class="tiny dim mono" style="margin-top:6px">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url)}</div>
-          </div>
-          <div class="row" style="gap:6px">
-            <button class="btn sm" data-editsim="${esc(si.id)}">${D.simEdit === si.id ? 'Close' : 'Edit'}</button>
-            <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published ? '1' : '0'}">${si.published ? 'Unpublish' : 'Publish'}</button>
-            ${!si.published ? `<button class="btn sm" data-simopen="${esc(si.id)}">${open ? 'Hide reviewers' : 'Reviewers'}</button>` : ''}
-            <button class="btn sm danger" data-delsim="${esc(si.id)}">Delete</button>
-          </div>
-        </div>
-
-        ${D.simEdit === si.id ? `<div style="border-top:1px solid var(--line);padding:18px 20px;background:var(--sunk)">
-          <div class="eyebrow" style="margin-bottom:12px">Editing</div>
-          <div class="row" style="align-items:flex-start">
-            <div style="width:110px"><label class="f">Number</label>
-              <input type="number" min="1" data-f="number" value="${si.number || ''}"></div>
-            <div class="grow"><label class="f">Title</label>
-              <input type="text" data-f="title" value="${esc(si.title || '')}"></div>
-            <div style="width:120px"><label class="f">Minutes</label>
-              <input type="number" data-f="minutes" value="${si.minutes || ''}"></div>
-          </div>
-          <div class="field" style="margin-top:14px"><label class="f">Tagline</label>
-            <input type="text" data-f="tagline" value="${esc(si.tagline || '')}"></div>
-          <div class="field"><label class="f">Description</label>
-            <textarea rows="4" data-f="description">${esc(si.description || '')}</textarea></div>
-          <div class="tiny dim" style="margin-bottom:14px">The id and address come from the deployment itself and are not editable here.
-            Anything you write below is yours — the simulation will not overwrite it when it next announces itself.</div>
-          <div class="row">
-            <button class="btn pri" data-savesim="${esc(si.id)}">Save changes</button>
-            <button class="btn" data-canceledit="1">Cancel</button>
-          </div>
-          <div data-saveout="${esc(si.id)}"></div>
-        </div>` : ''}
-
-        ${(!si.published && open) ? `<div style="border-top:1px solid var(--line);padding:16px 20px;background:var(--sunk)">
-          <div class="eyebrow" style="margin-bottom:8px">Who can see it before it's published</div>
-          ${reviewers.map(g => `<div class="row" style="justify-content:space-between;padding:5px 0">
-            <div><b>${esc(g.name)}</b> <span class="tiny dim mono">${esc(g.email)}</span>
-              ${g.note ? `<div class="tiny dim">${esc(g.note)}</div>` : ''}</div>
-            <button class="btn sm" data-revgrant="${esc(g.id)}">Revoke</button>
-          </div>`).join('') || '<div class="tiny dim">Nobody yet — it is invisible to everyone but administrators.</div>'}
-          <div class="row" style="margin-top:12px">
-            <input type="email" data-grantmail="${esc(si.id)}" placeholder="their email" style="width:220px">
-            <input type="text" data-grantnote="${esc(si.id)}" placeholder="why, e.g. reviewing before we ship" style="width:250px">
-            <button class="btn" data-grant="${esc(si.id)}">Give review access</button>
-          </div>
-          <div class="tiny dim" style="margin-top:8px">They must already have a facilitator account. Grants disappear when the simulation is published.</div>
-        </div>` : ''}
-      </div>`;
-    }).join('') || `<div class="card dim">${all.length ? 'Nothing matches that.' : 'Nothing in the catalogue yet — add one below.'}</div>`}
-
-    <div class="rule" style="margin:34px 0 0"></div>
-    <div class="row" style="justify-content:space-between;align-items:center;margin-top:18px">
-      <div class="eyebrow">Maintenance</div>
-      <button class="btn sm" id="maint_toggle">${D.maintOpen ? 'Hide' : 'Show'}</button>
-    </div>
-
-    ${D.maintOpen ? `<div class="card tight" style="margin-top:12px">
-      <div class="row" style="justify-content:space-between;align-items:flex-start;padding:4px 0 14px;border-bottom:1px solid var(--line)">
-        <div style="flex:1;min-width:240px">
-          <b>Update the database</b>
-          <div class="tiny dim" style="margin-top:3px">Run after a release that adds tables or columns. Creates only what is missing and never drops anything, so running it again is harmless.</div>
-        </div>
-        <button class="btn" id="mig">Update</button>
-      </div>
-      <div id="migout"></div>
-
-      <div class="row" style="justify-content:space-between;align-items:flex-start;padding:14px 0 4px">
-        <div style="flex:1;min-width:240px">
-          <b style="color:var(--rose)">Clear the pilot data</b>
-          <div class="tiny dim" style="margin-top:3px">Deletes every facilitator, student, course, enrolment and record of play, so a trial can be run again from nothing. Administrators and the catalogue survive. There is no undo.</div>
-        </div>
-        <div class="row">
-          <input type="text" id="rst_confirm" placeholder="type DELETE EVERYTHING" style="width:200px">
-          <button class="btn danger" id="rst_go">Clear</button>
-        </div>
-      </div>
-      <div id="rst_out"></div>
-    </div>` : ''}
-
-    <div class="note">
-      Simulations appear here on their own. Each deployment tells the platform it exists the first time it is used, and arrives unpublished — invisible to everyone but you until you publish it or grant someone review access. There is nothing to add by hand.
-    </div>
-`;
-}
-
-function wireCatalogue() {
-  const sq = document.getElementById('sim_q');
-  const repaint = () => {
-    const body = document.getElementById('body');
-    body.innerHTML = catalogueTab(); wireCatalogue();
-  };
-  if (sq) sq.oninput = () => {
-    D.simSearch = sq.value;
-    repaint();
-    const again = document.getElementById('sim_q');
-    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
-  };
-  app.querySelectorAll('[data-simfilter]').forEach(b => b.onclick = () => { D.simFilter = b.dataset.simfilter; repaint(); });
-  app.querySelectorAll('[data-simopen]').forEach(b => b.onclick = () => {
-    D.simOpen = D.simOpen === b.dataset.simopen ? null : b.dataset.simopen; repaint(); });
-  app.querySelectorAll('[data-editsim]').forEach(b => b.onclick = () => {
-    D.simEdit = D.simEdit === b.dataset.editsim ? null : b.dataset.editsim;
-    D.simOpen = null; repaint(); });
-  app.querySelectorAll('[data-canceledit]').forEach(b => b.onclick = () => { D.simEdit = null; repaint(); });
-
-  app.querySelectorAll('[data-savesim]').forEach(btn => btn.onclick = async () => {
-    const simId = btn.dataset.savesim;
-    const si = (D.data.sims || []).find(x => x.id === simId);
-    const panel = btn.closest('div').parentElement;
-    const val = (f) => {
-      const el = panel.querySelector(`[data-f="${f}"]`);
-      return el ? el.value : '';
-    };
-    const out = app.querySelector(`[data-saveout="${simId}"]`);
+/* ── shared ─────────────────────────────────────────────────────────────── */
+function wirePerson() {
+  app.querySelectorAll('[data-pedit]').forEach(b => b.onclick = () => {
+    D.personEdit = D.personEdit === b.dataset.pedit ? null : b.dataset.pedit; D.link = null; render(); });
+  app.querySelectorAll('[data-psave]').forEach(btn => btn.onclick = async () => {
+    const uid = btn.dataset.psave, cell = btn.parentElement;
+    const v = f => { const el = cell.querySelector(`[data-pf="${f}"]`); return el ? el.value : undefined; };
+    const out = app.querySelector(`[data-pout="${uid}"]`);
     const done = acting(btn, 'Saving…');
     try {
-      await api('/api/admin', { action:'save_sim',
-        id: simId, number: val('number'), title: val('title'),
-        tagline: val('tagline'), description: val('description'),
-        minutes: val('minutes'), launchUrl: si.launch_url, published: !!si.published });
-      done('Saved'); D.simEdit = null; load();
-    } catch (e) {
-      if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
-      done('Not saved', 'bad');
-    }
+      await api('/api/admin', { action:'update_person', userId:uid, name:v('name'), email:v('email'), institution:v('institution') });
+      done('Saved'); D.personEdit = null; D.students = null; await load();
+    } catch (e) { if (out) out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Not saved','bad'); }
   });
-
-  app.querySelectorAll('[data-pub]').forEach(btn => btn.onclick = async () => {
-    const si = (D.data.sims || []).find(x => x.id === btn.dataset.pub);
-    if (!si) return;
-    const done = acting(btn, 'Saving…');
-    try {
-      await api('/api/admin', { action:'save_sim', id: si.id, number: si.number, title: si.title,
-        tagline: si.tagline, description: si.description, launchUrl: si.launch_url,
-        minutes: si.minutes, published: btn.dataset.now !== '1' });
-      done(); load();
-    } catch (e) { done('Failed', 'bad'); }
-  });
-
-  app.querySelectorAll('[data-grant]').forEach(btn => btn.onclick = async () => {
-    const sid = btn.dataset.grant;
-    const mail = app.querySelector(`[data-grantmail="${sid}"]`);
-    const note = app.querySelector(`[data-grantnote="${sid}"]`);
-    const done = acting(btn, 'Granting…');
-    try {
-      await api('/api/admin', { action:'grant_sim_access',
-        simId: sid, email: mail ? mail.value : '', note: note ? note.value : '' });
-      done('Granted'); load();
-    } catch (e) { done(e.message.slice(0, 24), 'bad'); }
-  });
-  app.querySelectorAll('[data-revgrant]').forEach(btn => btn.onclick = async () => {
-    const done = acting(btn, 'Revoking…');
-    try { await api('/api/admin', { action:'revoke_sim_access', grantId: btn.dataset.revgrant }); done(); load(); }
-    catch (e) { done('Failed', 'bad'); }
-  });
-
-  app.querySelectorAll('[data-delsim]').forEach(btn => btn.onclick = async () => {
-    if (!confirm('Delete this simulation from the catalogue? It will reappear, unpublished, the next time that deployment is used.')) return;
+  app.querySelectorAll('[data-pdel]').forEach(btn => btn.onclick = async () => {
+    if (!confirm('Delete this account? Only possible because they have no courses.')) return;
     const done = acting(btn, 'Deleting…');
-    try { await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim }); done(); load(); }
+    try { await api('/api/admin', { action:'delete_faculty', facultyId: btn.dataset.pdel });
+      done(); D.personEdit = null; await load(); }
     catch (e) {
-      if (confirm(e.message + '\n\nDelete it anyway?')) {
-        await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim, force: true });
-        done(); load();
-      } else done('Kept', 'bad');
+      const out = app.querySelector(`[data-pout="${btn.dataset.pdel}"]`);
+      if (out) out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`;
+      done('Refused','bad');
     }
   });
-
-  const rg = document.getElementById('rst_go');
-  if (rg) rg.onclick = async () => {
-    const out = document.getElementById('rst_out');
-    const done = acting(rg, 'Wiping…');
-    try {
-      await api('/api/admin', { action:'reset_test_data', confirm: document.getElementById('rst_confirm').value });
-      out.innerHTML = '<div class="ok">Done. Everything except administrators and the catalogue is gone.</div>';
-      D.detail = null; D.lastInvite = null; D.allCourses = null;
-      done(); load();
-    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; done('Failed', 'bad'); }
-  };
-
-  const mt = document.getElementById('maint_toggle');
-  if (mt) mt.onclick = () => { D.maintOpen = !D.maintOpen; repaint(); };
-
-  const mb = document.getElementById('mig');
-  if (mb) mb.onclick = async () => {
-    const out = document.getElementById('migout');
-    const done = acting(mb, 'Running…');
-    try {
-      const d = await api('/api/admin', { action:'migrate' });
-      out.innerHTML = `<div class="ok">Up to date — ${d.statements} statements checked.</div>`;
-      done();
-    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; done('Failed', 'bad'); }
-  };
+}
+function wireCommon() {
+  app.querySelectorAll('[data-q]').forEach(i => i.oninput = () => {
+    const k = i.dataset.q;
+    D.q[k] = i.value; D.page[k] = 1; render();
+    const again = app.querySelector(`[data-q="${k}"]`);
+    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+  });
+  app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => {
+    const [k, v] = b.dataset.f.split(':'); D.filter[k] = v; D.page[k] = 1; render(); });
+  app.querySelectorAll('[data-page]').forEach(b => b.onclick = () => {
+    const [k, n] = b.dataset.page.split(':'); D.page[k] = parseInt(n, 10); render(); });
 }
 
 (async () => {

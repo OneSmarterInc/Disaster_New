@@ -1,12 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root{
-  --paper:#F7F5F0; --card:#FFFFFF; --sunk:#EFEBE3;
-  --ink:#1B1F27; --ink2:#4A5162; --ink3:#7A8294; --ink4:#A8AEBC;
-  --line:#E2DDD3; --line2:#CFC8BA;
-  --amber:#B87415; --amber-soft:#FBF2E2; --amber-line:#E8C88E;
-  --green:#3F7A5E; --green-soft:#EDF4F0;
-  --rose:#A8465A; --rose-soft:#FAEDEF;
+  --paper:#F4F4F2; --card:#FFFFFF; --sunk:#F8F8F6;
+  --ink:#15171B; --ink2:#4E535C; --ink3:#878C95; --ink4:#A8AEBC;
+  --line:#E4E4E0; --line2:#CFCFC9;
+  --amber:#A8620D; --amber-soft:#FBF3E7; --amber-line:#E8C88E;
+  --green:#2F6B4F; --green-soft:#EFF5F1;
+  --rose:#9E3B50; --rose-soft:#FBEFF1;
   --serif:'Newsreader',Georgia,serif;
   --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
 }
@@ -191,4 +191,119 @@ td input,td select,td textarea{font-size:14.5px}
   h1{font-size:24px}
   td:before{flex-basis:78px}
   .stat{gap:14px}
+}
+
+
+/* ═══ console ═══════════════════════════════════════════════════════════════
+   The admin and faculty consoles are instruments, not pages: their job is to
+   let somebody scan rows and act on them. Denser than the rest of the platform,
+   serif reserved for naming things, mono for every label, number and status. */
+
+.top{background:var(--card);border-bottom:1px solid var(--line);padding:0 22px;height:52px;
+     display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
+.top .brand{font-size:15px;font-weight:500;letter-spacing:-.01em}
+.top .brand span{color:var(--amber);font-style:italic}
+.top .sep{width:1px;height:18px;background:var(--line)}
+.top .role{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.top .right{margin-left:auto;display:flex;gap:6px;align-items:center}
+
+/* counters: a hairline strip, not a card */
+.strip{display:flex;border-bottom:1px solid var(--line)}
+.strip .cell{padding:16px 26px 15px;border-right:1px solid var(--line)}
+.strip .cell:first-child{padding-left:0}
+.strip .cell:last-child{border-right:none}
+.strip .n{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1;letter-spacing:-.02em}
+.strip .l{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-top:6px}
+.strip .cell.quiet .n{color:var(--ink3)}
+
+/* tabs are a place you are, so they underline rather than look like buttons */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);
+     padding:13px 16px;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;background:none;border-top:0;border-left:0;border-right:0}
+.tab:hover{color:var(--ink2)}
+.tab.on{color:var(--ink);border-bottom-color:var(--amber)}
+.tab .count{color:var(--ink3);margin-left:6px}
+
+/* search, filters and the one primary action share a line */
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search{position:relative;flex:1;min-width:200px}
+.search input{width:100%;background:var(--card);border:1px solid var(--line2);padding:8px 12px 8px 32px;font-size:14px}
+.search:before{content:'';position:absolute;left:12px;top:50%;width:11px;height:11px;margin-top:-6px;
+  border:1.5px solid var(--ink3);border-radius:50%;pointer-events:none}
+.search:after{content:'';position:absolute;left:21px;top:50%;width:5px;height:1.5px;margin-top:3px;
+  background:var(--ink3);transform:rotate(45deg);pointer-events:none}
+
+.seg{display:flex;border:1px solid var(--line2);background:var(--card)}
+.seg button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  padding:8px 12px;color:var(--ink3);border:0;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--ink);color:var(--card)}
+
+.panel{background:var(--card);border:1px solid var(--line)}
+.panel table{width:100%;border-collapse:collapse}
+.panel th{background:var(--sunk);font-size:9px;padding:10px 14px}
+.panel td{padding:11px 14px;vertical-align:middle;font-size:14.5px}
+.panel th.num,.panel td.num{text-align:right;font-family:var(--mono);font-size:12.5px;white-space:nowrap;width:1%}
+.panel th.act,.panel td.act{text-align:right;white-space:nowrap;width:1%}
+.panel td.act .btn{margin-left:5px}
+.panel tbody tr:last-child td{border-bottom:none}
+
+.nm{font-size:15px;font-weight:500;letter-spacing:-.005em}
+.sub{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:2px}
+.meta{font-size:13.5px;color:var(--ink2);line-height:1.4}
+
+/* status as a dot: pills of differing widths make rows ragged */
+.st{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);white-space:nowrap}
+.st:before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:1px;background:var(--ink3)}
+.st.ok:before{background:var(--green)}
+.st.warn:before{background:var(--amber)}
+.st.bad:before{background:var(--rose)}
+.st.off:before{background:var(--line2)}
+
+.ratio{font-family:var(--mono);font-size:12.5px}
+.ratio .of{color:var(--ink3)}
+.ratio.part{color:var(--amber)}
+
+.foot{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;
+      border-top:1px solid var(--line);background:var(--sunk);gap:10px}
+.foot .info{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--ink3);text-transform:uppercase}
+
+.expand td{background:var(--sunk);padding:16px 14px}
+.field{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.field > div{flex:1;min-width:170px}
+.field input,.field textarea,.field select{width:100%;background:var(--card);border:1px solid var(--line2);padding:7px 10px;font-size:14px}
+.hint{font-size:12.5px;color:var(--ink3);line-height:1.5;margin:8px 0 12px;max-width:74ch}
+.empty{padding:26px 14px;color:var(--ink3);font-size:14px}
+.section{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3);
+         margin:28px 0 10px;display:flex;justify-content:space-between;align-items:center}
+.mini{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+
+/* a simulation is a described thing, so the catalogue is a list not a table */
+.sim{display:flex;gap:16px;align-items:flex-start;padding:15px 16px;border-bottom:1px solid var(--line)}
+.sim:last-child{border-bottom:none}
+.sim .no{font-family:var(--mono);font-size:12px;color:var(--ink3);padding-top:4px;min-width:22px}
+.sim .body{flex:1;min-width:0}
+.sim .t{font-size:16px;font-weight:500;letter-spacing:-.01em}
+.sim .tag{font-size:13.5px;color:var(--ink2);margin-top:2px}
+.sim .id{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:6px;word-break:break-all}
+.sim .side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;white-space:nowrap}
+
+.crumb{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink3);margin:18px 0 8px}
+.crumb a{color:var(--ink3);cursor:pointer}
+.crumb a:hover{color:var(--ink)}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.head h1{font-size:28px;font-weight:400;letter-spacing:-.02em;margin:0}
+.cbox{border:1px solid var(--line);background:var(--card);margin-bottom:12px}
+.chead{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.copyrow{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+.copyrow input{flex:1;min-width:200px;font-family:var(--mono);font-size:12px;background:var(--card);border:1px solid var(--line2);padding:7px 10px}
+
+@media (max-width:860px){
+  .strip{flex-wrap:wrap}
+  .strip .cell{padding:12px 18px;border-bottom:1px solid var(--line)}
+  .strip .cell:first-child{padding-left:0}
+  .sim{flex-wrap:wrap}
+  .sim .side{align-items:flex-start;width:100%;flex-direction:row;justify-content:space-between}
+  .top{height:auto;min-height:52px;flex-wrap:wrap;padding:8px 14px}
+  .top .brand{width:100%}
 }
