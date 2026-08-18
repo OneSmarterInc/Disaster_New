@@ -26,6 +26,25 @@ async function api(path, payload) {
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
 }
+
+// Every action button says what happened, where it was pressed.
+function flash(btn, msg, kind) {
+  if (!btn) return;
+  const original = btn.textContent;
+  btn.textContent = msg;
+  btn.style.borderColor = kind === 'bad' ? 'var(--rose)' : 'var(--green)';
+  btn.style.color = kind === 'bad' ? 'var(--rose)' : 'var(--green)';
+  setTimeout(() => { btn.textContent = original; btn.style.borderColor = ''; btn.style.color = ''; }, 1800);
+}
+function acting(btn, working) {
+  if (!btn) return () => {};
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = working || 'Working…';
+  return (msg, kind) => {
+    btn.disabled = false;
+    if (msg) { btn.textContent = original; flash(btn, msg, kind); } else btn.textContent = original;
+  };
+}
 const simLabel = (x) => (x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { day:'numeric', month:'short' }) : '—';
 const daysLeft = t => Math.max(0, Math.ceil((new Date(t) - Date.now()) / 86400000));
@@ -137,15 +156,18 @@ function renderHome() {
       .catch(() => { F.simsOverview = []; render(); });
   }
   document.getElementById('c_go').onclick = async () => {
+    const btn = document.getElementById('c_go');
     const t = document.getElementById('c_t').value.trim();
-    if (!t) return;
-    await api('/api/faculty', { action:'create_course', title: t, term: document.getElementById('c_m').value });
-    loadHome();
+    if (!t) { flash(btn, 'Needs a title', 'bad'); return; }
+    const done = acting(btn, 'Creating…');
+    try { await api('/api/faculty', { action:'create_course', title: t, term: document.getElementById('c_m').value });
+      done(); loadHome(); } catch (e) { done('Failed', 'bad'); }
   };
   app.querySelectorAll('[data-course]').forEach(b => b.onclick = () => openCourse(b.dataset.course));
   app.querySelectorAll('[data-prev]').forEach(b => b.onclick = async () => {
-    await api('/api/faculty', { action:'start_preview', simId: b.dataset.prev });
-    loadHome();
+    const done = acting(b, 'Starting…');
+    try { await api('/api/faculty', { action:'start_preview', simId: b.dataset.prev }); done(); loadHome(); }
+    catch (e) { done('Failed', 'bad'); }
   });
 }
 
@@ -254,16 +276,19 @@ function renderCourse() {
   document.getElementById('ecopy').onclick = () => {
     document.getElementById('eurl').select();
     navigator.clipboard.writeText(enrolUrl);
+    flash(document.getElementById('ecopy'), 'Copied');
   };
 
   const ago = document.getElementById('a_go');
   if (ago) ago.onclick = async () => {
-    await api('/api/faculty', { action:'add_sim', courseId: course.id,
+    const done = acting(ago, 'Adding…');
+    try { await api('/api/faculty', { action:'add_sim', courseId: course.id,
       simId: document.getElementById('a_sim').value,
-      expectedSeats: document.getElementById('a_seats').value });
-    openCourse(course.id);
+      expectedSeats: document.getElementById('a_seats').value }); done(); openCourse(course.id); }
+    catch (e) { done('Failed', 'bad'); }
   };
   document.getElementById('c_edit').onclick = () => {
+    flash(document.getElementById('c_edit'), 'Editing ↓');
     const box = document.getElementById('c_editbox');
     box.innerHTML = `<div class="card tight">
       <div class="row">
@@ -274,39 +299,46 @@ function renderCourse() {
       </div></div>`;
     document.getElementById('e_no').onclick = () => { box.innerHTML = ''; };
     document.getElementById('e_go').onclick = async () => {
-      await api('/api/faculty', { action:'update_course', courseId: course.id,
+      const eb = document.getElementById('e_go');
+      const done = acting(eb, 'Saving…');
+      try { await api('/api/faculty', { action:'update_course', courseId: course.id,
         title: document.getElementById('e_t').value, term: document.getElementById('e_m').value });
-      openCourse(course.id);
+        done(); openCourse(course.id); } catch (e) { done('Failed', 'bad'); }
     };
   };
   document.getElementById('c_del').onclick = async () => {
     if (!confirm('Delete this course? Everyone enrolled loses it.')) return;
+    const doneD = acting(document.getElementById('c_del'), 'Deleting…');
     try {
       await api('/api/faculty', { action:'delete_course', courseId: course.id });
-      loadHome();
+      doneD(); loadHome();
     } catch (e) {
       if (confirm(e.message + '\n\nDelete it anyway?')) {
         await api('/api/faculty', { action:'delete_course', courseId: course.id, force: true });
-        loadHome();
-      }
+        doneD(); loadHome();
+      } else doneD('Kept', 'bad');
     }
   };
   document.getElementById('c_arch').onclick = async () => {
     if (!confirm('Archive this course? It disappears from your list and nobody new can join. Nothing is deleted.')) return;
-    await api('/api/faculty', { action:'update_course', courseId: course.id, archived: true });
-    loadHome();
+    const doneA = acting(document.getElementById('c_arch'), 'Archiving…');
+    try { await api('/api/faculty', { action:'update_course', courseId: course.id, archived: true });
+      doneA(); loadHome(); } catch (e) { doneA('Failed', 'bad'); }
   };
   app.querySelectorAll('[data-seats]').forEach(b => b.onclick = async () => {
     const cur = b.dataset.cur || '';
     const v = prompt('How many students do you expect for this simulation?\n\nThis is a forecast, not a limit — nobody is turned away if more enrol.', cur);
     if (v === null) return;
-    await api('/api/faculty', { action:'add_sim', courseId: course.id, simId: b.dataset.seats, expectedSeats: v });
-    openCourse(course.id);
+    const done = acting(b, 'Saving…');
+    try { await api('/api/faculty', { action:'add_sim', courseId: course.id, simId: b.dataset.seats, expectedSeats: v });
+      done(); openCourse(course.id); } catch (e) { done('Failed', 'bad'); }
   });
   app.querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProgress(course.id, b.dataset.prog));
   app.querySelectorAll('[data-rmsim]').forEach(b => b.onclick = async () => {
-    await api('/api/faculty', { action:'remove_sim', courseId: course.id, simId: b.dataset.rmsim });
-    openCourse(course.id);
+    if (!confirm('Remove this simulation from the course? Students lose access to it; nothing they have already done is deleted.')) return;
+    const done = acting(b, 'Removing…');
+    try { await api('/api/faculty', { action:'remove_sim', courseId: course.id, simId: b.dataset.rmsim });
+      done(); openCourse(course.id); } catch (e) { done('Failed', 'bad'); }
   });
 
   const selBtn = document.getElementById('p_sel');
@@ -317,29 +349,35 @@ function renderCourse() {
   });
 
   document.getElementById('p_all').onclick = async () => {
-    await api('/api/faculty', { action:'set_paid', courseId: course.id, all: true, paid: true,
-      note: document.getElementById('p_note').value });
-    openCourse(course.id);
+    const btn = document.getElementById('p_all');
+    const done = acting(btn, 'Giving access…');
+    try { await api('/api/faculty', { action:'set_paid', courseId: course.id, all: true, paid: true,
+      note: document.getElementById('p_note').value }); done(); openCourse(course.id); }
+    catch (e) { done('Failed', 'bad'); }
   };
   selBtn.onclick = async () => {
-    await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: true,
+    const done = acting(selBtn, 'Giving access…');
+    try { await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: true,
       enrolmentIds: [...F.sel], note: document.getElementById('p_note').value });
-    openCourse(course.id);
+      done(); openCourse(course.id); } catch (e) { done('Failed', 'bad'); }
   };
   app.querySelectorAll('[data-give]').forEach(b => b.onclick = async () => {
-    await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: true,
-      enrolmentIds: [b.dataset.give], note: document.getElementById('p_note').value });
-    openCourse(course.id);
+    const done = acting(b, 'Giving…');
+    try { await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: true,
+      enrolmentIds: [b.dataset.give], note: document.getElementById('p_note').value }); done(); openCourse(course.id); }
+    catch (e) { done('Failed', 'bad'); }
   });
   app.querySelectorAll('[data-revoke]').forEach(b => b.onclick = async () => {
     if (!confirm('Take access away? If they have already played, that does not undo it.')) return;
-    await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: false, enrolmentIds: [b.dataset.revoke] });
-    openCourse(course.id);
+    const done = acting(b, 'Removing…');
+    try { await api('/api/faculty', { action:'set_paid', courseId: course.id, paid: false, enrolmentIds: [b.dataset.revoke] });
+      done(); openCourse(course.id); } catch (e) { done('Failed', 'bad'); }
   });
   app.querySelectorAll('[data-drop]').forEach(b => b.onclick = async () => {
-    await api('/api/faculty', { action:'set_dropped', courseId: course.id,
+    const done = acting(b, 'Saving…');
+    try { await api('/api/faculty', { action:'set_dropped', courseId: course.id,
       enrolmentId: b.dataset.drop, dropped: b.dataset.now !== '1' });
-    openCourse(course.id);
+      done(); openCourse(course.id); } catch (e) { done('Failed', 'bad'); }
   });
 }
 
