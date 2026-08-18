@@ -48,6 +48,13 @@ const cases = [
 
   // nothing relevant said at all
   ['Joanna, how did a superseded revision stay in the library?', false, false],
+
+  // wondering aloud and then deciding, in one message — the instruction wins
+  ['Should we hold that job? Hold the overnight job — do not let it run.', true, true],
+  ['What happens if it rebuilds tonight? Stop the re-index.',              true, true],
+  ['Could we pause the job? Actually yes — freeze the index.',             true, true],
+  // and the reverse order, which must still hold
+  ['Hold the nightly job. Or should we? No, hold it.',                     true, true],
 ];
 
 (async () => {

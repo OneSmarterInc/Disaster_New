@@ -34,16 +34,23 @@ function localVerdict(text) {
   if (!t) return { decided: true, held: false, quote: '' };
 
   const sentences = t.split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean);
+
+  // Every sentence is examined before returning anything negative. Someone who
+  // wonders aloud and then decides — "Should we hold that job? Hold it." — has
+  // instructed a hold, and stopping at the question would lose it.
+  let sawQuestion = false;
   for (const sentence of sentences) {
     if (!SUBJECT.test(sentence)) continue;                 // not about the job at all
 
     const asks = /\?\s*$/.test(sentence) || INTERROGATIVE.test(sentence);
-    if (asks) return { decided: true, held: false, quote: '' };   // a question, plainly
+    if (asks) { sawQuestion = true; continue; }
 
-    if (DIRECTIVE.test(sentence) || (IMPERATIVE.test(sentence) && !asks)) {
+    if (DIRECTIVE.test(sentence) || IMPERATIVE.test(sentence)) {
       return { decided: true, held: true, quote: sentence.slice(0, 300) };
     }
   }
+  // Only a question about it, and nothing that told anyone to do anything.
+  if (sawQuestion) return { decided: true, held: false, quote: '' };
   return { decided: false };
 }
 
