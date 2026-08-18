@@ -281,6 +281,62 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true });
       }
 
+      // Every student, with where they are and what they have done. The counter
+      // on the dashboard said two and there was nowhere to go and see who.
+      case 'all_students': {
+        const rows = await s`
+          SELECT u.id, u.name, u.email, u.created_at, u.last_seen_at, u.disabled,
+                 count(DISTINCT e.course_id) FILTER (WHERE e.dropped = false) AS courses,
+                 count(DISTINCT e.course_id) FILTER (WHERE e.dropped = false AND e.paid = true) AS with_access,
+                 count(DISTINCT l.id) AS launches,
+                 count(DISTINCT c2.id) AS finished,
+                 string_agg(DISTINCT co.title, ', ') AS course_titles
+          FROM users u
+          LEFT JOIN enrolments e ON e.student_id = u.id
+          LEFT JOIN courses co ON co.id = e.course_id AND e.dropped = false
+          LEFT JOIN launches l ON l.user_id = u.id
+          LEFT JOIN completions c2 ON c2.user_id = u.id
+          WHERE u.role = 'student'
+          GROUP BY u.id, u.name, u.email, u.created_at, u.last_seen_at, u.disabled
+          ORDER BY u.name`;
+        return res.status(200).json({ students: rows });
+      }
+
+      // Correcting a mistyped email or name, rather than deleting and starting again.
+      case 'update_person': {
+        const uid = String(b.userId || '');
+        const person = (await s`SELECT id, role FROM users WHERE id = ${uid}`)[0];
+        if (!person) return res.status(404).json({ error: 'no_such_user' });
+        if (person.role === 'admin') return res.status(403).json({ error: 'not_an_admin',
+          message: 'Administrator accounts cannot be edited here.' });
+        const name = String(b.name || '').trim();
+        const email = String(b.email || '').trim().toLowerCase();
+        if (email) {
+          const clash = (await s`SELECT id FROM users WHERE email = ${email} AND id <> ${uid}`)[0];
+          if (clash) return res.status(409).json({ error: 'email_taken',
+            message: 'Another account already uses that email.' });
+          await s`UPDATE users SET email = ${email} WHERE id = ${uid}`;
+        }
+        if (name) await s`UPDATE users SET name = ${name} WHERE id = ${uid}`;
+        if (b.institution !== undefined) {
+          await s`UPDATE users SET institution = ${String(b.institution).trim() || null} WHERE id = ${uid}`;
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      case 'delete_student': {
+        const uid = String(b.userId || '');
+        const person = (await s`SELECT id, name, role FROM users WHERE id = ${uid}`)[0];
+        if (!person || person.role !== 'student') return res.status(404).json({ error: 'no_such_student' });
+        const played = (await s`SELECT count(*)::int AS n FROM launches WHERE user_id = ${uid}`)[0];
+        if (played && played.n > 0 && !b.force) {
+          return res.status(409).json({ error: 'has_history',
+            message: `${person.name} has opened simulations ${played.n} time${played.n === 1 ? '' : 's'}. Deleting takes that record with them — confirm if that is what you want.` });
+        }
+        await s`DELETE FROM users WHERE id = ${uid}`;
+        return res.status(200).json({ ok: true });
+      }
+
       // ---------- pre-publication review ----------
       case 'grant_sim_access': {
         const simId = String(b.simId || '');
