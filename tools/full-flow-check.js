@@ -6,6 +6,8 @@
 // Run from the repository root: node tools/full-flow-check.js
 // sims, a student enrols, access is released, each sim is launched, each reports
 // a completion, and the faculty view shows it. Real handler code, fake database.
+const path = require('path');
+const ROOT = path.join(__dirname, '..');
 process.env.LAUNCH_SECRET = 'shared';
 process.env.PUBLIC_BASE_URL = 'https://platform.test';
 
@@ -77,11 +79,11 @@ function sql() {
     return R([]);
   };
 }
-require.cache[require.resolve('./platform/lib/db.js')] = { exports: { sql, id: nid, joinCode: () => 'ABC123' } };
+require.cache[require.resolve(path.join(ROOT,'platform/lib/db.js'))] = { exports: { sql, id: nid, joinCode: () => 'ABC123' } };
 
-const A = require('./platform/lib/auth.js');
-const P = require('./platform/lib/launch.js');
-const { verifyLaunch } = require('./sim/lib/launch.js');
+const A = require(path.join(ROOT,'platform/lib/auth.js'));
+const P = require(path.join(ROOT,'platform/lib/launch.js'));
+const { verifyLaunch } = require(path.join(ROOT,'sim/lib/launch.js'));
 
 const call = (h, body, cookie) => new Promise(res => {
   let setCookie = null;
@@ -99,11 +101,11 @@ const call = (h, body, cookie) => new Promise(res => {
   DB.sessions['s_adm'] = { id:'s_adm', user_id:'adm' };
   const adminCookie = 'fx_sess=s_adm';
 
-  const admin = require('./platform/api/admin.js');
-  const faculty = require('./platform/api/faculty.js');
-  const student = require('./platform/api/student.js');
-  const launch = require('./platform/api/launch.js');
-  const complete = require('./platform/api/complete.js');
+  const admin = require(path.join(ROOT,'platform/api/admin.js'));
+  const faculty = require(path.join(ROOT,'platform/api/faculty.js'));
+  const student = require(path.join(ROOT,'platform/api/student.js'));
+  const launch = require(path.join(ROOT,'platform/api/launch.js'));
+  const complete = require(path.join(ROOT,'platform/api/complete.js'));
 
   await call(admin, { action:'save_sim', id:'rapid-01-disaster', number:1, title:'Disaster or Breach?', launchUrl:'https://sim1.test', minutes:20, published:true }, adminCookie);
   await call(admin, { action:'save_sim', id:'rapid-02-relay', number:2, title:'What Did It Tell Them?', launchUrl:'https://sim2.test', minutes:20, published:false }, adminCookie);
@@ -113,7 +115,7 @@ const call = (h, body, cookie) => new Promise(res => {
   const inviteToken = r.body.inviteUrl.split('t=')[1];
   ok('admin invites a facilitator', r.status===200, r.body.inviteUrl.slice(0,44)+'…');
 
-  const auth = require('./platform/api/auth.js');
+  const auth = require(path.join(ROOT,'platform/api/auth.js'));
   r = await call(auth, { action:'invite_accept', token: inviteToken, password:'password1' });
   const facCookie = r.cookie;
   const facId = Object.values(DB.users).find(u=>u.email==='chuck@t.com').id;
@@ -151,7 +153,7 @@ const call = (h, body, cookie) => new Promise(res => {
     ok(`released student launches ${simId}`, r.status===200 && seen && seen.role==='student', seen ? `sim verifies: ${seen.name}` : 'token rejected');
 
     // the sim finishes and reports back
-    const { signBack } = require('./sim/lib/launch.js');
+    const { signBack } = require(path.join(ROOT,'sim/lib/launch.js'));
     const back = signBack({ sub: seen.sub, sim: simId, course: courseId, duration: 1180,
       summary:'Finished all three decisions.', metrics:{ 'Final reading':'Both' }, exp: Date.now()+60000 });
     const c = await call(complete, { token: back });
@@ -161,5 +163,5 @@ const call = (h, body, cookie) => new Promise(res => {
   ok('both completions stored', DB.completions.length===2,
      DB.completions.map(c=>c.sim_id).join(', '));
   ok('completion without a launch is refused',
-     (await call(complete, { token: require('./sim/lib/launch.js').signBack({ sub:'nobody', sim:'rapid-01-disaster', exp:Date.now()+60000 }) })).status===404);
+     (await call(complete, { token: require(path.join(ROOT,'sim/lib/launch.js')).signBack({ sub:'nobody', sim:'rapid-01-disaster', exp:Date.now()+60000 }) })).status===404);
 })();
