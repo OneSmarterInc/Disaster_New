@@ -1477,7 +1477,10 @@ mountSettings();
 mountHelp();
 
 (async function boot() {
-  if (LAUNCH && (LAUNCH.role === 'faculty' || LAUNCH.role === 'faculty_preview')) {
+  // A facilitator arrives either to play it themselves or to run a session with
+  // a class. The platform says which; only the second belongs in the console.
+  if (LAUNCH && (LAUNCH.role === 'faculty' || LAUNCH.role === 'faculty_preview')
+      && LAUNCH.mode === 'session') {
     location.replace('/faculty.html?lt=' + encodeURIComponent(LAUNCH_TOKEN));
     return;
   }

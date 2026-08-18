@@ -38,12 +38,13 @@ function verify(token) {
 
 // Deliberately minimal: the sim learns who is playing and in what capacity,
 // and nothing else about them.
-function launchToken({ userId, name, role, simId, courseId, minutes = 10 }) {
+function launchToken({ userId, name, role, simId, courseId, mode, minutes = 10 }) {
   return sign({
     sub: userId,
     name,
     role,                      // 'student' | 'faculty' | 'faculty_preview'
     sim: simId,
+    mode: mode || 'play',
     course: courseId || null,
     iat: Date.now(),
     exp: Date.now() + minutes * 60000

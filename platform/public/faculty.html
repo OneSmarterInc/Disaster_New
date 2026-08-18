@@ -198,7 +198,7 @@ function simsTab() {
           <td data-l="Finished" class="num">${x.inUse ? `<span class="ratio ${Number(x.finished)<Number(x.started)?'part':''}">${x.finished}</span>` : '—'}</td>
           <td data-l="" class="act">
             ${x.inUse ? dot('ok','In use')
-              : live ? `${dot('warn','Preview · ' + daysLeft(p.expires_at) + 'd')}<a class="btn sm" style="margin-left:8px" href="/api/launch?sim=${encodeURIComponent(x.id)}">Open it</a>`
+              : live ? `${dot('warn','Preview · ' + daysLeft(p.expires_at) + 'd')}<a class="btn sm" style="margin-left:8px" href="/api/launch?sim=${encodeURIComponent(x.id)}">Play it</a>`
               : p ? dot('off','Preview ended')
               : `<button class="btn sm" data-prev="${esc(x.id)}">Preview for 7 days</button>`}
           </td>
@@ -271,7 +271,8 @@ function renderCourse() {
           </div>
           <div class="side">
             <div>
-              <a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Open the simulation</a>
+              <a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session">Run a session</a>
+              <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Play it yourself</a>
               <button class="btn sm" data-prog="${esc(x.sim_id)}">Who has played</button>
               <button class="btn sm" data-seats="${esc(x.sim_id)}" data-cur="${x.expected_seats||''}">Expected number</button>
               <button class="btn sm danger" data-rmsim="${esc(x.sim_id)}">Remove</button>

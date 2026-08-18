@@ -23,6 +23,10 @@ module.exports = async (req, res) => {
   const wants = q.format === 'json' ? 'json' : 'html';
   const simId = String(q.sim || '');
   const courseId = String(q.course || '') || null;
+  // Why they are going: to play it, or to run a session with a class. A
+  // facilitator wants both at different moments, and guessing gets it wrong
+  // half the time.
+  const mode = q.mode === 'session' ? 'session' : 'play';
 
   const me = await A.currentUser(req);
   if (!me) {
@@ -96,7 +100,7 @@ module.exports = async (req, res) => {
 
     const token = launchToken({
       userId: me.id, name: me.name, role: asRole,
-      simId, courseId, minutes: 10
+      simId, courseId, mode, minutes: 10
     });
 
     const url = sim.launch_url.replace(/\/$/, '') + '/?lt=' + encodeURIComponent(token);
