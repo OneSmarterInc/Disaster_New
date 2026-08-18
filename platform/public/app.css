@@ -35,6 +35,9 @@ a:hover{text-decoration:underline}
 .bar .who{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink3);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38ch}
 .wrap{max-width:1080px;margin:0 auto;padding:34px 26px 80px}
+/* the consoles are tables, and a table wants room — the reading pages stay
+   narrow deliberately, because prose does not */
+body.console .wrap{max-width:1440px;padding-top:0}
 .narrow{max-width:520px;margin:0 auto;padding:70px 26px 80px}
 
 h1{font-size:36px;font-weight:300;letter-spacing:-.025em;line-height:1.12;margin:6px 0 14px}
@@ -111,17 +114,22 @@ td[data-l=""]{white-space:nowrap}
 td[data-l=""] .btn{margin-left:5px;vertical-align:middle}
 td[data-l=""] .btn:first-child{margin-left:0}
 
-/* the first column carries the person or thing, so give it room — but not so
-   much that a narrow window cannot fit the rest */
-td:first-child{min-width:150px}
+/* the first column carries the person or thing. A floor, not a demand — the
+   name and email beneath it wrap rather than widening the table. */
+td:first-child{min-width:0}
+.panel td:first-child{min-width:170px}
+.panel td .sub{word-break:break-word}
 
 /* dates and other short facts should not be squeezed to two characters */
 td.when,th.when{white-space:nowrap;width:1%}
 
 /* a table never widens its card; if it genuinely cannot fit, it scrolls
    inside rather than pushing the page sideways */
-.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 .tablewrap table{min-width:100%}
+.tablewrap::-webkit-scrollbar{height:7px}
+.tablewrap::-webkit-scrollbar-thumb{background:var(--line2)}
+.tablewrap::-webkit-scrollbar-track{background:transparent}
 
 /* inputs sitting inside a table row shouldn't inherit the row's font size */
 td input,td select,td textarea{font-size:14.5px}
@@ -217,7 +225,9 @@ td input,td select,td textarea{font-size:14.5px}
 .strip .cell.quiet .n{color:var(--ink3)}
 
 /* tabs are a place you are, so they underline rather than look like buttons */
-.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto;
+      scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
 .tab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);
      padding:13px 16px;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;background:none;border-top:0;border-left:0;border-right:0}
 .tab:hover{color:var(--ink2)}
@@ -243,7 +253,10 @@ td input,td select,td textarea{font-size:14.5px}
 .panel table{width:100%;border-collapse:collapse}
 .panel th{background:var(--sunk);font-size:9px;padding:10px 14px}
 .panel td{padding:11px 14px;vertical-align:middle;font-size:14.5px}
+/* numeric and action columns take exactly what they need, so whatever is left
+   goes to the column carrying the words */
 .panel th.num,.panel td.num{text-align:right;font-family:var(--mono);font-size:12.5px;white-space:nowrap;width:1%}
+.panel th.num,.panel td.num{padding-left:20px}
 .panel th.act,.panel td.act{text-align:right;white-space:nowrap;width:1%}
 .panel td.act .btn{margin-left:5px}
 .panel tbody tr:last-child td{border-bottom:none}
