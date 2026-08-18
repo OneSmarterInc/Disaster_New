@@ -105,7 +105,7 @@ function screenStart() {
     <p>Create a session, hand the code to the room, put people into groups, then start. You control the clock and when the resolution appears.</p>
     <div class="card">
       <div class="row">
-        <input type="password" id="fc" placeholder="facilitator code" value="${esc(F.facultyCode || '')}">
+        ${F.launchToken ? '' : `<input type="password" id="fc" placeholder="facilitator code" value="${esc(F.facultyCode || '')}">`}
         <button class="btn pri" id="mk">Create a session</button>
       </div>
       <div class="row" style="margin-top:14px">
@@ -116,7 +116,8 @@ function screenStart() {
       <div class="note">Sessions last 48 hours and then delete themselves. Nothing about a student is stored beyond the name they type.</div>
     </div>`;
   document.getElementById('mk').onclick = async () => {
-    F.facultyCode = document.getElementById('fc').value.trim() || null;
+    const fcEl = document.getElementById('fc');
+    if (fcEl) F.facultyCode = fcEl.value.trim() || null;
     F.err = null;
     try {
       const d = await api({ action: 'create', name: 'Rapid Sim 01 — Disaster or Breach?' });
@@ -126,7 +127,8 @@ function screenStart() {
     } catch (e) { F.err = e.message; screenStart(); }
   };
   document.getElementById('rj').onclick = async () => {
-    F.facultyCode = document.getElementById('fc').value.trim() || null;
+    const fcEl = document.getElementById('fc');
+    if (fcEl) F.facultyCode = fcEl.value.trim() || null;
     F.code = document.getElementById('rc').value.trim().toUpperCase();
     F.err = null;
     if (F.code) startPolling();

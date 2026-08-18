@@ -2,6 +2,7 @@
 // so the deployment stays small.
 const { body } = require('../lib/guard.js');
 const store = require('../lib/store.js');
+const { verifyLaunch } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1
@@ -25,6 +26,17 @@ function facultyRoster() {
 
 // Returns { name } for a valid code, or null.
 function whoIsFaculty(req, b) {
+  // Someone sent here by the platform has already proved who they are: the
+  // launch token is signed and says they are faculty. Asking them for a
+  // facilitator code as well would be asking for something the platform never
+  // gave them.
+  const lt = req.headers['x-launch-token'] || (b && b.launchToken);
+  if (lt) {
+    const p = verifyLaunch(String(lt));
+    if (p && (p.role === 'faculty' || p.role === 'faculty_preview')) {
+      return { name: p.name || 'Facilitator' };
+    }
+  }
   const roster = facultyRoster();
   if (!roster.length) return { name: 'Facilitator' };   // nothing configured — open
   const given = String((b && b.facultyCode) || req.headers['x-faculty-code'] || '').trim();
