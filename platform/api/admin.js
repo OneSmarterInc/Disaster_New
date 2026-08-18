@@ -350,6 +350,40 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true });
       }
 
+      // Re-asks every simulation we know about what it is, so a redeploy that
+      // changed a title or moved to a new address is picked up without waiting
+      // for somebody to open it. Also reports anything that has stopped
+      // answering, which is how a dead deployment gets noticed before a class
+      // rather than during one.
+      case 'refresh_sims': {
+        const sims = await s`SELECT id, title, launch_url FROM sims WHERE launch_url IS NOT NULL`;
+        const ours = process.env.LAUNCH_SECRET
+          ? crypto.createHash('sha256').update(String(process.env.LAUNCH_SECRET)).digest('hex').slice(0, 8) : null;
+        const results = [];
+        for (const sim of sims) {
+          const base = String(sim.launch_url).replace(/\/+$/, '');
+          try {
+            const r = await fetch(base + '/api/health', { signal: AbortSignal.timeout(7000) });
+            if (!r.ok) { results.push({ id: sim.id, title: sim.title, state: 'unreachable',
+              detail: `answered ${r.status}` }); continue; }
+            const h = await r.json();
+            const problems = [];
+            if (h.sim && h.sim !== sim.id) problems.push(`it says it is ${h.sim}`);
+            if (h.characters !== 'configured') problems.push('no API key');
+            if (h.launchSecret !== 'configured') problems.push('no launch secret');
+            else if (ours && h.launchSecretFingerprint !== ours) problems.push('its launch secret does not match ours');
+            if (!h.platformUrl || /MISSING/.test(String(h.platformUrl))) problems.push('nowhere to report completions');
+            if (h.sessions === 'MISSING') problems.push('no session store, so no live classroom');
+            results.push({ id: sim.id, title: sim.title,
+              state: problems.length ? 'needs attention' : 'ready', detail: problems.join('; ') });
+          } catch (e) {
+            results.push({ id: sim.id, title: sim.title, state: 'unreachable',
+              detail: 'did not answer' });
+          }
+        }
+        return res.status(200).json({ results });
+      }
+
       // ---------- pre-publication review ----------
       // Grants access, and creates the account if the person has none — a
       // reviewer is usually somebody being asked a favour, and making the

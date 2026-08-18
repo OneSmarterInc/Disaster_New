@@ -26,7 +26,7 @@ const D = {
   detail: null, err: null,
   q: {}, filter: {}, page: {},
   open: null, personEdit: null, invite: false, lastInvite: null,
-  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null
+  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null, addSim: false, checkOut: null
 };
 
 async function api(path, payload) {
@@ -410,7 +410,33 @@ function catTab() {
     .filter(si => f0 === 'All' || (f0 === 'Published') === !!si.published)
     .filter(si => matches('cat', [si.title, si.id, si.tagline, si.description, String(si.number||'')]));
   return `
-    ${toolbar('cat','Search simulations',['All','Published','Draft'])}
+    ${toolbar('cat','Search simulations',['All','Published','Draft'],
+      `<button class="btn" id="chk">Check all</button>
+       <button class="btn ${D.addSim?'':'pri'}" id="addsim">${D.addSim?'Cancel':'Add a simulation'}</button>`)}
+
+    ${D.addSim ? `<div class="cbox"><div style="padding:15px 16px">
+      <div class="mini" style="margin-bottom:10px">A new simulation ${helpBtn('add')}</div>
+      ${explain('add', 'Bringing a new simulation in', `<ol>
+        <li>Push it to the repository as its own folder, and give it a Vercel project with that folder as the Root Directory.</li>
+        <li>Set its environment variables — the API key, an access code, the shared launch secret, this platform's address, and a session store.</li>
+        <li>Paste its address below. It will tell us its id and whether it is configured properly.</li>
+        <li>It arrives as a draft. Nobody sees it until you publish it or give somebody review access.</li>
+      </ol>`)}
+      <div class="field" style="margin-bottom:0">
+        <div><label class="f">Where is it deployed?</label><input id="s_url" type="text" placeholder="https://…vercel.app"></div>
+        <div style="flex:0 0 auto;align-self:flex-end"><button class="btn pri" id="s_probe">Look it up</button></div>
+      </div>
+      <div id="s_probeout"></div>
+    </div></div>` : ''}
+
+    ${D.checkOut ? `<div class="cbox"><div style="padding:14px 16px">
+      <div class="mini" style="margin-bottom:9px">Checked just now</div>
+      ${D.checkOut.map(r => `<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;align-items:baseline">
+        <div><b>${esc(r.title)}</b> ${r.detail ? `<span class="hint" style="margin:0;display:inline">${esc(r.detail)}</span>` : ''}</div>
+        ${dot(r.state === 'ready' ? 'ok' : r.state === 'unreachable' ? 'bad' : 'warn', r.state)}
+      </div>`).join('')}
+      <div style="margin-top:10px"><button class="btn sm" id="chkdone">Done</button></div>
+    </div></div>` : ''}
     <div class="panel">
     ${list.length ? list.map(si => {
       const revs = (D.grants || []).filter(g => g.sim_id === si.id);
@@ -588,6 +614,38 @@ function wireCat() {
       } else done('Kept','bad');
     }
   });
+
+  const ad = document.getElementById('addsim');
+  if (ad) ad.onclick = () => { D.addSim = !D.addSim; D.checkOut = null; render();
+    const u = document.getElementById('s_url'); if (u) u.focus(); };
+
+  const pb = document.getElementById('s_probe');
+  if (pb) pb.onclick = async () => {
+    const out = document.getElementById('s_probeout');
+    const done = acting(pb, 'Asking…'); out.innerHTML = '';
+    try {
+      const d = await api('/api/admin', { action:'probe_sim', launchUrl: document.getElementById('s_url').value });
+      await api('/api/admin', { action:'save_sim', id: d.id, number: d.suggestedNumber,
+        title: d.existing ? d.existing.title : d.id, launchUrl: d.launchUrl, minutes: 20, published: false });
+      out.innerHTML = `<div class="explain" style="margin-top:12px">
+        <b>${esc(d.id)}</b> ${d.existing ? 'was already here — its address has been refreshed.' : 'has been added as a draft.'}
+        ${d.problems.length ? `<div style="margin-top:8px;color:var(--rose)">${d.problems.map(x => '· ' + esc(x)).join('<br>')}</div>`
+          : '<div style="margin-top:8px;color:var(--green)">Configured correctly — it will accept students we send it.</div>'}
+        <div style="margin-top:8px">Open it below to give it a title and description, then publish it when you are ready.</div>
+      </div>`;
+      done('Added'); D.addSim = false; load();
+    } catch (e) { out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Not found','bad'); }
+  };
+
+  const ck = document.getElementById('chk');
+  if (ck) ck.onclick = async () => {
+    const done = acting(ck, 'Checking…');
+    try { const d = await api('/api/admin', { action:'refresh_sims' });
+      D.checkOut = d.results; D.addSim = false; done(); render(); }
+    catch (e) { done('Failed','bad'); }
+  };
+  const cd = document.getElementById('chkdone');
+  if (cd) cd.onclick = () => { D.checkOut = null; render(); };
 
   const mt = document.getElementById('mt');
   if (mt) mt.onclick = () => { D.maint = !D.maint; render(); };
