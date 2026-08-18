@@ -120,7 +120,7 @@ async function askCharacter(id, message, channel) {
     thread: (S.threads[channel] || []).slice(-12).map(m => ({ who: m.who, text: m.text }))
   });
   if (d.scripted) { OFFLINE = true; refreshCog(); }
-  return d.text || '';
+  return { text: d.text || '', ladder: !!d.ladder };
 }
 
 
@@ -398,10 +398,11 @@ async function doSend() {
     const ids = ch === 'room' ? responders(text) : [ch];
     for (const id of ids) {
       showTyping(id);
-      let line = await askCharacter(id, text, ch);
-      line = (line || '').replace(/^"|"$/g, '').replace(/\*/g, '').trim();
-      // Did she actually give up the coverage gap, and how early?
-      if (id === 'sophia' && /q3|cost review|overrul|reduced (edr |)coverage|coverage (was |)(cut|reduced)|silence (there |)is worth less/i.test(line)) {
+      const reply = await askCharacter(id, text, ch);
+      let line = (reply.text || '').replace(/^"|"$/g, '').replace(/\*/g, '').trim();
+      // Whether the coverage gap was given up is decided on the server, so the
+      // phrases it watches for never appear in anything a student can read.
+      if (reply.ladder) {
         if (S.coverageEarnedAt === null) {   // phase 0 is falsy — must test for null
           S.coverageEarnedAt = S.phase;
           S.coverageEarnedPrivately = (ch !== 'room');
@@ -1063,7 +1064,7 @@ function renderDebrief(D) {
 
     <div class="rule"></div>
     <h3>The sentence that decided it</h3>
-    <p>Sophia told you at Hour 4 that nothing had alerted, and she was careful to say that meant her tooling hadn't seen anything rather than that nothing was there. Underneath that was something she'd rather not have said out loud: the Q3 review cut her detection on one segment, she objected, she was overruled. Whether you got that out of her, and when, is the single best measure of how you ran this incident.</p>
+    <p>${esc(D.coverageIntro || '')}</p>
     <p class="verdict ${D.coverage.tone}" style="font-size:15.5px">${esc(D.coverage.text)}</p>
     <p>${priv
       ? `You went off the bridge ${priv === 1 ? 'once' : priv === 2 ? 'twice' : priv + ' times'}. People say different things when the room isn't listening, and knowing when to take someone off the bridge is most of this job.`

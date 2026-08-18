@@ -40,10 +40,14 @@ module.exports = async (req, res) => {
   try {
     let text = await anthropic(key, { system: S.systemPromptFor(id, phase), messages, max_tokens: 320 });
     text = (text || '').replace(/^"|"$/g, '').replace(/\*/g, '').trim();
-    return res.status(200).json({ text });
+    // Adjudicated here so the markers never reach the browser.
+    const ladder = id === S.LADDER.character && S.LADDER.re.test(text);
+    return res.status(200).json({ text, ladder });
   } catch (e) {
     console.error('chat failure', e.status || '', e.message);
     // Fall back to a prepared line rather than dead-ending the student.
-    return res.status(200).json({ text: S.fallbackFor(id, message, phase), scripted: true });
+    const fb = S.fallbackFor(id, message, phase);
+    return res.status(200).json({ text: fb, scripted: true,
+      ladder: id === S.LADDER.character && S.LADDER.re.test(fb) });
   }
 };

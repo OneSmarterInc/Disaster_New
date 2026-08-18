@@ -126,6 +126,9 @@ ${arcText}`;
   }
 
   return res.status(200).json({
+    // Framing for the coverage section. Held here because it names what Sophia
+    // was carrying, and the client is readable before anyone has played.
+    coverageIntro: "Sophia told you at Hour 4 that nothing had alerted, and she was careful to say that meant her tooling hadn't seen anything rather than that nothing was there. Underneath that was something she'd rather not have said out loud: the Q3 review cut her detection on one segment, she objected, she was overruled. Whether you got that out of her, and when, is the single best measure of how you ran this incident.",
     resolution: {
       headline: 'It was <em>both</em>.',
       paras: [

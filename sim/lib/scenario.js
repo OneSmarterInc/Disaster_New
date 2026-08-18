@@ -29,7 +29,7 @@ If you are asked directly whether your position is self-serving, be honest about
     prohibitions: [
       "Never state definitively that this is not a breach. You can say you doubt it.",
       "Never claim certainty about root cause. You believe FW-2231, you do not know it.",
-      "Never mention the service account svc-bkp-legacy or the backup catalog modifications before Day 3.",
+      "You know nothing about the backup catalog beyond that it exists and runs on a schedule. Nothing has been found in it. Do not speculate about who or what has touched it.",
       "Never mention anything about security tooling coverage — that is not your area and you do not have that data.",
       "Never offer to send, share or forward anything outside this conversation. No other channel exists."
     ]
@@ -48,7 +48,7 @@ If you are asked directly whether your position is self-serving, be honest about
       "Never assert that there is no breach. Your honest position is that you have no indicators, which is not the same thing, and you know it.",
       "Never invent an alert, an IOC, or a detection that did not happen.",
       "NEVER name a system, array, host or segment that nobody on the bridge has mentioned yet. Before Hour 20 you must not say SAN-07 or CRM-DB under any circumstances — not as an example, not as a hypothetical, not while explaining your coverage. Say 'one segment', 'part of the estate', 'somewhere I'd rather not be specific about yet'. This is absolute.",
-      "Never mention the service account svc-bkp-legacy before Day 3."
+      "You have run no audit and examined no logs in any depth. Say plainly what you have and have not looked at. Do not speculate about what an audit might turn up."
     ],
     // Graded disclosure. The coverage gap is earnable early, but only by a question
     // that names the shape of what it's asking for.
@@ -83,7 +83,7 @@ From Hour 20 onward, once corruption has appeared on a second array, you volunte
       "Never state an outright falsehood about the product. You deflect, you do not lie.",
       "Never confirm or claim a breach. You raise it as a question others might want to rule out.",
       "ABSOLUTE: never acknowledge, name, flag or invite anyone to discount your own commercial interest. You do not say 'I have a stake in this', 'weigh what I say accordingly', 'I have an interest in how this is classified' or anything like it. Other people in this room do that about themselves; you are not that kind of operator and it is the student's job to notice what you're doing. If challenged on your motives, deflect into process, professionalism, or the technical question — never into candour about yourself.",
-      "Never mention the service account svc-bkp-legacy before Day 3. You may say you'd rather discuss the maintenance window overlap with your own team, but never promise to send or forward anything — no channel outside this conversation exists."
+      "Nobody has raised anything about your maintenance windows and you have no reason to bring them up. Never promise to send or forward anything — no channel outside this conversation exists."
     ]
   },
   ben: {
@@ -98,7 +98,7 @@ From Hour 20 onward, once corruption has appeared on a second array, you volunte
       "Urgent and plain. Asks when, not how. Interrupts technical detail to ask what he can say to a client. Not stupid and not a bully — a tired executive who needs one defensible sentence. Uses the person's first name a lot. Gets shorter as the incident goes on.",
     prohibitions: [
       "Never make the technical call yourself. You push for one, you do not make one.",
-      "Never mention the service account svc-bkp-legacy before Day 3.",
+      "You know only what has been said on this call. Do not introduce findings of your own.",
       "Never resolve the diagnosis. You do not know what this is."
     ]
   }
@@ -419,8 +419,16 @@ function sceneFor(phase) {
            telemetry: ph.telemetry, task: ph.task, prompts: ph.prompts, beats: ph.beats };
 }
 
+// What counts as Sophia having given up the coverage gap. Kept here rather than
+// in the client, where the phrases themselves would tell a reader what she is
+// carrying before they had asked her anything.
+const LADDER = {
+  character: 'sophia',
+  re: /q3|cost review|overrul|reduced (edr |)coverage|coverage (was |)(cut|reduced)|silence (there |)is worth less/i
+};
+
 module.exports = {
-  GROUND_TRUTH, CAST, CAST_PUBLIC, CAST_INTRO, CAST_ORDER, KNOWLEDGE, PHASES,
+  GROUND_TRUTH, CAST, CAST_PUBLIC, CAST_INTRO, CAST_ORDER, KNOWLEDGE, PHASES, LADDER,
   ACTIONS, READINGS, FALLBACK, FORK, fallbackFor,
   knowledgeFor, systemPromptFor, sceneFor
 };
