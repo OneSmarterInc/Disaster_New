@@ -29,6 +29,8 @@ module.exports = async (req, res) => {
   const preservedAt = (b.preservedAt === null || b.preservedAt === undefined)
     ? null : parseInt(b.preservedAt, 10);
   const preserved = !!b.preserved || preservedAt !== null;
+  const preservedByTalk = !!b.preservedByTalk;
+  const preservedQuote = typeof b.preservedQuote === 'string' ? b.preservedQuote.slice(0, 300) : '';
   const privateCount = parseInt(b.privateCount, 10) || 0;
 
   const anyIrreversibleEarly = positions.slice(0, 2).some(p => {
@@ -117,6 +119,15 @@ ${arcText}`;
     preservation = { tone: '', text: `You preserved the index state, which was the right instinct.` };
   } else {
     preservation = { tone: '', text: `The rebuild ran at four minutes past two and nobody stopped it. Not a decision anyone made — a scheduled job doing what it does, while the person who wanted it to run was being entirely competent. What it cost was narrow and specific: the customer's counsel asked what your system told their engineer, and the honest answer became that you cannot say. Notice that this is also the version where both exposed people are more comfortable, and that nobody arranged that.` };
+  }
+
+  // How the hold came about is worth saying back. Someone who never chose it as
+  // an action, and simply told a person to stop the job, should see that it
+  // counted — and see the sentence it counted on.
+  if (preserved && preservedByTalk) {
+    preservation.text += preservedQuote
+      ? ` You never recorded it as an action. You said it: “${preservedQuote}” — and that was enough, because it was an instruction rather than a question about one.`
+      : ` You never recorded it as an action. You said it in conversation, and that was enough.`;
   }
 
   // If they came from the platform, tell it they finished. The metrics are this
