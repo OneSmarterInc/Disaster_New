@@ -351,20 +351,49 @@ module.exports = async (req, res) => {
       }
 
       // ---------- pre-publication review ----------
+      // Grants access, and creates the account if the person has none — a
+      // reviewer is usually somebody being asked a favour, and making the
+      // administrator invite them first and come back is a needless round trip.
+      // There is no email service, so this hands back something to send.
       case 'grant_sim_access': {
         const simId = String(b.simId || '');
         const email = String(b.email || '').trim().toLowerCase();
         const sim = (await s`SELECT id, title, published FROM sims WHERE id = ${simId}`)[0];
         if (!sim) return res.status(404).json({ error: 'no_such_sim' });
-        const person = (await s`SELECT id, name, role FROM users WHERE email = ${email}`)[0];
-        if (!person) return res.status(404).json({ error: 'no_such_user',
-          message: 'Nobody with that email has an account yet. Invite them first.' });
+        if (!email) return res.status(400).json({ error: 'need_email' });
+
+        let person = (await s`SELECT id, name, role, password_hash FROM users WHERE email = ${email}`)[0];
+        let inviteUrl = null;
+
+        if (!person) {
+          const uid = id('usr');
+          const name = String(b.name || '').trim() || email.split('@')[0];
+          await s`INSERT INTO users (id, email, name, role) VALUES (${uid}, ${email}, ${name}, 'faculty')`;
+          person = { id: uid, name, role: 'faculty', password_hash: null };
+        }
         if (person.role === 'student') return res.status(409).json({ error: 'is_a_student',
-          message: 'Review access is for facilitators and administrators.' });
+          message: 'That email belongs to a student. Review access is for facilitators.' });
+
+        // Never used the account? They need a way in as well as the grant.
+        if (!person.password_hash) {
+          const token = crypto.randomBytes(24).toString('base64url');
+          const expires = new Date(Date.now() + 14 * 86400000);
+          await s`INSERT INTO tokens (token, user_id, purpose, expires_at)
+                  VALUES (${token}, ${person.id}, 'invite', ${expires})`;
+          inviteUrl = `${baseUrl()}/accept.html?t=${token}`;
+        }
+
         await s`INSERT INTO sim_access (id, user_id, sim_id, granted_by, note)
                 VALUES (${id('acc')}, ${person.id}, ${simId}, ${me.id}, ${String(b.note || '').trim() || null})
                 ON CONFLICT (user_id, sim_id) DO UPDATE SET note = EXCLUDED.note, granted_by = EXCLUDED.granted_by`;
-        return res.status(200).json({ ok: true, who: person.name });
+
+        return res.status(200).json({
+          ok: true, who: person.name, email,
+          simTitle: sim.title,
+          inviteUrl,
+          signInUrl: `${baseUrl()}/`,
+          isNew: !!inviteUrl
+        });
       }
 
       case 'revoke_sim_access': {

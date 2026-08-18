@@ -14,8 +14,12 @@ module.exports = async (req, res) => {
   // Often the first thing anyone touches on a fresh deployment, and the one
   // place we can afford to wait for the announcement to actually land.
   try {
+    // Prefer the address this simulation is meant to be reached at. Without
+    // it we fall back to whichever host the request came in on — which may be
+    // a deployment-specific URL frozen to one build, and registering that in
+    // the catalogue would leave students on an old version for ever.
     const host = req.headers['x-forwarded-host'] || req.headers.host;
-    await announce(S.META, host ? `https://${host}` : '');
+    await announce(S.META, process.env.SIM_URL || (host ? `https://${host}` : ''));
   } catch (e) {}
 
   const secret = process.env.LAUNCH_SECRET;

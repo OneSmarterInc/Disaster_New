@@ -9,7 +9,7 @@ function announceOnce(req) {
   try {
     const host = req.headers['x-forwarded-host'] || req.headers.host;
     const proto = req.headers['x-forwarded-proto'] || 'https';
-    announce(S.META, host ? `${proto}://${host}` : '');
+    announce(S.META, process.env.SIM_URL || (host ? `${proto}://${host}` : ''));
   } catch (e) { /* never let this affect a request */ }
 }
 
