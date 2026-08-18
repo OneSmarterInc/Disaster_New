@@ -320,3 +320,28 @@ td input,td select,td textarea{font-size:14.5px}
   .top{height:auto;min-height:52px;flex-wrap:wrap;padding:8px 14px}
   .top .brand{width:100%}
 }
+
+
+/* ── help, revealed rather than resident ────────────────────────────────────
+   Explanations that matter once are behind a question mark rather than sitting
+   on screen every day. Anyone who needs them can reach them; anyone who does
+   not never reads past a heading. */
+.qmark{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:15px;height:15px;border:1px solid var(--line2);border-radius:50%;
+  font-family:var(--mono);font-size:9px;color:var(--ink3);
+  cursor:pointer;vertical-align:1px;margin-left:7px;background:var(--card);
+}
+.qmark:hover{border-color:var(--ink);color:var(--ink)}
+.qmark.on{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.explain{
+  border-left:2px solid var(--line2);background:var(--sunk);
+  padding:13px 16px;margin:10px 0 14px;font-size:13.5px;line-height:1.6;color:var(--ink2);
+}
+.explain h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ink3);font-weight:500;margin:0 0 8px}
+.explain ol{margin:0;padding-left:18px}
+.explain li{margin-bottom:6px}
+.explain li:last-child{margin-bottom:0}
+.explain b{color:var(--ink);font-weight:500}
+.explain .mono{font-family:var(--mono);font-size:12px}

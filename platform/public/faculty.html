@@ -25,7 +25,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;
 const F = {
   view:'home', tab:'crs', data:null, simsOverview:null, course:null, progress:null,
   me:null, err:null, q:{}, filter:{}, sel:new Set(),
-  newCourse:false, editCourse:false, addSim:false
+  newCourse:false, editCourse:false, addSim:false, help:null
 };
 
 async function api(path, payload) {
@@ -44,6 +44,12 @@ const when = (t) => {
 const daysLeft = t => Math.max(0, Math.ceil((new Date(t) - Date.now()) / 86400000));
 const simLabel = x => (x.number ? String(x.number).padStart(2,'0') + ' · ' : '') + x.title;
 const dot = (k, l) => `<span class="st ${k}">${esc(l)}</span>`;
+
+// Explanations behind a question mark: there when you want them, gone when you
+// don't. A facilitator runs this twice a term and forgets in between.
+const helpBtn = (key) => `<button class="qmark ${F.help===key?'on':''}" data-help="${key}" title="What happens next?">?</button>`;
+const explain = (key, title, body) => F.help === key
+  ? `<div class="explain"><h4>${esc(title)}</h4>${body}</div>` : '';
 const matches = (k, f) => { const q = (F.q[k]||'').toLowerCase().trim(); return !q || f.filter(Boolean).join(' ').toLowerCase().includes(q); };
 
 function flash(btn, msg, kind) {
@@ -111,6 +117,7 @@ function renderHome() {
     </div>
     <div id="body"></div>`;
   app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { F.tab = b.dataset.tab; render(); });
+  wireHelp();
   const body = document.getElementById('body');
   body.innerHTML = F.tab === 'crs' ? coursesTab() : simsTab();
   if (F.tab === 'crs') wireCourses(); else wireSims();
@@ -182,9 +189,16 @@ function simsTab() {
   return `
     <div class="toolbar">
       <div class="search"><input data-q="sim" type="text" placeholder="Search simulations" value="${esc(F.q.sim||'')}"></div>
+      ${helpBtn('preview')}
       <div class="seg">${['All','In use','Available'].map(x =>
         `<button data-f="sim:${x}" class="${f0===x?'on':''}">${x}</button>`).join('')}</div>
     </div>
+    ${explain('preview', 'Trying one before you teach with it', `<ol>
+      <li>Anything published is here, plus any draft an administrator has given you early sight of.</li>
+      <li><b>Preview for 7 days</b> lets you play it as a student would. Nothing to install, no code to type.</li>
+      <li>Add it to a course when you have decided. The preview is about you seeing it, not your students.</li>
+      <li>A preview that has ended does not stop a course using it — add it to one and it keeps working.</li>
+    </ol>`)}
     <div class="panel"><div class="tablewrap"><table>
       <thead><tr><th style="width:40%">Simulation</th><th class="num">Courses</th><th class="num">Started</th><th class="num">Finished</th><th class="act"></th></tr></thead>
       <tbody>
@@ -246,9 +260,16 @@ function renderCourse() {
       </div>
     </div>` : ''}
 
-    <div class="section"><span>Simulations in this course</span>
+    <div class="section"><span>Simulations in this course ${helpBtn('sims')}</span>
       ${notAdded.length ? `<button class="btn sm" id="as">${F.addSim?'Cancel':'Add a simulation'}</button>` : ''}</div>
 
+    ${explain('sims', 'Playing it, and running it with a class', `<ol>
+      <li><b>Play it yourself</b> takes you into the simulation as a student sees it. Worth doing once before you teach with it.</li>
+      <li><b>Run a session</b> opens the console for a live class: it gives you a five-character code, puts people into groups, and holds a clock you can freeze.</li>
+      <li>Students in this course reach it from their own page — they do not need the session code unless you are running one.</li>
+      <li><b>Who has played</b> shows who finished, how long they took, and a short summary the simulation reports back. Not a transcript; students keep their own.</li>
+      <li>The expected number is a forecast, not a limit. Nobody is turned away.</li>
+    </ol>`)}
     ${F.addSim && notAdded.length ? `<div class="panel" style="padding:15px 16px;margin-bottom:12px">
       <div class="field">
         <div><label class="f">Simulation</label>
@@ -282,10 +303,18 @@ function renderCourse() {
       }).join('') : '<div class="empty">None yet. Add one above, then share the join link with your students.</div>'}
     </div>
 
-    <div class="section"><span>Students</span>
+    <div class="section"><span>Students ${helpBtn('access')}</span>
       <span style="font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink3)">
         ${waiting.length ? `${waiting.length} waiting for access` : (active.length ? 'Everyone enrolled has access' : '')}</span></div>
 
+    ${explain('access', 'Enrolling and releasing', `<ol>
+      <li>Send the link below. Anyone with it can enrol — one link per course, covering every simulation in it, so nobody joins twice.</li>
+      <li>They appear here as <b>waiting</b>. They can see what is coming but cannot open anything.</li>
+      <li>Give them access once their registration is settled. Payment happens outside this system, so this switch is yours.</li>
+      <li>Their page changes by itself within a few seconds — they do not need to reload or be told.</li>
+      <li>The note is for you: it appears beside them so a term later you can see why they were released.</li>
+      <li><b>Take access away</b> stops them starting anything new; it does not undo a run already played.</li>
+    </ol>`)}
     <div class="note">
       <b>Students join this course with one link.</b> Send it however you normally reach them — it covers every simulation in the course, so they never join twice.
       <div class="copyrow"><input id="eurl" readonly value="${esc(enrolUrl)}"><button class="btn" id="ecopy">Copy</button></div>
@@ -465,7 +494,12 @@ function renderPlayed() {
   document.getElementById('back').onclick = () => openCourse(course.id);
 }
 
+function wireHelp() {
+  app.querySelectorAll('[data-help]').forEach(b => b.onclick = () => {
+    F.help = F.help === b.dataset.help ? null : b.dataset.help; render(); });
+}
 function wireCommon() {
+  wireHelp();
   app.querySelectorAll('[data-q]').forEach(i => i.oninput = () => {
     const k = i.dataset.q; F.q[k] = i.value; render();
     const again = app.querySelector(`[data-q="${k}"]`);

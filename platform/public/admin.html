@@ -26,7 +26,7 @@ const D = {
   detail: null, err: null,
   q: {}, filter: {}, page: {},
   open: null, personEdit: null, invite: false, lastInvite: null,
-  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null
+  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null
 };
 
 async function api(path, payload) {
@@ -46,6 +46,12 @@ const when = (t) => {
 };
 const simLabel = (x) => (x.number ? String(x.number).padStart(2,'0') + ' · ' : '') + x.title;
 const dot = (k, label) => `<span class="st ${k}">${esc(label)}</span>`;
+
+// Explanations live behind a question mark: reachable when you need them,
+// invisible when you don't.
+const helpBtn = (key) => `<button class="qmark ${D.help===key?'on':''}" data-help="${key}" title="What happens next?">?</button>`;
+const explain = (key, title, body) => D.help === key
+  ? `<div class="explain"><h4>${esc(title)}</h4>${body}</div>` : '';
 
 // Every action says what happened, where it was pressed.
 function flash(btn, msg, kind) {
@@ -126,6 +132,7 @@ function render() {
     </div>
     <div id="body"></div>`;
   app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { D.tab = b.dataset.tab; D.open = null; render(); });
+  wireHelp();
   const body = document.getElementById('body');
   body.innerHTML = ({ fac:facTab, stu:stuTab, crs:crsTab, cat:catTab })[D.tab]();
   ({ fac:wireFac, stu:wireStu, crs:wireCrs, cat:wireCat })[D.tab]();
@@ -170,7 +177,15 @@ function facTab() {
     ${toolbar('fac','Search facilitators',['All','Active','Invited','Disabled'],
       `<button class="btn ${D.invite?'':'pri'}" id="inv">${D.invite?'Cancel':'Invite a facilitator'}</button>`)}
 
+    ${D.invite ? explain('inv', 'How an invitation works', `<ol>
+      <li>Fill in a name and email. Nothing is sent — there is no email service.</li>
+      <li>You get a one-time link, valid for fourteen days. Copy it into your own message.</li>
+      <li>They open it, choose a password, and land in their own console.</li>
+      <li>Until then they show as <b>invited</b>. Sent it to the wrong address? Open them and cancel the invitation, then correct the email and issue a fresh one.</li>
+    </ol>`) : ''}
+
     ${D.invite ? `<div class="cbox"><div style="padding:15px 16px">
+      <div class="mini" style="margin-bottom:10px">New facilitator ${helpBtn('inv')}</div>
       <div class="field">
         <div><label class="f">Name</label><input id="in" type="text" placeholder="Chuck Rivera"></div>
         <div><label class="f">Email</label><input id="ie" type="email" placeholder="crivera@university.edu"></div>
@@ -422,7 +437,15 @@ function catTab() {
           </div>` : ''}
 
           ${D.reviewersFor === si.id ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
-            <div class="mini">Who can see it before it is published</div>
+            <div class="mini">Who can see it before it is published ${helpBtn('grant:'+si.id)}</div>
+            ${explain('grant:'+si.id, 'How a reviewer gets in', `<ol>
+              <li>Give them access below. If they have no account, one is made for them.</li>
+              <li>You get a written message — <b>nothing is sent automatically</b>. Copy it and send it however you normally would.</li>
+              <li>They open it, set a password if they are new, and sign in at <span class="mono">${esc((D.data && D.data.baseUrl) || location.origin)}</span>.</li>
+              <li>The simulation appears under <b>Simulations</b>. They press <b>Preview for 7 days</b>, then <b>Play it</b>.</li>
+              <li>They land straight in it — no access code, nothing else to type.</li>
+              <li>You can revoke at any time, and grants disappear on their own when you publish.</li>
+            </ol>`)}
             ${revs.length ? revs.map(g => `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 0">
               <div><b>${esc(g.name)}</b> <span class="sub" style="display:inline">${esc(g.email)}</span>
                 ${g.note ? `<div class="hint" style="margin:2px 0 0">${esc(g.note)}</div>` : ''}</div>
@@ -458,7 +481,16 @@ function catTab() {
     }).join('') : `<div class="empty">${all.length ? 'Nothing matches that.' : 'Nothing yet. A simulation appears here the first time its deployment is used.'}</div>`}
     </div>
 
-    <div class="note">Simulations appear here on their own. Each deployment tells the platform it exists the first time it is used, and arrives unpublished — invisible to everyone but you until you publish it or grant someone review access.</div>
+    <div class="section" style="margin:22px 0 0"><span>About this list ${helpBtn('cat')}</span></div>
+    ${explain('cat', 'Where these come from, and what publishing does', `<ol>
+      <li>A simulation registers itself the first time its deployment is used. There is nothing to add by hand.</li>
+      <li>It arrives as a <b>draft</b> — invisible to every facilitator until you act.</li>
+      <li><b>Give review access</b> to one or two people while it is being checked. Only they see it.</li>
+      <li><b>Publish</b> when it is ready. Every facilitator can then add it to a course, and the review grants are cleared.</li>
+      <li><b>Unpublish</b> hides it again. Courses already using it keep working; nobody can add it anywhere new.</li>
+      <li>Deleting is not permanent — it reappears, unpublished, the next time that deployment is used.</li>
+    </ol>`)}
+    <div class="note" style="${D.help==='cat'?'display:none':''}">Simulations appear here on their own. Each deployment tells the platform it exists the first time it is used, and arrives unpublished — invisible to everyone but you until you publish it or grant someone review access.</div>
 
     <div class="section"><span>Maintenance</span><button class="btn sm" id="mt">${D.maint?'Hide':'Show'}</button></div>
     ${D.maint ? `<div class="panel">
@@ -713,7 +745,12 @@ function wirePerson() {
     }
   });
 }
+function wireHelp() {
+  app.querySelectorAll('[data-help]').forEach(b => b.onclick = () => {
+    D.help = D.help === b.dataset.help ? null : b.dataset.help; render(); });
+}
 function wireCommon() {
+  wireHelp();
   app.querySelectorAll('[data-q]').forEach(i => i.oninput = () => {
     const k = i.dataset.q;
     D.q[k] = i.value; D.page[k] = 1; render();
