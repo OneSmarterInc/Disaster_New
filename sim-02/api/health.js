@@ -11,10 +11,11 @@ const { announce } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
 
 module.exports = async (req, res) => {
-  // Often the first thing anyone touches on a fresh deployment.
+  // Often the first thing anyone touches on a fresh deployment, and the one
+  // place we can afford to wait for the announcement to actually land.
   try {
     const host = req.headers['x-forwarded-host'] || req.headers.host;
-    announce(S.META, host ? `https://${host}` : '');
+    await announce(S.META, host ? `https://${host}` : '');
   } catch (e) {}
 
   const secret = process.env.LAUNCH_SECRET;

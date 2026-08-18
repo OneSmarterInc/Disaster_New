@@ -65,14 +65,16 @@ async function reportCompletion({ launch, summary, metrics }) {
 // administrator decides — and thereafter only refreshes the technical facts,
 // leaving anything they have edited alone.
 //
-// Deliberately fire-and-forget and never awaited by a request: if it fails, a
-// student's run is unaffected and the next cold start tries again.
-let announced = false;
+// Returns a promise. A serverless function can be frozen the moment it
+// responds, so anything fire-and-forget may never leave the machine — the
+// completion report had exactly this fault. Callers that can afford to wait
+// should await it; it happens once per cold start and costs one round trip.
+let announced = null;
 function announce(meta, selfUrl) {
-  if (announced) return;
-  announced = true;
+  if (announced) return announced;
+  announced = Promise.resolve();
   const base = (process.env.PLATFORM_URL || '').replace(/\/$/, '');
-  if (!base || !meta) return;
+  if (!base || !meta) return announced;
   const token = signBack({
     kind: 'register',
     sim: meta.id,
@@ -84,15 +86,17 @@ function announce(meta, selfUrl) {
     iat: Date.now(),
     exp: Date.now() + 5 * 60000
   });
-  if (!token) return;
-  fetch(base + '/api/register', {
+  if (!token) return announced;
+  announced = fetch(base + '/api/register', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ token }),
     signal: AbortSignal.timeout(6000)
-  }).then(r => {
-    if (!r.ok) console.error('announce refused', r.status);
+  }).then(async (r) => {
+    if (r.ok) console.log('announced', meta.id, 'to', base);
+    else console.error('announce refused', r.status, await r.text().catch(() => ''));
   }).catch(e => console.error('announce failed', e.message));
+  return announced;
 }
 
 module.exports = { verifyLaunch, signBack, reportCompletion, announce };
