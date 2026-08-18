@@ -6,7 +6,7 @@ function body(req) {
   if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = null; } }
   return b || {};
 }
-const baseUrl = () => (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+const { baseUrl } = require('../lib/urls.js');
 
 // A sim is visible to someone if it's published, or if an admin granted them
 // access while it is still in draft. Repeated in every place a sim is listed
@@ -53,7 +53,7 @@ module.exports = async (req, res) => {
           ORDER BY c.created_at DESC`;
         const catalogue = await visibleSims(s, me.id);
         const previews = await s`SELECT * FROM previews WHERE user_id = ${me.id}`;
-        return res.status(200).json({ courses, catalogue, previews, baseUrl: baseUrl(), me: A.publicUser(me) });
+        return res.status(200).json({ courses, catalogue, previews, baseUrl: baseUrl(req), me: A.publicUser(me) });
       }
 
       // Every simulation this person is using, across all their courses, with
@@ -137,7 +137,7 @@ module.exports = async (req, res) => {
         const catalogue = await visibleSims(s, me.id);
         return res.status(200).json({
           course, sims, roster, catalogue,
-          enrolUrl: `${baseUrl()}/join.html?c=${course.join_code}`
+          enrolUrl: `${baseUrl(req)}/join.html?c=${course.join_code}`
         });
       }
 

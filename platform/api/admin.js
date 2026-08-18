@@ -8,7 +8,7 @@ function body(req) {
   if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = null; } }
   return b || {};
 }
-const baseUrl = () => (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+const { baseUrl } = require('../lib/urls.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
             (SELECT count(*) FROM courses WHERE archived = false) AS courses,
             (SELECT count(*) FROM enrolments WHERE paid = true AND dropped = false) AS paid_seats,
             (SELECT count(*) FROM launches) AS launches`)[0];
-        return res.status(200).json({ faculty, sims, totals, baseUrl: baseUrl() });
+        return res.status(200).json({ faculty, sims, totals, baseUrl: baseUrl(req) });
       }
 
       // One faculty member, their courses, and who's in them.
@@ -104,7 +104,7 @@ module.exports = async (req, res) => {
                 VALUES (${token}, ${uid}, 'invite', ${expires})`;
         return res.status(200).json({
           facultyId: uid,
-          inviteUrl: `${baseUrl()}/accept.html?t=${token}`,
+          inviteUrl: `${baseUrl(req)}/accept.html?t=${token}`,
           expiresAt: expires
         });
       }
@@ -240,7 +240,7 @@ module.exports = async (req, res) => {
         await s`INSERT INTO tokens (token, user_id, purpose, expires_at)
                 VALUES (${token}, ${uid}, 'reset', ${expires})`;
         return res.status(200).json({
-          resetUrl: `${baseUrl()}/reset.html?t=${token}`,
+          resetUrl: `${baseUrl(req)}/reset.html?t=${token}`,
           who: person.name, expiresAt: expires
         });
       }
@@ -380,7 +380,7 @@ module.exports = async (req, res) => {
           const expires = new Date(Date.now() + 14 * 86400000);
           await s`INSERT INTO tokens (token, user_id, purpose, expires_at)
                   VALUES (${token}, ${person.id}, 'invite', ${expires})`;
-          inviteUrl = `${baseUrl()}/accept.html?t=${token}`;
+          inviteUrl = `${baseUrl(req)}/accept.html?t=${token}`;
         }
 
         await s`INSERT INTO sim_access (id, user_id, sim_id, granted_by, note)
@@ -391,7 +391,7 @@ module.exports = async (req, res) => {
           ok: true, who: person.name, email,
           simTitle: sim.title,
           inviteUrl,
-          signInUrl: `${baseUrl()}/`,
+          signInUrl: `${baseUrl(req)}/`,
           isNew: !!inviteUrl
         });
       }
