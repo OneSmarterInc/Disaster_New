@@ -178,6 +178,12 @@ module.exports = async (req, res) => {
         if (health.launchSecret !== 'configured') problems.push('It has no launch secret, so it will refuse every student we send.');
         else if (ours && health.launchSecretFingerprint !== ours) problems.push('Its launch secret does not match ours, so it will refuse every student we send.');
         if (health.sessions === 'MISSING') problems.push('It has no session store, so the live classroom console will not work. Individual play is unaffected.');
+        {
+          const want = ['launch-token','launch-mode','console-token','self-register','completion-report'];
+          const has = Array.isArray(health.features) ? health.features : [];
+          const missing = want.filter(f => !has.includes(f));
+          if (missing.length) problems.push(`It is running an old build and needs redeploying — it cannot yet: ${missing.join(', ')}.`);
+        }
         if (!health.platformUrl || health.platformUrl === 'MISSING (completions will not be reported)') {
           problems.push('It does not know where to report completions, so nobody will show as finished.');
         }
@@ -374,6 +380,12 @@ module.exports = async (req, res) => {
             else if (ours && h.launchSecretFingerprint !== ours) problems.push('its launch secret does not match ours');
             if (!h.platformUrl || /MISSING/.test(String(h.platformUrl))) problems.push('nowhere to report completions');
             if (h.sessions === 'MISSING') problems.push('no session store, so no live classroom');
+            // A deployment left behind looks identical to a working one until
+            // somebody hits the thing it cannot do.
+            const want = ['launch-token','launch-mode','console-token','self-register','completion-report'];
+            const has = Array.isArray(h.features) ? h.features : [];
+            const missing = want.filter(f => !has.includes(f));
+            if (missing.length) problems.push(`running an old build — redeploy it (missing ${missing.join(', ')})`);
             results.push({ id: sim.id, title: sim.title,
               state: problems.length ? 'needs attention' : 'ready', detail: problems.join('; ') });
           } catch (e) {

@@ -109,7 +109,10 @@ th.mono,td.mono{width:1%}
 /* the action column: buttons stay on one line. Safe to insist on now that
    every table sits in a scroll container — if the row genuinely cannot fit, the
    table scrolls inside its card rather than pushing the page sideways. */
-td[data-l=""],th:last-child{width:1%;white-space:nowrap;text-align:right}
+/* Scoped to the action column itself. Keying this off :last-child made any
+   table whose final column carried real content narrow, nowrapped and
+   right-aligned — which is exactly what happened to 'What came back'. */
+td[data-l=""],th.act,td.act{width:1%;white-space:nowrap;text-align:right}
 td[data-l=""]{white-space:nowrap}
 td[data-l=""] .btn{margin-left:5px;vertical-align:middle}
 td[data-l=""] .btn:first-child{margin-left:0}

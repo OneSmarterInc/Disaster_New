@@ -32,6 +32,16 @@ module.exports = async (req, res) => {
     // Same secret on both sides gives the same eight characters. Different
     // values give different ones, and neither reveals the secret itself.
     launchSecretFingerprint: fingerprint(secret),
-    platformUrl: process.env.PLATFORM_URL || 'MISSING (completions will not be reported)'
+    platformUrl: process.env.PLATFORM_URL || 'MISSING (completions will not be reported)',
+    // What this build can do. The platform compares these against what it
+    // expects, so a deployment left behind is spotted rather than guessed at —
+    // a stale sim looks identical to a broken one from the outside.
+    features: [
+      'launch-token',        // accepts a signed token in place of an access code
+      'launch-mode',         // plays or opens the session console, as asked
+      'console-token',       // a faculty token opens the console without a code
+      'self-register',       // tells the platform it exists
+      'completion-report'    // reports a finished run back
+    ]
   });
 };
