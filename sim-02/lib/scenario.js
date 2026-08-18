@@ -213,7 +213,7 @@ const PHASES = [
     prompts: [
       "Devin, can you show me exactly what Relay said?",
       "Joanna, how did a superseded revision stay in the library?",
-      "Nadia, how does content get from the library into Relay?",
+      "Nadia, what have you been seeing in your queue?",
       "Grant, should the platform have caught this?"
     ],
     beats: [
@@ -241,7 +241,7 @@ const PHASES = [
     prompts: [
       "Devin, why did nine rating questions never reach an engineer?",
       "Joanna, what happens to the index when you re-index?",
-      "Devin, what was the routing change made for?",
+      "Devin, what changed on your side in Q3?",
       "What can we still establish about what Relay was served?"
     ],
     beats: [
@@ -268,7 +268,7 @@ const PHASES = [
     task: "Alan has the audit committee this afternoon. Decide what you actually know, what you're inferring, and what you're prepared to put your name to.",
     prompts: [
       "Devin, what can we prove about what Relay was served?",
-      "Devin, who reviewed the routing change?",
+      "What does Ridgeline's counsel actually need answered?",
       "Grant, should Trellis have warned us that change altered escalation?",
       "What do we tell the nine, and when?"
     ],
