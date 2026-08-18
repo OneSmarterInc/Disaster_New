@@ -131,6 +131,57 @@ module.exports = async (req, res) => {
       }
 
       // ---------- catalogue ----------
+
+      // Ask a deployment what it is, rather than making someone remember.
+      // Every sim answers at /api/health with its own id and what it has been
+      // configured with, including a fingerprint of its launch secret — so this
+      // also catches the misconfiguration that has bitten us twice: a sim that
+      // will refuse every launch because its secret does not match ours.
+      case 'probe_sim': {
+        const raw = String(b.launchUrl || '').trim().replace(/\/+$/, '');
+        if (!/^https?:\/\//.test(raw)) {
+          return res.status(400).json({ error: 'bad_url', message: 'Give the full address, starting https://' });
+        }
+        let health;
+        try {
+          const r = await fetch(raw + '/api/health', { signal: AbortSignal.timeout(8000) });
+          if (!r.ok) return res.status(502).json({ error: 'no_health',
+            message: `That address answered ${r.status}. Is it a simulation, and is it deployed?` });
+          health = await r.json();
+        } catch (e) {
+          return res.status(502).json({ error: 'unreachable',
+            message: 'Could not reach that address. Check it is deployed and the URL is right.' });
+        }
+        if (!health || !health.sim) {
+          return res.status(502).json({ error: 'not_a_sim',
+            message: 'That answered, but not like a simulation. Check the address.' });
+        }
+
+        const ours = process.env.LAUNCH_SECRET
+          ? crypto.createHash('sha256').update(String(process.env.LAUNCH_SECRET)).digest('hex').slice(0, 8)
+          : null;
+        const already = (await s`SELECT id, number, title FROM sims WHERE id = ${health.sim}`)[0] || null;
+        const taken = (await s`SELECT number FROM sims WHERE number IS NOT NULL`).map(r => r.number);
+        let suggested = 1;
+        while (taken.includes(suggested)) suggested++;
+
+        const problems = [];
+        if (health.characters !== 'configured') problems.push('It has no API key, so the characters will not answer.');
+        if (health.launchSecret !== 'configured') problems.push('It has no launch secret, so it will refuse every student we send.');
+        else if (ours && health.launchSecretFingerprint !== ours) problems.push('Its launch secret does not match ours, so it will refuse every student we send.');
+        if (health.sessions === 'MISSING') problems.push('It has no session store, so the live classroom console will not work. Individual play is unaffected.');
+        if (!health.platformUrl || health.platformUrl === 'MISSING (completions will not be reported)') {
+          problems.push('It does not know where to report completions, so nobody will show as finished.');
+        }
+
+        return res.status(200).json({
+          id: health.sim,
+          launchUrl: raw,
+          existing: already,
+          suggestedNumber: already && already.number ? already.number : suggested,
+          problems
+        });
+      }
       case 'save_sim': {
         const sid = String(b.id || '').trim();
         if (!sid) return res.status(400).json({ error: 'need_id' });

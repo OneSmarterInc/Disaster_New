@@ -18,7 +18,8 @@
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null, grants: null };
+const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null, grants: null,
+            simSearch: '', simFilter: 'all', simOpen: null };
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -344,39 +345,70 @@ async function load_courses() {
 function wireCourses() {}
 
 function catalogueTab() {
+  const all = (D.data.sims || []);
+  const q = (D.simSearch || '').toLowerCase().trim();
+  const shown = all.filter(si => {
+    if (D.simFilter === 'published' && !si.published) return false;
+    if (D.simFilter === 'draft' && si.published) return false;
+    if (!q) return true;
+    return [si.title, si.id, si.tagline, si.description, si.number]
+      .filter(Boolean).join(' ').toLowerCase().includes(q);
+  });
+  const counts = { all: all.length,
+    published: all.filter(x => x.published).length,
+    draft: all.filter(x => !x.published).length };
+
   return `
     <h2>Sims</h2>
-    ${(D.data.sims || []).map(si => `<div class="card">
-      <div class="row" style="justify-content:space-between">
-        <div><h3>${esc(simLabel(si))}</h3><div class="tiny dim">${esc(si.tagline || '')}</div></div>
-        ${(() => {
-          if (si.published) return '<span class="pill ok">published</span>';
-          const n = (D.grants || []).filter(g => g.sim_id === si.id).length;
-          return `<span class="pill warn">draft${n ? ' · ' + n + ' reviewing' : ' · nobody reviewing'}</span>`;
-        })()}
-      </div>
-      <div class="tiny dim mono" style="margin-top:10px">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url)}</div>
-
-      ${!si.published ? `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-        <div class="eyebrow" style="margin-bottom:8px">Who can see it before it's published</div>
-        ${(D.grants || []).filter(g => g.sim_id === si.id).map(g => `<div class="row" style="justify-content:space-between;padding:5px 0">
-          <div><b>${esc(g.name)}</b> <span class="tiny dim mono">${esc(g.email)}</span>
-            ${g.note ? `<div class="tiny dim">${esc(g.note)}</div>` : ''}</div>
-          <button class="btn sm" data-revgrant="${esc(g.id)}">Revoke</button>
-        </div>`).join('') || '<div class="tiny dim">Nobody yet — it is invisible to everyone but administrators.</div>'}
-        <div class="row" style="margin-top:12px">
-          <input type="email" data-grantmail="${esc(si.id)}" placeholder="their email" style="width:220px">
-          <input type="text" data-grantnote="${esc(si.id)}" placeholder="why, e.g. reviewing before we ship" style="width:250px">
-          <button class="btn" data-grant="${esc(si.id)}">Give review access</button>
+    <div class="card tight" style="margin-bottom:16px">
+      <div class="row">
+        <div class="grow">
+          <input id="sim_q" type="text" placeholder="Search by title, id or number" value="${esc(D.simSearch || '')}">
         </div>
-        <div class="tiny dim" style="margin-top:8px">They must already have a facilitator account. Grants disappear when the simulation is published.</div>
-      </div>` : ''}
-      <div class="row" style="margin-top:12px">
-        <button class="btn sm" data-editsim="${esc(si.id)}">Edit this</button>
-        <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published ? '1' : '0'}">${si.published ? 'Unpublish' : 'Publish'}</button>
-        <button class="btn sm danger" data-delsim="${esc(si.id)}">Delete</button>
+        ${[['all','Everything'],['published','Published'],['draft','Draft']].map(([k,l]) =>
+          `<button class="btn ${D.simFilter === k ? 'pri' : ''}" data-simfilter="${k}">${l} (${counts[k]})</button>`).join('')}
       </div>
-    </div>`).join('') || '<div class="card dim">Nothing in the catalogue yet.</div>'}
+    </div>
+
+    ${shown.map(si => {
+      const reviewers = (D.grants || []).filter(g => g.sim_id === si.id);
+      const open = D.simOpen === si.id;
+      return `<div class="card" style="padding:0;margin-bottom:10px">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;padding:16px 20px;gap:14px">
+          <div style="flex:1;min-width:220px">
+            <div class="row" style="gap:10px;align-items:baseline">
+              <span class="mono" style="font-size:13px;color:var(--ink3);min-width:26px">${si.number ? String(si.number).padStart(2,'0') : '··'}</span>
+              <h3 style="margin:0">${esc(si.title)}</h3>
+              ${si.published ? '<span class="pill ok">published</span>'
+                : `<span class="pill warn">draft${reviewers.length ? ' · ' + reviewers.length + ' reviewing' : ''}</span>`}
+            </div>
+            <div class="tiny dim" style="margin-top:5px">${esc(si.tagline || '')}</div>
+            <div class="tiny dim mono" style="margin-top:6px">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url)}</div>
+          </div>
+          <div class="row" style="gap:6px">
+            <button class="btn sm" data-editsim="${esc(si.id)}">Edit</button>
+            <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published ? '1' : '0'}">${si.published ? 'Unpublish' : 'Publish'}</button>
+            ${!si.published ? `<button class="btn sm" data-simopen="${esc(si.id)}">${open ? 'Hide reviewers' : 'Reviewers'}</button>` : ''}
+            <button class="btn sm danger" data-delsim="${esc(si.id)}">Delete</button>
+          </div>
+        </div>
+
+        ${(!si.published && open) ? `<div style="border-top:1px solid var(--line);padding:16px 20px;background:var(--sunk)">
+          <div class="eyebrow" style="margin-bottom:8px">Who can see it before it's published</div>
+          ${reviewers.map(g => `<div class="row" style="justify-content:space-between;padding:5px 0">
+            <div><b>${esc(g.name)}</b> <span class="tiny dim mono">${esc(g.email)}</span>
+              ${g.note ? `<div class="tiny dim">${esc(g.note)}</div>` : ''}</div>
+            <button class="btn sm" data-revgrant="${esc(g.id)}">Revoke</button>
+          </div>`).join('') || '<div class="tiny dim">Nobody yet — it is invisible to everyone but administrators.</div>'}
+          <div class="row" style="margin-top:12px">
+            <input type="email" data-grantmail="${esc(si.id)}" placeholder="their email" style="width:220px">
+            <input type="text" data-grantnote="${esc(si.id)}" placeholder="why, e.g. reviewing before we ship" style="width:250px">
+            <button class="btn" data-grant="${esc(si.id)}">Give review access</button>
+          </div>
+          <div class="tiny dim" style="margin-top:8px">They must already have a facilitator account. Grants disappear when the simulation is published.</div>
+        </div>` : ''}
+      </div>`;
+    }).join('') || `<div class="card dim">${all.length ? 'Nothing matches that.' : 'Nothing in the catalogue yet — add one below.'}</div>`}
 
     <h2>Starting over</h2>
     <div class="card tight">
@@ -400,24 +432,35 @@ function catalogueTab() {
     <h2>Add or update a sim</h2>
     <div class="card">
       <div class="row" style="align-items:flex-start">
+        <div class="grow">
+          <label class="f">Where is it deployed?</label>
+          <input id="s_url" type="text" placeholder="https://…vercel.app">
+        </div>
+        <button class="btn pri" id="s_probe" style="align-self:flex-end">Look it up</button>
+      </div>
+      <div class="tiny dim" style="margin:8px 0 0">Paste the address and we'll ask the deployment what it is. It knows its own id, and this checks it will actually accept the students we send it.</div>
+      <div id="s_probeout"></div>
+
+      <div class="rule" style="margin:22px 0"></div>
+
+      <div class="row" style="align-items:flex-start">
         <div style="width:110px">
           <label class="f">Number</label>
           <input id="s_num" type="number" min="1" placeholder="3">
         </div>
         <div class="grow">
           <label class="f">Id</label>
-          <input id="s_id" type="text" placeholder="rapid-03-recall">
+          <input id="s_id" type="text" placeholder="filled in for you" readonly style="background:var(--sunk);color:var(--ink2)">
         </div>
         <div class="grow">
           <label class="f">Title</label>
           <input id="s_title" type="text" placeholder="Whose Defect Is It?">
         </div>
       </div>
-      <div class="tiny dim" style="margin:8px 0 18px">The number is how people refer to it out loud — each simulation needs its own. The id is permanent and appears in links; the title can change.</div>
+      <div class="tiny dim" style="margin:8px 0 18px">The number is how people refer to it out loud — each simulation needs its own. The id comes from the deployment and cannot be edited here.</div>
       <div class="field"><label class="f">Tagline</label><input id="s_tag" type="text" placeholder="One line — what it is, in the voice of the catalogue"></div>
       <div class="field"><label class="f">Description</label><textarea id="s_desc" rows="3" placeholder="What the simulation is about — this is what faculty read on the landing page"></textarea></div>
       <div class="row" style="align-items:flex-start">
-        <div class="grow"><label class="f">Launch URL</label><input id="s_url" type="text" placeholder="https://…vercel.app"></div>
         <div style="width:120px"><label class="f">Minutes</label><input id="s_min" type="number" value="20"></div>
       </div>
       <div class="row" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);justify-content:space-between">
@@ -444,6 +487,7 @@ function wireCatalogue() {
     const si = (D.data.sims || []).find(x => x.id === btn.dataset.editsim);
     if (!si) return;
     document.getElementById('s_num').value = si.number || '';
+    const po = document.getElementById('s_probeout'); if (po) po.innerHTML = '';
     document.getElementById('s_id').value = si.id;
     document.getElementById('s_title').value = si.title || '';
     document.getElementById('s_tag').value = si.tagline || '';
@@ -508,6 +552,59 @@ function wireCatalogue() {
       load();
     } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
     rg.disabled = false; rg.textContent = 'Wipe the test data';
+  };
+  const sq = document.getElementById('sim_q');
+  if (sq) {
+    sq.oninput = () => {
+      D.simSearch = sq.value;
+      const body = document.getElementById('body');
+      body.innerHTML = catalogueTab(); wireCatalogue();
+      const again = document.getElementById('sim_q');
+      if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+    };
+  }
+  app.querySelectorAll('[data-simfilter]').forEach(btn => btn.onclick = () => {
+    D.simFilter = btn.dataset.simfilter;
+    const body = document.getElementById('body');
+    body.innerHTML = catalogueTab(); wireCatalogue();
+  });
+  app.querySelectorAll('[data-simopen]').forEach(btn => btn.onclick = () => {
+    D.simOpen = D.simOpen === btn.dataset.simopen ? null : btn.dataset.simopen;
+    const body = document.getElementById('body');
+    body.innerHTML = catalogueTab(); wireCatalogue();
+  });
+  const pb = document.getElementById('s_probe');
+  if (pb) pb.onclick = async () => {
+    const out = document.getElementById('s_probeout');
+    const done = acting(pb, 'Asking…');
+    out.innerHTML = '';
+    try {
+      const d = await api('/api/admin', { action:'probe_sim', launchUrl: document.getElementById('s_url').value });
+      document.getElementById('s_id').value = d.id;
+      document.getElementById('s_url').value = d.launchUrl;
+      if (!document.getElementById('s_num').value) document.getElementById('s_num').value = d.suggestedNumber;
+      if (d.existing) {
+        const si = (D.data.sims || []).find(x => x.id === d.id);
+        if (si) {
+          document.getElementById('s_title').value = si.title || '';
+          document.getElementById('s_tag').value = si.tagline || '';
+          document.getElementById('s_desc').value = si.description || '';
+          document.getElementById('s_min').value = si.minutes || '';
+          document.getElementById('s_pub').checked = !!si.published;
+        }
+      }
+      out.innerHTML = `<div class="note" style="margin-top:14px">
+        <b>${esc(d.id)}</b> ${d.existing ? '— already in the catalogue, so this will update it.' : '— not in the catalogue yet.'}
+        ${d.problems.length
+          ? `<div style="margin-top:10px"><b>Before students use it:</b><div style="margin-top:6px">${
+              d.problems.map(x => `<div style="color:var(--rose)">· ${esc(x)}</div>`).join('')}</div></div>`
+          : '<div style="margin-top:8px;color:var(--green)">Configured correctly — it will accept students we send it.</div>'}
+      </div>`;
+      done('Found it');
+    } catch (e) {
+      out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+      done('Not found', 'bad');
+    }
   };
   const b = document.getElementById('s_save');
   if (!b) return;
