@@ -19,6 +19,21 @@ positions.
 Needs `ANTHROPIC_API_KEY`, `ACCESS_CODE`, `FACULTY_CODES`, and an Upstash Redis
 store for session state.
 
+## sim-02/
+
+Rapid Sim 02 — What Did It Tell Them? A customer-facing AI assistant gave a
+customer a specification figure from a superseded datasheet, and the parts are
+in service. Either the document library is carrying stale revisions, or a
+routing change stopped the question reaching an engineer. Both are true.
+
+The first sim to branch: the third moment differs depending on whether the
+student stopped an overnight re-index before it overwrote the evidence. The
+hold can be recorded as an action or simply instructed in conversation, which a
+classifier adjudicates at the close of each earlier moment.
+
+Same environment variables as `sim/`, its own Vercel project with Root
+Directory `sim-02`.
+
 ## platform/
 
 Catalogue, faculty accounts, courses, student enrolment and entitlement.
@@ -33,8 +48,16 @@ whole section as paid, and that flag is what unlocks a launch.
 
 Needs Postgres, `LAUNCH_SECRET`, and `PUBLIC_BASE_URL`.
 
+## docs/
+
+Design and specification documents: the Rapid Sim 02 scenario, the engine
+changes it needed, the platform pre-publication access spec, and the handoff
+notes.
+
 ## Deploying
 
-Two Vercel projects against the same repository, each with its Root Directory set
-— one to `sim`, one to `platform`. Each redeploys only when its own folder
-changes.
+One Vercel project per folder, each with its Root Directory set — `sim`,
+`sim-02`, `platform`. Each redeploys only when its own folder changes.
+
+Every sim shares `LAUNCH_SECRET` with the platform. Fingerprints from
+`/api/health` on each deployment must match.

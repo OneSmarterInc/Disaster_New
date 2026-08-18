@@ -26,6 +26,7 @@ ${stmts.map(s => '`' + s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$
 fs.writeFileSync(path.join(__dirname, 'schema.js'), out);
 
 const tables = stmts.filter(s => /^CREATE TABLE/i.test(s)).length;
-const indexes = stmts.filter(s => /^CREATE INDEX/i.test(s)).length;
-console.log(`schema.js written — ${stmts.length} statements (${tables} tables, ${indexes} indexes)`);
+const indexes = stmts.filter(s => /^CREATE (UNIQUE )?INDEX/i.test(s)).length;
+const alters = stmts.filter(s => /^ALTER TABLE/i.test(s)).length;
+console.log(`schema.js written — ${stmts.length} statements (${tables} tables, ${indexes} indexes, ${alters} alters)`);
 if (tables !== 11) { console.error(`expected 11 tables, found ${tables}`); process.exit(1); }

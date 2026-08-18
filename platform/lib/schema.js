@@ -34,7 +34,8 @@ module.exports = [
 `CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id)`,
 
 `CREATE TABLE IF NOT EXISTS sims (
-  id            TEXT PRIMARY KEY,            -- e.g. 'rapid-01-disaster'
+  id            TEXT PRIMARY KEY,
+  number        INTEGER,            -- e.g. 'rapid-01-disaster'
   title         TEXT NOT NULL,
   tagline       TEXT,
   description   TEXT,
@@ -134,4 +135,8 @@ module.exports = [
 `CREATE INDEX IF NOT EXISTS sim_access_user_idx ON sim_access(user_id)`,
 
 `CREATE INDEX IF NOT EXISTS sim_access_sim_idx ON sim_access(sim_id)`,
+
+`ALTER TABLE sims ADD COLUMN IF NOT EXISTS number INTEGER`,
+
+`CREATE UNIQUE INDEX IF NOT EXISTS sims_number_idx ON sims(number) WHERE number IS NOT NULL`,
 ];

@@ -26,6 +26,7 @@ async function api(path, payload) {
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
 }
+const simLabel = (x) => (x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { day:'numeric', month:'short' }) : '—';
 const daysLeft = t => Math.max(0, Math.ceil((new Date(t) - Date.now()) / 86400000));
 
@@ -74,7 +75,7 @@ function renderHome() {
       : (F.simsOverview.length ? `<div class="card" style="padding:0"><table>
           <thead><tr><th>Simulation</th><th>Courses</th><th>Released</th><th>Started</th><th>Finished</th></tr></thead>
           <tbody>${F.simsOverview.map(x => `<tr>
-            <td><b>${esc(x.title)}</b><div class="tiny dim">${esc(x.tagline || '')}</div></td>
+            <td><b>${esc(simLabel(x))}</b><div class="tiny dim">${esc(x.tagline || '')}</div></td>
             <td class="mono">${x.courses}</td>
             <td class="mono">${x.released} of ${x.enrolled}</td>
             <td class="mono">${x.started}</td>
@@ -112,7 +113,7 @@ function renderHome() {
       return `<div class="card">
         <div class="row" style="justify-content:space-between;align-items:flex-start">
           <div style="flex:1;min-width:240px">
-            <h3>${esc(si.title)}</h3>
+            <h3>${esc(simLabel(si))}</h3>
             <div class="tiny dim">${esc(si.tagline || '')}${si.minutes ? ' · about ' + si.minutes + ' minutes' : ''}</div>
             ${si.description ? `<p class="tiny" style="margin-top:9px;max-width:60ch">${esc(si.description)}</p>` : ''}
           </div>
@@ -178,7 +179,7 @@ function renderCourse() {
 
     <h2>Simulations in this course</h2>
     ${sims.map(x => `<div class="card">
-      <h3>${esc(x.title)}</h3>
+      <h3>${esc(simLabel(x))}</h3>
       <div class="tiny dim">${x.expected_seats ? 'expecting ' + x.expected_seats + ' students' : 'no expected number set'}${x.hard_cap ? ' · hard cap' : ''}
         ${x.expected_seats && active.length > x.expected_seats ? ` · <span style="color:var(--rose)">${active.length} enrolled</span>` : ''}</div>
       <div class="row" style="margin-top:10px">
@@ -218,7 +219,9 @@ function renderCourse() {
     </div>
 
     <div class="row" style="margin-bottom:12px">
-      <button class="btn pri" id="p_all" ${unpaid.length ? '' : 'disabled'}>Give access to all ${unpaid.length} waiting</button>
+      <button class="btn pri" id="p_all" ${unpaid.length ? '' : 'disabled'}>${unpaid.length
+        ? `Give access to all ${unpaid.length} waiting`
+        : 'Nobody waiting for access'}</button>
       <button class="btn" id="p_sel" disabled>Give access to selected</button>
       <input type="text" id="p_note" placeholder="note to yourself, e.g. dept PO 4471" style="width:240px">
     </div>
@@ -350,7 +353,7 @@ function renderProgress() {
   app.innerHTML = `
     <button class="btn sm" id="back">← ${esc(course.title)}</button>
     <div class="eyebrow" style="margin-top:20px">${esc(course.title)}</div>
-    <h1>${esc(sim ? sim.title : 'Simulation')}</h1>
+    <h1>${esc(sim ? simLabel(sim) : 'Simulation')}</h1>
     <p class="lede">${done.length} of ${active.length} have finished it${started.length ? `, ${started.length} started and didn't` : ''}.</p>
 
     <div class="card" style="padding:0">

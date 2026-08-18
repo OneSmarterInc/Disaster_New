@@ -135,7 +135,7 @@ module.exports = async (req, res) => {
 
       // The public catalogue — what the landing page shows before anyone signs in.
       case 'catalogue': {
-        const sims = await s`SELECT id, title, tagline, description, minutes FROM sims WHERE published = true ORDER BY created_at`;
+        const sims = await s`SELECT id, number, title, tagline, description, minutes FROM sims WHERE published = true ORDER BY number NULLS LAST, created_at`;
         return res.status(200).json({ sims });
       }
 

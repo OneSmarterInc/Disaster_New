@@ -15,7 +15,7 @@ const visibleSims = (s, userId) => s`
   SELECT * FROM sims si
   WHERE si.published = true
      OR EXISTS (SELECT 1 FROM sim_access sa WHERE sa.sim_id = si.id AND sa.user_id = ${userId})
-  ORDER BY si.created_at`;
+  ORDER BY si.number NULLS LAST, si.created_at`;
 
 const simVisibleTo = async (s, userId, simId) => {
   const rows = await s`
@@ -60,7 +60,7 @@ module.exports = async (req, res) => {
       // how many students have actually played it.
       case 'sims_overview': {
         const rows = await s`
-          SELECT si.id, si.title, si.tagline, si.minutes,
+          SELECT si.id, si.number, si.title, si.tagline, si.minutes,
                  count(DISTINCT c.id) AS courses,
                  count(DISTINCT e.student_id) FILTER (WHERE e.dropped = false) AS enrolled,
                  count(DISTINCT e.student_id) FILTER (WHERE e.dropped = false AND e.paid = true) AS released,
@@ -72,8 +72,8 @@ module.exports = async (req, res) => {
           LEFT JOIN enrolments e ON e.course_id = c.id
           LEFT JOIN launches l ON l.course_id = c.id AND l.sim_id = si.id
           LEFT JOIN completions cp ON cp.course_id = c.id AND cp.sim_id = si.id
-          GROUP BY si.id, si.title, si.tagline, si.minutes
-          ORDER BY si.title`;
+          GROUP BY si.id, si.number, si.title, si.tagline, si.minutes
+          ORDER BY si.number NULLS LAST, si.title`;
         return res.status(200).json({ sims: rows });
       }
 
@@ -120,7 +120,7 @@ module.exports = async (req, res) => {
         const course = await ownCourse(s, me.id, String(b.courseId || ''));
         if (!course) return res.status(404).json({ error: 'no_such_course' });
         const sims = await s`
-          SELECT cs.*, si.title, si.minutes, si.tagline,
+          SELECT cs.*, si.number, si.title, si.minutes, si.tagline,
             (SELECT count(DISTINCT l.user_id) FROM launches l
               WHERE l.course_id = ${course.id} AND l.sim_id = cs.sim_id AND l.as_role = 'student') AS started,
             (SELECT count(DISTINCT c2.user_id) FROM completions c2

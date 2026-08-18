@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
                  (SELECT count(*) FROM enrolments e JOIN courses c ON c.id = e.course_id
                    WHERE c.faculty_id = u.id AND e.dropped = false AND e.paid = true) AS paid_students
           FROM users u WHERE u.role = 'faculty' ORDER BY u.created_at DESC`;
-        const sims = await s`SELECT * FROM sims ORDER BY created_at`;
+        const sims = await s`SELECT * FROM sims ORDER BY number NULLS LAST, created_at`;
         const totals = (await s`
           SELECT
             (SELECT count(*) FROM users WHERE role = 'student') AS students,
@@ -134,11 +134,19 @@ module.exports = async (req, res) => {
       case 'save_sim': {
         const sid = String(b.id || '').trim();
         if (!sid) return res.status(400).json({ error: 'need_id' });
+        const num = b.number === '' || b.number === undefined || b.number === null
+          ? null : parseInt(b.number, 10);
+        if (num !== null) {
+          const clash = await s`SELECT id FROM sims WHERE number = ${num} AND id <> ${sid}`;
+          if (clash.length) return res.status(409).json({ error: 'number_taken',
+            message: `Number ${num} already belongs to ${clash[0].id}. Every simulation needs its own.` });
+        }
         await s`
-          INSERT INTO sims (id, title, tagline, description, minutes, launch_url, published)
-          VALUES (${sid}, ${String(b.title || '')}, ${b.tagline || null}, ${b.description || null},
+          INSERT INTO sims (id, number, title, tagline, description, minutes, launch_url, published)
+          VALUES (${sid}, ${num}, ${String(b.title || '')}, ${b.tagline || null}, ${b.description || null},
                   ${b.minutes ? parseInt(b.minutes, 10) : null}, ${String(b.launchUrl || '')}, ${!!b.published})
           ON CONFLICT (id) DO UPDATE SET
+            number = EXCLUDED.number,
             title = EXCLUDED.title, tagline = EXCLUDED.tagline, description = EXCLUDED.description,
             minutes = EXCLUDED.minutes, launch_url = EXCLUDED.launch_url, published = EXCLUDED.published`;
         // Once it's published, review grants mean nothing and would otherwise

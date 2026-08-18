@@ -33,6 +33,7 @@ async function api(path, payload) {
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
 }
+const simLabel = (x) => (x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
 const home = r => r === 'admin' ? '/admin.html' : r === 'faculty' ? '/faculty.html' : '/student.html';
 
 function page(sims, msg) {
@@ -47,7 +48,7 @@ function page(sims, msg) {
       <div>
         <h2>In the catalogue</h2>
         ${sims.length ? sims.map(si => '<div class="simcard">' +
-            '<h3>' + esc(si.title) + '</h3>' +
+            '<h3>' + esc(simLabel(si)) + '</h3>' +
             (si.tagline ? '<div class="tag">' + esc(si.tagline) + '</div>' : '') +
             (si.description ? '<p>' + esc(si.description) + '</p>' : '') +
             '<div class="meta">' + (si.minutes ? si.minutes + ' minutes · ' : '') + 'groups of one to three · no marking</div>' +
