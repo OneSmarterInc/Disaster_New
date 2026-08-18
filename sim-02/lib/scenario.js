@@ -5,6 +5,17 @@
 // Same shape as Rapid Sim 01. One addition: sceneFor() takes run state, because
 // the third phase varies on whether the index survived the night.
 
+// What this simulation tells the platform about itself. The platform's catalogue
+// is populated from this rather than from anyone typing it in — a deployment
+// that exists should appear, without a form.
+const META = {
+  id: 'rapid-02-relay',
+  title: 'What Did It Tell Them?',
+  tagline: 'Twenty minutes after an AI told a customer the wrong number.',
+  description: 'A customer-facing AI assistant answered a technical question from a superseded datasheet, and the parts have been in service for six weeks. Either the document library is carrying stale revisions, or a routing change stopped the question ever reaching an engineer. Both are true, and neither alone would have done it — while an overnight job quietly destroys the evidence unless somebody stops it.',
+  minutes: 20
+};
+
 const GROUND_TRUTH = {
   // Engine-only. Not passed to any model.
   answer: "both",
@@ -487,6 +498,7 @@ function sceneFor(phase, state) {
 }
 
 module.exports = {
+  META,
   GROUND_TRUTH, CAST, CAST_PUBLIC, CAST_INTRO, CAST_ORDER, KNOWLEDGE, PHASES,
   ACTIONS, READINGS, FALLBACK, FORK, LADDER, fallbackFor,
   knowledgeFor, systemPromptFor, sceneFor, tagsFor
