@@ -27,6 +27,32 @@ async function api(path, payload) {
   return d;
 }
 const simLabel = (x) => (x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
+
+// Every action button says what happened, where it was pressed. A button that
+// works silently is indistinguishable from one that is broken.
+function flash(btn, msg, kind) {
+  if (!btn) return;
+  const original = btn.textContent;
+  btn.textContent = msg;
+  btn.style.borderColor = kind === 'bad' ? 'var(--rose)' : 'var(--green)';
+  btn.style.color = kind === 'bad' ? 'var(--rose)' : 'var(--green)';
+  setTimeout(() => { btn.textContent = original; btn.style.borderColor = ''; btn.style.color = ''; }, 1800);
+}
+// Wraps an async click: disables, shows progress, then says what happened.
+function acting(btn, working) {
+  if (!btn) return () => {};
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = working || 'Working…';
+  return (msg, kind) => {
+    btn.disabled = false;
+    if (msg) { btn.textContent = original; flash(btn, msg, kind); }
+    else btn.textContent = original;
+  };
+}
+function scrollTo(id) {
+  const el = document.getElementById(id);
+  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }) : '—';
 
 document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
@@ -153,7 +179,7 @@ function wireFaculty() {
     const out = document.getElementById('invout');
     const name = document.getElementById('in').value;
     const email = document.getElementById('ie').value;
-    inv.disabled = true; inv.textContent = 'Creating…';
+    const doneInv = acting(inv, 'Creating…');
     out.innerHTML = '';
     try {
       const d = await api('/api/admin', {
@@ -162,9 +188,8 @@ function wireFaculty() {
       });
       // Held in state so refreshing the list underneath can't take it away.
       D.lastInvite = { name, email, inviteUrl: d.inviteUrl, expiresAt: d.expiresAt, facultyId: d.facultyId };
-      await load();
-    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
-    inv.disabled = false; inv.textContent = 'Create invitation';
+      doneInv(); await load();
+    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; doneInv('Failed', 'bad'); }
   };
   const ic = document.getElementById('icopy');
   if (ic) ic.onclick = () => {
@@ -174,10 +199,11 @@ function wireFaculty() {
     setTimeout(() => { ic.textContent = 'Copy'; }, 1500);
   };
   const idone = document.getElementById('idone');
-  if (idone) idone.onclick = () => { D.lastInvite = null; render(); };
+  if (idone) idone.onclick = () => { D.lastInvite = null; render(); };   // visible: the panel disappears
   app.querySelectorAll('[data-open]').forEach(b => b.onclick = async () => {
-    try { D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: b.dataset.open }); render(); }
-    catch (e) { D.err = e.message; render(); }
+    const done = acting(b, 'Opening…');
+    try { D.detail = await api('/api/admin', { action:'faculty_detail', facultyId: b.dataset.open }); done(); render(); }
+    catch (e) { done('Failed', 'bad'); D.err = e.message; render(); }
   });
 }
 
@@ -241,9 +267,10 @@ function renderDetail() {
     await load();
   };
 
-  $('back').onclick = () => { D.detail = null; render(); };
+  $('back').onclick = () => { D.detail = null; render(); };   // visible: the whole view changes
 
   $('rst').onclick = async () => {
+    const doneR = acting($('rst'), 'Creating…');
     try {
       if (person.accepted) {
         const d = await api('/api/admin', { action:'issue_reset', userId: person.id });
@@ -253,33 +280,38 @@ function renderDetail() {
           name: person.name, email: person.email, institution: person.institution });
         showLink(`Send this to ${person.name}.`, d.inviteUrl, 'A fresh invitation. It works once; any earlier link is replaced.');
       }
-    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+      doneR();
+    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneR('Failed', 'bad'); }
   };
 
   const rev = $('rev');
   if (rev) rev.onclick = async () => {
     if (!confirm('Cancel the invitation? Any link already sent will stop working.')) return;
+    const doneV = acting(rev, 'Cancelling…');
     try {
       await api('/api/admin', { action:'revoke_invites', facultyId: person.id });
       D.lastInvite = null;
       out().innerHTML = '<div class="ok">Invitation cancelled. Any link already sent is now dead.</div>';
-    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+      doneV();
+    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneV('Failed', 'bad'); }
   };
 
   const del = $('del');
   if (del) del.onclick = async () => {
     if (!confirm(`Delete ${person.name} entirely? Only possible because they have no courses.`)) return;
+    const doneDel = acting(del, 'Deleting…');
     try {
       await api('/api/admin', { action:'delete_faculty', facultyId: person.id });
-      D.detail = null; D.lastInvite = null; await load();
-    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+      doneDel(); D.detail = null; D.lastInvite = null; await load();
+    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneDel('Not deleted', 'bad'); }
   };
 
   $('tog').onclick = async () => {
+    const doneT = acting($('tog'), 'Saving…');
     try {
       await api('/api/admin', { action:'set_faculty_disabled', facultyId: person.id, disabled: !person.disabled });
-      await refresh();
-    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+      doneT(); await refresh();
+    } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneT('Failed', 'bad'); }
   };
 }
 
@@ -419,42 +451,50 @@ function wireCatalogue() {
     document.getElementById('s_url').value = si.launch_url || '';
     document.getElementById('s_min').value = si.minutes || '';
     document.getElementById('s_pub').checked = !!si.published;
-    document.getElementById('s_out').innerHTML = '<div class="ok">Loaded — change what you need and save.</div>';
+    document.getElementById('s_out').innerHTML = `<div class="ok">Editing ${esc(si.title)} — change what you need and save.</div>`;
+    flash(btn, 'Loaded below ↓');
+    scrollTo('s_id');
   });
   app.querySelectorAll('[data-pub]').forEach(btn => btn.onclick = async () => {
     const si = (D.data.sims || []).find(x => x.id === btn.dataset.pub);
     if (!si) return;
-    await api('/api/admin', { action:'save_sim', id: si.id, number: si.number, title: si.title, tagline: si.tagline,
-      description: si.description, launchUrl: si.launch_url, minutes: si.minutes,
-      published: btn.dataset.now !== '1' });
-    load();
+    const done = acting(btn, 'Saving…');
+    try {
+      await api('/api/admin', { action:'save_sim', id: si.id, number: si.number, title: si.title, tagline: si.tagline,
+        description: si.description, launchUrl: si.launch_url, minutes: si.minutes,
+        published: btn.dataset.now !== '1' });
+      done(); load();
+    } catch (e) { done('Failed', 'bad'); }
   });
   app.querySelectorAll('[data-grant]').forEach(btn => btn.onclick = async () => {
     const sid = btn.dataset.grant;
     const mail = app.querySelector(`[data-grantmail="${sid}"]`);
     const note = app.querySelector(`[data-grantnote="${sid}"]`);
     const out = document.getElementById('s_out');
+    const done = acting(btn, 'Granting…');
     try {
       const d = await api('/api/admin', { action:'grant_sim_access',
         simId: sid, email: mail ? mail.value : '', note: note ? note.value : '' });
       if (out) out.innerHTML = `<div class="ok">${esc(d.who)} can now see it.</div>`;
-      load();
-    } catch (e) { if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+      done('Granted'); load();
+    } catch (e) { if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`; done('Failed', 'bad'); }
   });
   app.querySelectorAll('[data-revgrant]').forEach(btn => btn.onclick = async () => {
-    await api('/api/admin', { action:'revoke_sim_access', grantId: btn.dataset.revgrant });
-    load();
+    const done = acting(btn, 'Revoking…');
+    try { await api('/api/admin', { action:'revoke_sim_access', grantId: btn.dataset.revgrant }); done(); load(); }
+    catch (e) { done('Failed', 'bad'); }
   });
   app.querySelectorAll('[data-delsim]').forEach(btn => btn.onclick = async () => {
     if (!confirm('Delete this simulation from the catalogue?')) return;
+    const doneD = acting(btn, 'Deleting…');
     try {
       await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim });
-      load();
+      doneD(); load();
     } catch (e) {
       if (confirm(e.message + '\n\nDelete it anyway?')) {
         await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim, force: true });
-        load();
-      }
+        doneD(); load();
+      } else doneD('Kept', 'bad');
     }
   });
   const rg = document.getElementById('rst_go');
@@ -472,6 +512,7 @@ function wireCatalogue() {
   const b = document.getElementById('s_save');
   if (!b) return;
   b.onclick = async () => {
+    const done = acting(b, 'Saving…');
     try {
       await api('/api/admin', {
         action: 'save_sim',
@@ -485,8 +526,13 @@ function wireCatalogue() {
         published: document.getElementById('s_pub').checked
       });
       document.getElementById('s_out').innerHTML = '<div class="ok">Saved.</div>';
-      load();
-    } catch (e) { document.getElementById('s_out').innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+      done('Saved'); load();
+    } catch (e) {
+      const why = e.message === 'need_id' ? 'Every field above needs a value — press Edit this on a simulation to load it.' : e.message;
+      document.getElementById('s_out').innerHTML = `<div class="err">${esc(why)}</div>`;
+      done('Not saved', 'bad');
+      scrollTo('s_id');
+    }
   };
 }
 

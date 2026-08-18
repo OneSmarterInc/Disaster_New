@@ -89,10 +89,15 @@ async function draw() {
 
   const j = document.getElementById('join');
   if (j) j.onclick = async () => {
+    const original = j.textContent;
+    j.disabled = true; j.textContent = 'Joining…';
     try {
       await api('/api/student', { action:'enrol', joinCode: document.getElementById('cc').value });
-      LAST = ''; draw();
-    } catch (e) { document.getElementById('err').textContent = e.message; }
+      j.textContent = 'Joined'; LAST = ''; draw();
+    } catch (e) {
+      document.getElementById('err').textContent = e.message;
+      j.disabled = false; j.textContent = original;
+    }
   };
 }
 
