@@ -97,7 +97,7 @@ module.exports = async (req, res) => {
           WHERE e.student_id = ${me.id} AND e.dropped = false AND c.archived = false
           ORDER BY c.created_at DESC`;
         const sims = await s`
-          SELECT cs.course_id, si.id, si.title, si.tagline, si.minutes,
+          SELECT cs.course_id, si.id, si.number, si.title, si.tagline, si.minutes,
                  (SELECT count(*) FROM launches l WHERE l.user_id = ${me.id} AND l.sim_id = si.id AND l.course_id = cs.course_id) AS played
           FROM course_sims cs
           JOIN sims si ON si.id = cs.sim_id

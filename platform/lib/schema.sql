@@ -35,7 +35,8 @@ CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
 
 -- The catalogue. Each sim is its own deployment; the platform launches into it.
 CREATE TABLE IF NOT EXISTS sims (
-  id            TEXT PRIMARY KEY,            -- e.g. 'rapid-01-disaster'
+  id            TEXT PRIMARY KEY,
+  number        INTEGER,            -- e.g. 'rapid-01-disaster'
   title         TEXT NOT NULL,
   tagline       TEXT,
   description   TEXT,
@@ -137,3 +138,11 @@ CREATE TABLE IF NOT EXISTS sim_access (
 );
 CREATE INDEX IF NOT EXISTS sim_access_user_idx ON sim_access(user_id);
 CREATE INDEX IF NOT EXISTS sim_access_sim_idx ON sim_access(sim_id);
+
+
+-- Added after the sims table existed, so it has to be an alter rather than part
+-- of the create. Every simulation carries a short number people can say out
+-- loud — 'Rapid Sim 2' rather than 'rapid-02-relay'. Names change, ids are
+-- awkward in conversation, numbers are neither.
+ALTER TABLE sims ADD COLUMN IF NOT EXISTS number INTEGER;
+CREATE UNIQUE INDEX IF NOT EXISTS sims_number_idx ON sims(number) WHERE number IS NOT NULL;
