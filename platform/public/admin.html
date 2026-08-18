@@ -184,7 +184,7 @@ function facultyTab() {
     </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>Name</th><th>Courses and simulations</th><th>Status</th><th>Students</th><th>Launches</th><th>Last seen</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Courses and simulations</th><th>Status</th><th class="mono">Students</th><th class="mono">Launches</th><th>Last seen</th><th></th></tr></thead>
         <tbody>
         ${facPage.rows.map(f => `<tr>
           <td data-l="Name"><b>${esc(f.name)}</b>
@@ -508,7 +508,7 @@ function studentsTab() {
     </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>Student</th><th>Course and facilitator</th><th>Simulations</th><th>Access</th><th>Played</th><th>Finished</th><th></th></tr></thead>
+        <thead><tr><th>Student</th><th>Course and facilitator</th><th>Simulations</th><th class="mono">Access</th><th class="mono">Played</th><th class="mono">Finished</th><th></th></tr></thead>
         <tbody>
         ${shown.map(st => `<tr>
           <td data-l="Student"><b>${esc(st.name)}</b>
@@ -562,7 +562,7 @@ function coursesTab() {
     </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>Course</th><th>Facilitator</th><th>Simulations</th><th>Enrolled</th><th>Released</th><th>Launches</th></tr></thead>
+        <thead><tr><th>Course</th><th>Facilitator</th><th>Simulations</th><th class="mono">Enrolled</th><th class="mono">Released</th><th class="mono">Launches</th></tr></thead>
         <tbody>
         ${rows.map(c => `<tr${c.archived ? ' style="opacity:.5"' : ''}>
           <td data-l="Course"><b>${esc(c.title)}</b><div class="tiny dim">${esc(c.term || '')} · <span class="mono">${esc(c.join_code)}</span>${c.archived ? ' · archived' : ''}</div></td>
