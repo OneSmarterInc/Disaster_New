@@ -219,7 +219,9 @@ function renderCourse() {
     </div>
 
     <div class="row" style="margin-bottom:12px">
-      <button class="btn pri" id="p_all" ${unpaid.length ? '' : 'disabled'}>Give access to all ${unpaid.length} waiting</button>
+      <button class="btn pri" id="p_all" ${unpaid.length ? '' : 'disabled'}>${unpaid.length
+        ? `Give access to all ${unpaid.length} waiting`
+        : 'Nobody waiting for access'}</button>
       <button class="btn" id="p_sel" disabled>Give access to selected</button>
       <input type="text" id="p_note" placeholder="note to yourself, e.g. dept PO 4471" style="width:240px">
     </div>
