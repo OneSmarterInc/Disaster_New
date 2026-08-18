@@ -97,11 +97,17 @@ module.exports = async (req, res) => {
           WHERE e.student_id = ${me.id} AND e.dropped = false AND c.archived = false
           ORDER BY c.created_at DESC`;
         const sims = await s`
-          SELECT cs.course_id, si.id, si.number, si.title, si.tagline, si.minutes,
-                 (SELECT count(*) FROM launches l WHERE l.user_id = ${me.id} AND l.sim_id = si.id AND l.course_id = cs.course_id) AS played
+          SELECT cs.course_id, si.id, si.number, si.title, si.tagline, si.description, si.minutes,
+                 (SELECT count(*) FROM launches l WHERE l.user_id = ${me.id} AND l.sim_id = si.id AND l.course_id = cs.course_id) AS played,
+                 c3.completed_at, c3.duration_seconds, c3.summary, c3.metrics
           FROM course_sims cs
           JOIN sims si ON si.id = cs.sim_id
           JOIN enrolments e ON e.course_id = cs.course_id AND e.student_id = ${me.id} AND e.dropped = false
+          LEFT JOIN LATERAL (
+            SELECT * FROM completions c4
+            WHERE c4.user_id = ${me.id} AND c4.sim_id = si.id AND c4.course_id = cs.course_id
+            ORDER BY c4.completed_at DESC LIMIT 1
+          ) c3 ON true
           WHERE (si.published = true
                  OR EXISTS (SELECT 1 FROM sim_access sa WHERE sa.sim_id = si.id AND sa.user_id = ${me.id}))
           ORDER BY cs.added_at`;

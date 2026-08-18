@@ -5,20 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Your simulations — Flexee Rapid Sims</title>
 <link rel="stylesheet" href="/app.css">
+<style>
+  /* A student sees a handful of things, so this reads as a short page rather
+     than a console. Wider than prose, narrower than a table screen. */
+  .swrap{max-width:800px;margin:0 auto;padding:30px 22px 80px}
+  .simcard{border:1px solid var(--line);background:var(--card);margin-bottom:12px}
+  .simcard .body{padding:18px 20px}
+  .simcard .no{font-family:var(--mono);font-size:12px;color:var(--ink3)}
+  .simcard h3{font-size:19px;font-weight:500;letter-spacing:-.01em;margin:3px 0 5px}
+  .simcard .tag{font-size:14.5px;color:var(--ink2);line-height:1.5}
+  .simcard .foot2{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:13px 20px;border-top:1px solid var(--line);background:var(--sunk);flex-wrap:wrap}
+  .facts{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+  .facts b{color:var(--ink);font-weight:600}
+  .result{border-top:1px solid var(--line);padding:14px 20px;background:var(--sunk)}
+  .result .row2{display:flex;justify-content:space-between;gap:14px;padding:3px 0;font-size:13.5px}
+  .result .row2 span:first-child{color:var(--ink3)}
+  .before{border-left:2px solid var(--line2);padding:0 0 0 14px;margin:16px 0 0;font-size:13.5px;color:var(--ink2);line-height:1.6}
+</style>
 </head>
 <body>
-<div class="bar">
+<div class="top">
   <div class="brand">Flexee Rapid <span>Sims</span></div>
-  <div class="who" id="who"></div>
-  <a class="btn sm" href="/account.html">Account</a>
-  <button class="btn sm" id="out">Sign out</button>
+  <div class="sep"></div>
+  <div class="role" id="who"></div>
+  <div class="right">
+    <a class="btn sm" href="/account.html">Account</a>
+    <button class="btn sm" id="out">Sign out</button>
+  </div>
 </div>
-<div class="wrap" id="app"></div>
+<div class="swrap" id="app"></div>
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dot = (k, l) => `<span class="st ${k}">${esc(l)}</span>`;
+const when = t => t ? new Date(t).toLocaleDateString(undefined, { day:'numeric', month:'short' }) : '';
+const mins = s => s ? Math.round(s/60) + ' minutes' : null;
 
-const simLabel = (x) => (x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
   const d = await r.json().catch(() => ({}));
@@ -28,76 +52,95 @@ async function api(path, payload) {
 document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
 
 let LAST = '';
-
 async function draw() {
   let d;
-  try { d = await api('/api/student', { action:'overview' }); }
-  catch (e) { return; }
+  try { d = await api('/api/student', { action:'overview' }); } catch (e) { return; }
 
-  // Only repaint when something actually changed, so a poll doesn't
-  // interrupt someone mid-click.
-  const fingerprint = JSON.stringify(d.courses.map(c => [c.id, c.paid])) + JSON.stringify(d.sims.map(x => [x.id, x.played]));
-  if (fingerprint === LAST) return;
-  LAST = fingerprint;
+  // Repaint only when something changed, so polling cannot interrupt a click.
+  const print = JSON.stringify(d.courses.map(c => [c.id, c.paid])) +
+                JSON.stringify(d.sims.map(x => [x.id, x.played, x.completed_at]));
+  if (print === LAST) return;
+  LAST = print;
 
   const { courses, sims } = d;
 
-  app.innerHTML = `
-    <div class="eyebrow">Your courses</div>
-    <h1>What you can <em>play</em></h1>
-
-    ${courses.length ? courses.map(c => {
-      const mine = sims.filter(x => x.course_id === c.id);
-      return `<div class="card">
-        <div class="row" style="justify-content:space-between;align-items:flex-start">
-          <div><h3>${esc(c.title)}</h3>
-            <div class="tiny dim">${esc(c.faculty_name)}${c.term ? ' · ' + esc(c.term) : ''}</div></div>
-          ${c.paid ? '<span class="pill ok">access released</span>' : '<span class="pill warn">waiting on your instructor</span>'}
+  app.innerHTML = courses.length ? courses.map(c => {
+    const mine = sims.filter(x => x.course_id === c.id);
+    return `
+      <div style="margin-bottom:30px">
+        <div class="crumb" style="margin:0 0 4px">${esc(c.term || '')}</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap">
+          <h1 style="font-size:26px;font-weight:400;letter-spacing:-.02em">${esc(c.title)}</h1>
+          ${c.paid ? dot('ok','you can start') : dot('warn','waiting on your instructor')}
         </div>
-
-        ${mine.length ? `<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-          ${mine.map(x => `<div class="row" style="justify-content:space-between;padding:8px 0">
-            <div style="flex:1;min-width:200px">
-              <b>${esc(simLabel(x))}</b>
-              <div class="tiny dim">${esc(x.tagline || '')}${x.minutes ? ' · about ' + x.minutes + ' minutes' : ''}</div>
-            </div>
-            <div class="row">
-              ${Number(x.played) > 0 ? `<span class="pill">played ${x.played}×</span>` : ''}
-              ${c.paid
-                ? `<a class="btn pri" href="/api/launch?sim=${encodeURIComponent(x.id)}&course=${encodeURIComponent(c.id)}">${Number(x.played) > 0 ? 'Play again' : 'Start'}</a>`
-                : `<button class="btn" disabled>Not yet</button>`}
-            </div>
-          </div>`).join('')}
-        </div>` : '<div class="tiny dim" style="margin-top:12px">Your instructor has not added any simulations to this course yet.</div>'}
+        <div class="sub" style="font-size:12px;margin-top:5px">${esc(c.faculty_name)}</div>
 
         ${!c.paid ? `<div class="note" style="margin-top:14px">
-          You're enrolled and on the list. Your instructor opens this up once your registration is settled — you don't need to do anything, and this page will change by itself when they do.
+          You are enrolled and on the list. ${esc(c.faculty_name)} opens this up once your registration is settled —
+          you do not need to do anything, and this page will change by itself when they do.
         </div>` : ''}
-      </div>`;
-    }).join('') : `<div class="card">
-      <p>You're not in any courses yet.</p>
-      <p class="tiny dim">If your instructor sent you a link, open it. Or enter the course code they gave you.</p>
-      <div class="row" style="margin-top:12px">
-        <input id="cc" type="text" placeholder="ABC123" style="width:160px;text-transform:uppercase;font-family:var(--mono)">
-        <button class="btn pri" id="join">Join</button>
-      </div>
-      <div class="err" id="err"></div>
-    </div>`}
 
-    <div class="rule"></div>
-    <p class="tiny dim">Simulations run in about twenty minutes and aren't marked. Nothing you do in one is stored once you close it, so download your transcript at the end if you want to keep it.</p>`;
+        <div style="margin-top:16px">
+        ${mine.length ? mine.map(x => {
+          const done = !!x.completed_at;
+          const m = x.metrics || {};
+          return `<div class="simcard">
+            <div class="body">
+              <div class="no">${x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') : 'Simulation'}</div>
+              <h3>${esc(x.title)}</h3>
+              <div class="tag">${esc(x.description || x.tagline || '')}</div>
+              <div class="facts" style="margin-top:14px">
+                ${x.minutes ? `<span>about <b>${x.minutes} minutes</b></span>` : ''}
+                <span>groups of <b>one to three</b></span>
+                <span><b>not marked</b></span>
+              </div>
+            </div>
+
+            ${done ? `<div class="result">
+              <div class="mini">Your run${x.completed_at ? ' · ' + when(x.completed_at) : ''}${mins(x.duration_seconds) ? ' · took ' + mins(x.duration_seconds) : ''}</div>
+              ${Object.keys(m).length ? Object.entries(m).map(([k,v]) =>
+                `<div class="row2"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('')
+                : '<div class="row2"><span>Finished</span><span>—</span></div>'}
+            </div>` : ''}
+
+            <div class="foot2">
+              <div>${done ? dot('ok','finished')
+                : Number(x.played) > 0 ? dot('warn','started, not finished')
+                : c.paid ? dot('off','not started yet') : dot('off','not open yet')}</div>
+              ${c.paid
+                ? `<a class="btn pri" href="/api/launch?sim=${encodeURIComponent(x.id)}&course=${encodeURIComponent(c.id)}">${done ? 'Play it again' : Number(x.played) > 0 ? 'Carry on' : 'Start'}</a>`
+                : `<button class="btn" disabled>Not open yet</button>`}
+            </div>
+          </div>`;
+        }).join('') : `<div class="panel"><div class="empty">${esc(c.faculty_name)} has not added any simulations to this course yet.</div></div>`}
+        </div>
+      </div>`;
+  }).join('') + `
+    <div class="before">
+      <b>Before you start one.</b> Give it twenty uninterrupted minutes — the clock runs while you are in it and there is no pause.
+      It works on a laptop or a tablet; a phone is cramped. You can download a transcript at the end, and it is worth doing,
+      because nothing you say is stored once you close the tab.
+    </div>`
+  : `<div style="margin-top:30px">
+      <h1 style="font-size:26px;font-weight:400;letter-spacing:-.02em">You are not in any courses yet</h1>
+      <p class="hint" style="margin-top:10px">If your instructor sent you a link, open it. Otherwise enter the course code they gave you.</p>
+      <div class="panel" style="padding:16px 18px;margin-top:14px">
+        <div class="field" style="margin:0">
+          <div style="flex:0 0 180px;min-width:180px"><label class="f">Course code</label>
+            <input id="cc" type="text" placeholder="ABC123" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.1em"></div>
+          <div style="flex:0 0 auto;align-self:flex-end"><button class="btn pri" id="join">Join</button></div>
+        </div>
+        <div id="err" class="hint" style="color:var(--rose);margin-bottom:0"></div>
+      </div>
+    </div>`;
 
   const j = document.getElementById('join');
   if (j) j.onclick = async () => {
-    const original = j.textContent;
+    const was = j.textContent;
     j.disabled = true; j.textContent = 'Joining…';
-    try {
-      await api('/api/student', { action:'enrol', joinCode: document.getElementById('cc').value });
-      j.textContent = 'Joined'; LAST = ''; draw();
-    } catch (e) {
-      document.getElementById('err').textContent = e.message;
-      j.disabled = false; j.textContent = original;
-    }
+    try { await api('/api/student', { action:'enrol', joinCode: document.getElementById('cc').value });
+      j.textContent = 'Joined'; LAST = ''; draw(); }
+    catch (e) { document.getElementById('err').textContent = e.message; j.disabled = false; j.textContent = was; }
   };
 }
 
@@ -109,7 +152,7 @@ async function draw() {
     document.getElementById('who').textContent = me.user.name;
   } catch (e) { location.href = '/'; return; }
   await draw();
-  // Instructors release access while students are already looking at this page.
+  // An instructor releases access while a student is already looking at this.
   setInterval(draw, 12000);
 })();
 </script>
