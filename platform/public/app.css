@@ -32,7 +32,8 @@ a:hover{text-decoration:underline}
 }
 .bar .brand{font-size:17px;font-weight:500;letter-spacing:-.01em;margin-right:auto}
 .bar .brand span{color:var(--amber);font-style:italic}
-.bar .who{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink3)}
+.bar .who{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38ch}
 .wrap{max-width:1080px;margin:0 auto;padding:34px 26px 80px}
 .narrow{max-width:520px;margin:0 auto;padding:70px 26px 80px}
 
@@ -114,7 +115,7 @@ td.mono,th.mono{font-family:var(--mono);font-size:13px}
   .narrow{padding:44px 14px 60px}
   .bar{padding:0 14px;gap:10px;height:auto;min-height:56px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
   .bar .brand{font-size:15px;width:100%;margin-bottom:2px}
-  .bar .who{font-size:10px}
+  .bar .who{font-size:9.5px;max-width:100%;margin-right:auto}
   h1{font-size:28px}
   h2{margin:26px 0 10px}
   .stat{gap:18px}
