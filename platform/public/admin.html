@@ -183,7 +183,7 @@ function facultyTab() {
       <input id="fac_q" type="text" placeholder="Search by name, email or institution" value="${esc(D.facSearch || '')}">
     </div>
     <div class="card" style="padding:0">
-      <table>
+      <div class="tablewrap"><table>
         <thead><tr><th>Name</th><th>Courses and simulations</th><th>Status</th><th class="mono">Students</th><th class="mono">Launches</th><th>Last seen</th><th></th></tr></thead>
         <tbody>
         ${facPage.rows.map(f => `<tr>
@@ -226,7 +226,7 @@ function facultyTab() {
           <div data-pout="${esc(f.id)}"></div>
         </td></tr>` : ''}`).join('') || '<tr><td colspan="7" class="dim">Nobody yet. Invite someone above.</td></tr>'}
         </tbody>
-      </table>
+      </table></div>
       ${pager('fac', facPage)}
     </div>`;
 }
@@ -402,14 +402,14 @@ function renderDetail() {
         </div>
         ${sims.length ? `<div class="tiny dim" style="margin-top:10px">Sims: ${sims.map(x => esc(x.title) + (x.expected_seats ? ` (expects ${x.expected_seats})` : '')).join(', ')}</div>` : ''}
         ${inCourse.length ? `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:6px">
-          <table><tbody>
+          <div class="tablewrap"><table><tbody>
           ${inCourse.map(st => `<tr>
             <td data-l="Student">${esc(st.name)}<div class="tiny dim mono">${esc(st.email)}</div></td>
             <td data-l="Access">${st.paid ? '<span class="pill ok">released</span>' : '<span class="pill warn">not yet</span>'}
                 ${st.paid_note ? `<div class="tiny dim">${esc(st.paid_note)}</div>` : ''}</td>
             <td data-l="Played" class="mono tiny">${st.launches} launch${st.launches == 1 ? '' : 'es'}</td>
           </tr>`).join('')}
-          </tbody></table>
+          </tbody></table></div>
         </div>` : '<div class="tiny dim" style="margin-top:10px">Nobody enrolled yet.</div>'}
       </div>`;
     }).join('') : '<div class="card dim">No courses yet.</div>'}
@@ -507,7 +507,7 @@ function studentsTab() {
       <input id="stu_q" type="text" placeholder="Search by name, email or course" value="${esc(D.stuSearch || '')}">
     </div>
     <div class="card" style="padding:0">
-      <table>
+      <div class="tablewrap"><table>
         <thead><tr><th>Student</th><th>Course and facilitator</th><th>Simulations</th><th class="mono">Access</th><th class="mono">Played</th><th class="mono">Finished</th><th></th></tr></thead>
         <tbody>
         ${shown.map(st => `<tr>
@@ -540,7 +540,7 @@ function studentsTab() {
           <div data-pout="${esc(st.id)}"></div>
         </td></tr>` : ''}`).join('') || `<tr><td colspan="7" class="dim">${D.students.length ? 'Nobody matches that.' : 'No students yet.'}</td></tr>`}
         </tbody>
-      </table>
+      </table></div>
       ${pager('stu', stuPage)}
     </div>`;
 }
@@ -561,7 +561,7 @@ function coursesTab() {
       <input id="crs_q" type="text" placeholder="Search by course, term, code, facilitator or simulation" value="${esc(D.courseSearch || '')}">
     </div>
     <div class="card" style="padding:0">
-      <table>
+      <div class="tablewrap"><table>
         <thead><tr><th>Course</th><th>Facilitator</th><th>Simulations</th><th class="mono">Enrolled</th><th class="mono">Released</th><th class="mono">Launches</th></tr></thead>
         <tbody>
         ${rows.map(c => `<tr${c.archived ? ' style="opacity:.5"' : ''}>
@@ -574,7 +574,7 @@ function coursesTab() {
           <td data-l="Launches" class="mono">${c.launches}</td>
         </tr>`).join('') || '<tr><td colspan="6" class="dim">No courses yet.</td></tr>'}
         </tbody>
-      </table>
+      </table></div>
       ${pager('crs', cPage)}
     </div>`;
 }

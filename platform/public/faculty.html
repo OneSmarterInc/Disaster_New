@@ -91,7 +91,7 @@ function renderHome() {
     <h2>Your simulations</h2>
     ${F.simsOverview === null
       ? '<div class="card dim tight">Loading…</div>'
-      : (F.simsOverview.length ? `<div class="card" style="padding:0"><table>
+      : (F.simsOverview.length ? `<div class="card" style="padding:0"><div class="tablewrap"><table>
           <thead><tr><th>Simulation</th><th class="mono">Courses</th><th class="mono">Released</th><th class="mono">Started</th><th class="mono">Finished</th></tr></thead>
           <tbody>${F.simsOverview.map(x => `<tr>
             <td data-l="Simulation"><b>${esc(simLabel(x))}</b><div class="tiny dim">${esc(x.tagline || '')}</div></td>
@@ -100,7 +100,7 @@ function renderHome() {
             <td data-l="Started" class="mono">${x.started}</td>
             <td data-l="Finished" class="mono">${Number(x.finished) === Number(x.started) && Number(x.started) > 0
                 ? `<span class="pill ok">${x.finished}</span>` : `<span class="pill">${x.finished}</span>`}</td>
-          </tr>`).join('')}</tbody></table></div>`
+          </tr>`).join('')}</tbody></table></div></div>`
         : '<div class="card dim tight">None in use yet — add one to a course below.</div>')}
 
     <h2>Your courses</h2>
@@ -249,7 +249,7 @@ function renderCourse() {
     </div>
 
     <div class="card" style="padding:0">
-      <table>
+      <div class="tablewrap"><table>
         <thead><tr><th style="width:34px"></th><th>Student</th><th>Can open sims?</th><th>Joined</th><th class="mono">Times played</th><th></th></tr></thead>
         <tbody>
         ${roster.map(r => `<tr style="${r.dropped ? 'opacity:.5' : ''}">
@@ -268,7 +268,7 @@ function renderCourse() {
           </td>
         </tr>`).join('') || '<tr><td colspan="6" class="dim">Nobody has joined yet.</td></tr>'}
         </tbody>
-      </table>
+      </table></div>
     </div>
     ${F.err ? `<div class="err">${esc(F.err)}</div>` : ''}`;
 
@@ -395,7 +395,7 @@ function renderProgress() {
     <p class="lede">${done.length} of ${active.length} have finished it${started.length ? `, ${started.length} started and didn't` : ''}.</p>
 
     <div class="card" style="padding:0">
-      <table>
+      <div class="tablewrap"><table>
         <thead><tr><th>Student</th><th>Status</th><th class="mono">Took</th><th>What came back</th></tr></thead>
         <tbody>
         ${rows.map(r => {
@@ -414,7 +414,7 @@ function renderProgress() {
           </tr>`;
         }).join('') || '<tr><td colspan="4" class="dim">Nobody enrolled yet.</td></tr>'}
         </tbody>
-      </table>
+      </table></div>
     </div>
     <div class="note">What comes back is whatever the simulation chose to report — a short summary, not a transcript. Students keep their own transcript; nothing they said is stored here.</div>`;
 
