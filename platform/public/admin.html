@@ -19,7 +19,7 @@
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null, grants: null,
-            simSearch: '', simFilter: 'all', simOpen: null, simEdit: null, maintOpen: false,
+            simSearch: '', simFilter: 'all', simOpen: null, simEdit: null, maintOpen: false, linkFor: null, linkUrl: '', linkNote: '', detailSearch: '',
             facSearch: '', students: null, stuSearch: '', personEdit: null };
 
 async function api(path, payload) {
@@ -160,27 +160,37 @@ function facultyTab() {
     </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Courses</th><th>Students</th><th>Paid</th><th>Last seen</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Courses &amp; simulations</th><th>Status</th><th>Students</th><th>Launches</th><th>Last seen</th><th></th></tr></thead>
         <tbody>
         ${D.data.faculty.filter(f => {
             const q = (D.facSearch || '').toLowerCase().trim();
             return !q || [f.name, f.email, f.institution].filter(Boolean).join(' ').toLowerCase().includes(q);
           }).map(f => `<tr>
-          <td><b>${esc(f.name)}</b>${f.institution ? `<div class="tiny dim">${esc(f.institution)}</div>` : ''}</td>
-          <td class="mono">${esc(f.email)}</td>
-          <td>${f.disabled ? '<span class="pill bad">disabled</span>'
+          <td data-l="Name"><b>${esc(f.name)}</b>
+            <div class="tiny dim mono">${esc(f.email)}</div>
+            ${f.institution ? `<div class="tiny dim">${esc(f.institution)}</div>` : ''}</td>
+          <td data-l="Courses" class="tiny">
+            ${f.course_titles ? esc(f.course_titles) : '<span class="dim">no courses yet</span>'}
+            ${f.sim_titles ? `<div class="dim" style="margin-top:4px">${esc(f.sim_titles)}</div>` : ''}</td>
+          <td data-l="Status">${f.disabled ? '<span class="pill bad">disabled</span>'
                 : f.accepted ? '<span class="pill ok">active</span>'
                 : '<span class="pill warn">invited</span>'}</td>
-          <td class="mono">${f.courses}</td>
-          <td class="mono">${f.students}</td>
-          <td class="mono">${f.paid_students}</td>
-          <td class="tiny dim">${when(f.last_seen_at)}</td>
-          <td class="row" style="gap:6px">
+          <td data-l="Students" class="mono">${f.paid_students} of ${f.students}</td>
+          <td data-l="Launches" class="mono">${f.launches || 0}</td>
+          <td data-l="Last seen" class="tiny dim">${when(f.last_seen_at)}</td>
+          <td data-l="" class="row" style="gap:6px">
             <button class="btn sm" data-open="${esc(f.id)}">Open</button>
             <button class="btn sm" data-pedit="${esc(f.id)}">Edit</button>
+            <button class="btn sm" data-prow="${esc(f.id)}" data-acc="${f.accepted ? '1' : '0'}">${f.accepted ? 'Reset link' : 'New invite'}</button>
           </td>
         </tr>
-        ${D.personEdit === f.id ? `<tr><td colspan="8" style="background:var(--sunk);padding:16px 12px">
+        ${D.linkFor === f.id ? `<tr><td colspan="7" style="background:var(--amber-soft);padding:14px 12px">
+          <b>Send this to ${esc(f.name)}.</b> ${esc(D.linkNote || '')}
+          <div class="copybox"><input type="text" id="rowurl" readonly value="${esc(D.linkUrl || '')}">
+            <button class="btn" id="rowcopy">Copy</button>
+            <button class="btn" id="rowhide">Done</button></div>
+        </td></tr>` : ''}
+        ${D.personEdit === f.id ? `<tr><td colspan="7" style="background:var(--sunk);padding:16px 12px">
           <div class="row" style="align-items:flex-start">
             <div class="grow"><label class="f">Name</label><input type="text" data-pf="name" value="${esc(f.name)}"></div>
             <div class="grow"><label class="f">Email</label><input type="email" data-pf="email" value="${esc(f.email)}"></div>
@@ -193,7 +203,7 @@ function facultyTab() {
             ${Number(f.courses) === 0 ? `<button class="btn sm danger" data-pdel="${esc(f.id)}">Delete this account</button>` : ''}
           </div>
           <div data-pout="${esc(f.id)}"></div>
-        </td></tr>` : ''}`).join('') || '<tr><td colspan="8" class="dim">Nobody yet. Invite someone above.</td></tr>'}
+        </td></tr>` : ''}`).join('') || '<tr><td colspan="7" class="dim">Nobody yet. Invite someone above.</td></tr>'}
         </tbody>
       </table>
     </div>`;
@@ -262,6 +272,34 @@ function wireStudents() {
 }
 
 function wireFaculty() {
+  app.querySelectorAll('[data-prow]').forEach(btn => btn.onclick = async () => {
+    const fid = btn.dataset.prow;
+    const person = D.data.faculty.find(x => x.id === fid);
+    const done = acting(btn, 'Creating…');
+    try {
+      if (btn.dataset.acc === '1') {
+        const d = await api('/api/admin', { action:'issue_reset', userId: fid });
+        D.linkUrl = d.resetUrl;
+        D.linkNote = 'A password reset. It works once and expires in three days.';
+      } else {
+        const d = await api('/api/admin', { action:'invite_faculty',
+          name: person.name, email: person.email, institution: person.institution });
+        D.linkUrl = d.inviteUrl;
+        D.linkNote = 'A fresh invitation. It works once, and replaces any earlier link.';
+      }
+      D.linkFor = fid; D.personEdit = null;
+      done(); render();
+    } catch (e) { done('Failed', 'bad'); }
+  });
+  const rc = document.getElementById('rowcopy');
+  if (rc) rc.onclick = () => {
+    const f = document.getElementById('rowurl');
+    f.select(); navigator.clipboard.writeText(f.value);
+    flash(rc, 'Copied');
+  };
+  const rh = document.getElementById('rowhide');
+  if (rh) rh.onclick = () => { D.linkFor = null; render(); };
+
   const fq = document.getElementById('fac_q');
   if (fq) fq.oninput = () => {
     D.facSearch = fq.value;
@@ -312,10 +350,15 @@ function renderDetail() {
     <h1>${esc(person.name)}</h1>
     <p class="lede">${person.accepted ? 'Active' : 'Invited but hasn\'t set a password yet'}${person.institution ? ' · ' + esc(person.institution) : ''} · joined ${when(person.created_at)}</p>
 
-    <h2>Courses</h2>
+    <h2>Courses and students</h2>
+    ${students.filter(st => !st.dropped).length > 6 ? `<div class="card tight" style="margin-bottom:12px">
+      <input id="det_q" type="text" placeholder="Search this facilitator's students" value="${esc(D.detailSearch || '')}">
+    </div>` : ''}
     ${courses.length ? courses.map(c => {
       const sims = courseSims.filter(cs => cs.course_id === c.id);
-      const inCourse = students.filter(st => st.course_id === c.id && !st.dropped);
+      const dq = (D.detailSearch || '').toLowerCase().trim();
+      const inCourse = students.filter(st => st.course_id === c.id && !st.dropped)
+        .filter(st => !dq || [st.name, st.email].filter(Boolean).join(' ').toLowerCase().includes(dq));
       return `<div class="card">
         <div class="row" style="justify-content:space-between">
           <div><h3>${esc(c.title)}</h3><div class="tiny dim">${esc(c.term || '')} · join code <span class="mono">${esc(c.join_code)}</span></div></div>
@@ -328,10 +371,10 @@ function renderDetail() {
         ${inCourse.length ? `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:6px">
           <table><tbody>
           ${inCourse.map(st => `<tr>
-            <td>${esc(st.name)}<div class="tiny dim mono">${esc(st.email)}</div></td>
-            <td>${st.paid ? '<span class="pill ok">paid</span>' : '<span class="pill warn">unpaid</span>'}
+            <td data-l="Student">${esc(st.name)}<div class="tiny dim mono">${esc(st.email)}</div></td>
+            <td data-l="Access">${st.paid ? '<span class="pill ok">released</span>' : '<span class="pill warn">not yet</span>'}
                 ${st.paid_note ? `<div class="tiny dim">${esc(st.paid_note)}</div>` : ''}</td>
-            <td class="mono tiny">${st.launches} launch${st.launches == 1 ? '' : 'es'}</td>
+            <td data-l="Played" class="mono tiny">${st.launches} launch${st.launches == 1 ? '' : 'es'}</td>
           </tr>`).join('')}
           </tbody></table>
         </div>` : '<div class="tiny dim" style="margin-top:10px">Nobody enrolled yet.</div>'}
@@ -364,7 +407,13 @@ function renderDetail() {
     await load();
   };
 
-  $('back').onclick = () => { D.detail = null; render(); };   // visible: the whole view changes
+  $('back').onclick = () => { D.detail = null; D.detailSearch = ''; render(); };
+  const dq = $('det_q');
+  if (dq && dq.oninput === null) dq.oninput = () => {
+    D.detailSearch = dq.value; render();
+    const again = document.getElementById('det_q');
+    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+  };   // visible: the whole view changes
 
   $('rst').onclick = async () => {
     const doneR = acting($('rst'), 'Creating…');
@@ -424,16 +473,21 @@ function studentsTab() {
     </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>Student</th><th>Courses</th><th>Can open sims?</th><th>Played</th><th>Finished</th><th>Joined</th><th></th></tr></thead>
+        <thead><tr><th>Student</th><th>Course &amp; facilitator</th><th>Simulations</th><th>Access</th><th>Played</th><th>Finished</th><th></th></tr></thead>
         <tbody>
         ${shown.map(st => `<tr>
-          <td><b>${esc(st.name)}</b><div class="tiny dim mono">${esc(st.email)}</div></td>
-          <td class="tiny">${esc(st.course_titles || '—')}</td>
-          <td class="mono">${st.with_access} of ${st.courses}</td>
-          <td class="mono">${st.launches}</td>
-          <td class="mono">${Number(st.finished) > 0 ? `<span class="pill ok">${st.finished}</span>` : '0'}</td>
-          <td class="tiny dim">${when(st.created_at)}</td>
-          <td class="row" style="gap:6px">
+          <td data-l="Student"><b>${esc(st.name)}</b>
+            <div class="tiny dim mono">${esc(st.email)}</div>
+            <div class="tiny dim">joined ${when(st.created_at)}</div></td>
+          <td data-l="Course" class="tiny">${esc(st.course_titles || '—')}
+            ${st.faculty_names ? `<div class="dim" style="margin-top:3px">${esc(st.faculty_names)}</div>` : ''}</td>
+          <td data-l="Simulations" class="tiny">${st.sim_titles ? esc(st.sim_titles) : '<span class="dim">none yet</span>'}</td>
+          <td data-l="Access" class="mono">${Number(st.with_access) === Number(st.courses) && Number(st.courses) > 0
+              ? `<span class="pill ok">${st.with_access} of ${st.courses}</span>`
+              : `<span class="pill warn">${st.with_access} of ${st.courses}</span>`}</td>
+          <td data-l="Played" class="mono">${st.launches}</td>
+          <td data-l="Finished" class="mono">${Number(st.finished) > 0 ? `<span class="pill ok">${st.finished}</span>` : '0'}</td>
+          <td data-l="" class="row" style="gap:6px">
             <button class="btn sm" data-pedit="${esc(st.id)}">Edit</button>
             <button class="btn sm danger" data-sdel="${esc(st.id)}">Delete</button>
           </td>
@@ -469,13 +523,13 @@ function coursesTab() {
         <thead><tr><th>Course</th><th>Facilitator</th><th>Simulations</th><th>Enrolled</th><th>Released</th><th>Launches</th></tr></thead>
         <tbody>
         ${rows.map(c => `<tr${c.archived ? ' style="opacity:.5"' : ''}>
-          <td><b>${esc(c.title)}</b><div class="tiny dim">${esc(c.term || '')} · <span class="mono">${esc(c.join_code)}</span>${c.archived ? ' · archived' : ''}</div></td>
-          <td>${esc(c.faculty_name)}${c.institution ? `<div class="tiny dim">${esc(c.institution)}</div>` : ''}</td>
-          <td class="tiny">${esc(c.sim_titles || '—')}</td>
-          <td class="mono">${c.enrolled}</td>
-          <td class="mono">${Number(c.paid) === Number(c.enrolled) && Number(c.enrolled) > 0
+          <td data-l="Course"><b>${esc(c.title)}</b><div class="tiny dim">${esc(c.term || '')} · <span class="mono">${esc(c.join_code)}</span>${c.archived ? ' · archived' : ''}</div></td>
+          <td data-l="Facilitator">${esc(c.faculty_name)}${c.institution ? `<div class="tiny dim">${esc(c.institution)}</div>` : ''}</td>
+          <td data-l="Simulations" class="tiny">${esc(c.sim_titles || '—')}</td>
+          <td data-l="Enrolled" class="mono">${c.enrolled}</td>
+          <td data-l="Released" class="mono">${Number(c.paid) === Number(c.enrolled) && Number(c.enrolled) > 0
               ? `<span class="pill ok">${c.paid}</span>` : `<span class="pill warn">${c.paid}</span>`}</td>
-          <td class="mono">${c.launches}</td>
+          <td data-l="Launches" class="mono">${c.launches}</td>
         </tr>`).join('') || '<tr><td colspan="6" class="dim">No courses yet.</td></tr>'}
         </tbody>
       </table>

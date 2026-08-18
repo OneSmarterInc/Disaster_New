@@ -30,7 +30,15 @@ module.exports = async (req, res) => {
                  (SELECT count(*) FROM enrolments e JOIN courses c ON c.id = e.course_id
                    WHERE c.faculty_id = u.id AND e.dropped = false) AS students,
                  (SELECT count(*) FROM enrolments e JOIN courses c ON c.id = e.course_id
-                   WHERE c.faculty_id = u.id AND e.dropped = false AND e.paid = true) AS paid_students
+                   WHERE c.faculty_id = u.id AND e.dropped = false AND e.paid = true) AS paid_students,
+                 (SELECT string_agg(DISTINCT si.title, ', ' ORDER BY si.title)
+                    FROM course_sims cs JOIN courses c ON c.id = cs.course_id
+                    JOIN sims si ON si.id = cs.sim_id
+                   WHERE c.faculty_id = u.id AND c.archived = false) AS sim_titles,
+                 (SELECT string_agg(DISTINCT c.title, ', ' ORDER BY c.title)
+                    FROM courses c WHERE c.faculty_id = u.id AND c.archived = false) AS course_titles,
+                 (SELECT count(*) FROM launches l JOIN courses c ON c.id = l.course_id
+                   WHERE c.faculty_id = u.id) AS launches
           FROM users u WHERE u.role = 'faculty' ORDER BY u.created_at DESC`;
         const sims = await s`SELECT * FROM sims ORDER BY number NULLS LAST, created_at`;
         const totals = (await s`
@@ -290,10 +298,15 @@ module.exports = async (req, res) => {
                  count(DISTINCT e.course_id) FILTER (WHERE e.dropped = false AND e.paid = true) AS with_access,
                  count(DISTINCT l.id) AS launches,
                  count(DISTINCT c2.id) AS finished,
-                 string_agg(DISTINCT co.title, ', ') AS course_titles
+                 string_agg(DISTINCT co.title, ', ') AS course_titles,
+                 string_agg(DISTINCT fac.name, ', ') AS faculty_names,
+                 string_agg(DISTINCT si.title, ', ') AS sim_titles
           FROM users u
           LEFT JOIN enrolments e ON e.student_id = u.id
           LEFT JOIN courses co ON co.id = e.course_id AND e.dropped = false
+          LEFT JOIN users fac ON fac.id = co.faculty_id
+          LEFT JOIN course_sims cs ON cs.course_id = co.id
+          LEFT JOIN sims si ON si.id = cs.sim_id
           LEFT JOIN launches l ON l.user_id = u.id
           LEFT JOIN completions c2 ON c2.user_id = u.id
           WHERE u.role = 'student'
