@@ -19,7 +19,8 @@
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null, grants: null,
-            simSearch: '', simFilter: 'all', simOpen: null, simEdit: null, maintOpen: false };
+            simSearch: '', simFilter: 'all', simOpen: null, simEdit: null, maintOpen: false,
+            facSearch: '', students: null, stuSearch: '', personEdit: null };
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -99,7 +100,7 @@ function render() {
   if (D.detail) return renderDetail();
 
   const t = D.data.totals || {};
-  const tabs = [['faculty','Faculty'],['courses','All courses'],['catalogue','Catalogue']];
+  const tabs = [['faculty','Faculty'],['students','Students'],['courses','All courses'],['catalogue','Catalogue']];
 
   app.innerHTML = `
     <div class="eyebrow">Administration</div>
@@ -123,6 +124,7 @@ function render() {
   app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { D.tab = b.dataset.tab; render(); });
   const body = document.getElementById('body');
   if (D.tab === 'faculty') { body.innerHTML = facultyTab(); wireFaculty(); }
+  else if (D.tab === 'students') { body.innerHTML = studentsTab(); wireStudents(); }
   else if (D.tab === 'courses') { body.innerHTML = coursesTab(); wireCourses(); }
   else { body.innerHTML = catalogueTab(); wireCatalogue(); }
 }
@@ -153,11 +155,17 @@ function facultyTab() {
     </div>
 
     <h2>Facilitators</h2>
+    <div class="card tight" style="margin-bottom:12px">
+      <input id="fac_q" type="text" placeholder="Search by name, email or institution" value="${esc(D.facSearch || '')}">
+    </div>
     <div class="card" style="padding:0">
       <table>
         <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Courses</th><th>Students</th><th>Paid</th><th>Last seen</th><th></th></tr></thead>
         <tbody>
-        ${D.data.faculty.map(f => `<tr>
+        ${D.data.faculty.filter(f => {
+            const q = (D.facSearch || '').toLowerCase().trim();
+            return !q || [f.name, f.email, f.institution].filter(Boolean).join(' ').toLowerCase().includes(q);
+          }).map(f => `<tr>
           <td><b>${esc(f.name)}</b>${f.institution ? `<div class="tiny dim">${esc(f.institution)}</div>` : ''}</td>
           <td class="mono">${esc(f.email)}</td>
           <td>${f.disabled ? '<span class="pill bad">disabled</span>'
@@ -167,14 +175,102 @@ function facultyTab() {
           <td class="mono">${f.students}</td>
           <td class="mono">${f.paid_students}</td>
           <td class="tiny dim">${when(f.last_seen_at)}</td>
-          <td><button class="btn sm" data-open="${esc(f.id)}">Open</button></td>
-        </tr>`).join('') || '<tr><td colspan="8" class="dim">Nobody yet. Invite someone above.</td></tr>'}
+          <td class="row" style="gap:6px">
+            <button class="btn sm" data-open="${esc(f.id)}">Open</button>
+            <button class="btn sm" data-pedit="${esc(f.id)}">Edit</button>
+          </td>
+        </tr>
+        ${D.personEdit === f.id ? `<tr><td colspan="8" style="background:var(--sunk);padding:16px 12px">
+          <div class="row" style="align-items:flex-start">
+            <div class="grow"><label class="f">Name</label><input type="text" data-pf="name" value="${esc(f.name)}"></div>
+            <div class="grow"><label class="f">Email</label><input type="email" data-pf="email" value="${esc(f.email)}"></div>
+            <div class="grow"><label class="f">Institution</label><input type="text" data-pf="institution" value="${esc(f.institution || '')}"></div>
+          </div>
+          <div class="tiny dim" style="margin-top:8px">Correcting a mistyped email here keeps their courses and students. If they never accepted the invitation, issue a fresh one afterwards — the old link points at the old address.</div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn pri sm" data-psave="${esc(f.id)}">Save</button>
+            <button class="btn sm" data-pcancel="1">Cancel</button>
+            ${Number(f.courses) === 0 ? `<button class="btn sm danger" data-pdel="${esc(f.id)}">Delete this account</button>` : ''}
+          </div>
+          <div data-pout="${esc(f.id)}"></div>
+        </td></tr>` : ''}`).join('') || '<tr><td colspan="8" class="dim">Nobody yet. Invite someone above.</td></tr>'}
         </tbody>
       </table>
     </div>`;
 }
 
+// Editing a person is the same job whether they facilitate or study, so both
+// tables share it.
+function wirePersonEditing(reloadAfter) {
+  const repaint = () => render();
+  app.querySelectorAll('[data-pedit]').forEach(b => b.onclick = () => {
+    D.personEdit = D.personEdit === b.dataset.pedit ? null : b.dataset.pedit; repaint(); });
+  app.querySelectorAll('[data-pcancel]').forEach(b => b.onclick = () => { D.personEdit = null; repaint(); });
+
+  app.querySelectorAll('[data-psave]').forEach(btn => btn.onclick = async () => {
+    const uid = btn.dataset.psave;
+    const row = btn.closest('td');
+    const val = (f) => { const el = row.querySelector(`[data-pf="${f}"]`); return el ? el.value : undefined; };
+    const out = app.querySelector(`[data-pout="${uid}"]`);
+    const done = acting(btn, 'Saving…');
+    try {
+      await api('/api/admin', { action:'update_person', userId: uid,
+        name: val('name'), email: val('email'), institution: val('institution') });
+      done('Saved'); D.personEdit = null; D.students = null; await load();
+    } catch (e) {
+      if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+      done('Not saved', 'bad');
+    }
+  });
+
+  app.querySelectorAll('[data-pdel]').forEach(btn => btn.onclick = async () => {
+    if (!confirm('Delete this account? Only possible because they have no courses.')) return;
+    const done = acting(btn, 'Deleting…');
+    try { await api('/api/admin', { action:'delete_faculty', facultyId: btn.dataset.pdel });
+      done(); D.personEdit = null; await load(); }
+    catch (e) {
+      const out = app.querySelector(`[data-pout="${btn.dataset.pdel}"]`);
+      if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+      done('Refused', 'bad');
+    }
+  });
+
+  app.querySelectorAll('[data-sdel]').forEach(btn => btn.onclick = async () => {
+    if (!confirm('Delete this student? Their enrolments go with them.')) return;
+    const done = acting(btn, 'Deleting…');
+    try { await api('/api/admin', { action:'delete_student', userId: btn.dataset.sdel });
+      done(); D.students = null; await load(); }
+    catch (e) {
+      if (confirm(e.message + '\n\nDelete anyway?')) {
+        await api('/api/admin', { action:'delete_student', userId: btn.dataset.sdel, force: true });
+        done(); D.students = null; await load();
+      } else done('Kept', 'bad');
+    }
+  });
+}
+
+function wireStudents() {
+  const sq = document.getElementById('stu_q');
+  if (sq) sq.oninput = () => {
+    D.stuSearch = sq.value;
+    const body = document.getElementById('body');
+    body.innerHTML = studentsTab(); wireStudents();
+    const again = document.getElementById('stu_q');
+    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+  };
+  wirePersonEditing();
+}
+
 function wireFaculty() {
+  const fq = document.getElementById('fac_q');
+  if (fq) fq.oninput = () => {
+    D.facSearch = fq.value;
+    const body = document.getElementById('body');
+    body.innerHTML = facultyTab(); wireFaculty();
+    const again = document.getElementById('fac_q');
+    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+  };
+  wirePersonEditing();
   const inv = document.getElementById('inv');
   if (inv) inv.onclick = async () => {
     const out = document.getElementById('invout');
@@ -314,6 +410,53 @@ function renderDetail() {
       doneT(); await refresh();
     } catch (e) { out().innerHTML = `<div class="err">${esc(e.message)}</div>`; doneT('Failed', 'bad'); }
   };
+}
+
+function studentsTab() {
+  if (!D.students) { loadStudents(); return '<div class="card dim">Loading…</div>'; }
+  const q = (D.stuSearch || '').toLowerCase().trim();
+  const shown = D.students.filter(st => !q ||
+    [st.name, st.email, st.course_titles].filter(Boolean).join(' ').toLowerCase().includes(q));
+  return `
+    <h2>Students</h2>
+    <div class="card tight" style="margin-bottom:12px">
+      <input id="stu_q" type="text" placeholder="Search by name, email or course" value="${esc(D.stuSearch || '')}">
+    </div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>Student</th><th>Courses</th><th>Can open sims?</th><th>Played</th><th>Finished</th><th>Joined</th><th></th></tr></thead>
+        <tbody>
+        ${shown.map(st => `<tr>
+          <td><b>${esc(st.name)}</b><div class="tiny dim mono">${esc(st.email)}</div></td>
+          <td class="tiny">${esc(st.course_titles || '—')}</td>
+          <td class="mono">${st.with_access} of ${st.courses}</td>
+          <td class="mono">${st.launches}</td>
+          <td class="mono">${Number(st.finished) > 0 ? `<span class="pill ok">${st.finished}</span>` : '0'}</td>
+          <td class="tiny dim">${when(st.created_at)}</td>
+          <td class="row" style="gap:6px">
+            <button class="btn sm" data-pedit="${esc(st.id)}">Edit</button>
+            <button class="btn sm danger" data-sdel="${esc(st.id)}">Delete</button>
+          </td>
+        </tr>
+        ${D.personEdit === st.id ? `<tr><td colspan="7" style="background:var(--sunk);padding:16px 12px">
+          <div class="row" style="align-items:flex-start">
+            <div class="grow"><label class="f">Name</label><input type="text" data-pf="name" value="${esc(st.name)}"></div>
+            <div class="grow"><label class="f">Email</label><input type="email" data-pf="email" value="${esc(st.email)}"></div>
+          </div>
+          <div class="tiny dim" style="margin-top:8px">Their email is how they sign in. Changing it does not tell them.</div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn pri sm" data-psave="${esc(st.id)}">Save</button>
+            <button class="btn sm" data-pcancel="1">Cancel</button>
+          </div>
+          <div data-pout="${esc(st.id)}"></div>
+        </td></tr>` : ''}`).join('') || `<tr><td colspan="7" class="dim">${D.students.length ? 'Nobody matches that.' : 'No students yet.'}</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+async function loadStudents() {
+  try { D.students = (await api('/api/admin', { action:'all_students' })).students; render(); }
+  catch (e) { D.students = []; D.err = e.message; render(); }
 }
 
 function coursesTab() {
