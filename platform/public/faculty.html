@@ -94,11 +94,11 @@ function renderHome() {
       : (F.simsOverview.length ? `<div class="card" style="padding:0"><table>
           <thead><tr><th>Simulation</th><th>Courses</th><th>Released</th><th>Started</th><th>Finished</th></tr></thead>
           <tbody>${F.simsOverview.map(x => `<tr>
-            <td><b>${esc(simLabel(x))}</b><div class="tiny dim">${esc(x.tagline || '')}</div></td>
-            <td class="mono">${x.courses}</td>
-            <td class="mono">${x.released} of ${x.enrolled}</td>
-            <td class="mono">${x.started}</td>
-            <td class="mono">${Number(x.finished) === Number(x.started) && Number(x.started) > 0
+            <td data-l="Simulation"><b>${esc(simLabel(x))}</b><div class="tiny dim">${esc(x.tagline || '')}</div></td>
+            <td data-l="Courses" class="mono">${x.courses}</td>
+            <td data-l="Released" class="mono">${x.released} of ${x.enrolled}</td>
+            <td data-l="Started" class="mono">${x.started}</td>
+            <td data-l="Finished" class="mono">${Number(x.finished) === Number(x.started) && Number(x.started) > 0
                 ? `<span class="pill ok">${x.finished}</span>` : `<span class="pill">${x.finished}</span>`}</td>
           </tr>`).join('')}</tbody></table></div>`
         : '<div class="card dim tight">None in use yet — add one to a course below.</div>')}
@@ -253,14 +253,14 @@ function renderCourse() {
         <thead><tr><th style="width:34px"></th><th>Student</th><th>Can open sims?</th><th>Joined</th><th>Times played</th><th></th></tr></thead>
         <tbody>
         ${roster.map(r => `<tr style="${r.dropped ? 'opacity:.5' : ''}">
-          <td>${r.dropped ? '' : `<input type="checkbox" data-en="${esc(r.enrolment_id)}" style="width:auto">`}</td>
-          <td><b>${esc(r.name)}</b><div class="tiny dim mono">${esc(r.email)}</div></td>
-          <td>${r.dropped ? '<span class="pill">removed from course</span>'
+          <td data-l="">${r.dropped ? '' : `<input type="checkbox" data-en="${esc(r.enrolment_id)}" style="width:auto">`}</td>
+          <td data-l="Student"><b>${esc(r.name)}</b><div class="tiny dim mono">${esc(r.email)}</div></td>
+          <td data-l="Can open sims?">${r.dropped ? '<span class="pill">removed from course</span>'
                 : r.paid ? `<span class="pill ok">yes</span>${r.paid_note ? `<div class="tiny dim">${esc(r.paid_note)}</div>` : ''}`
                 : '<span class="pill warn">not yet</span>'}</td>
-          <td class="tiny dim">${when(r.created_at)}</td>
-          <td class="mono tiny">${r.launches || 0}</td>
-          <td class="row" style="gap:6px">
+          <td data-l="Joined" class="tiny dim">${when(r.created_at)}</td>
+          <td data-l="Times played" class="mono tiny">${r.launches || 0}</td>
+          <td data-l="" class="row" style="gap:6px">
             ${r.dropped ? '' : (r.paid
               ? `<button class="btn sm" data-revoke="${esc(r.enrolment_id)}">Take access away</button>`
               : `<button class="btn sm" data-give="${esc(r.enrolment_id)}">Give access</button>`)}
@@ -401,14 +401,14 @@ function renderProgress() {
         ${rows.map(r => {
           const m = r.metrics || {};
           return `<tr style="${r.dropped ? 'opacity:.5' : ''}">
-            <td><b>${esc(r.name)}</b><div class="tiny dim mono">${esc(r.email)}</div></td>
-            <td>${r.dropped ? '<span class="pill">dropped</span>'
+            <td data-l="Student"><b>${esc(r.name)}</b><div class="tiny dim mono">${esc(r.email)}</div></td>
+            <td data-l="Status">${r.dropped ? '<span class="pill">dropped</span>'
                  : r.completed_at ? '<span class="pill ok">finished</span>'
                  : Number(r.starts) > 0 ? '<span class="pill warn">started</span>'
                  : !r.paid ? '<span class="pill">not released</span>'
                  : '<span class="pill">not started</span>'}</td>
-            <td class="mono tiny">${mins(r.duration_seconds)}</td>
-            <td class="tiny">${Object.keys(m).length
+            <td data-l="Took" class="mono tiny">${mins(r.duration_seconds)}</td>
+            <td data-l="What came back" class="tiny">${Object.keys(m).length
               ? Object.entries(m).map(([k, v]) => `<div><span class="dim">${esc(k)}:</span> ${esc(v)}</div>`).join('')
               : '<span class="dim">—</span>'}</td>
           </tr>`;
