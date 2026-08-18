@@ -507,7 +507,52 @@ function catTab() {
     }).join('') : `<div class="empty">${all.length ? 'Nothing matches that.' : 'Nothing yet. A simulation appears here the first time its deployment is used.'}</div>`}
     </div>
 
-    <div class="section" style="margin:22px 0 0"><span>About this list ${helpBtn('cat')}</span></div>
+    <div class="section" style="margin:22px 0 0">
+      <span>About this list ${helpBtn('cat')}</span>
+      <button class="btn sm" data-help="build">${D.help==='build'?'Hide':'Adding a new simulation'}</button>
+    </div>
+
+    ${D.help === 'build' ? `<div class="explain" style="padding:18px 20px">
+      <h4>From an idea to something a class can play</h4>
+
+      <p style="margin:0 0 10px"><b>1 · Write the scenario.</b> Twenty minutes, one tangle, three moments where a
+      position is recorded. The format brief is in <span class="mono">docs/</span> in the repository. The rule that
+      matters: two competent people must carry opposite exposure, so the student is weighing expert judgment from
+      parties who would each rather it were the other explanation. Without that it is a quiz.</p>
+
+      <p style="margin:0 0 10px"><b>2 · Build it.</b> Copy an existing simulation's folder in the repository as
+      <span class="mono">sim-03</span> and replace <span class="mono">lib/scenario.js</span> — ground truth, the
+      cast, their knowledge split by moment, the scene beats and the debrief. The engine around it does not change.
+      Nothing in that file may reach the browser; <span class="mono">node build.js</span> refuses to write a bundle
+      that contains any of it.</p>
+
+      <p style="margin:0 0 10px"><b>3 · Give it a place to run.</b> Push the folder, then create a Vercel project
+      from the same repository with Root Directory <span class="mono">sim-03</span>. Set these:</p>
+      <ul style="margin:0 0 10px 18px;padding:0">
+        <li><span class="mono">ANTHROPIC_API_KEY</span> — generates the characters. Nobody answers without it.</li>
+        <li><span class="mono">LAUNCH_SECRET</span> — must match this platform's exactly, or every student we send is refused.</li>
+        <li><span class="mono">PLATFORM_URL</span> — this platform's address, so completions come back.</li>
+        <li><span class="mono">SIM_URL</span> — the project's own stable address, so it does not register a
+          deployment-specific one that freezes students on an old build.</li>
+        <li><span class="mono">ACCESS_CODE</span> — optional, for playing it outside a course.</li>
+        <li><span class="mono">FACULTY_CODES</span> — optional, for the live console outside a course.</li>
+        <li>A Redis store from the Storage tab — only needed for live classroom sessions.</li>
+      </ul>
+
+      <p style="margin:0 0 10px"><b>4 · Bring it in.</b> Press <b>Add a simulation</b> above and paste its address.
+      It reports its own id and whether it is configured properly. It arrives as a draft — invisible to every
+      facilitator.</p>
+
+      <p style="margin:0 0 10px"><b>5 · Have it reviewed.</b> Give one or two people access under
+      <b>Reviewers</b>. They get a link, set a password, and play it exactly as a student would. Only they can see
+      it. Watch for the things that are always wrong first: a character conceding too much to a loose question, an
+      earned detail given away in the example questions, and any wording carried over from the simulation it was
+      copied from.</p>
+
+      <p style="margin:0"><b>6 · Publish it.</b> Every facilitator can then add it to a course, and the review
+      grants clear themselves. Unpublishing later hides it from anyone new without breaking a course already using
+      it.</p>
+    </div>` : ''}
     ${explain('cat', 'Where these come from, and what publishing does', `<ol>
       <li>A simulation registers itself the first time its deployment is used. There is nothing to add by hand.</li>
       <li>It arrives as a <b>draft</b> — invisible to every facilitator until you act.</li>
