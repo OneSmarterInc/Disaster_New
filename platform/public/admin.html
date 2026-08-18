@@ -41,7 +41,34 @@ async function load() {
 }
 
 function render() {
-  if (!D.data) { app.innerHTML = `<h1>Loading…</h1>${D.err ? `<div class="err">${esc(D.err)}</div>` : ''}`; return; }
+  if (!D.data) {
+    // A release that adds a column and queries it will fail here until the
+    // schema catches up — and the migrate button used to live on this page,
+    // which made it unreachable exactly when it was needed.
+    const schemaBehind = D.err && /does not exist|column|relation/i.test(D.err);
+    app.innerHTML = D.err
+      ? `<div class="eyebrow">Administration</div>
+         <h1>${schemaBehind ? 'The database is behind the code' : 'Something went wrong'}</h1>
+         <p class="lede">${esc(D.err)}</p>
+         ${schemaBehind ? `<p>This release expects something the database has not got yet. Bringing it up to date creates only what is missing and drops nothing.</p>
+         <div class="card"><button class="btn pri" id="fixdb">Bring the database up to date</button><div id="fixout"></div></div>`
+         : '<div class="card"><button class="btn" id="retry">Try again</button></div>'}`
+      : '<h1>Loading…</h1>';
+    const fd = document.getElementById('fixdb');
+    if (fd) fd.onclick = async () => {
+      const out = document.getElementById('fixout');
+      fd.disabled = true; fd.textContent = 'Running…';
+      try {
+        const d = await api('/api/admin', { action:'migrate' });
+        out.innerHTML = `<div class="ok">Up to date — ${d.statements} statements checked.</div>`;
+        D.err = null; load();
+      } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+        fd.disabled = false; fd.textContent = 'Bring the database up to date'; }
+    };
+    const rt = document.getElementById('retry');
+    if (rt) rt.onclick = () => { D.err = null; load(); };
+    return;
+  }
   if (D.detail) return renderDetail();
 
   const t = D.data.totals || {};
