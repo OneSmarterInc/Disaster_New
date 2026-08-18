@@ -367,21 +367,31 @@ function catalogueTab() {
 
     <h2>Add or update a sim</h2>
     <div class="card">
-      <div class="row">
-        <div style="width:110px"><label class="f">Number</label><input id="s_num" type="number" min="1" placeholder="3"></div>
-        <div class="grow"><label class="f">Id</label><input id="s_id" type="text" placeholder="rapid-03-recall"></div>
-        <div class="grow"><label class="f">Title</label><input id="s_title" type="text" placeholder="Whose Defect Is It?"></div>
+      <div class="row" style="align-items:flex-start">
+        <div style="width:110px">
+          <label class="f">Number</label>
+          <input id="s_num" type="number" min="1" placeholder="3">
+        </div>
+        <div class="grow">
+          <label class="f">Id</label>
+          <input id="s_id" type="text" placeholder="rapid-03-recall">
+        </div>
+        <div class="grow">
+          <label class="f">Title</label>
+          <input id="s_title" type="text" placeholder="Whose Defect Is It?">
+        </div>
       </div>
-      <div class="tiny dim" style="margin-top:-6px;margin-bottom:12px">The number is how people refer to it out loud. Each simulation needs its own, and it does not change once given.</div>
-      <div class="field" style="margin-top:14px"><label class="f">Tagline</label><input id="s_tag" type="text"></div>
+      <div class="tiny dim" style="margin:8px 0 18px">The number is how people refer to it out loud — each simulation needs its own. The id is permanent and appears in links; the title can change.</div>
+      <div class="field"><label class="f">Tagline</label><input id="s_tag" type="text" placeholder="One line — what it is, in the voice of the catalogue"></div>
       <div class="field"><label class="f">Description</label><textarea id="s_desc" rows="3" placeholder="What the simulation is about — this is what faculty read on the landing page"></textarea></div>
-      <div class="row">
+      <div class="row" style="align-items:flex-start">
         <div class="grow"><label class="f">Launch URL</label><input id="s_url" type="text" placeholder="https://…vercel.app"></div>
         <div style="width:120px"><label class="f">Minutes</label><input id="s_min" type="number" value="20"></div>
       </div>
-      <div class="row" style="margin-top:14px">
-        <label class="row tiny" style="gap:7px"><input type="checkbox" id="s_pub" style="width:auto"> Published</label>
-        <button class="btn pri" id="s_save">Save</button>
+      <div class="row" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);justify-content:space-between">
+        <label class="row tiny" style="gap:8px;margin:0"><input type="checkbox" id="s_pub" style="width:auto">
+          <span>Published — visible to every facilitator. Leave off while it is being reviewed.</span></label>
+        <button class="btn pri" id="s_save">Save simulation</button>
       </div>
       <div id="s_out"></div>
     </div>`;
