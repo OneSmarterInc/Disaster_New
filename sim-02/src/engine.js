@@ -605,7 +605,7 @@ async function runBeats() {
 // ---------- transcript export ----------
 function buildTranscript() {
   const L = [];
-  L.push('RAPID SIM 01 — DISASTER OR BREACH?');
+  L.push('RAPID SIM 02 — WHAT DID IT TELL THEM?');
   L.push('Calder Sealing Systems · run exported ' + new Date().toISOString());
   L.push('Characters: ' + (OFFLINE ? 'scripted fallback' : 'live'));
   L.push('');
@@ -614,7 +614,7 @@ function buildTranscript() {
   L.push('='.repeat(60));
   S.threads.room.forEach(m => {
     if (m.who === 'system') L.push('\n-- ' + m.text + ' --\n');
-    else L.push((m.who === 'you' ? 'VP OF OPERATIONS' : nameOf(m.who).toUpperCase()) + ': ' + m.text + '\n');
+    else L.push((m.who === 'you' ? 'VP OF CUSTOMER OPERATIONS' : nameOf(m.who).toUpperCase()) + ': ' + m.text + '\n');
   });
   CAST_ORDER.forEach(id => {
     if (!S.threads[id].length) return;
@@ -624,7 +624,7 @@ function buildTranscript() {
     L.push('='.repeat(60));
     S.threads[id].forEach(m => {
       if (m.who === 'system') return;
-      L.push((m.who === 'you' ? 'VP OF OPERATIONS' : nameOf(m.who).toUpperCase()) + ': ' + m.text + '\n');
+      L.push((m.who === 'you' ? 'VP OF CUSTOMER OPERATIONS' : nameOf(m.who).toUpperCase()) + ': ' + m.text + '\n');
     });
   });
   L.push('');
@@ -1111,7 +1111,7 @@ function renderDebrief(D) {
     <div class="rule"></div>
     <h3>Carry this forward</h3>
     <p>Download the transcript before you close this. It has everything said tonight, including whatever you got out of people privately, and your three positions in your own words. That's the thing worth keeping — not because anyone will collect it, but because reading your Hour 4 reasoning back in a fortnight is a different experience from remembering it.</p>
-    <p>The transferable part isn't about arrays. It's that when you receive expert judgment from someone with a stake in the conclusion, you don't discard it and you don't swallow it — you ask what they'd have to say that costs them, and you sequence your own actions so the ones you can't take back come last.</p>
+    <p>The transferable part isn't about any of tonight's specifics. It's that when you receive expert judgment from someone with a stake in the conclusion, you don't discard it and you don't swallow it — you ask what they'd have to say that costs them, and you sequence your own actions so the ones you can't take back come last.</p>
 
     <div class="center" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn pri" id="dl" style="padding:13px 26px">Download your transcript</button>
@@ -1156,7 +1156,7 @@ mountHelp();
   }
   app.innerHTML = `<div class="doc"><div class="doc-in">
     <div class="eyebrow">Flexee Rapid Sim 02</div>
-    <h1>Disaster, or <em>breach</em>?</h1>
+    <h1>What did it <em>tell them</em>?</h1>
     <p style="color:var(--dimmer)">Opening the bridge…</p>
   </div></div>`;
   try {
