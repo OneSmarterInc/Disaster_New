@@ -10,6 +10,43 @@
 const { checkAccess, requireKey, anthropic, body } = require('../lib/guard.js');
 const S = require('../lib/scenario.js');
 
+
+// ---------------------------------------------------------------------------
+// Obvious cases are decided here, without asking a model. Two reasons: it costs
+// nothing and it cannot fail, and it means an outage can never turn a question
+// into an instruction. The model is only consulted when this is unsure, and if
+// that call fails we fall back to this verdict rather than to a blanket default
+// in either direction.
+// ---------------------------------------------------------------------------
+
+// The thing that has to be held. Holding anything else is not this.
+const SUBJECT = /\b(re-?index|reindex|rebuild|ingest\w*|nightly job|overnight job|the job|that job|02:?00|two a\.?m|library sync|the index|index state|snapshot)\b/i;
+
+// Asking about it.
+const INTERROGATIVE = /^\s*(should|shall|could|can|would|do|does|did|is|are|what|when|how|why|who|any chance|is there)\b/i;
+
+// Telling someone to do it.
+const IMPERATIVE = /\b(hold|stop|pause|freeze|halt|delay|postpone|suspend|cancel|preserve|snapshot|keep)\b/i;
+const DIRECTIVE = /\b(don'?t let|do not let|make sure .*(doesn'?t|does not) run|i want .*(held|stopped|paused)|let'?s (hold|stop|pause|freeze)|we'?re (holding|stopping|pausing)|hold off on (the )?(re-?index|rebuild|job|ingest))\b/i;
+
+function localVerdict(text) {
+  const t = String(text || '').trim();
+  if (!t) return { decided: true, held: false, quote: '' };
+
+  const sentences = t.split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean);
+  for (const sentence of sentences) {
+    if (!SUBJECT.test(sentence)) continue;                 // not about the job at all
+
+    const asks = /\?\s*$/.test(sentence) || INTERROGATIVE.test(sentence);
+    if (asks) return { decided: true, held: false, quote: '' };   // a question, plainly
+
+    if (DIRECTIVE.test(sentence) || (IMPERATIVE.test(sentence) && !asks)) {
+      return { decided: true, held: true, quote: sentence.slice(0, 300) };
+    }
+  }
+  return { decided: false };
+}
+
 const SYSTEM = `You are deciding one narrow question about a transcript from an incident call.
 
 THE QUESTION: did the VP of Customer Operations instruct anyone to hold, delay, pause, freeze or otherwise stop the scheduled overnight re-index of the document library — or to preserve, snapshot, image or otherwise keep the index in its current state before that job runs?
@@ -53,6 +90,23 @@ module.exports = async (req, res) => {
   const transcript = lines.join('\n').slice(0, 24000);
   if (!transcript.trim()) return res.status(200).json({ held: false, quote: '' });
 
+  // Only what the VP actually said can be an instruction from the VP.
+  const saidByVp = []
+    .concat(Array.isArray(b.room) ? b.room : [])
+    .concat(...Object.values(b.threads || {}).filter(Array.isArray))
+    .filter(m => m && m.who === 'you')
+    .map(m => String(m.text || ''));
+
+  let local = { decided: false };
+  for (const line of saidByVp) {
+    const v = localVerdict(line);
+    if (v.decided && v.held) { local = v; break; }        // an instruction settles it
+    if (v.decided && !local.decided) local = v;            // a plain question, provisionally
+  }
+  if (local.decided && local.held) {
+    return res.status(200).json({ held: true, quote: local.quote, decidedLocally: true });
+  }
+
   const key = requireKey(res); if (!key) return;
 
   try {
@@ -66,11 +120,18 @@ module.exports = async (req, res) => {
       quote: typeof j.quote === 'string' ? j.quote.slice(0, 300) : ''
     });
   } catch (e) {
-    // Defaulting to held is the kinder failure. Someone who did instruct a hold
-    // and lands in the other branch experiences the sim as broken; someone who
-    // didn't gets a slightly gentler Day 2 and a debrief that accuses them of
-    // nothing.
-    console.error('branch classifier failed, defaulting to held:', e.message);
-    return res.status(200).json({ held: true, quote: '', defaulted: true });
+    // Fall back to what was decided locally rather than to a blanket default.
+    // Defaulting to held would mean an outage turns a question into an
+    // instruction and both branches end the same way; defaulting to not-held
+    // would mean a real instruction is ignored and the sim looks broken to
+    // someone who did the right thing. The local pass has already caught the
+    // clear cases in both directions, so this only affects the genuinely
+    // ambiguous, where not-held is the honest answer.
+    console.error('branch classifier failed, using local verdict:', e.message);
+    return res.status(200).json({
+      held: !!(local.decided && local.held),
+      quote: local.quote || '',
+      degraded: true
+    });
   }
 };

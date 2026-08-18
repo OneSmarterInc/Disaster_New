@@ -10,7 +10,7 @@ const fingerprint = (v) => v
 module.exports = async (req, res) => {
   const secret = process.env.LAUNCH_SECRET;
   return res.status(200).json({
-    sim: 'rapid-01-disaster',
+    sim: 'rapid-02-relay',
     characters: process.env.ANTHROPIC_API_KEY ? 'configured' : 'MISSING',
     accessCode: process.env.ACCESS_CODE ? 'configured' : 'not set (open)',
     sessions: (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) ? 'configured' : 'MISSING',

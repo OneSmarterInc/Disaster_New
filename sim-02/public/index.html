@@ -79,8 +79,8 @@ main{flex:1;display:grid;grid-template-columns:270px 1fr;min-height:0}
 .expo .track{position:absolute;inset:5px 0;background:var(--night);border:1px solid var(--line)}
 .expo .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line2)}
 .expo .bar{position:absolute;top:6px;bottom:6px}
-.expo .bar.hw{right:50%;background:var(--kate);opacity:.75}
-.expo .bar.br{left:50%;background:var(--sophia);opacity:.75}
+.expo .bar.hw{right:50%;background:var(--joanna);opacity:.75}
+.expo .bar.br{left:50%;background:var(--devin);opacity:.75}
 .expo-key{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;letter-spacing:.11em;color:var(--dimmer);text-transform:uppercase;margin-top:2px}
 .who-note{font-size:11.5px;color:var(--dimmer);line-height:1.4;margin-top:6px;font-style:italic}
 .rail-note{padding:14px 16px 0;margin-top:8px;border-top:1px solid var(--line);font-size:12px;color:var(--dim);line-height:1.5}
@@ -201,7 +201,7 @@ main{flex:1;display:grid;grid-template-columns:270px 1fr;min-height:0}
 .opt .on2{font-size:12.5px;color:var(--dimmer);line-height:1.45;margin-top:3px}
 .rev{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:1px 6px;border:1px solid var(--line2);color:var(--dim);margin-left:7px;white-space:nowrap}
 .rev.r{color:var(--sys);border-color:var(--sys)}
-.rev.i{color:var(--sophia);border-color:var(--sophia)}
+.rev.i{color:var(--alert);border-color:var(--alert)}
 textarea.tw{
   width:100%;background:var(--night);border:1px solid var(--line2);padding:11px 13px;
   font-size:15px;min-height:78px;resize:vertical;font-family:var(--serif);
@@ -227,7 +227,7 @@ textarea.tw:focus{border-color:var(--amber-dim);outline:none}
 .guide p:last-child{margin-bottom:0}
 .guide b{color:var(--bone);font-weight:500}
 .guide .ex{font-family:var(--mono);font-size:12px;line-height:1.55;padding:7px 10px;margin:7px 0;border:1px solid var(--line)}
-.guide .ex.bad{color:var(--sophia);border-color:#CE7C8D44}
+.guide .ex.bad{color:var(--alert);border-color:#CE7C8D44}
 .guide .ex.good{color:var(--sys);border-color:#5E908944}
 .guide .ex .tag{display:block;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer);margin-bottom:3px}
 
@@ -932,7 +932,7 @@ async function runBeats() {
 // ---------- transcript export ----------
 function buildTranscript() {
   const L = [];
-  L.push('RAPID SIM 01 — DISASTER OR BREACH?');
+  L.push('RAPID SIM 02 — WHAT DID IT TELL THEM?');
   L.push('Calder Sealing Systems · run exported ' + new Date().toISOString());
   L.push('Characters: ' + (OFFLINE ? 'scripted fallback' : 'live'));
   L.push('');
@@ -941,7 +941,7 @@ function buildTranscript() {
   L.push('='.repeat(60));
   S.threads.room.forEach(m => {
     if (m.who === 'system') L.push('\n-- ' + m.text + ' --\n');
-    else L.push((m.who === 'you' ? 'VP OF OPERATIONS' : nameOf(m.who).toUpperCase()) + ': ' + m.text + '\n');
+    else L.push((m.who === 'you' ? 'VP OF CUSTOMER OPERATIONS' : nameOf(m.who).toUpperCase()) + ': ' + m.text + '\n');
   });
   CAST_ORDER.forEach(id => {
     if (!S.threads[id].length) return;
@@ -951,7 +951,7 @@ function buildTranscript() {
     L.push('='.repeat(60));
     S.threads[id].forEach(m => {
       if (m.who === 'system') return;
-      L.push((m.who === 'you' ? 'VP OF OPERATIONS' : nameOf(m.who).toUpperCase()) + ': ' + m.text + '\n');
+      L.push((m.who === 'you' ? 'VP OF CUSTOMER OPERATIONS' : nameOf(m.who).toUpperCase()) + ': ' + m.text + '\n');
     });
   });
   L.push('');
@@ -1438,7 +1438,7 @@ function renderDebrief(D) {
     <div class="rule"></div>
     <h3>Carry this forward</h3>
     <p>Download the transcript before you close this. It has everything said tonight, including whatever you got out of people privately, and your three positions in your own words. That's the thing worth keeping — not because anyone will collect it, but because reading your Hour 4 reasoning back in a fortnight is a different experience from remembering it.</p>
-    <p>The transferable part isn't about arrays. It's that when you receive expert judgment from someone with a stake in the conclusion, you don't discard it and you don't swallow it — you ask what they'd have to say that costs them, and you sequence your own actions so the ones you can't take back come last.</p>
+    <p>The transferable part isn't about any of tonight's specifics. It's that when you receive expert judgment from someone with a stake in the conclusion, you don't discard it and you don't swallow it — you ask what they'd have to say that costs them, and you sequence your own actions so the ones you can't take back come last.</p>
 
     <div class="center" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn pri" id="dl" style="padding:13px 26px">Download your transcript</button>
@@ -1483,7 +1483,7 @@ mountHelp();
   }
   app.innerHTML = `<div class="doc"><div class="doc-in">
     <div class="eyebrow">Flexee Rapid Sim 02</div>
-    <h1>Disaster, or <em>breach</em>?</h1>
+    <h1>What did it <em>tell them</em>?</h1>
     <p style="color:var(--dimmer)">Opening the bridge…</p>
   </div></div>`;
   try {

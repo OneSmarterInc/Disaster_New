@@ -334,7 +334,11 @@ const FALLBACK = {
   },
   nadia: {
     lines: [
-      { re: /how (does|do) content|library.*relay|ingest|index|update|know what it knows/, t: "There's a job that runs every night at two, and it picks up everything in the library folder. I watched Publications set it up. I always assumed it skipped the superseded ones — I don't actually know that it does." },
+      // Phase-gated. The live prompts hold this until Hour 7; the fallback bank
+      // has to hold it too, or an API hiccup at Hour 1 leaks the one clue the
+      // whole branch depends on somebody thinking to ask for.
+      { from: 1, re: /how (does|do) content|library.*relay|ingest|index|update|know what it knows/, t: "There's a job that runs every night at two, and it picks up everything in the library folder. I watched Publications set it up. I always assumed it skipped the superseded ones — I don't actually know that it does." },
+      { until: 0, re: /how (does|do) content|library.*relay|ingest|index|update|know what it knows/, t: "That's honestly not my seat — I see what lands in my queue, not what's upstream of it. Joanna or Devin would know how the library gets into the system." },
       { re: /escalat|queue|dried up|quiet|fewer|notice/, t: "They dried up around the start of the quarter. Rating questions, compatibility questions — I used to get those every week and now I barely see them. I thought it was seasonal." },
       { re: /why.*not say|tell anyone|raise|report/, t: "I didn't say anything. It felt like the system working, honestly. Saying it out loud now, I can hear how that sounds." },
       { re: /cs-?7400|rating|260|230|elastomer/, t: "The continuous rating came down when the elastomer changed. Customers on older drawings ask about it all the time — it's one of the questions I used to get most." },
@@ -344,10 +348,18 @@ const FALLBACK = {
   }
 };
 
+// Lines may be gated by phase, exactly as the live knowledge sets are. `from`
+// means not before that moment; `until` means not after it. A line with neither
+// is available throughout.
 function fallbackFor(id, text, phase) {
   const b = FALLBACK[id];
   const t = (text || '').toLowerCase();
-  for (const l of b.lines) if (l.re.test(t)) return l.t;
+  const p = Number.isFinite(phase) ? phase : 0;
+  for (const l of b.lines) {
+    if (l.from !== undefined && p < l.from) continue;
+    if (l.until !== undefined && p > l.until) continue;
+    if (l.re.test(t)) return l.t;
+  }
   return b.def;
 }
 
