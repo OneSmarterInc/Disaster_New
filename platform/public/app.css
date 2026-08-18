@@ -103,17 +103,20 @@ td b{font-weight:500}
 td.mono,th.mono{font-family:var(--mono);font-size:13px;white-space:nowrap}
 th.mono,td.mono{width:1%}
 
-/* the action column: as narrow as it can be without forcing the table wider
-   than its card. Buttons wrap onto a second line rather than pushing content
-   off the side — which is what nowrap here did. */
-td[data-l=""],th:last-child{width:1%}
-td[data-l=""]{padding-top:10px}
-td[data-l=""] .btn{margin:1px 0}
-td[data-l=""].row{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end}
+/* the action column: buttons stay on one line. Safe to insist on now that
+   every table sits in a scroll container — if the row genuinely cannot fit, the
+   table scrolls inside its card rather than pushing the page sideways. */
+td[data-l=""],th:last-child{width:1%;white-space:nowrap;text-align:right}
+td[data-l=""]{white-space:nowrap}
+td[data-l=""] .btn{margin-left:5px;vertical-align:middle}
+td[data-l=""] .btn:first-child{margin-left:0}
 
 /* the first column carries the person or thing, so give it room — but not so
    much that a narrow window cannot fit the rest */
 td:first-child{min-width:150px}
+
+/* dates and other short facts should not be squeezed to two characters */
+td.when,th.when{white-space:nowrap;width:1%}
 
 /* a table never widens its card; if it genuinely cannot fit, it scrolls
    inside rather than pushing the page sideways */
@@ -170,8 +173,12 @@ td input,td select,td textarea{font-size:14.5px}
     font-family:var(--mono);font-size:9px;letter-spacing:.11em;text-transform:uppercase;
     color:var(--ink3);padding-top:3px;
   }
-  td[data-l=""]{display:block;padding-top:10px;margin-top:8px;border-top:1px solid var(--line)}
+  /* on a phone the row is a card, so the buttons may wrap — the desktop rule
+     keeping them on one line would otherwise push the card off the screen */
+  td[data-l=""]{display:block;padding-top:10px;margin-top:8px;border-top:1px solid var(--line);
+    white-space:normal;text-align:left}
   td[data-l=""]:before{display:none}
+  td[data-l=""] .btn{margin:2px 4px 2px 0}
   td:not([data-l]):before{display:none}
 
   .row{gap:8px}
