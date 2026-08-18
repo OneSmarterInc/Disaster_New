@@ -19,7 +19,7 @@
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const D = { tab: 'faculty', data: null, detail: null, err: null, lastInvite: null, grants: null,
-            simSearch: '', simFilter: 'all', simOpen: null };
+            simSearch: '', simFilter: 'all', simOpen: null, simEdit: null, maintOpen: false };
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -386,12 +386,35 @@ function catalogueTab() {
             <div class="tiny dim mono" style="margin-top:6px">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url)}</div>
           </div>
           <div class="row" style="gap:6px">
-            <button class="btn sm" data-editsim="${esc(si.id)}">Edit</button>
+            <button class="btn sm" data-editsim="${esc(si.id)}">${D.simEdit === si.id ? 'Close' : 'Edit'}</button>
             <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published ? '1' : '0'}">${si.published ? 'Unpublish' : 'Publish'}</button>
             ${!si.published ? `<button class="btn sm" data-simopen="${esc(si.id)}">${open ? 'Hide reviewers' : 'Reviewers'}</button>` : ''}
             <button class="btn sm danger" data-delsim="${esc(si.id)}">Delete</button>
           </div>
         </div>
+
+        ${D.simEdit === si.id ? `<div style="border-top:1px solid var(--line);padding:18px 20px;background:var(--sunk)">
+          <div class="eyebrow" style="margin-bottom:12px">Editing</div>
+          <div class="row" style="align-items:flex-start">
+            <div style="width:110px"><label class="f">Number</label>
+              <input type="number" min="1" data-f="number" value="${si.number || ''}"></div>
+            <div class="grow"><label class="f">Title</label>
+              <input type="text" data-f="title" value="${esc(si.title || '')}"></div>
+            <div style="width:120px"><label class="f">Minutes</label>
+              <input type="number" data-f="minutes" value="${si.minutes || ''}"></div>
+          </div>
+          <div class="field" style="margin-top:14px"><label class="f">Tagline</label>
+            <input type="text" data-f="tagline" value="${esc(si.tagline || '')}"></div>
+          <div class="field"><label class="f">Description</label>
+            <textarea rows="4" data-f="description">${esc(si.description || '')}</textarea></div>
+          <div class="tiny dim" style="margin-bottom:14px">The id and address come from the deployment itself and are not editable here.
+            Anything you write below is yours — the simulation will not overwrite it when it next announces itself.</div>
+          <div class="row">
+            <button class="btn pri" data-savesim="${esc(si.id)}">Save changes</button>
+            <button class="btn" data-canceledit="1">Cancel</button>
+          </div>
+          <div data-saveout="${esc(si.id)}"></div>
+        </div>` : ''}
 
         ${(!si.published && open) ? `<div style="border-top:1px solid var(--line);padding:16px 20px;background:var(--sunk)">
           <div class="eyebrow" style="margin-bottom:8px">Who can see it before it's published</div>
@@ -410,226 +433,148 @@ function catalogueTab() {
       </div>`;
     }).join('') || `<div class="card dim">${all.length ? 'Nothing matches that.' : 'Nothing in the catalogue yet — add one below.'}</div>`}
 
-    <h2>Starting over</h2>
-    <div class="card tight">
-      <p class="tiny">Deletes every facilitator, student, course, enrolment and record of play. Administrators and the catalogue survive. There is no undo.</p>
-      <div class="row" style="margin-top:10px">
-        <input type="text" id="rst_confirm" placeholder="type DELETE EVERYTHING" style="width:240px">
-        <button class="btn danger" id="rst_go">Wipe the test data</button>
-      </div>
-      <div id="rst_out"></div>
+    <div class="rule" style="margin:34px 0 0"></div>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-top:18px">
+      <div class="eyebrow">Maintenance</div>
+      <button class="btn sm" id="maint_toggle">${D.maintOpen ? 'Hide' : 'Show'}</button>
     </div>
 
-    <h2>Database</h2>
-    <div class="card tight">
-      <div class="row">
-        <button class="btn" id="mig">Bring the database up to date</button>
-        <span class="tiny dim">Run this after a release that adds tables. It only creates what's missing and never drops anything.</span>
+    ${D.maintOpen ? `<div class="card tight" style="margin-top:12px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;padding:4px 0 14px;border-bottom:1px solid var(--line)">
+        <div style="flex:1;min-width:240px">
+          <b>Update the database</b>
+          <div class="tiny dim" style="margin-top:3px">Run after a release that adds tables or columns. Creates only what is missing and never drops anything, so running it again is harmless.</div>
+        </div>
+        <button class="btn" id="mig">Update</button>
       </div>
       <div id="migout"></div>
+
+      <div class="row" style="justify-content:space-between;align-items:flex-start;padding:14px 0 4px">
+        <div style="flex:1;min-width:240px">
+          <b style="color:var(--rose)">Clear the pilot data</b>
+          <div class="tiny dim" style="margin-top:3px">Deletes every facilitator, student, course, enrolment and record of play, so a trial can be run again from nothing. Administrators and the catalogue survive. There is no undo.</div>
+        </div>
+        <div class="row">
+          <input type="text" id="rst_confirm" placeholder="type DELETE EVERYTHING" style="width:200px">
+          <button class="btn danger" id="rst_go">Clear</button>
+        </div>
+      </div>
+      <div id="rst_out"></div>
+    </div>` : ''}
+
+    <div class="note">
+      Simulations appear here on their own. Each deployment tells the platform it exists the first time it is used, and arrives unpublished — invisible to everyone but you until you publish it or grant someone review access. There is nothing to add by hand.
     </div>
-
-    <h2>Add or update a sim</h2>
-    <div class="card">
-      <div class="row" style="align-items:flex-start">
-        <div class="grow">
-          <label class="f">Where is it deployed?</label>
-          <input id="s_url" type="text" placeholder="https://…vercel.app">
-        </div>
-        <button class="btn pri" id="s_probe" style="align-self:flex-end">Look it up</button>
-      </div>
-      <div class="tiny dim" style="margin:8px 0 0">Paste the address and we'll ask the deployment what it is. It knows its own id, and this checks it will actually accept the students we send it.</div>
-      <div id="s_probeout"></div>
-
-      <div class="rule" style="margin:22px 0"></div>
-
-      <div class="row" style="align-items:flex-start">
-        <div style="width:110px">
-          <label class="f">Number</label>
-          <input id="s_num" type="number" min="1" placeholder="3">
-        </div>
-        <div class="grow">
-          <label class="f">Id</label>
-          <input id="s_id" type="text" placeholder="filled in for you" readonly style="background:var(--sunk);color:var(--ink2)">
-        </div>
-        <div class="grow">
-          <label class="f">Title</label>
-          <input id="s_title" type="text" placeholder="Whose Defect Is It?">
-        </div>
-      </div>
-      <div class="tiny dim" style="margin:8px 0 18px">The number is how people refer to it out loud — each simulation needs its own. The id comes from the deployment and cannot be edited here.</div>
-      <div class="field"><label class="f">Tagline</label><input id="s_tag" type="text" placeholder="One line — what it is, in the voice of the catalogue"></div>
-      <div class="field"><label class="f">Description</label><textarea id="s_desc" rows="3" placeholder="What the simulation is about — this is what faculty read on the landing page"></textarea></div>
-      <div class="row" style="align-items:flex-start">
-        <div style="width:120px"><label class="f">Minutes</label><input id="s_min" type="number" value="20"></div>
-      </div>
-      <div class="row" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);justify-content:space-between">
-        <label class="row tiny" style="gap:8px;margin:0"><input type="checkbox" id="s_pub" style="width:auto">
-          <span>Published — visible to every facilitator. Leave off while it is being reviewed.</span></label>
-        <button class="btn pri" id="s_save">Save simulation</button>
-      </div>
-      <div id="s_out"></div>
-    </div>`;
+`;
 }
 
 function wireCatalogue() {
-  const mb = document.getElementById('mig');
-  if (mb) mb.onclick = async () => {
-    const out = document.getElementById('migout');
-    mb.disabled = true; mb.textContent = 'Running…';
-    try {
-      const d = await api('/api/admin', { action:'migrate' });
-      out.innerHTML = `<div class="ok">Up to date — ${d.statements} statements checked.</div>`;
-    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
-    mb.disabled = false; mb.textContent = 'Bring the database up to date';
+  const sq = document.getElementById('sim_q');
+  const repaint = () => {
+    const body = document.getElementById('body');
+    body.innerHTML = catalogueTab(); wireCatalogue();
   };
-  app.querySelectorAll('[data-editsim]').forEach(btn => btn.onclick = () => {
-    const si = (D.data.sims || []).find(x => x.id === btn.dataset.editsim);
-    if (!si) return;
-    document.getElementById('s_num').value = si.number || '';
-    const po = document.getElementById('s_probeout'); if (po) po.innerHTML = '';
-    document.getElementById('s_id').value = si.id;
-    document.getElementById('s_title').value = si.title || '';
-    document.getElementById('s_tag').value = si.tagline || '';
-    document.getElementById('s_desc').value = si.description || '';
-    document.getElementById('s_url').value = si.launch_url || '';
-    document.getElementById('s_min').value = si.minutes || '';
-    document.getElementById('s_pub').checked = !!si.published;
-    document.getElementById('s_out').innerHTML = `<div class="ok">Editing ${esc(si.title)} — change what you need and save.</div>`;
-    flash(btn, 'Loaded below ↓');
-    scrollTo('s_id');
+  if (sq) sq.oninput = () => {
+    D.simSearch = sq.value;
+    repaint();
+    const again = document.getElementById('sim_q');
+    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+  };
+  app.querySelectorAll('[data-simfilter]').forEach(b => b.onclick = () => { D.simFilter = b.dataset.simfilter; repaint(); });
+  app.querySelectorAll('[data-simopen]').forEach(b => b.onclick = () => {
+    D.simOpen = D.simOpen === b.dataset.simopen ? null : b.dataset.simopen; repaint(); });
+  app.querySelectorAll('[data-editsim]').forEach(b => b.onclick = () => {
+    D.simEdit = D.simEdit === b.dataset.editsim ? null : b.dataset.editsim;
+    D.simOpen = null; repaint(); });
+  app.querySelectorAll('[data-canceledit]').forEach(b => b.onclick = () => { D.simEdit = null; repaint(); });
+
+  app.querySelectorAll('[data-savesim]').forEach(btn => btn.onclick = async () => {
+    const simId = btn.dataset.savesim;
+    const si = (D.data.sims || []).find(x => x.id === simId);
+    const panel = btn.closest('div').parentElement;
+    const val = (f) => {
+      const el = panel.querySelector(`[data-f="${f}"]`);
+      return el ? el.value : '';
+    };
+    const out = app.querySelector(`[data-saveout="${simId}"]`);
+    const done = acting(btn, 'Saving…');
+    try {
+      await api('/api/admin', { action:'save_sim',
+        id: simId, number: val('number'), title: val('title'),
+        tagline: val('tagline'), description: val('description'),
+        minutes: val('minutes'), launchUrl: si.launch_url, published: !!si.published });
+      done('Saved'); D.simEdit = null; load();
+    } catch (e) {
+      if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+      done('Not saved', 'bad');
+    }
   });
+
   app.querySelectorAll('[data-pub]').forEach(btn => btn.onclick = async () => {
     const si = (D.data.sims || []).find(x => x.id === btn.dataset.pub);
     if (!si) return;
     const done = acting(btn, 'Saving…');
     try {
-      await api('/api/admin', { action:'save_sim', id: si.id, number: si.number, title: si.title, tagline: si.tagline,
-        description: si.description, launchUrl: si.launch_url, minutes: si.minutes,
-        published: btn.dataset.now !== '1' });
+      await api('/api/admin', { action:'save_sim', id: si.id, number: si.number, title: si.title,
+        tagline: si.tagline, description: si.description, launchUrl: si.launch_url,
+        minutes: si.minutes, published: btn.dataset.now !== '1' });
       done(); load();
     } catch (e) { done('Failed', 'bad'); }
   });
+
   app.querySelectorAll('[data-grant]').forEach(btn => btn.onclick = async () => {
     const sid = btn.dataset.grant;
     const mail = app.querySelector(`[data-grantmail="${sid}"]`);
     const note = app.querySelector(`[data-grantnote="${sid}"]`);
-    const out = document.getElementById('s_out');
     const done = acting(btn, 'Granting…');
     try {
-      const d = await api('/api/admin', { action:'grant_sim_access',
+      await api('/api/admin', { action:'grant_sim_access',
         simId: sid, email: mail ? mail.value : '', note: note ? note.value : '' });
-      if (out) out.innerHTML = `<div class="ok">${esc(d.who)} can now see it.</div>`;
       done('Granted'); load();
-    } catch (e) { if (out) out.innerHTML = `<div class="err">${esc(e.message)}</div>`; done('Failed', 'bad'); }
+    } catch (e) { done(e.message.slice(0, 24), 'bad'); }
   });
   app.querySelectorAll('[data-revgrant]').forEach(btn => btn.onclick = async () => {
     const done = acting(btn, 'Revoking…');
     try { await api('/api/admin', { action:'revoke_sim_access', grantId: btn.dataset.revgrant }); done(); load(); }
     catch (e) { done('Failed', 'bad'); }
   });
+
   app.querySelectorAll('[data-delsim]').forEach(btn => btn.onclick = async () => {
-    if (!confirm('Delete this simulation from the catalogue?')) return;
-    const doneD = acting(btn, 'Deleting…');
-    try {
-      await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim });
-      doneD(); load();
-    } catch (e) {
+    if (!confirm('Delete this simulation from the catalogue? It will reappear, unpublished, the next time that deployment is used.')) return;
+    const done = acting(btn, 'Deleting…');
+    try { await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim }); done(); load(); }
+    catch (e) {
       if (confirm(e.message + '\n\nDelete it anyway?')) {
         await api('/api/admin', { action:'delete_sim', simId: btn.dataset.delsim, force: true });
-        doneD(); load();
-      } else doneD('Kept', 'bad');
+        done(); load();
+      } else done('Kept', 'bad');
     }
   });
+
   const rg = document.getElementById('rst_go');
   if (rg) rg.onclick = async () => {
     const out = document.getElementById('rst_out');
-    rg.disabled = true; rg.textContent = 'Wiping…';
+    const done = acting(rg, 'Wiping…');
     try {
       await api('/api/admin', { action:'reset_test_data', confirm: document.getElementById('rst_confirm').value });
       out.innerHTML = '<div class="ok">Done. Everything except administrators and the catalogue is gone.</div>';
       D.detail = null; D.lastInvite = null; D.allCourses = null;
-      load();
-    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
-    rg.disabled = false; rg.textContent = 'Wipe the test data';
+      done(); load();
+    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; done('Failed', 'bad'); }
   };
-  const sq = document.getElementById('sim_q');
-  if (sq) {
-    sq.oninput = () => {
-      D.simSearch = sq.value;
-      const body = document.getElementById('body');
-      body.innerHTML = catalogueTab(); wireCatalogue();
-      const again = document.getElementById('sim_q');
-      if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
-    };
-  }
-  app.querySelectorAll('[data-simfilter]').forEach(btn => btn.onclick = () => {
-    D.simFilter = btn.dataset.simfilter;
-    const body = document.getElementById('body');
-    body.innerHTML = catalogueTab(); wireCatalogue();
-  });
-  app.querySelectorAll('[data-simopen]').forEach(btn => btn.onclick = () => {
-    D.simOpen = D.simOpen === btn.dataset.simopen ? null : btn.dataset.simopen;
-    const body = document.getElementById('body');
-    body.innerHTML = catalogueTab(); wireCatalogue();
-  });
-  const pb = document.getElementById('s_probe');
-  if (pb) pb.onclick = async () => {
-    const out = document.getElementById('s_probeout');
-    const done = acting(pb, 'Asking…');
-    out.innerHTML = '';
+
+  const mt = document.getElementById('maint_toggle');
+  if (mt) mt.onclick = () => { D.maintOpen = !D.maintOpen; repaint(); };
+
+  const mb = document.getElementById('mig');
+  if (mb) mb.onclick = async () => {
+    const out = document.getElementById('migout');
+    const done = acting(mb, 'Running…');
     try {
-      const d = await api('/api/admin', { action:'probe_sim', launchUrl: document.getElementById('s_url').value });
-      document.getElementById('s_id').value = d.id;
-      document.getElementById('s_url').value = d.launchUrl;
-      if (!document.getElementById('s_num').value) document.getElementById('s_num').value = d.suggestedNumber;
-      if (d.existing) {
-        const si = (D.data.sims || []).find(x => x.id === d.id);
-        if (si) {
-          document.getElementById('s_title').value = si.title || '';
-          document.getElementById('s_tag').value = si.tagline || '';
-          document.getElementById('s_desc').value = si.description || '';
-          document.getElementById('s_min').value = si.minutes || '';
-          document.getElementById('s_pub').checked = !!si.published;
-        }
-      }
-      out.innerHTML = `<div class="note" style="margin-top:14px">
-        <b>${esc(d.id)}</b> ${d.existing ? '— already in the catalogue, so this will update it.' : '— not in the catalogue yet.'}
-        ${d.problems.length
-          ? `<div style="margin-top:10px"><b>Before students use it:</b><div style="margin-top:6px">${
-              d.problems.map(x => `<div style="color:var(--rose)">· ${esc(x)}</div>`).join('')}</div></div>`
-          : '<div style="margin-top:8px;color:var(--green)">Configured correctly — it will accept students we send it.</div>'}
-      </div>`;
-      done('Found it');
-    } catch (e) {
-      out.innerHTML = `<div class="err">${esc(e.message)}</div>`;
-      done('Not found', 'bad');
-    }
-  };
-  const b = document.getElementById('s_save');
-  if (!b) return;
-  b.onclick = async () => {
-    const done = acting(b, 'Saving…');
-    try {
-      await api('/api/admin', {
-        action: 'save_sim',
-        id: document.getElementById('s_id').value.trim(),
-        number: document.getElementById('s_num').value,
-        title: document.getElementById('s_title').value,
-        tagline: document.getElementById('s_tag').value,
-        launchUrl: document.getElementById('s_url').value,
-        minutes: document.getElementById('s_min').value,
-        description: document.getElementById('s_desc').value,
-        published: document.getElementById('s_pub').checked
-      });
-      document.getElementById('s_out').innerHTML = '<div class="ok">Saved.</div>';
-      done('Saved'); load();
-    } catch (e) {
-      const why = e.message === 'need_id' ? 'Every field above needs a value — press Edit this on a simulation to load it.' : e.message;
-      document.getElementById('s_out').innerHTML = `<div class="err">${esc(why)}</div>`;
-      done('Not saved', 'bad');
-      scrollTo('s_id');
-    }
+      const d = await api('/api/admin', { action:'migrate' });
+      out.innerHTML = `<div class="ok">Up to date — ${d.statements} statements checked.</div>`;
+      done();
+    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; done('Failed', 'bad'); }
   };
 }
 

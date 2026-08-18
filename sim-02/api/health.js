@@ -7,7 +7,16 @@ const fingerprint = (v) => v
   ? crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 8)
   : null;
 
+const { announce } = require('../lib/launch.js');
+const S = require('../lib/scenario.js');
+
 module.exports = async (req, res) => {
+  // Often the first thing anyone touches on a fresh deployment.
+  try {
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    announce(S.META, host ? `https://${host}` : '');
+  } catch (e) {}
+
   const secret = process.env.LAUNCH_SECRET;
   return res.status(200).json({
     sim: 'rapid-02-relay',

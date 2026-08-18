@@ -60,4 +60,39 @@ async function reportCompletion({ launch, summary, metrics }) {
   }
 }
 
-module.exports = { verifyLaunch, signBack, reportCompletion };
+// Tells the platform this simulation exists, once per cold start. The platform
+// creates a catalogue entry — unpublished, so nobody sees it until an
+// administrator decides — and thereafter only refreshes the technical facts,
+// leaving anything they have edited alone.
+//
+// Deliberately fire-and-forget and never awaited by a request: if it fails, a
+// student's run is unaffected and the next cold start tries again.
+let announced = false;
+function announce(meta, selfUrl) {
+  if (announced) return;
+  announced = true;
+  const base = (process.env.PLATFORM_URL || '').replace(/\/$/, '');
+  if (!base || !meta) return;
+  const token = signBack({
+    kind: 'register',
+    sim: meta.id,
+    title: meta.title,
+    tagline: meta.tagline,
+    description: meta.description,
+    minutes: meta.minutes,
+    launchUrl: selfUrl || '',
+    iat: Date.now(),
+    exp: Date.now() + 5 * 60000
+  });
+  if (!token) return;
+  fetch(base + '/api/register', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token }),
+    signal: AbortSignal.timeout(6000)
+  }).then(r => {
+    if (!r.ok) console.error('announce refused', r.status);
+  }).catch(e => console.error('announce failed', e.message));
+}
+
+module.exports = { verifyLaunch, signBack, reportCompletion, announce };

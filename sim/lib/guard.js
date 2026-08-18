@@ -1,10 +1,22 @@
 // Shared guards for every endpoint. Server only.
 
-const { verifyLaunch } = require('./launch.js');
+const { verifyLaunch, announce } = require('./launch.js');
+const S = require('./scenario.js');
+
+// Every endpoint passes through here, so this is where the simulation tells the
+// platform it exists — once per cold start, and never blocking the request.
+function announceOnce(req) {
+  try {
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const proto = req.headers['x-forwarded-proto'] || 'https';
+    announce(S.META, host ? `${proto}://${host}` : '');
+  } catch (e) { /* never let this affect a request */ }
+}
 
 // Two ways in: a launch token signed by the platform, or the shared access code
 // for standalone use. The token also tells us who is playing.
 function checkAccess(req, res) {
+  announceOnce(req);
   const lt = req.headers['x-launch-token'];
   if (lt) {
     const p = verifyLaunch(String(lt));

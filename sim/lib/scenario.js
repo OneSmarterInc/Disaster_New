@@ -1,6 +1,17 @@
 // SERVER ONLY. This file is never sent to a browser.
 // It holds the ground truth, the character contracts, and the debrief.
 
+// What this simulation tells the platform about itself. The platform's catalogue
+// is populated from this rather than from anyone typing it in — a deployment
+// that exists should appear, without a form.
+const META = {
+  id: 'rapid-01-disaster',
+  title: 'Disaster or Breach?',
+  tagline: 'Twenty minutes inside an incident nobody can classify yet.',
+  description: 'Data corruption is spreading across client applications at two in the morning. A failing storage array and an intruder look identical at this hour, and the two response playbooks are opposed — the fastest way back destroys the evidence you would need if it turns out to be the other one. Students take advice from four people whose professional exposure runs in opposite directions.',
+  minutes: 20
+};
+
 const GROUND_TRUTH = {
   // Engine-only. Not passed to any model.
   answer: "both",
@@ -428,6 +439,7 @@ const LADDER = {
 };
 
 module.exports = {
+  META,
   GROUND_TRUTH, CAST, CAST_PUBLIC, CAST_INTRO, CAST_ORDER, KNOWLEDGE, PHASES, LADDER,
   ACTIONS, READINGS, FALLBACK, FORK, fallbackFor,
   knowledgeFor, systemPromptFor, sceneFor
