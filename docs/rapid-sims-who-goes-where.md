@@ -4,7 +4,7 @@ Three deployments. One platform where everyone signs in, and one per simulation 
 
 | | |
 |---|---|
-| Platform | https://disaster-new-ten.vercel.app |
+| Platform | https://rapidsims.flexee.org |
 | RapidSim 01 | https://flexee-rapid-sim-01-vercel.vercel.app |
 | RapidSim 02 | https://flexee-rapid-sim-02.vercel.app |
 
@@ -14,7 +14,7 @@ The simulation addresses matter only for standalone use and for running a live c
 
 ## Administrator
 
-Everything at **https://disaster-new-ten.vercel.app/admin.html**
+Everything at **https://rapidsims.flexee.org/admin.html**
 
 Sign in at the platform root and you land there. Three tabs.
 
@@ -32,7 +32,7 @@ Other pages you may need: **/migrate.html** if the console itself will not load 
 
 ## Facilitator
 
-Everything at **https://disaster-new-ten.vercel.app/faculty.html**
+Everything at **https://rapidsims.flexee.org/faculty.html**
 
 They sign in at the platform root with the account you invited, and land here.
 
@@ -57,7 +57,7 @@ That is a different thing from the platform faculty page. It creates a five-char
 
 ## Student
 
-Everything at **https://disaster-new-ten.vercel.app**
+Everything at **https://rapidsims.flexee.org**
 
 They never type a simulation address.
 
