@@ -57,9 +57,23 @@ async function api(path, payload) {
 document.getElementById('out').onclick = async () => { await api('/api/auth', { action:'signout' }); location.href = '/'; };
 
 let LAST = '';
+let FAILED = 0;
 async function draw() {
   let d;
-  try { d = await api('/api/student', { action:'overview' }); } catch (e) { return; }
+  try { d = await api('/api/student', { action:'overview' }); FAILED = 0; }
+  catch (e) {
+    // A blank page and a page that failed to load look identical, and the
+    // second one leaves somebody staring at nothing with no way forward.
+    FAILED++;
+    if (FAILED === 1) return;   // one blip during polling is not worth a banner
+    app.innerHTML = `<div class="note" style="margin-top:30px">
+      <b>Could not reach the server.</b> Your courses are still there — this page just could not load them.
+      <div style="margin-top:10px"><button class="btn" id="retry">Try again</button></div>
+    </div>`;
+    const r = document.getElementById('retry');
+    if (r) r.onclick = () => { LAST = ''; FAILED = 0; r.textContent = 'Trying…'; draw(); };
+    return;
+  }
 
   // Repaint only when something changed, so polling cannot interrupt a click.
   const print = JSON.stringify(d.courses.map(c => [c.id, c.paid])) +

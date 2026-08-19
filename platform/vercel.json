@@ -1,19 +1,86 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/sim01", "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/" },
-    { "source": "/sim01/:path*", "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/:path*" },
-    { "source": "/sim02", "destination": "https://flexee-rapid-sim-02.vercel.app/" },
-    { "source": "/sim02/:path*", "destination": "https://flexee-rapid-sim-02.vercel.app/:path*" }
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/faculty",
+      "destination": "/faculty.html"
+    },
+    {
+      "source": "/student",
+      "destination": "/student.html"
+    },
+    {
+      "source": "/signin",
+      "destination": "/signin.html"
+    },
+    {
+      "source": "/account",
+      "destination": "/account.html"
+    },
+    {
+      "source": "/join",
+      "destination": "/join.html"
+    },
+    {
+      "source": "/sim01",
+      "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/"
+    },
+    {
+      "source": "/sim01/:path*",
+      "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/:path*"
+    },
+    {
+      "source": "/sim02",
+      "destination": "https://flexee-rapid-sim-02.vercel.app/"
+    },
+    {
+      "source": "/sim02/:path*",
+      "destination": "https://flexee-rapid-sim-02.vercel.app/:path*"
+    }
   ],
   "headers": [
     {
       "source": "/sim01/(.*)",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     },
     {
       "source": "/sim02/(.*)",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+        }
+      ]
     }
   ]
 }

@@ -14,6 +14,9 @@ const toRe = (src) => new RegExp('^' + src
   .replace(/:[a-z]+\*/g, '.*')
   .replace(/:[a-z]+/g, '[^/]+') + '$');
 
+// the clean routes are rewritten on purpose
+const CLEAN = new Set(['/admin', '/faculty', '/student', '/signin', '/account', '/join']);
+
 const mustPass = [
   '/', '/signin.html', '/admin.html', '/faculty.html', '/student.html',
   '/join.html', '/accept.html', '/reset.html', '/account.html', '/app.css',
@@ -30,8 +33,12 @@ let bad = 0;
 const rules = cfg.rewrites.map(r => ({ re: toRe(r.source), to: r.destination }));
 
 for (const p of [...new Set(mustPass)]) {
+  if (CLEAN.has(p)) continue;
   const hit = rules.find(r => r.re.test(p));
-  if (hit) { bad++; console.log(`  ${p} would be sent away to ${hit.to}`); }
+  if (hit && !hit.to.startsWith('/')) { bad++; console.log(`  ${p} would be sent away to ${hit.to}`); }
+}
+for (const p of CLEAN) {
+  if (!rules.some(r => r.re.test(p))) { bad++; console.log(`  ${p} has no clean route`); }
 }
 for (const p of Object.keys(mustRoute)) {
   if (!rules.some(r => r.re.test(p))) { bad++; console.log(`  ${p} is not routed to a simulation`); }

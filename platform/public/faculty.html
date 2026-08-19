@@ -177,8 +177,11 @@ function wireCourses() {
 function simsTab() {
   if (F.simsOverview === null) {
     api('/api/faculty', { action:'sims_overview' })
-      .then(d => { F.simsOverview = d.sims || []; render(); })
-      .catch(() => { F.simsOverview = []; render(); });
+      .then(d => { F.simsOverview = d.sims || []; F.simsFailed = null; render(); })
+      // An empty list and a list that failed to arrive are different things, and
+      // showing the first when it was the second is how somebody concludes a
+      // simulation has vanished.
+      .catch(e => { F.simsOverview = []; F.simsFailed = e.message; render(); });
     return '<div class="panel"><div class="empty">Loading…</div></div>';
   }
   const inUse = F.simsOverview;
@@ -207,7 +210,11 @@ function simsTab() {
     <div class="panel"><div class="tablewrap"><table>
       <thead><tr><th style="width:40%">Simulation</th><th class="num">Courses</th><th class="num">Started</th><th class="num">Finished</th><th class="act"></th></tr></thead>
       <tbody>
-      ${shown.length ? shown.map(x => {
+      ${F.simsFailed ? `<tr><td colspan="5" class="empty">
+        <b style="color:var(--rose)">Could not load your simulations.</b>
+        <div class="hint" style="margin:6px 0 10px">${esc(F.simsFailed)}</div>
+        <button class="btn sm" id="simretry">Try again</button></td></tr>`
+      : shown.length ? shown.map(x => {
         const p = prevOf(x.id), live = p && daysLeft(p.expires_at) > 0;
         return `<tr>
           <td data-l="Simulation"><div class="nm">${esc(simLabel(x))}</div>
@@ -228,6 +235,8 @@ function simsTab() {
     </div>`;
 }
 function wireSims() {
+  const sr = document.getElementById('simretry');
+  if (sr) sr.onclick = () => { F.simsOverview = null; F.simsFailed = null; render(); };
   app.querySelectorAll('[data-prev]').forEach(b => b.onclick = async () => {
     const done = acting(b, 'Starting…');
     try { await api('/api/faculty', { action:'start_preview', simId:b.dataset.prev }); done(); F.simsOverview = null; loadHome(); }

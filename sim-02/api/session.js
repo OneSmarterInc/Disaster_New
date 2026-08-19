@@ -171,12 +171,21 @@ module.exports = async (req, res) => {
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         const groupId = String(b.groupId || '');
         if (!groupId) return res.status(400).json({ error: 'group_required' });
+        // Only somebody who actually joined, and is in that group, may write to
+        // it. Without this anyone holding a live session code could overwrite
+        // another run by naming its group.
+        const pid = String(b.participantId || '');
+        const who = (await store.getParticipants(code))[pid];
+        if (!who || who.groupId !== groupId) return res.status(403).json({ error: 'not_in_that_group' });
         const runs = await store.getRuns(code);
         const run = runs[groupId] || { groupId, positions: [], phase: 0, done: false };
         if (Array.isArray(b.positions)) run.positions = b.positions.slice(0, 3);
         if (typeof b.phase === 'number') run.phase = b.phase;
         if (b.done) run.done = true;
-        if (b.coverageEarnedAt !== undefined) run.coverageEarnedAt = b.coverageEarnedAt;
+        // The browser sends ladderEarnedAt. This read coverageEarnedAt, which is
+        // Sim 01's name for it, so the value was dropped and the facilitator was
+        // told nobody had earned the disclosure.
+        if (b.ladderEarnedAt !== undefined) run.ladderEarnedAt = b.ladderEarnedAt;
         if (b.privateCount !== undefined) run.privateCount = b.privateCount;
         run.updatedAt = Date.now();
         await store.setRun(code, groupId, run);

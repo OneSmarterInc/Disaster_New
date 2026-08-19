@@ -150,7 +150,10 @@ function startPolling() {
 }
 
 function joinURL() {
-  return location.origin + '/?s=' + F.code + (F.accessCode ? '&code=' + decodeURIComponent(F.accessCode) : '');
+  // BASE is '' on this simulation's own deployment and '/sim01' behind the
+  // platform's domain. Without it the link sends students to the catalogue.
+  return location.origin + BASE + '/?s=' + F.code +
+    (F.accessCode ? '&code=' + encodeURIComponent(decodeURIComponent(F.accessCode)) : '');
 }
 
 function groupsOf() {
@@ -263,8 +266,6 @@ function wireRoom() {
     startPolling();
   };
   const so = document.getElementById('solo');
-  if (a3) a3.onclick = () => shuffle(3);
-  if (a2) a2.onclick = () => shuffle(2);
   if (so) so.onclick = () => shuffle(1);
 }
 
@@ -293,7 +294,12 @@ function tabProgress(groups, runs) {
 }
 
 // ---------- comparison ----------
-const READ_LABEL = { hardware: 'Hardware fault', breach: 'Intrusion', both: 'Both / one enabling the other', unknown: 'Undetermined' };
+const READ_LABEL = {
+  content: 'Stale document served',
+  supervision: 'Answered instead of escalated',
+  both: 'Both, one enabling the other',
+  unknown: 'Genuinely undetermined'
+};
 
 function tabCompare(groups, runs) {
   const named = Object.keys(groups).filter(g => g !== '_none').sort();
@@ -322,7 +328,7 @@ function tabCompare(groups, runs) {
       }).join('')}
     </table>
     <div class="note">Coverage admission: ${withRuns.map(g => {
-      const c = runs[g].coverageEarnedAt;
+      const c = runs[g].ladderEarnedAt;
       return esc(g) + ' — ' + (c === null || c === undefined ? 'never got it' : (F.data.phases[c] || '?'));
     }).join(' · ')}</div>`;
 }

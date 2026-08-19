@@ -344,17 +344,23 @@ function stuTab() {
           <button class="btn sm" data-pedit="${esc(st.id)}">Cancel</button>
           <div data-pout="${esc(st.id)}"></div>
         </td></tr>` : ''}`).join('')
-        : `<tr><td colspan="7" class="empty">${D.students.length ? 'Nobody matches that.' : 'No students yet. They appear when a facilitator shares a course link.'}</td></tr>`}
+        : `<tr><td colspan="7" class="empty">${D.studentsFailed
+            ? `<b style="color:var(--rose)">Could not load students.</b><div class="hint" style="margin:6px 0 10px">${esc(D.studentsFailed)}</div><button class="btn sm" id="sturetry">Try again</button>`
+            : D.students.length ? 'Nobody matches that.' : 'No students yet. They appear when a facilitator shares a course link.'}</td></tr>`}
       </tbody></table></div>
       ${foot('stu', P, 'student')}
     </div>`;
 }
 async function loadStudents() {
-  try { D.students = (await api('/api/admin', { action:'all_students' })).students; }
-  catch (e) { D.students = []; D.err = e.message; }
+  // Distinguish "nobody yet" from "could not ask". Rendering the first when it
+  // was the second is how somebody concludes their students have disappeared.
+  try { D.students = (await api('/api/admin', { action:'all_students' })).students; D.studentsFailed = null; }
+  catch (e) { D.students = []; D.studentsFailed = e.message; }
   render();
 }
 function wireStu() {
+  const sr = document.getElementById('sturetry');
+  if (sr) sr.onclick = () => { D.students = null; D.studentsFailed = null; render(); };
   app.querySelectorAll('[data-sdel]').forEach(btn => btn.onclick = async () => {
     if (!confirm('Delete this student? Their enrolments go with them.')) return;
     const done = acting(btn, 'Deleting…');
@@ -401,11 +407,14 @@ function crsTab() {
     </div>`;
 }
 async function loadCourses() {
-  try { D.allCourses = (await api('/api/admin', { action:'all_courses' })).courses; }
-  catch (e) { D.allCourses = []; D.err = e.message; }
+  try { D.allCourses = (await api('/api/admin', { action:'all_courses' })).courses; D.coursesFailed = null; }
+  catch (e) { D.allCourses = []; D.coursesFailed = e.message; }
   render();
 }
-function wireCrs() {}
+function wireCrs() {
+  const cr = document.getElementById('crsretry');
+  if (cr) cr.onclick = () => { D.allCourses = null; D.coursesFailed = null; render(); };
+}
 
 /* ── catalogue ──────────────────────────────────────────────────────────── */
 function catTab() {
@@ -519,6 +528,7 @@ function catTab() {
               <div style="flex:0 0 auto;align-self:flex-end"><button class="btn sm" data-grant="${esc(si.id)}">Give access</button></div>
             </div>
             <div class="hint" style="margin:6px 0 0">If they have no account yet, one is made for them and you get an invitation to send.</div>
+            <div data-grantout="${esc(si.id)}"></div>
 
             ${D.grantSent && D.grantSent.sim === si.id ? `<div class="note" style="margin-top:12px">
               <b>${esc(D.grantSent.who)} can now see it.</b> Nothing is sent automatically — copy this and send it however you normally would.

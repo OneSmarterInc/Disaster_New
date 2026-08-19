@@ -150,7 +150,10 @@ function startPolling() {
 }
 
 function joinURL() {
-  return location.origin + '/?s=' + F.code + (F.accessCode ? '&code=' + decodeURIComponent(F.accessCode) : '');
+  // BASE is '' on this simulation's own deployment and '/sim01' behind the
+  // platform's domain. Without it the link sends students to the catalogue.
+  return location.origin + BASE + '/?s=' + F.code +
+    (F.accessCode ? '&code=' + encodeURIComponent(decodeURIComponent(F.accessCode)) : '');
 }
 
 function groupsOf() {
@@ -263,8 +266,6 @@ function wireRoom() {
     startPolling();
   };
   const so = document.getElementById('solo');
-  if (a3) a3.onclick = () => shuffle(3);
-  if (a2) a2.onclick = () => shuffle(2);
   if (so) so.onclick = () => shuffle(1);
 }
 
