@@ -29,8 +29,8 @@ document.getElementById('out').onclick = async () => { await api('/api/auth', { 
   let me;
   try {
     me = (await api('/api/auth', { action:'me' })).user;
-    if (!me) { location.href = '/'; return; }
-  } catch (e) { location.href = '/'; return; }
+    if (!me) { location.href = '/signin.html'; return; }
+  } catch (e) { location.href = '/signin.html'; return; }
   const home = me.role === 'admin' ? '/admin.html' : me.role === 'faculty' ? '/faculty.html' : '/student.html';
   document.getElementById('who').textContent = me.name;
   document.getElementById('back').onclick = () => location.href = home;

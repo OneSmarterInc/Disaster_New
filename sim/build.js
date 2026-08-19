@@ -39,3 +39,17 @@ if (leaked.length) {
   process.exit(1);
 }
 console.log(`scenario audit: clean (${forbidden.length} markers checked)`);
+
+// The catalogue copy is published on a public page, so it must give nothing
+// away either. Same markers, checked against what this simulation says about
+// itself — a description that names the answer is worse than no description.
+{
+  const { META } = require('./lib/scenario.js');
+  const blurb = JSON.stringify(META || {}).toLowerCase();
+  const told = forbidden.filter(t => blurb.includes(t));
+  if (told.length) {
+    console.error('REFUSING: the catalogue copy gives away scenario content:', told.join(', '));
+    process.exit(1);
+  }
+  console.log('catalogue audit: clean');
+}

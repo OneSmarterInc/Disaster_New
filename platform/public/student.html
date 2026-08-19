@@ -147,10 +147,10 @@ async function draw() {
 (async () => {
   try {
     const me = await api('/api/auth', { action:'me' });
-    if (!me.user) { location.href = '/'; return; }
+    if (!me.user) { location.href = '/signin.html'; return; }
     if (me.user.role !== 'student') { location.href = me.user.role === 'admin' ? '/admin.html' : '/faculty.html'; return; }
     document.getElementById('who').textContent = me.user.name;
-  } catch (e) { location.href = '/'; return; }
+  } catch (e) { location.href = '/signin.html'; return; }
   await draw();
   // An instructor releases access while a student is already looking at this.
   setInterval(draw, 12000);

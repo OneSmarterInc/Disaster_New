@@ -869,10 +869,10 @@ function wireCommon() {
 (async () => {
   try {
     const me = await api('/api/auth', { action:'me' });
-    if (!me.user) { location.href = '/'; return; }
+    if (!me.user) { location.href = '/signin.html'; return; }
     if (me.user.role !== 'admin') { location.href = me.user.role === 'faculty' ? '/faculty.html' : '/student.html'; return; }
     document.getElementById('who').textContent = me.user.name + ' · administrator';
-  } catch (e) { location.href = '/'; return; }
+  } catch (e) { location.href = '/signin.html'; return; }
   load();
 })();
 </script>

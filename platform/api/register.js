@@ -48,10 +48,17 @@ module.exports = async (req, res) => {
       let n = 1;
       while (taken.includes(n)) n++;
 
-      await s`INSERT INTO sims (id, number, title, tagline, description, minutes, launch_url, published)
+      await s`INSERT INTO sims (id, number, title, tagline, description, minutes, launch_url, published, detail)
               VALUES (${p.sim}, ${n}, ${clip(p.title, 200) || p.sim}, ${clip(p.tagline, 300)},
-                      ${clip(p.description, 4000)}, ${minutes}, ${clip(p.launchUrl, 500)}, false)`;
+                      ${clip(p.description, 4000)}, ${minutes}, ${clip(p.launchUrl, 500)}, false,
+                      ${p.detail ? JSON.stringify(p.detail).slice(0, 12000) : null})`;
       return res.status(200).json({ ok: true, created: true, number: n });
+    }
+
+    // The catalogue copy belongs to the simulation and is refreshed every time,
+    // unlike the title and tagline, which an administrator may have rewritten.
+    if (p.detail) {
+      await s`UPDATE sims SET detail = ${JSON.stringify(p.detail).slice(0, 12000)} WHERE id = ${p.sim}`;
     }
 
     // Already known. Keep the address and duration current — those are facts

@@ -82,6 +82,7 @@ function announce(meta, selfUrl) {
     tagline: meta.tagline,
     description: meta.description,
     minutes: meta.minutes,
+    detail: meta.detail || null,
     launchUrl: selfUrl || '',
     iat: Date.now(),
     exp: Date.now() + 5 * 60000

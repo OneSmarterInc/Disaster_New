@@ -4,28 +4,127 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flexee Rapid Sims</title>
-<link rel="stylesheet" href="/app.css">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  .hero{padding:60px 0 8px}
-  .hero h1{font-size:52px;line-height:1.05;margin-bottom:18px}
-  .hero .lede{font-size:19px;max-width:56ch}
-  .split{display:grid;grid-template-columns:1fr 340px;gap:40px;align-items:start}
-  .simcard{border:1px solid var(--line);background:var(--card);padding:24px 26px;margin-bottom:14px}
-  .simcard h3{font-size:22px;font-weight:400;letter-spacing:-.015em;margin-bottom:6px}
-  .simcard .tag{color:var(--amber);font-style:italic;font-size:16px;margin-bottom:12px}
-  .simcard p{font-size:15.5px;line-height:1.62;max-width:62ch;margin-bottom:0}
-  .simcard .meta{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-top:14px}
-  .how{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:8px}
-  .how h4{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:7px}
-  .how p{font-size:14.5px;line-height:1.6;margin:0}
-  @media (max-width:860px){.split{grid-template-columns:1fr}.hero h1{font-size:36px}.how{grid-template-columns:1fr}}
+:root{
+  --bg:#F4F4F2; --panel:#FFFFFF; --sunk:#F8F8F6;
+  --ink:#15171B; --ink2:#4E535C; --ink3:#878C95;
+  --line:#E4E4E0; --line2:#CFCFC9;
+  --amber:#A8620D; --amber-bg:#FBF3E7;
+  --green:#2F6B4F; --rose:#9E3B50;
+  --serif:'Newsreader',Georgia,serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:var(--amber);text-decoration:none;cursor:pointer}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+.top{background:var(--panel);border-bottom:1px solid var(--line);padding:0 22px;height:56px;
+     display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
+.brand{font-size:16px;font-weight:500;letter-spacing:-.01em;cursor:pointer}
+.brand span{color:var(--amber);font-style:italic}
+.top .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{border:1px solid var(--line2);background:var(--panel);padding:8px 14px;font-family:var(--mono);
+     font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink2);transition:.12s;white-space:nowrap;display:inline-block}
+.btn:hover{border-color:var(--ink);color:var(--ink);text-decoration:none}
+.btn.pri{background:var(--amber);border-color:var(--amber);color:#fff}
+.btn.pri:hover{background:#8C5109;border-color:#8C5109}
+.btn.sm{padding:6px 10px;font-size:9.5px}
+
+.wrap{max-width:1060px;margin:0 auto;padding:0 22px 90px}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3)}
+
+/* ── the list ───────────────────────────────────────────────────────────── */
+.hero{padding:60px 0 34px;border-bottom:1px solid var(--line);margin-bottom:34px}
+.hero h1{font-size:46px;font-weight:300;letter-spacing:-.03em;line-height:1.08;margin:8px 0 16px}
+.hero h1 em{font-style:italic;color:var(--amber)}
+.hero p{font-size:18px;color:var(--ink2);max-width:58ch;line-height:1.62}
+
+.card{background:var(--panel);border:1px solid var(--line);margin-bottom:14px;display:flex;
+      gap:0;cursor:pointer;transition:.12s}
+.card:hover{border-color:var(--line2)}
+.card .num{flex:0 0 74px;border-right:1px solid var(--line);background:var(--sunk);
+  display:flex;align-items:flex-start;justify-content:center;padding-top:24px;
+  font-family:var(--mono);font-size:15px;color:var(--ink3)}
+.card .body{padding:24px 26px;flex:1;min-width:0}
+.card h2{font-size:24px;font-weight:400;letter-spacing:-.02em;margin-bottom:6px}
+.card .tag{color:var(--amber);font-style:italic;font-size:16.5px;margin-bottom:12px}
+.card p{font-size:15.5px;color:var(--ink2);max-width:64ch;margin-bottom:14px}
+.facts{display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.facts b{color:var(--ink2);font-weight:500}
+
+.teaches{border-top:1px solid var(--line);margin-top:16px;padding-top:14px;font-size:14px;color:var(--ink2)}
+.teaches span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);margin-right:10px}
+
+/* ── one simulation ─────────────────────────────────────────────────────── */
+.crumb{padding:26px 0 0}
+.sim-head{padding:8px 0 30px;border-bottom:1px solid var(--line);margin-bottom:34px}
+.sim-head h1{font-size:42px;font-weight:300;letter-spacing:-.03em;line-height:1.1;margin:6px 0 12px}
+.sim-head .tag{font-size:19px;color:var(--amber);font-style:italic;max-width:52ch}
+.sim-head .facts{margin-top:20px}
+
+.two{display:grid;grid-template-columns:1fr 300px;gap:44px;align-items:start}
+.prose h3{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink3);font-weight:500;margin:32px 0 12px}
+.prose h3:first-child{margin-top:0}
+.prose p{font-size:16.5px;color:var(--ink2);margin-bottom:14px;max-width:66ch}
+.prose p strong{color:var(--ink);font-weight:500}
+
+.beats{border-left:1px solid var(--line2);padding-left:20px;margin:6px 0 4px}
+.beat{margin-bottom:16px}
+.beat .t{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}
+.beat p{margin:4px 0 0;font-size:15.5px}
+
+.room{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line)}
+.who{background:var(--panel);padding:13px 16px}
+.who .n{font-size:15.5px;font-weight:500}
+.who .r{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink3);margin-top:2px}
+.who .x{font-size:13.5px;color:var(--ink2);margin-top:7px;font-style:italic}
+
+.side{position:sticky;top:78px}
+.box{background:var(--panel);border:1px solid var(--line);padding:20px 22px;margin-bottom:14px}
+.box h4{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);
+  font-weight:500;margin-bottom:12px}
+.box .line{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px;border-bottom:1px solid var(--line)}
+.box .line:last-of-type{border-bottom:none}
+.box .line span{color:var(--ink3)}
+.box .line b{font-weight:500;text-align:right}
+.box p{font-size:14px;color:var(--ink2);margin-bottom:12px}
+
+.quote{border-left:2px solid var(--amber);background:var(--amber-bg);padding:16px 20px;margin:20px 0;
+  font-size:16px;color:var(--ink2);line-height:1.6}
+.quote b{color:var(--ink);font-weight:500}
+
+@media (max-width:880px){
+  .two{grid-template-columns:1fr;gap:28px}
+  .side{position:static}
+  .hero h1{font-size:34px}
+  .sim-head h1{font-size:32px}
+  .card{flex-direction:column}
+  .card .num{flex:none;border-right:none;border-bottom:1px solid var(--line);padding:10px;justify-content:flex-start;padding-left:26px}
+}
 </style>
 </head>
 <body>
+
+<div class="top">
+  <div class="brand" id="home">Flexee Rapid <span>Sims</span></div>
+  <div class="right" id="topright">
+    <a class="btn pri sm" href="/signin.html">Sign in</a>
+  </div>
+</div>
+
 <div class="wrap" id="app"></div>
+
 <script>
 const app = document.getElementById('app');
-const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let SIMS = [], VIEW = null, ERR = null;
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -33,96 +132,146 @@ async function api(path, payload) {
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
 }
-const simLabel = (x) => (x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
-const home = r => r === 'admin' ? '/admin.html' : r === 'faculty' ? '/faculty.html' : '/student.html';
 
-function page(sims, msg) {
+// Anyone already signed in gets a way through rather than being made to sign in
+// again — but the catalogue itself stays open to everybody.
+async function greet() {
+  try {
+    const d = await api('/api/auth', { action:'me' });
+    if (d.user) {
+      const where = d.user.role === 'admin' ? '/admin.html' : d.user.role === 'faculty' ? '/faculty.html' : '/student.html';
+      document.getElementById('topright').innerHTML =
+        `<a class="btn pri sm" href="${where}">${esc(d.user.name.split(' ')[0])}'s console</a>`;
+    }
+  } catch (e) { /* signed out, or no database — the catalogue does not care */ }
+}
+
+function list(){
   app.innerHTML = `
     <div class="hero">
       <div class="eyebrow">Flexee</div>
       <h1>Rapid <em>Sims</em></h1>
-      <p class="lede">Twenty-minute simulations for the classroom. One problem worth untangling, four people who each want something different, and a conversation afterwards that writes itself.</p>
+      <p>Twenty-minute simulations for the classroom. One problem worth untangling, four people who each want something different, and a conversation afterwards that writes itself. Each student plays their own run.</p>
     </div>
 
-    <div class="split" style="margin-top:36px">
-      <div>
-        <h2>In the catalogue</h2>
-        ${sims.length ? sims.map(si => '<div class="simcard">' +
-            '<h3>' + esc(simLabel(si)) + '</h3>' +
-            (si.tagline ? '<div class="tag">' + esc(si.tagline) + '</div>' : '') +
-            (si.description ? '<p>' + esc(si.description) + '</p>' : '') +
-            '<div class="meta">' + (si.minutes ? si.minutes + ' minutes · ' : '') + 'played individually · not marked</div>' +
-          '</div>').join('') : '<div class="card dim">Nothing published yet.</div>'}
-
-        <h2>How a session runs</h2>
-        <div class="how">
-          <div>
-            <h4>Before</h4>
-            <p>You add a simulation to your course and share one link. Students sign up in a minute and wait. You release access once their registration is settled.</p>
-          </div>
-          <div>
-            <h4>The twenty minutes</h4>
-            <p>Groups work on one screen. They question the characters, take people aside, and commit to a position three times. You hold the clock and can freeze the room whenever you want to talk.</p>
-          </div>
-          <div>
-            <h4>Afterwards</h4>
-            <p>Every group's position appears side by side. They have each read their own debrief already, so the room's job is comparing reasoning rather than reporting answers.</p>
-          </div>
+    ${SIMS.length ? `<div class="eyebrow" style="margin-bottom:14px">${SIMS.length} simulation${SIMS.length===1?'':'s'}</div>` : ''}
+    ${SIMS.length ? SIMS.map(s => `<div class="card" data-open="${esc(s.id)}">
+      <div class="num">${s.number ? String(s.number).padStart(2,'0') : '··'}</div>
+      <div class="body">
+        <h2>${esc(s.title)}</h2>
+        ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
+        ${s.description ? `<p>${esc(s.description)}</p>` : ''}
+        <div class="facts">
+          ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
+          <span>played <b>individually</b></span>
+          <span><b>no</b> preparation</span>
+          <span><b>not</b> marked</span>
         </div>
+        ${s.detail && s.detail.teaches ? `<div class="teaches"><span>Teaches</span>${esc(s.detail.teaches)}</div>` : ''}
+      </div>
+    </div>`).join('')
+    : `<div class="card" style="cursor:default"><div class="body">
+        <p style="margin:0">${ERR ? 'The catalogue is not available at the moment.' : 'Nothing published yet.'}</p></div></div>`}
 
-        <div class="note" style="margin-top:30px">
-          <b>Teaching with these?</b> Facilitator accounts are set up by invitation, and every simulation comes with a seven-day preview so you can play it before committing a class to it. Get in touch and we will send you a link.
-        </div>
+    <div class="quote" style="margin-top:34px">
+      <b>Every Rapid Sim is built the same way.</b> Two competent people in the room carry opposite exposure, so the
+      most persuasive advice available always comes from somebody who would rather it were the other answer. Students
+      are not looking for a liar. They are deciding what to do when everybody is honest and nobody is disinterested.
+    </div>`;
+  app.querySelectorAll('[data-open]').forEach(c => c.onclick = () => { VIEW = c.dataset.open; render(); });
+}
+
+function detail(){
+  const s = SIMS.find(x => x.id === VIEW);
+  if (!s) { VIEW = null; return list(); }
+  const d = s.detail || {};
+  app.innerHTML = `
+    <div class="crumb"><a id="back">← All simulations</a></div>
+    <div class="sim-head">
+      <div class="eyebrow">${s.number ? 'Rapid Sim ' + String(s.number).padStart(2,'0') : 'Rapid Sim'}${d.world ? ' · ' + esc(d.world) : ''}</div>
+      <h1>${esc(s.title)}</h1>
+      ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
+      <div class="facts">
+        ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
+        <span>played <b>individually</b></span>
+        <span><b>no</b> preparation</span>
+        <span><b>not</b> marked</span>
+        <span>runs <b>standalone</b></span>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="prose">
+        ${s.description ? `<h3>The situation</h3><p>${esc(s.description)}</p>` : ''}
+        ${d.tangle ? `<h3>What makes it hard</h3><p>${esc(d.tangle)}</p>` : ''}
+        ${d.turn ? `<h3>Why it teaches something</h3><p>${esc(d.turn)}</p>` : ''}
+
+        ${Array.isArray(d.cast) && d.cast.length ? `<h3>The room</h3>
+          <p>Four people, played by AI, who answer questions, disagree with each other, and can be taken aside
+            privately. Each one's exposure is shown on screen from the start — this is not a hidden twist.</p>
+          <div class="room">${d.cast.map(c => `<div class="who">
+            <div class="n">${esc(c.name)}</div>
+            <div class="r">${esc(c.role)}</div>
+            ${c.stake ? `<div class="x">${esc(c.stake)}</div>` : ''}
+          </div>`).join('')}</div>` : ''}
+
+        ${Array.isArray(d.beats) && d.beats.length ? `<h3>How the twenty minutes go</h3>
+          <p>The clock runs on its own. Three times, a student commits in writing to what they think is happening,
+            the one action they are taking, and the evidence that would change their mind. Recording a position
+            moves the incident on; there is no going back.</p>
+          <div class="beats">${d.beats.map(b => `<div class="beat">
+            <div class="t">${esc(b.at)}</div><p>${esc(b.what)}</p></div>`).join('')}</div>` : ''}
+
+        ${d.after ? `<h3>Afterwards</h3><p>${esc(d.after)}</p>
+          <p>In a class, every student's three positions appear side by side on the projector. Most of the teaching
+            happens there — in the twenty-five minutes of argument about why two people looking at identical
+            evidence committed to opposite readings.</p>` : ''}
       </div>
 
-      <div>
-        <div class="card">
-          <h2 style="margin-top:0">Sign in</h2>
-          <div class="field"><label class="f" for="em">Email</label>
-            <input id="em" type="email" autocomplete="username" placeholder="you@university.edu"></div>
-          <div class="field"><label class="f" for="pw">Password</label>
-            <input id="pw" type="password" autocomplete="current-password"></div>
-          <button class="btn pri" id="go">Sign in</button>
-          <div class="err" id="err">${msg ? esc(msg) : ''}</div>
-          <div class="tiny dim" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-            <b>Students:</b> use the link your instructor sent you — you do not need an account first.
-            <div style="margin-top:8px"><a href="/join.html">Or enter a course code</a></div>
-          </div>
-          <div class="tiny dim" style="margin-top:12px">Forgotten your password? Ask whoever set up your account for a reset link.</div>
+      <div class="side">
+        <div class="box">
+          <h4>At a glance</h4>
+          ${d.seat ? `<div class="line"><span>You are</span><b>${esc(d.seat)}</b></div>` : ''}
+          ${d.world ? `<div class="line"><span>Setting</span><b>${esc(d.world)}</b></div>` : ''}
+          ${d.clock ? `<div class="line"><span>Spans</span><b>${esc(d.clock)}</b></div>` : ''}
+          <div class="line"><span>Decisions</span><b>Three</b></div>
+          <div class="line"><span>Quantitative</span><b>None</b></div>
+          <div class="line"><span>Played</span><b>Individually</b></div>
+          <div class="line"><span>Session</span><b>About an hour</b></div>
+        </div>
+
+        ${d.teaches ? `<div class="box"><h4>Teaches</h4><p style="margin:0">${esc(d.teaches)}</p></div>` : ''}
+
+        <div class="box">
+          <h4>Try it</h4>
+          <p>Facilitators get seven days with any simulation, free, to play it as a student would before committing
+            a class to it.</p>
+          <a class="btn pri" href="mailto:hello@onesmarter.com?subject=Rapid%20Sims%20—%20preview%20request" style="display:block;text-align:center">Request a preview</a>
+          <div style="font-size:12.5px;color:var(--ink3);margin-top:10px">Already have an account?
+            <a href="/signin.html">Sign in</a> and it will be listed under Simulations.</div>
+        </div>
+
+        <div class="box">
+          <h4>Running a session</h4>
+          <p style="margin:0">Five minutes to get everyone in. Twenty to play, each on their own screen. Ten while
+            they read their own debrief. Twenty-five of discussion. No preparation beyond the cover note.</p>
         </div>
       </div>
     </div>`;
-
-  const go = async () => {
-    const btn = document.getElementById('go');
-    btn.disabled = true; btn.textContent = 'Signing in…';
-    try {
-      const d = await api('/api/auth', { action:'signin',
-        email: document.getElementById('em').value, password: document.getElementById('pw').value });
-      location.href = home(d.user.role);
-    } catch (e) {
-      document.getElementById('err').textContent = e.message;
-      btn.disabled = false; btn.textContent = 'Sign in';
-    }
-  };
-  document.getElementById('go').onclick = go;
-  ['em','pw'].forEach(k => document.getElementById(k).onkeydown = e => { if (e.key === 'Enter') go(); });
+  document.getElementById('back').onclick = () => { VIEW = null; render(); };
 }
 
+function render(){
+  VIEW ? detail() : list();
+  if (window.scrollTo) window.scrollTo(0, 0);
+}
+document.getElementById('home').onclick = () => { VIEW = null; render(); };
+
 (async () => {
-  try {
-    const d = await api('/api/auth', { action:'me' });
-    if (d.user) { location.href = home(d.user.role); return; }
-  } catch (e) {
-    if (e.body && e.body.error === 'no_db') {
-      app.innerHTML = '<div class="hero"><div class="eyebrow">Flexee Rapid Sims</div>' +
-        '<h1>Not set up yet</h1><p class="lede">This deployment has no database configured.</p></div>';
-      return;
-    }
-  }
-  let sims = [];
-  try { sims = (await api('/api/auth', { action:'catalogue' })).sims || []; } catch (e) {}
-  page(sims);
+  greet();
+  try { SIMS = (await api('/api/auth', { action:'catalogue' })).sims || []; }
+  catch (e) { ERR = e.message; }
+  render();
 })();
 </script>
 </body>

@@ -139,4 +139,6 @@ module.exports = [
 `ALTER TABLE sims ADD COLUMN IF NOT EXISTS number INTEGER`,
 
 `CREATE UNIQUE INDEX IF NOT EXISTS sims_number_idx ON sims(number) WHERE number IS NOT NULL`,
+
+`ALTER TABLE sims ADD COLUMN IF NOT EXISTS detail JSONB`,
 ];

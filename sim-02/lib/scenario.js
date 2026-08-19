@@ -13,7 +13,27 @@ const META = {
   title: 'What Did It Tell Them?',
   tagline: 'Twenty minutes after an AI told a customer the wrong number.',
   description: 'A customer-facing AI assistant answered a technical question from a superseded datasheet, and the parts have been in service for six weeks. Either the document library is carrying stale revisions, or a routing change stopped the question ever reaching an engineer. Both are true, and neither alone would have done it — while an overnight job quietly destroys the evidence unless somebody stops it.',
-  minutes: 20
+  minutes: 20,
+  detail: {
+    world: 'Manufacturing · customer operations',
+    seat: 'VP of Customer Operations',
+    clock: '09:40 Tuesday to Wednesday morning',
+    teaches: 'Accountability for automated decisions · acting before the evidence goes',
+    tangle: 'Two departments each have an explanation, and each puts the fault somewhere else. Technical Publications never withdrew a superseded revision. Customer Platforms moved the threshold that decides which questions reach a human. Both changes were reasonable on the day they were made.',
+    turn: 'The fastest fix and the loss of the evidence are the same act. Putting the library right means rebuilding the index overnight, and the person proposing it is right, competent and entirely reasonable. Nobody in the room is being obstructive. The question is whether anyone notices in time.',
+    cast: [
+      { name: 'Joanna Petrell', role: 'Director, Technical Publications', stake: 'The superseded revision was never withdrawn.' },
+      { name: 'Devin Oyelaran', role: 'Head of Customer Platforms', stake: 'He moved the threshold that decides what reaches a human.' },
+      { name: 'Grant Mercer', role: 'Client Director, the AI vendor', stake: 'It is his platform being blamed.' },
+      { name: 'Nadia Renko', role: 'Applications Support Engineer', stake: 'She noticed the questions had stopped arriving, and said nothing.' }
+    ],
+    beats: [
+      { at: 'Hour 1', what: 'One customer, one wrong figure, four people with partial views. Commit to a reading before anyone knows the scope.' },
+      { at: 'Hour 7', what: 'It was not one customer. A ninety-day query comes back, and a clock nobody mentioned is about to run.' },
+      { at: 'Day 2', what: 'Counsel asks what the system told their engineer. Whether that can be answered depends on something decided the night before.' }
+    ],
+    after: 'The ending differs depending on whether the class protected the evidence — and it counts whether they said so in conversation, not only whether they chose it as an action. The debrief quotes their own instruction back to them.'
+  },
 };
 
 const GROUND_TRUTH = {

@@ -146,3 +146,9 @@ CREATE INDEX IF NOT EXISTS sim_access_sim_idx ON sim_access(sim_id);
 -- awkward in conversation, numbers are neither.
 ALTER TABLE sims ADD COLUMN IF NOT EXISTS number INTEGER;
 CREATE UNIQUE INDEX IF NOT EXISTS sims_number_idx ON sims(number) WHERE number IS NOT NULL;
+
+-- The shop-window copy for a simulation: what makes it hard, who is in the
+-- room, how the moments go. Supplied by the simulation itself when it
+-- registers, because a new one should arrive with its own description rather
+-- than waiting for somebody to write one.
+ALTER TABLE sims ADD COLUMN IF NOT EXISTS detail JSONB;

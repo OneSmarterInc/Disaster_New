@@ -9,7 +9,27 @@ const META = {
   title: 'Disaster or Breach?',
   tagline: 'Twenty minutes inside an incident nobody can classify yet.',
   description: 'Data corruption is spreading across client applications at two in the morning. A failing storage array and an intruder look identical at this hour, and the two response playbooks are opposed — the fastest way back destroys the evidence you would need if it turns out to be the other one. Students take advice from four people whose professional exposure runs in opposite directions.',
-  minutes: 20
+  minutes: 20,
+  detail: {
+    world: 'IT operations · managed services',
+    seat: 'VP of Operations',
+    clock: '02:14 Tuesday to Day 3',
+    teaches: 'Sequencing under uncertainty · weighing advice from people with something at stake',
+    tangle: 'At Hour 4, a failing disk array and an intruder produce exactly the same symptoms. The response to one destroys your ability to diagnose the other. Restoring from backup is the fastest way to get clients working again, and it overwrites the only evidence that would tell you which this was.',
+    turn: 'Two of the four people in the room are exposed by opposite explanations, and both are competent and honest. Students are not being asked to spot a liar. They are being asked what to do when the most persuasive advice available comes from someone who would rather it were the other answer.',
+    cast: [
+      { name: 'Kate Sullivan', role: 'Director, Infrastructure & Architecture', stake: 'Specified the array. Owns the patch cadence.' },
+      { name: 'Sophia Kim', role: 'Head of Security', stake: 'If this is an intrusion, it has been resident for weeks.' },
+      { name: 'Tom Reyes', role: 'Account Director, storage vendor', stake: 'It is his hardware under discussion.' },
+      { name: 'Ben Carter', role: 'SVP, Client Operations', stake: 'Three of his clients are down and the board calls at eight.' }
+    ],
+    beats: [
+      { at: 'Hour 4', what: 'Three applications down, no cause established, and a room that already has opinions. Commit to a reading, an action, and the evidence that would change your mind.' },
+      { at: 'Hour 20', what: 'The corruption appears somewhere it should not be able to reach. Some tripwires just fired. Did anyone notice?' },
+      { at: 'Day 3', what: 'An audit turns up something nineteen days old. A disclosure clock may have been running the whole time.' }
+    ],
+    after: 'The debrief says what actually happened, then reads their own three commitments back with a verdict on each — including whether the evidence they named as decisive arrived, and whether they acted on it when it did.'
+  },
 };
 
 const GROUND_TRUTH = {
