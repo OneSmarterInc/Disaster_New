@@ -31,7 +31,7 @@ const D = {
   detail: null, err: null,
   q: {}, filter: {}, page: {},
   open: null, personEdit: null, invite: false, lastInvite: null,
-  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null, addSim: false, checkOut: null, copyFor: null, copyFields: null
+  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null, addSim: false, checkOut: null, ourBuild: null, copyFor: null, copyFields: null
 };
 
 async function api(path, payload) {
@@ -448,7 +448,7 @@ function catTab() {
     </div></div>` : ''}
 
     ${D.checkOut ? `<div class="cbox"><div style="padding:14px 16px">
-      <div class="mini" style="margin-bottom:9px">Checked just now</div>
+      <div class="mini" style="margin-bottom:9px">Checked just now${D.ourBuild ? ' · this platform is on ' + esc(D.ourBuild) : ''}</div>
       ${D.checkOut.map(r => `<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;align-items:baseline">
         <div><b>${esc(r.title)}</b>
           ${r.build ? `<span class="sub" style="display:inline;margin-left:6px">${esc(r.build)}</span>` : ''}
@@ -767,7 +767,7 @@ function wireCat() {
   if (ck) ck.onclick = async () => {
     const done = acting(ck, 'Checking…');
     try { const d = await api('/api/admin', { action:'refresh_sims' });
-      D.checkOut = d.results; D.addSim = false; done(); render(); }
+      D.checkOut = d.results; D.ourBuild = d.ourBuild; D.addSim = false; done(); render(); }
     catch (e) { done('Failed','bad'); }
   };
   const cd = document.getElementById('chkdone');

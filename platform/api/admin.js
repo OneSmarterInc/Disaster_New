@@ -440,6 +440,11 @@ module.exports = async (req, res) => {
       // rather than during one.
       case 'refresh_sims': {
         const sims = await s`SELECT id, title, launch_url FROM sims WHERE launch_url IS NOT NULL`;
+        // Three deployments that can drift apart is the thing most likely to
+        // waste an afternoon: everything answers, nothing is broken, and one of
+        // them is running last week's code. So say plainly when they disagree.
+        const ourBuild = process.env.VERCEL_GIT_COMMIT_SHA
+          ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) : null;
         const ours = process.env.LAUNCH_SECRET
           ? crypto.createHash('sha256').update(String(process.env.LAUNCH_SECRET)).digest('hex').slice(0, 8) : null;
         const results = [];
@@ -465,6 +470,10 @@ module.exports = async (req, res) => {
             const has = Array.isArray(h.features) ? h.features : [];
             const missing = want.filter(f => !has.includes(f));
             if (missing.length) problems.push(`running an old build — redeploy it (missing ${missing.join(', ')})`);
+            const theirs = String(h.build || '').split(' ')[0];
+            if (ourBuild && theirs && theirs !== ourBuild) {
+              problems.push(`on a different build from this platform — it has ${theirs}, we have ${ourBuild}`);
+            }
             if (h.registersAs && /SIM_URL not set/.test(String(h.registersAs))) {
               problems.push('no SIM_URL, so it registers whichever address is used — set it to the address students should get');
             } else if (h.registersAs && sim.launch_url &&
@@ -478,7 +487,7 @@ module.exports = async (req, res) => {
               detail: 'did not answer' });
           }
         }
-        return res.status(200).json({ results });
+        return res.status(200).json({ results, ourBuild });
       }
 
       // ---------- pre-publication review ----------

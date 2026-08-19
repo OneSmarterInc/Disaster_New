@@ -12,12 +12,18 @@ require.cache[require.resolve(require('path').join(__dirname,'../lib/db.js'))]={
   sql:()=>()=>Promise.resolve(DB.sims), id:p=>p, joinCode:()=>'X' }};
 require.cache[require.resolve(require('path').join(__dirname,'../lib/auth.js'))]={exports:{
   requireRole:async()=>({id:'a',role:'admin'}), publicUser:u=>u }};
+const FEATURES=['launch-token','launch-mode','console-token','self-register','completion-report'];
 const HEALTH={
+  // current, and agreeing with the platform
   'https://s1/api/health':{ sim:'rapid-01-disaster',characters:'configured',launchSecret:'configured',
-    launchSecretFingerprint:ours,sessions:'configured',platformUrl:'https://p' },
+    launchSecretFingerprint:ours,sessions:'configured',platformUrl:'https://p',
+    features:FEATURES, build:'abc1234 on main', registersAs:'https://p/sim01' },
+  // misconfigured every way at once, and on a different build
   'https://s2/api/health':{ sim:'rapid-02-relay',characters:'configured',launchSecret:'configured',
-    launchSecretFingerprint:'deadbeef',sessions:'MISSING',platformUrl:'MISSING (completions will not be reported)' }
+    launchSecretFingerprint:'deadbeef',sessions:'MISSING',platformUrl:'MISSING (completions will not be reported)',
+    features:FEATURES, build:'0000000 on main', registersAs:'https://p/sim02' }
 };
+process.env.VERCEL_GIT_COMMIT_SHA='abc1234567';
 global.fetch=async(u)=>{ if(!HEALTH[u]) throw new Error('nope');
   return { ok:true, json:async()=>HEALTH[u] }; };
 const h=require(require('path').join(__dirname,'../api/admin.js'));
