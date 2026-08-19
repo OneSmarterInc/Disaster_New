@@ -451,6 +451,12 @@ module.exports = async (req, res) => {
             const has = Array.isArray(h.features) ? h.features : [];
             const missing = want.filter(f => !has.includes(f));
             if (missing.length) problems.push(`running an old build — redeploy it (missing ${missing.join(', ')})`);
+            if (h.registersAs && /SIM_URL not set/.test(String(h.registersAs))) {
+              problems.push('no SIM_URL, so it registers whichever address is used — set it to the address students should get');
+            } else if (h.registersAs && sim.launch_url &&
+                       String(h.registersAs).replace(/\/+$/, '') !== String(sim.launch_url).replace(/\/+$/, '')) {
+              problems.push(`it now answers at ${h.registersAs} — press Check all again after it next announces itself`);
+            }
             results.push({ id: sim.id, title: sim.title,
               state: problems.length ? 'needs attention' : 'ready', detail: problems.join('; ') });
           } catch (e) {

@@ -33,6 +33,13 @@ module.exports = async (req, res) => {
     // values give different ones, and neither reveals the secret itself.
     launchSecretFingerprint: fingerprint(secret),
     platformUrl: process.env.PLATFORM_URL || 'MISSING (completions will not be reported)',
+    // The address this simulation puts in the catalogue. Without SIM_URL it
+    // registers whichever host the first request arrived on, which may be a
+    // deployment-specific URL frozen to one build.
+    registersAs: process.env.SIM_URL
+      || ((req.headers['x-forwarded-host'] || req.headers.host)
+          ? `https://${req.headers['x-forwarded-host'] || req.headers.host} (SIM_URL not set — whichever address is used)`
+          : 'MISSING'),
     // What this build can do. The platform compares these against what it
     // expects, so a deployment left behind is spotted rather than guessed at —
     // a stale sim looks identical to a broken one from the outside.
