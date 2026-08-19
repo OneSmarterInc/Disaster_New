@@ -19,8 +19,8 @@ const META = {
     seat: 'VP of Customer Operations',
     clock: '09:40 Tuesday to Wednesday morning',
     teaches: 'Who answers for what a machine did · acting before the trail goes cold',
-    tangle: 'One team left an old document where the AI could find it. Another changed which questions get passed to a human. Both looked fine at the time. Neither will own it now.',
-    turn: 'Somebody wants to fix it tonight, and they are right to. Whether anyone spots what that costs, before it happens, is the whole exercise.',
+    tangle: 'One team left an old document where the AI could find it. Another changed which questions get passed to a person. Both looked fine at the time. Neither wants to own it now.',
+    turn: 'Somebody in the room wants to fix it tonight. They are right to want that. But the fix costs you something you will need later, and nobody says so. Spotting it is the exercise.',
     cast: [
       { name: 'Joanna Petrell', role: 'Director, Technical Publications', stake: 'The superseded revision was never withdrawn.' },
       { name: 'Devin Oyelaran', role: 'Head of Customer Platforms', stake: 'He moved the threshold that decides what reaches a human.' },

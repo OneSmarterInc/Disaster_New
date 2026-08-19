@@ -73,9 +73,15 @@ module.exports = async (req, res) => {
     await s`UPDATE sims SET launch_url = ${clip(p.launchUrl, 500)} WHERE id = ${p.sim}`;
     if (minutes) await s`UPDATE sims SET minutes = ${minutes} WHERE id = ${p.sim}`;
 
-    // Fill in anything an administrator has never supplied.
-    if (!existing.tagline && p.tagline) await s`UPDATE sims SET tagline = ${clip(p.tagline, 300)} WHERE id = ${p.sim}`;
-    if (!existing.description && p.description) await s`UPDATE sims SET description = ${clip(p.description, 4000)} WHERE id = ${p.sim}`;
+    // The title, the one-line and the description refresh too, unless an
+    // administrator has rewritten that field. Protecting whatever was stored
+    // first sounds cautious and is not: it meant a rewrite in the simulation
+    // reached half the page and stopped, so a description could sit there for
+    // days saying something its author had already deleted.
+    const edited = (existing.detail && existing.detail._edited) || [];
+    if (!edited.includes('title') && p.title) await s`UPDATE sims SET title = ${clip(p.title, 200)} WHERE id = ${p.sim}`;
+    if (!edited.includes('tagline') && p.tagline) await s`UPDATE sims SET tagline = ${clip(p.tagline, 300)} WHERE id = ${p.sim}`;
+    if (!edited.includes('description') && p.description) await s`UPDATE sims SET description = ${clip(p.description, 4000)} WHERE id = ${p.sim}`;
 
     return res.status(200).json({ ok: true, created: false });
   } catch (e) {

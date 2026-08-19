@@ -15,8 +15,8 @@ const META = {
     seat: 'VP of Operations',
     clock: '02:14 Tuesday to Day 3',
     teaches: 'What to do first when you do not know · how to weigh advice from people with something to lose',
-    tangle: 'The two explanations look the same from the outside. The quickest way to get customers running again is not the way to find out what went wrong. You have to pick one.',
-    turn: 'Two people in the room get blamed by opposite answers. Both are good at their jobs. Neither is lying. The best advice you will hear comes from somebody who would rather it were the other one.',
+    tangle: 'From the outside the two look the same. The quickest way to get customers running again is not the way to find out what went wrong. You cannot do both.',
+    turn: 'If it is the hardware, that is one person\'s fault. If it is a break-in, it is another\'s. Both of them are in the room. Both are good at their jobs, and neither is lying. You still have to decide who to believe.',
     cast: [
       { name: 'Kate Sullivan', role: 'Director, Infrastructure & Architecture', stake: 'Specified the array. Owns the patch cadence.' },
       { name: 'Sophia Kim', role: 'Head of Security', stake: 'If this is an intrusion, it has been resident for weeks.' },
