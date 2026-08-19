@@ -227,12 +227,10 @@ function tabRoom(groups, runs) {
   const none = groups._none || [];
   const named = Object.keys(groups).filter(g => g !== '_none').sort();
   return `
-    <h2>Grouping</h2>
-    <p>One to three people per group, working on a single screen. In a video session put each group in a breakout room with one person sharing.</p>
+    <h2>Starting them off</h2>
+    <p>Everyone plays their own run, on their own screen. Press this once the room has joined; anyone arriving late can be added the same way.</p>
     <div class="row" style="margin-bottom:16px">
-      <button class="btn pri" id="auto3">Shuffle into groups of 3</button>
-      <button class="btn" id="auto2">Groups of 2</button>
-      <button class="btn" id="solo">Everyone solo</button>
+      <button class="btn pri" id="solo">Put everyone on their own run</button>
     </div>
     ${none.length ? `<div class="gcard unassigned" style="margin-bottom:14px">
       <h3>Not yet grouped</h3>
@@ -248,7 +246,7 @@ function tabRoom(groups, runs) {
             ${r ? `<span class="pill ${r.done ? 'done' : 'on'}">${r.done ? 'finished' : (F.data.phases[r.phase] || 'playing')}</span>` : '<span class="pill">not started</span>'}
           </div>
         </div>`;
-      }).join('') || '<p style="color:var(--dimmer)">Nobody grouped yet.</p>'}
+      }).join('') || '<p style="color:var(--dimmer)">Nobody has been started yet.</p>'}
     </div>`;
 }
 
@@ -261,7 +259,7 @@ function wireRoom() {
     try { await api({ action: 'group', code: F.code, assign }); } catch (e) { F.err = e.message; }
     startPolling();
   };
-  const a3 = document.getElementById('auto3'), a2 = document.getElementById('auto2'), so = document.getElementById('solo');
+  const so = document.getElementById('solo');
   if (a3) a3.onclick = () => shuffle(3);
   if (a2) a2.onclick = () => shuffle(2);
   if (so) so.onclick = () => shuffle(1);
@@ -270,13 +268,13 @@ function wireRoom() {
 // ---------- progress ----------
 function tabProgress(groups, runs) {
   const named = Object.keys(groups).filter(g => g !== '_none').sort();
-  if (!named.length) return '<p style="color:var(--dimmer)">No groups yet.</p>';
+  if (!named.length) return '<p style="color:var(--dimmer)">Nobody has been started yet.</p>';
   const now = Date.now();
   return `
     <h2>Where everyone is</h2>
     <p>The column worth watching is the last one. A group that hasn't moved in several minutes is either stuck or has drifted onto something else.</p>
     <table>
-      <tr><th>Group</th><th>Members</th><th>At</th><th>Locked</th><th>Last activity</th></tr>
+      <tr><th>Student</th><th>Name</th><th>At</th><th>Locked</th><th>Last activity</th></tr>
       ${named.map(g => {
         const r = runs[g];
         const idle = r && r.updatedAt ? Math.round((now - r.updatedAt) / 60000) : null;
