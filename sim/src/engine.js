@@ -933,7 +933,7 @@ function renderBrief() {
 
 function briefStory() {
   app.innerHTML = `<div class="doc"><div class="doc-in">
-    <div class="eyebrow">Flexee Rapid Sim 01 · about twenty minutes</div>
+    <div class="eyebrow">Flexee RapidSim 01 · about twenty minutes</div>
     <h1>Disaster, or <em>breach</em>?</h1>
     <p>Northbeam Data Services runs the data platforms behind about forty enterprise clients — insurers, claims processors, a couple of regional banks. When Northbeam is having a bad night, forty other companies are having one too, and they find out about it before Northbeam calls them.</p>
     <p><b>You are the VP of Operations.</b> The estate is yours. So is the decision at the end of this.</p>
@@ -1120,7 +1120,7 @@ mountHelp();
     return;
   }
   app.innerHTML = `<div class="doc"><div class="doc-in">
-    <div class="eyebrow">Flexee Rapid Sim 01</div>
+    <div class="eyebrow">Flexee RapidSim 01</div>
     <h1>Disaster, or <em>breach</em>?</h1>
     <p style="color:var(--dimmer)">Opening the bridge…</p>
   </div></div>`;
@@ -1137,20 +1137,20 @@ mountHelp();
     showBanner();
     app.innerHTML = BAD_LAUNCH
       ? `<div class="doc"><div class="doc-in">
-          <div class="eyebrow">Flexee Rapid Sim 01</div>
+          <div class="eyebrow">Flexee RapidSim 01</div>
           <h1>That link wasn't <em>accepted</em></h1>
           <p>${esc(LAST_ERROR || '')}</p>
           <p style="color:var(--dimmer);font-size:14px">Nothing is lost — go back to your course and press Start again.</p>
         </div></div>`
       : NEEDS_CODE
       ? `<div class="doc"><div class="doc-in">
-          <div class="eyebrow">Flexee Rapid Sim 01</div>
+          <div class="eyebrow">Flexee RapidSim 01</div>
           <h1>You'll need an <em>access code</em></h1>
           <p>Your instructor was given one. Enter it at the bottom of this page and the sim will start.</p>
           <p style="color:var(--dimmer);font-size:14px">Nothing is wrong — this just isn't open to the public.</p>
         </div></div>`
       : `<div class="doc"><div class="doc-in">
-          <div class="eyebrow">Flexee Rapid Sim 01</div>
+          <div class="eyebrow">Flexee RapidSim 01</div>
           <h1>Can't reach the server</h1>
           <p>${esc(LAST_ERROR || 'Unknown error.')}</p>
           <div class="center"><button class="btn pri" id="retry" style="padding:13px 26px">Try again</button></div>

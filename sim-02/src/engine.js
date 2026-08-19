@@ -964,7 +964,7 @@ function renderBrief() {
 
 function briefStory() {
   app.innerHTML = `<div class="doc"><div class="doc-in">
-    <div class="eyebrow">Flexee Rapid Sim 02 · about twenty minutes</div>
+    <div class="eyebrow">Flexee RapidSim 02 · about twenty minutes</div>
     <h1>What did it <em>tell</em> them?</h1>
     <p>Calder Sealing Systems makes high-temperature gaskets and seals for industrial equipment — about three hundred customers, most of them building machinery that runs hot and can't leak. Nine months ago Calder put an AI assistant called Relay in front of inbound customer technical questions. It answers what it can and passes the rest to an application engineer.</p>
     <p><b>You are the VP of Customer Operations.</b> Relay reports to you. So does the decision at the end of this.</p>
@@ -1158,7 +1158,7 @@ mountHelp();
     return;
   }
   app.innerHTML = `<div class="doc"><div class="doc-in">
-    <div class="eyebrow">Flexee Rapid Sim 02</div>
+    <div class="eyebrow">Flexee RapidSim 02</div>
     <h1>What did it <em>tell them</em>?</h1>
     <p style="color:var(--dimmer)">Opening the bridge…</p>
   </div></div>`;
@@ -1175,20 +1175,20 @@ mountHelp();
     showBanner();
     app.innerHTML = BAD_LAUNCH
       ? `<div class="doc"><div class="doc-in">
-          <div class="eyebrow">Flexee Rapid Sim 02</div>
+          <div class="eyebrow">Flexee RapidSim 02</div>
           <h1>That link wasn't <em>accepted</em></h1>
           <p>${esc(LAST_ERROR || '')}</p>
           <p style="color:var(--dimmer);font-size:14px">Nothing is lost — go back to your course and press Start again.</p>
         </div></div>`
       : NEEDS_CODE
       ? `<div class="doc"><div class="doc-in">
-          <div class="eyebrow">Flexee Rapid Sim 02</div>
+          <div class="eyebrow">Flexee RapidSim 02</div>
           <h1>You'll need an <em>access code</em></h1>
           <p>Your instructor was given one. Enter it at the bottom of this page and the sim will start.</p>
           <p style="color:var(--dimmer);font-size:14px">Nothing is wrong — this just isn't open to the public.</p>
         </div></div>`
       : `<div class="doc"><div class="doc-in">
-          <div class="eyebrow">Flexee Rapid Sim 02</div>
+          <div class="eyebrow">Flexee RapidSim 02</div>
           <h1>Can't reach the server</h1>
           <p>${esc(LAST_ERROR || 'Unknown error.')}</p>
           <div class="center"><button class="btn pri" id="retry" style="padding:13px 26px">Try again</button></div>

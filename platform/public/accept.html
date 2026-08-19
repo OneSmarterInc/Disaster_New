@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Accept your invitation — Flexee Rapid Sims</title>
+<title>Accept your invitation — Flexee RapidSims</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -26,7 +26,7 @@ async function api(path, payload) {
 }
 
 function problem(title, text) {
-  app.innerHTML = `<div class="eyebrow">Flexee Rapid Sims</div><h1>${esc(title)}</h1><p class="lede">${esc(text)}</p>`;
+  app.innerHTML = `<div class="eyebrow">Flexee RapidSims</div><h1>${esc(title)}</h1><p class="lede">${esc(text)}</p>`;
 }
 
 (async () => {
@@ -42,7 +42,7 @@ function problem(title, text) {
   }
 
   app.innerHTML = `
-    <div class="eyebrow">Flexee Rapid Sims · invitation</div>
+    <div class="eyebrow">Flexee RapidSims · invitation</div>
     <h1>Welcome, <em>${esc((info.name || '').split(' ')[0])}</em></h1>
     <p class="lede">You've been set up as a facilitator. Choose a password and you're in.</p>
     <div class="card" style="margin-top:26px">

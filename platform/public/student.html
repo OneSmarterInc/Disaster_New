@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Your simulations — Flexee Rapid Sims</title>
+<title>Your simulations — Flexee RapidSims</title>
 <link rel="stylesheet" href="/app.css">
 <style>
   /* A student sees a handful of things, so this reads as a short page rather
@@ -27,7 +27,7 @@
 </head>
 <body>
 <div class="top">
-  <div class="brand">Flexee Rapid <span>Sims</span></div>
+  <div class="brand">Flexee <span>RapidSims</span></div>
   <div class="sep"></div>
   <div class="role" id="who"></div>
   <div class="right">
@@ -81,8 +81,8 @@ async function draw() {
         <div class="sub" style="font-size:12px;margin-top:5px">${esc(c.faculty_name)}</div>
 
         ${!c.paid ? `<div class="note" style="margin-top:14px">
-          You are enrolled and on the list. ${esc(c.faculty_name)} opens this up once your registration is settled —
-          you do not need to do anything, and this page will change by itself when they do.
+          You are enrolled. ${esc(c.faculty_name)} opens this up once your registration is settled. Nothing for you
+          to do — this page will change on its own.
         </div>` : ''}
 
         <div style="margin-top:16px">
@@ -91,7 +91,7 @@ async function draw() {
           const m = x.metrics || {};
           return `<div class="simcard">
             <div class="body">
-              <div class="no">${x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') : 'Simulation'}</div>
+              <div class="no">${x.number ? 'RapidSim ' + String(x.number).padStart(2,'0') : 'Simulation'}</div>
               <h3>${esc(x.title)}</h3>
               <div class="tag">${esc(x.description || x.tagline || '')}</div>
               <div class="facts" style="margin-top:14px">
@@ -122,9 +122,8 @@ async function draw() {
       </div>`;
   }).join('') + `
     <div class="before">
-      <b>Before you start one.</b> Give it twenty uninterrupted minutes — the clock runs while you are in it and there is no pause.
-      It works on a laptop or a tablet; a phone is cramped. You can download a transcript at the end, and it is worth doing,
-      because nothing you say is stored once you close the tab.
+      <b>Before you start.</b> Twenty minutes, no pause, so pick your moment. Use a laptop or tablet, not a phone.
+      Download the transcript at the end — nothing is kept once you close the tab.
     </div>`
   : `<div style="margin-top:30px">
       <h1 style="font-size:26px;font-weight:400;letter-spacing:-.02em">You are not in any courses yet</h1>

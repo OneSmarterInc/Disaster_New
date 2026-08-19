@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rapid Sim 02 — Faculty console</title>
+<title>RapidSim 02 — Faculty console</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 :root{
@@ -100,7 +100,7 @@ async function api(payload) {
 // ---------- screens ----------
 function screenStart() {
   app.innerHTML = `
-    <div class="eyebrow">Flexee Rapid Sims · faculty console</div>
+    <div class="eyebrow">Flexee RapidSims · faculty console</div>
     <h1>Run a <em>session</em></h1>
     <p>Create a session, hand the code to the room, put people into groups, then start. You control the clock and when the resolution appears.</p>
     <div class="card">
@@ -120,7 +120,7 @@ function screenStart() {
     if (fcEl) F.facultyCode = fcEl.value.trim() || null;
     F.err = null;
     try {
-      const d = await api({ action: 'create', name: 'Rapid Sim 02 — What Did It Tell Them?' });
+      const d = await api({ action: 'create', name: 'RapidSim 02 — What Did It Tell Them?' });
       F.code = d.session.code;
       F.you = d.you || null;
       startPolling();
@@ -174,7 +174,7 @@ function renderConsole() {
   const tabs = [['room', 'The room'], ['progress', 'Progress'], ['compare', 'Compare positions']];
 
   app.innerHTML = `
-    <div class="eyebrow">Flexee Rapid Sims · faculty console${F.data.you ? ' · ' + esc(F.data.you) : ''}</div>
+    <div class="eyebrow">Flexee RapidSims · faculty console${F.data.you ? ' · ' + esc(F.data.you) : ''}</div>
     <h1>Disaster or <em>Breach?</em></h1>
 
     <div class="card">

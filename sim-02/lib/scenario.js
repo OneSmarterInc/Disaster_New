@@ -1,8 +1,8 @@
 // SERVER ONLY. This file is never sent to a browser.
 // It holds the ground truth, the character contracts, and the debrief.
 //
-// Rapid Sim 02 — "What Did It Tell Them?"
-// Same shape as Rapid Sim 01. One addition: sceneFor() takes run state, because
+// RapidSim 02 — "What Did It Tell Them?"
+// Same shape as RapidSim 01. One addition: sceneFor() takes run state, because
 // the third phase varies on whether the index survived the night.
 
 // What this simulation tells the platform about itself. The platform's catalogue
@@ -19,8 +19,8 @@ const META = {
     seat: 'VP of Customer Operations',
     clock: '09:40 Tuesday to Wednesday morning',
     teaches: 'Accountability for automated decisions · acting before the evidence goes',
-    tangle: 'Two departments each have an explanation, and each puts the fault somewhere else. Technical Publications never withdrew a superseded revision. Customer Platforms moved the threshold that decides which questions reach a human. Both changes were reasonable on the day they were made.',
-    turn: 'The fastest fix and the loss of the evidence are the same act. Putting the library right means rebuilding the index overnight, and the person proposing it is right, competent and entirely reasonable. Nobody in the room is being obstructive. The question is whether anyone notices in time.',
+    tangle: 'Two departments, two explanations, each putting the fault on the other. One left an old document in the library. One changed which questions reach a person. Both were reasonable at the time.',
+    turn: 'The fastest fix and the loss of the evidence are the same act. The person proposing it is right, and nobody is being obstructive. The question is whether anyone notices in time.',
     cast: [
       { name: 'Joanna Petrell', role: 'Director, Technical Publications', stake: 'The superseded revision was never withdrawn.' },
       { name: 'Devin Oyelaran', role: 'Head of Customer Platforms', stake: 'He moved the threshold that decides what reaches a human.' },
@@ -28,11 +28,11 @@ const META = {
       { name: 'Nadia Renko', role: 'Applications Support Engineer', stake: 'She noticed the questions had stopped arriving, and said nothing.' }
     ],
     beats: [
-      { at: 'Hour 1', what: 'One customer, one wrong figure, four people with partial views. Commit to a reading before anyone knows the scope.' },
-      { at: 'Hour 7', what: 'It was not one customer. A ninety-day query comes back, and a clock nobody mentioned is about to run.' },
-      { at: 'Day 2', what: 'Counsel asks what the system told their engineer. Whether that can be answered depends on something decided the night before.' }
+      { at: 'Hour 1', what: 'One customer, one wrong number, four people who each know part of it.' },
+      { at: 'Hour 7', what: 'It was not one customer. And a clock nobody mentioned is about to start.' },
+      { at: 'Day 2', what: 'Their lawyer asks what the system told their engineer. Whether you can answer depends on last night.' }
     ],
-    after: 'The ending differs depending on whether the class protected the evidence — and it counts whether they said so in conversation, not only whether they chose it as an action. The debrief quotes their own instruction back to them.'
+    after: 'The ending changes depending on whether they protected the evidence. Saying so out loud counts, not just ticking a box, and the debrief quotes them back.'
   },
 };
 

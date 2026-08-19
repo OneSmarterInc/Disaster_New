@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in — Flexee Rapid Sims</title>
+<title>Sign in — Flexee RapidSims</title>
 <link rel="stylesheet" href="/app.css">
 <style>
   .hero{padding:60px 0 8px}
@@ -38,12 +38,12 @@ async function api(path, payload) {
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
 }
-const simLabel = (x) => (x.number ? 'Rapid Sim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
+const simLabel = (x) => (x.number ? 'RapidSim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
 const home = r => r === 'admin' ? '/admin.html' : r === 'faculty' ? '/faculty.html' : '/student.html';
 
 function page(msg) {
   app.innerHTML = `
-    <div class="eyebrow" style="margin-top:40px">Flexee Rapid Sims</div>
+    <div class="eyebrow" style="margin-top:40px">Flexee RapidSims</div>
     <h1>Sign <em>in</em></h1>
     <div class="card" style="margin-top:26px">
       <div class="field"><label class="f" for="em">Email</label>
@@ -83,7 +83,7 @@ function page(msg) {
     if (d.user) { location.href = home(d.user.role); return; }
   } catch (e) {
     if (e.body && e.body.error === 'no_db') {
-      app.innerHTML = '<div class="hero"><div class="eyebrow">Flexee Rapid Sims</div>' +
+      app.innerHTML = '<div class="hero"><div class="eyebrow">Flexee RapidSims</div>' +
         '<h1>Not set up yet</h1><p class="lede">This deployment has no database configured.</p></div>';
       return;
     }

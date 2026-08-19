@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Set a new password — Flexee Rapid Sims</title>
+<title>Set a new password — Flexee RapidSims</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -25,7 +25,7 @@ async function api(path, payload) {
   return d;
 }
 const problem = (t, m) => app.innerHTML =
-  '<div class="eyebrow">Flexee Rapid Sims</div><h1>' + esc(t) + '</h1><p class="lede">' + esc(m) + '</p><p><a href="/signin.html">Back to sign in</a></p>';
+  '<div class="eyebrow">Flexee RapidSims</div><h1>' + esc(t) + '</h1><p class="lede">' + esc(m) + '</p><p><a href="/signin.html">Back to sign in</a></p>';
 
 (async () => {
   if (!token) return problem('Nothing to reset here', 'This link is missing its code. Ask for a new one.');

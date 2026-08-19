@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Join your course — Flexee Rapid Sims</title>
+<title>Join your course — Flexee RapidSims</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -27,7 +27,7 @@ async function api(path, payload) {
 
 function askCode(msg) {
   app.innerHTML = `
-    <div class="eyebrow">Flexee Rapid Sims</div>
+    <div class="eyebrow">Flexee RapidSims</div>
     <h1>Join your <em>course</em></h1>
     <p class="lede">Your instructor gave you a six-character code. Enter it and you're in.</p>
     <div class="card" style="margin-top:26px">
@@ -53,7 +53,7 @@ async function start() {
 
   if (me && me.role === 'student') {
     app.innerHTML = `
-      <div class="eyebrow">Flexee Rapid Sims</div>
+      <div class="eyebrow">Flexee RapidSims</div>
       <h1>${esc(c.title)}</h1>
       <p class="lede">${esc(c.faculty_name)}${c.term ? ' · ' + esc(c.term) : ''}</p>
       <div class="card"><p>You're signed in as <b>${esc(me.name)}</b>.</p>
