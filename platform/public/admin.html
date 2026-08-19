@@ -471,7 +471,7 @@ function catTab() {
 
           ${D.copyFor === si.id ? (() => {
             // the situation is a column of its own; the rest is in detail
-            const d = Object.assign({ description: si.description || '' }, si.detail || {});
+            const d = Object.assign({ tagline: si.tagline || '', description: si.description || '' }, si.detail || {});
             const mine = d._edited || [];
             const fields = D.copyFields || [];
             return `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">

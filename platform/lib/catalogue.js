@@ -26,6 +26,8 @@ const DEFAULTS = {
 
 // The fields an administrator can rewrite, in the order they appear on the page.
 const FIELDS = [
+  { key: 'tagline',      label: 'One line',                 hint: 'Under the title, on the list and at the top of the page.',
+    eg: 'Twenty minutes in a room where nobody knows what is wrong yet.' },
   { key: 'description',  label: 'The situation',            hint: 'The opening paragraph, on the list and at the top of the page.', rows: 3,
     eg: 'Data corruption is spreading across client applications at two in the morning.' },
   { key: 'world',        label: 'Setting',                  hint: 'Shown beside the number.',

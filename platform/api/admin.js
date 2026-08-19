@@ -210,7 +210,10 @@ module.exports = async (req, res) => {
         const sid = String(b.id || '').trim();
         const row = (await s`SELECT launch_url FROM sims WHERE id = ${sid}`)[0];
         if (!row) return res.status(404).json({ error: 'no_such_sim' });
-        await s`UPDATE sims SET detail = NULL, description = NULL WHERE id = ${sid}`;
+        // The tagline is copy too. Leaving it behind meant a reset produced a
+        // page with a rewritten description under a sentence from three
+        // versions ago.
+        await s`UPDATE sims SET detail = NULL, description = NULL, tagline = NULL WHERE id = ${sid}`;
         // Ask it to describe itself again rather than waiting for a cold start.
         let refreshed = false;
         try {
@@ -241,13 +244,17 @@ module.exports = async (req, res) => {
             message: `"${f.label}" gives the ending away — it says ${told.map(t => `"${t}"`).join(' and ')}. The catalogue is public.` });
         }
 
-        // 'description' is a column of its own; everything else lives in detail.
+        // Two of these are columns of their own; the rest live in detail.
+        if (b.tagline !== undefined) {
+          const v = String(b.tagline).trim();
+          await s`UPDATE sims SET tagline = ${v || null} WHERE id = ${sid}`;
+        }
         if (b.description !== undefined) {
           const v = String(b.description).trim();
           await s`UPDATE sims SET description = ${v || null} WHERE id = ${sid}`;
         }
         const next = Object.assign({}, cur.detail || {});
-        const words = FIELDS.map(f => f.key).filter(k => k !== 'description');
+        const words = FIELDS.map(f => f.key).filter(k => k !== 'description' && k !== 'tagline');
         for (const k of words) {
           if (b[k] === undefined) continue;
           const v = String(b[k]).trim();
