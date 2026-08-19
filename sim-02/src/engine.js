@@ -66,6 +66,11 @@ if (LAUNCH_TOKEN || ACCESS_CODE) {
   history.replaceState(null, '', location.pathname + (q ? '?' + q : ''));
 }
 
+// Where this simulation is being served from. Its own deployment answers at the
+// root; behind the platform's domain it sits under /sim01 or /sim02, and every
+// request has to carry that prefix or it lands on the platform instead.
+const BASE = (location.pathname.match(/^\/sim\d+/) || [''])[0];
+
 async function api(path, payload) {
   let r;
   try {
@@ -1154,7 +1159,7 @@ mountHelp();
   // a class. The platform says which; only the second belongs in the console.
   if (LAUNCH && (LAUNCH.role === 'faculty' || LAUNCH.role === 'faculty_preview')
       && LAUNCH.mode === 'session') {
-    location.replace('/faculty.html?lt=' + encodeURIComponent(LAUNCH_TOKEN));
+    location.replace(BASE + '/faculty.html?lt=' + encodeURIComponent(LAUNCH_TOKEN));
     return;
   }
   app.innerHTML = `<div class="doc"><div class="doc-in">

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/sim01", "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/" },
+    { "source": "/sim01/:path*", "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/:path*" },
+    { "source": "/sim02", "destination": "https://flexee-rapid-sim-02.vercel.app/" },
+    { "source": "/sim02/:path*", "destination": "https://flexee-rapid-sim-02.vercel.app/:path*" }
+  ],
+  "headers": [
+    {
+      "source": "/sim01/(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/sim02/(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    }
+  ]
+}

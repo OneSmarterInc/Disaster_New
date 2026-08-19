@@ -68,6 +68,9 @@ select{background:var(--night);border:1px solid var(--line2);padding:5px 8px;fon
 <body>
 <div class="wrap" id="app"></div>
 <script>
+// Served from this deployment's root, or under /sim01 behind the platform's
+// domain. Everything it asks for has to carry the same prefix.
+const BASE = (location.pathname.match(/^\/sim\d+/) || [''])[0];
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const el = h => { const d = document.createElement('div'); d.innerHTML = h.trim(); return d.firstElementChild; };
@@ -84,7 +87,7 @@ const F = {
 };
 
 async function api(payload) {
-  const r = await fetch('/api/session', {
+  const r = await fetch(BASE + '/api/session', {
     method: 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' },
       F.launchToken ? { 'x-launch-token': decodeURIComponent(F.launchToken) }
@@ -325,7 +328,7 @@ function tabCompare(groups, runs) {
 }
 
 // action labels, fetched once so the table can show reversibility
-fetch('/api/scene', {
+fetch(BASE + '/api/scene', {
   method: 'POST',
   headers: Object.assign({ 'Content-Type': 'application/json' },
     F.launchToken ? { 'x-launch-token': decodeURIComponent(F.launchToken) }
