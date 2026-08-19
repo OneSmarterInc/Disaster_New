@@ -2,6 +2,14 @@
 // any of it. Useful when a launch is being rejected and you need to know
 // whether the two systems actually share a secret.
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+
+// Read once at cold start, not per request.
+let BUILT_AT = 'unknown';
+try {
+  BUILT_AT = fs.statSync(path.join(__dirname, '../public/index.html')).mtime.toISOString();
+} catch (e) {}
 
 const fingerprint = (v) => v
   ? crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 8)
@@ -23,6 +31,11 @@ module.exports = async (req, res) => {
   } catch (e) {}
 
   const secret = process.env.LAUNCH_SECRET;
+  // Never cached. This is the one endpoint somebody reads to find out whether a
+  // deployment is current, and a cached copy answers the opposite of the
+  // question — it reports the build you are trying to find out you have moved on
+  // from.
+  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   return res.status(200).json({
     sim: 'rapid-01-disaster',
     characters: process.env.ANTHROPIC_API_KEY ? 'configured' : 'MISSING',
@@ -43,6 +56,9 @@ module.exports = async (req, res) => {
     // What this build can do. The platform compares these against what it
     // expects, so a deployment left behind is spotted rather than guessed at —
     // a stale sim looks identical to a broken one from the outside.
+    // When this bundle was built. The fastest way to tell a current deployment
+    // from one that answers identically because nothing visible changed.
+    builtAt: BUILT_AT,
     features: [
       'launch-token',        // accepts a signed token in place of an access code
       'launch-mode',         // plays or opens the session console, as asked

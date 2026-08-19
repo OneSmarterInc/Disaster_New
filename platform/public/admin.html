@@ -437,7 +437,9 @@ function catTab() {
     ${D.checkOut ? `<div class="cbox"><div style="padding:14px 16px">
       <div class="mini" style="margin-bottom:9px">Checked just now</div>
       ${D.checkOut.map(r => `<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;align-items:baseline">
-        <div><b>${esc(r.title)}</b> ${r.detail ? `<span class="hint" style="margin:0;display:inline">${esc(r.detail)}</span>` : ''}</div>
+        <div><b>${esc(r.title)}</b>
+          ${r.builtAt ? `<span class="sub" style="display:inline;margin-left:6px">built ${esc(new Date(r.builtAt).toLocaleString())}</span>` : ''}
+          ${r.detail ? `<div class="hint" style="margin:2px 0 0">${esc(r.detail)}</div>` : ''}</div>
         ${dot(r.state === 'ready' ? 'ok' : r.state === 'unreachable' ? 'bad' : 'warn', r.state)}
       </div>`).join('')}
       <div style="margin-top:10px"><button class="btn sm" id="chkdone">Done</button></div>

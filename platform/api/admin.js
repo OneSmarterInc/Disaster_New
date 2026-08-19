@@ -457,7 +457,7 @@ module.exports = async (req, res) => {
                        String(h.registersAs).replace(/\/+$/, '') !== String(sim.launch_url).replace(/\/+$/, '')) {
               problems.push(`it now answers at ${h.registersAs} — press Check all again after it next announces itself`);
             }
-            results.push({ id: sim.id, title: sim.title,
+            results.push({ id: sim.id, title: sim.title, builtAt: h.builtAt || null,
               state: problems.length ? 'needs attention' : 'ready', detail: problems.join('; ') });
           } catch (e) {
             results.push({ id: sim.id, title: sim.title, state: 'unreachable',
