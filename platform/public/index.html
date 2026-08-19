@@ -183,14 +183,14 @@ function list(){
     <div class="box" style="margin-top:34px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
       <div>
         <h4 style="margin-bottom:6px">Questions</h4>
-        <p style="margin:0;font-size:14.5px">Ask us whether one of these fits your course.</p>
+        <p style="margin:0;font-size:14.5px">Ask whether one of these would fit your course.</p>
       </div>
       <a class="btn" href="mailto:support@flexee.org?subject=Rapid%20Sims%20—%20enquiry">support@flexee.org</a>
     </div>
 
     <div class="quote" style="margin-top:14px">
-      <b>Every RapidSim works the same way.</b> Two people in the room are blamed by opposite explanations. Both are
-      honest. Neither is disinterested. Nobody is lying, and that is the hard part.
+      <b>They all work the same way.</b> Two people in the room get blamed by opposite answers. Both are honest.
+      Both want it to be the other one. Nobody is lying, and that is what makes it hard.
     </div>`;
   app.querySelectorAll('[data-open]').forEach(c => c.onclick = () => { VIEW = c.dataset.open; render(); });
 }

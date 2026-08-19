@@ -13,15 +13,15 @@ const DEFAULTS = {
   teaches: '',
   tangle: '',
   turn: '',
-  after: 'The debrief says what happened, then reads their three commitments back and marks each one. Including whether the evidence they said would change their mind turned up, and what they did about it.',
+  after: 'At the end they find out what was really going on. Then they see their own three answers, marked. Did the thing they said would change their mind turn up? Did they do anything about it?',
 
   // The parts that are true of every simulation. Editable all the same, since
   // an institution may want to say them differently.
   roomIntro: 'Four people. They answer questions, argue with each other, and will say different things in private. What each of them stands to lose is on screen from the start.',
-  momentsIntro: 'The clock runs whether or not anyone is ready. Three times they write down what they think is happening, what they are doing about it, and what would change their mind. Then it moves on.',
-  discussion: 'Every answer then goes up side by side. That is where the class is: two students saw the same evidence and decided opposite things, and now they have to say why.',
-  tryIt: 'Seven days with any simulation, free. Play it the way your students will before you decide.',
-  sessionShape: 'Five minutes to get everyone in. Twenty to play. Ten to read the debrief. Twenty-five to argue about it. Nothing to prepare.'
+  momentsIntro: 'The clock keeps going whether they are ready or not. Three times they write down what they think is going on, what they are doing about it, and what would change their mind. Then it moves on without them.',
+  discussion: 'Every answer then goes up side by side. That is where the class is. Two students saw the same thing and decided the opposite, and now they have to say why.',
+  tryIt: 'Seven days with any of them, free. Play it the way your students will, then decide.',
+  sessionShape: 'Five minutes to get everyone in. Twenty to play. Ten to read what they got. Twenty-five to argue about it. Nothing to prepare.'
 };
 
 // The fields an administrator can rewrite, in the order they appear on the page.
@@ -35,7 +35,7 @@ const FIELDS = [
   { key: 'clock',        label: 'Spans',                    hint: 'From when to when.',
     eg: '02:14 Tuesday to Day 3' },
   { key: 'teaches',      label: 'Teaches',                  hint: 'One line. Shown on the list and in the sidebar.',
-    eg: 'What to do first · how to weigh advice from people with something to lose' },
+    eg: 'What to do first when you do not know · how to weigh advice from people with something to lose' },
   { key: 'tangle',       label: 'What makes it hard',       hint: 'The problem, without the answer.', rows: 3,
     eg: 'Two explanations, identical symptoms, and fixing one destroys the evidence for the other.' },
   { key: 'turn',         label: 'Why it teaches something', hint: 'The argument for the format — usually about exposure.', rows: 3,

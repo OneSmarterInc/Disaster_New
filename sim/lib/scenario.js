@@ -7,16 +7,16 @@
 const META = {
   id: 'rapid-01-disaster',
   title: 'Disaster or Breach?',
-  tagline: 'Twenty minutes inside an incident nobody can classify yet.',
-  description: 'Data corruption is spreading across client applications at two in the morning. A failing storage array and an intruder look identical at this hour, and what you would do about one is the opposite of what you would do about the other.',
+  tagline: 'Twenty minutes in a room where nobody knows what is wrong yet.',
+  description: 'It is two in the morning and customer systems are breaking, one after another. It might be a failing disk. It might be somebody who got in. Right now they look the same, and the fix for one is the wrong move for the other.',
   minutes: 20,
   detail: {
     world: 'IT operations · managed services',
     seat: 'VP of Operations',
     clock: '02:14 Tuesday to Day 3',
-    teaches: 'Sequencing under uncertainty · weighing advice from people with something at stake',
-    tangle: 'A failing disk and an intruder look identical at four in the morning, and the two things you would do about them are opposites. The fastest way to get clients working again is not the way to find out what happened.',
-    turn: 'Two people in the room are blamed by opposite explanations. Both are good at their jobs and neither is lying. The best advice on offer comes from someone who would rather it were the other answer.',
+    teaches: 'What to do first when you do not know · how to weigh advice from people with something to lose',
+    tangle: 'The two explanations look the same from the outside. The quickest way to get customers running again is not the way to find out what went wrong. You have to pick one.',
+    turn: 'Two people in the room get blamed by opposite answers. Both are good at their jobs. Neither is lying. The best advice you will hear comes from somebody who would rather it were the other one.',
     cast: [
       { name: 'Kate Sullivan', role: 'Director, Infrastructure & Architecture', stake: 'Specified the array. Owns the patch cadence.' },
       { name: 'Sophia Kim', role: 'Head of Security', stake: 'If this is an intrusion, it has been resident for weeks.' },
@@ -24,11 +24,11 @@ const META = {
       { name: 'Ben Carter', role: 'SVP, Client Operations', stake: 'Three of his clients are down and the board calls at eight.' }
     ],
     beats: [
-      { at: 'Hour 4', what: 'Three applications down, no cause, and a room that already has opinions.' },
-      { at: 'Hour 20', what: 'It spreads somewhere it should not reach. Some tripwires just went off.' },
-      { at: 'Day 3', what: 'An audit turns up something nineteen days old. A clock may have been running all along.' }
+      { at: 'Hour 4', what: 'Three systems down, nobody knows why, and the room already has opinions.' },
+      { at: 'Hour 20', what: 'It turns up somewhere it should not be able to reach.' },
+      { at: 'Day 3', what: 'Something nineteen days old comes to light. A clock may have been running the whole time.' }
     ],
-    after: 'The debrief says what happened, then marks their three answers. Including whether the evidence they named turned up, and what they did when it did.'
+    after: 'At the end they find out what was really going on. Then they see their own three answers, marked. Did the thing they said would change their mind turn up? Did they do anything about it?'
   },
 };
 

@@ -61,3 +61,34 @@ console.log(`prose check: ${sources.length} sources, nothing overlong and none o
   if (told) { console.error('\nPublic copy must not say how it ends.'); process.exit(1); }
   console.log('outcome check: nothing published says how a simulation ends');
 }
+
+// And it has to be readable by somebody who does not already know the world.
+// Long sentences and long words are what make copy sound like it was written
+// for people already inside it.
+{
+  const JARGON = [
+    'entitlement','provision','stakeholder','remediation','mitigate','escalation path',
+    'operational','infrastructure','architecture','methodology','framework','competency',
+    'pedagogical','facilitate the','instantiate','leverage','utilise','utilize',
+    'commitments','disclosure obligations','exposure runs','playbooks are opposed'
+  ];
+  let rough = 0;
+  for (const [name, obj] of sources) {
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v !== 'string' || !v.trim()) continue;
+      const sents = v.split(/(?<=[.!?])\s+/).filter(Boolean);
+      const words = v.split(/\s+/).filter(Boolean);
+      const per = words.length / sents.length;
+      if (per > 22) { rough++; console.log(`  ${name} · ${k}: ${Math.round(per)} words a sentence`); }
+      // Length alone is a poor test — 'manufacturing' is a word everybody
+      // knows. What makes copy hard is the abstract ending, so look for that.
+      const heavy = words.filter(w => /(?:isation|ization|ality|ivity|ology|ment(?:s)?ation|ification)\b/i.test(w));
+      if (heavy.length) { rough++; console.log(`  ${name} · ${k}: ${heavy.join(', ')}`); }
+      JARGON.forEach(j => {
+        if (new RegExp('\\b' + j + '\\b', 'i').test(v)) { rough++; console.log(`  ${name} · ${k}: "${j}"`); }
+      });
+    }
+  }
+  if (rough) { console.error('\nWrite it for somebody who has not seen this before.'); process.exit(1); }
+  console.log('reading check: short sentences, plain words');
+}

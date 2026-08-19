@@ -11,16 +11,16 @@
 const META = {
   id: 'rapid-02-relay',
   title: 'What Did It Tell Them?',
-  tagline: 'Twenty minutes after an AI told a customer the wrong number.',
-  description: 'An AI assistant answered a customer\'s technical question with the wrong figure, and the parts have been in service for six weeks. Two departments each have an account of how that happened, and each puts the fault on the other.',
+  tagline: 'Twenty minutes after an AI told a customer the wrong thing.',
+  description: 'An AI gave a customer the wrong number. Six weeks later those parts are out in the world, fitted and running. Two teams have an explanation for how it happened, and each one points at the other.',
   minutes: 20,
   detail: {
     world: 'Manufacturing · customer operations',
     seat: 'VP of Customer Operations',
     clock: '09:40 Tuesday to Wednesday morning',
-    teaches: 'Accountability for automated decisions · acting before the evidence goes',
-    tangle: 'Two departments, two explanations, each putting the fault on the other. One left an old document in the library. One changed which questions reach a person. Both were reasonable at the time.',
-    turn: 'The fastest fix and the loss of the evidence are the same act. The person proposing it is right, and nobody is being obstructive. The question is whether anyone notices in time.',
+    teaches: 'Who answers for what a machine did · acting before the trail goes cold',
+    tangle: 'One team left an old document where the AI could find it. Another changed which questions get passed to a human. Both looked fine at the time. Neither will own it now.',
+    turn: 'Somebody wants to fix it tonight, and they are right to. Whether anyone spots what that costs, before it happens, is the whole exercise.',
     cast: [
       { name: 'Joanna Petrell', role: 'Director, Technical Publications', stake: 'The superseded revision was never withdrawn.' },
       { name: 'Devin Oyelaran', role: 'Head of Customer Platforms', stake: 'He moved the threshold that decides what reaches a human.' },
@@ -28,11 +28,11 @@ const META = {
       { name: 'Nadia Renko', role: 'Applications Support Engineer', stake: 'She noticed the questions had stopped arriving, and said nothing.' }
     ],
     beats: [
-      { at: 'Hour 1', what: 'One customer, one wrong number, four people who each know part of it.' },
-      { at: 'Hour 7', what: 'It was not one customer. And a clock nobody mentioned is about to start.' },
-      { at: 'Day 2', what: 'Their lawyer asks what the system told their engineer. Whether you can answer depends on last night.' }
+      { at: 'Hour 1', what: 'One customer, one wrong number, and four people who each know part of the story.' },
+      { at: 'Hour 7', what: 'It was not one customer. And a deadline nobody mentioned is about to start.' },
+      { at: 'Day 2', what: 'Their lawyer asks a simple question. Whether you can answer it depends on last night.' }
     ],
-    after: 'The ending changes depending on whether they protected the evidence. Saying so out loud counts, not just ticking a box, and the debrief quotes them back.'
+    after: 'The ending is not the same for everyone. It depends on something they did, or did not do, hours earlier — and saying it out loud counts, not just ticking a box. The debrief quotes them back.'
   },
 };
 
