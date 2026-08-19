@@ -115,6 +115,7 @@ a:hover{text-decoration:underline}
 <div class="top">
   <div class="brand" id="home">Flexee Rapid <span>Sims</span></div>
   <div class="right" id="topright">
+    <a class="btn sm" href="mailto:support@flexee.org?subject=Rapid%20Sims%20—%20enquiry">Contact us</a>
     <a class="btn pri sm" href="/signin.html">Sign in</a>
   </div>
 </div>
@@ -124,7 +125,7 @@ a:hover{text-decoration:underline}
 
 <div class="wrap"><div class="foot-note">
   <span>&copy; 2026 Flexee LLC. All rights reserved.</span>
-  <span><a href="/">Simulations</a> &nbsp;·&nbsp; <a href="/signin.html">Sign in</a></span>
+  <span><a href="mailto:support@flexee.org">support@flexee.org</a></span>
 </div></div>
 <script>
 const app = document.getElementById('app');
@@ -146,7 +147,8 @@ async function greet() {
     if (d.user) {
       const where = d.user.role === 'admin' ? '/admin.html' : d.user.role === 'faculty' ? '/faculty.html' : '/student.html';
       document.getElementById('topright').innerHTML =
-        `<a class="btn pri sm" href="${where}">${esc(d.user.name.split(' ')[0])}'s console</a>`;
+        `<a class="btn sm" href="mailto:support@flexee.org?subject=Rapid%20Sims%20—%20enquiry">Contact us</a>
+         <a class="btn pri sm" href="${where}">${esc(d.user.name.split(' ')[0])}'s console</a>`;
     }
   } catch (e) { /* signed out, or no database — the catalogue does not care */ }
 }
@@ -178,7 +180,15 @@ function list(){
     : `<div class="card" style="cursor:default"><div class="body">
         <p style="margin:0">${ERR ? 'The catalogue is not available at the moment.' : 'Nothing published yet.'}</p></div></div>`}
 
-    <div class="quote" style="margin-top:34px">
+    <div class="box" style="margin-top:34px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+      <div>
+        <h4 style="margin-bottom:6px">Questions</h4>
+        <p style="margin:0;font-size:14.5px">Whether one of these fits a course you are teaching, how a session runs, or anything else — write and somebody will answer.</p>
+      </div>
+      <a class="btn" href="mailto:support@flexee.org?subject=Rapid%20Sims%20—%20enquiry">support@flexee.org</a>
+    </div>
+
+    <div class="quote" style="margin-top:14px">
       <b>Every Rapid Sim is built the same way.</b> Two competent people in the room carry opposite exposure, so the
       most persuasive advice available always comes from somebody who would rather it were the other answer. Students
       are not looking for a liar. They are deciding what to do when everybody is honest and nobody is disinterested.
@@ -245,7 +255,7 @@ function detail(){
         <div class="box">
           <h4>Try it</h4>
           <p>${esc(d.tryIt || '')}</p>
-          <a class="btn pri" href="mailto:hello@onesmarter.com?subject=Rapid%20Sims%20—%20preview%20request" style="display:block;text-align:center">Request a preview</a>
+          <a class="btn pri" href="mailto:support@flexee.org?subject=${encodeURIComponent('Rapid Sims — preview request: ' + s.title)}&body=${encodeURIComponent('I would like to try this before using it with a class.\n\nName:\nInstitution:\nCourse:\nRoughly how many students:\n')}" style="display:block;text-align:center">Request a preview</a>
           <div style="font-size:12.5px;color:var(--ink3);margin-top:10px">Already have an account?
             <a href="/signin.html">Sign in</a> and it will be listed under Simulations.</div>
         </div>
