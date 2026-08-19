@@ -19,13 +19,15 @@ const DEFAULTS = {
   // an institution may want to say them differently.
   roomIntro: 'Four people. They answer questions, argue with each other, and will say different things in private. What each of them stands to lose is on screen from the start.',
   momentsIntro: 'The clock runs whether or not anyone is ready. Three times they write down what they think is happening, what they are doing about it, and what would change their mind. Then it moves on.',
-  discussion: 'Afterwards every answer goes up side by side. That is where the class is: two students saw the same evidence and decided opposite things, and now they have to say why.',
+  discussion: 'Every answer then goes up side by side. That is where the class is: two students saw the same evidence and decided opposite things, and now they have to say why.',
   tryIt: 'Seven days with any simulation, free. Play it the way your students will before you decide.',
   sessionShape: 'Five minutes to get everyone in. Twenty to play. Ten to read the debrief. Twenty-five to argue about it. Nothing to prepare.'
 };
 
 // The fields an administrator can rewrite, in the order they appear on the page.
 const FIELDS = [
+  { key: 'description',  label: 'The situation',            hint: 'The opening paragraph, on the list and at the top of the page.', rows: 3,
+    eg: 'Data corruption is spreading across client applications at two in the morning.' },
   { key: 'world',        label: 'Setting',                  hint: 'Shown beside the number.',
     eg: 'IT operations · managed services' },
   { key: 'seat',         label: 'You are',                  hint: 'The chair the student occupies.',

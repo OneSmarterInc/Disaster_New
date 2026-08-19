@@ -203,6 +203,24 @@ module.exports = async (req, res) => {
       // The catalogue copy an administrator writes wins over what the
       // simulation sent about itself, and survives every later announcement.
       // Blanking a field hands it back to the simulation.
+      // Throws away everything an administrator has written for one simulation,
+      // so the next announcement refills it from the simulation itself. The way
+      // out of copy that has gone stale without editing eight boxes by hand.
+      case 'reset_detail': {
+        const sid = String(b.id || '').trim();
+        const row = (await s`SELECT launch_url FROM sims WHERE id = ${sid}`)[0];
+        if (!row) return res.status(404).json({ error: 'no_such_sim' });
+        await s`UPDATE sims SET detail = NULL, description = NULL WHERE id = ${sid}`;
+        // Ask it to describe itself again rather than waiting for a cold start.
+        let refreshed = false;
+        try {
+          const r = await fetch(String(row.launch_url).replace(/\/+$/, '') + '/api/health',
+            { signal: AbortSignal.timeout(7000) });
+          refreshed = r.ok;
+        } catch (e) { /* it will announce itself next time it is used */ }
+        return res.status(200).json({ ok: true, refreshed });
+      }
+
       case 'catalogue_fields': {
         return res.status(200).json({ fields: FIELDS });
       }
@@ -213,8 +231,13 @@ module.exports = async (req, res) => {
         const cur = (await s`SELECT detail FROM sims WHERE id = ${sid}`)[0];
         if (!cur) return res.status(404).json({ error: 'no_such_sim' });
 
+        // 'description' is a column of its own; everything else lives in detail.
+        if (b.description !== undefined) {
+          const v = String(b.description).trim();
+          await s`UPDATE sims SET description = ${v || null} WHERE id = ${sid}`;
+        }
         const next = Object.assign({}, cur.detail || {});
-        const words = FIELDS.map(f => f.key);
+        const words = FIELDS.map(f => f.key).filter(k => k !== 'description');
         for (const k of words) {
           if (b[k] === undefined) continue;
           const v = String(b[k]).trim();

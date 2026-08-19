@@ -51,17 +51,12 @@ module.exports = async (req, res) => {
   await s`INSERT INTO users (id, email, name, role, password_hash)
           VALUES (${uid}, ${email}, ${name}, 'admin', ${hashPassword(password)})`;
 
-  // Seed the catalogue with the sim we already have.
-  const simUrl = process.env.RAPID_01_URL || '';
-  if (simUrl) {
-    await s`INSERT INTO sims (id, title, tagline, description, minutes, launch_url, published)
-            VALUES ('rapid-01-disaster', 'Disaster or Breach?',
-              'Twenty minutes inside an incident nobody can classify yet.',
-              'Data corruption is spreading across client applications. A failing storage array and an intruder look identical at Hour 4, and the two response playbooks are opposed. Students take expert advice from people whose exposure runs in opposite directions.',
-              20, ${simUrl}, true)
-            ON CONFLICT (id) DO UPDATE SET launch_url = EXCLUDED.launch_url`;
-  }
+    // Nothing is seeded into the catalogue. A simulation describes itself the
+    // first time its deployment is used, and an entry written here would sit
+    // there stale — which is exactly what happened: wording seeded at setup
+    // outlived three rewrites of the simulation's own description, because
+    // registration does not overwrite what is already there.
 
   await startSession(res, uid);
-  return res.status(200).json({ ok: true, admin: { id: uid, email, name }, seededSim: !!simUrl });
+  return res.status(200).json({ ok: true, admin: { id: uid, email, name } });
 };

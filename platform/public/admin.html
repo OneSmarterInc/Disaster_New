@@ -468,7 +468,8 @@ function catTab() {
           </div>` : ''}
 
           ${D.copyFor === si.id ? (() => {
-            const d = si.detail || {};
+            // the situation is a column of its own; the rest is in detail
+            const d = Object.assign({ description: si.description || '' }, si.detail || {});
             const mine = d._edited || [];
             const fields = D.copyFields || [];
             return `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
@@ -489,6 +490,7 @@ function catTab() {
               <button class="btn pri sm" data-copysave="${esc(si.id)}">Save catalogue page</button>
               <button class="btn sm" data-copy="${esc(si.id)}">Cancel</button>
               <a class="btn sm" href="/" target="_blank" style="margin-left:6px">View the page</a>
+              <button class="btn sm" data-copyreset="${esc(si.id)}" style="margin-left:6px">Use the simulation's own words</button>
               <div data-copyout="${esc(si.id)}"></div>
             </div>`;
           })() : ''}
@@ -623,6 +625,14 @@ function wireCat() {
       catch (e) { D.copyFields = []; done('Failed', 'bad'); }
     }
     render();
+  });
+
+  app.querySelectorAll('[data-copyreset]').forEach(btn => btn.onclick = async () => {
+    if (!confirm('Throw away everything written here and take the simulation\'s own description?')) return;
+    const done = acting(btn, 'Asking it…');
+    try { await api('/api/admin', { action:'reset_detail', id: btn.dataset.copyreset });
+      done(); D.copyFor = null; load(); }
+    catch (e) { done('Failed','bad'); }
   });
 
   app.querySelectorAll('[data-copysave]').forEach(btn => btn.onclick = async () => {
