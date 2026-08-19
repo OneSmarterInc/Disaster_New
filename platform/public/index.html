@@ -212,8 +212,7 @@ function detail(){
         ${d.turn ? `<h3>Why it teaches something</h3><p>${esc(d.turn)}</p>` : ''}
 
         ${Array.isArray(d.cast) && d.cast.length ? `<h3>The room</h3>
-          <p>Four people, played by AI, who answer questions, disagree with each other, and can be taken aside
-            privately. Each one's exposure is shown on screen from the start — this is not a hidden twist.</p>
+          <p>${esc(d.roomIntro || '')}</p>
           <div class="room">${d.cast.map(c => `<div class="who">
             <div class="n">${esc(c.name)}</div>
             <div class="r">${esc(c.role)}</div>
@@ -221,16 +220,12 @@ function detail(){
           </div>`).join('')}</div>` : ''}
 
         ${Array.isArray(d.beats) && d.beats.length ? `<h3>How the twenty minutes go</h3>
-          <p>The clock runs on its own. Three times, a student commits in writing to what they think is happening,
-            the one action they are taking, and the evidence that would change their mind. Recording a position
-            moves the incident on; there is no going back.</p>
+          <p>${esc(d.momentsIntro || '')}</p>
           <div class="beats">${d.beats.map(b => `<div class="beat">
             <div class="t">${esc(b.at)}</div><p>${esc(b.what)}</p></div>`).join('')}</div>` : ''}
 
-        ${d.after ? `<h3>Afterwards</h3><p>${esc(d.after)}</p>
-          <p>In a class, every student's three positions appear side by side on the projector. Most of the teaching
-            happens there — in the twenty-five minutes of argument about why two people looking at identical
-            evidence committed to opposite readings.</p>` : ''}
+        ${d.after ? `<h3>Afterwards</h3><p>${esc(d.after)}</p>` : ''}
+        ${d.discussion ? `<p>${esc(d.discussion)}</p>` : ''}
       </div>
 
       <div class="side">
@@ -249,8 +244,7 @@ function detail(){
 
         <div class="box">
           <h4>Try it</h4>
-          <p>Facilitators get seven days with any simulation, free, to play it as a student would before committing
-            a class to it.</p>
+          <p>${esc(d.tryIt || '')}</p>
           <a class="btn pri" href="mailto:hello@onesmarter.com?subject=Rapid%20Sims%20—%20preview%20request" style="display:block;text-align:center">Request a preview</a>
           <div style="font-size:12.5px;color:var(--ink3);margin-top:10px">Already have an account?
             <a href="/signin.html">Sign in</a> and it will be listed under Simulations.</div>
@@ -258,8 +252,7 @@ function detail(){
 
         <div class="box">
           <h4>Running a session</h4>
-          <p style="margin:0">Five minutes to get everyone in. Twenty to play, each on their own screen. Ten while
-            they read their own debrief. Twenty-five of discussion. No preparation beyond the cover note.</p>
+          <p style="margin:0">${esc(d.sessionShape || '')}</p>
         </div>
       </div>
     </div>`;

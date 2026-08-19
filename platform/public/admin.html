@@ -31,7 +31,7 @@ const D = {
   detail: null, err: null,
   q: {}, filter: {}, page: {},
   open: null, personEdit: null, invite: false, lastInvite: null,
-  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null, addSim: false, checkOut: null, copyFor: null
+  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null, addSim: false, checkOut: null, copyFor: null, copyFields: null
 };
 
 async function api(path, payload) {
@@ -470,35 +470,25 @@ function catTab() {
           ${D.copyFor === si.id ? (() => {
             const d = si.detail || {};
             const mine = d._edited || [];
-            const fld = (k, label, hint, rows) => `<div class="field" style="margin-bottom:12px"><div>
-              <label class="f">${label}${mine.includes(k) ? ' · yours' : ''}</label>
-              ${rows ? `<textarea rows="${rows}" data-cf="${k}">${esc(d[k]||'')}</textarea>`
-                     : `<input data-cf="${k}" value="${esc(d[k]||'')}">`}
-              ${hint ? `<div class="hint" style="margin:4px 0 0">${hint}</div>` : ''}
-            </div></div>`;
+            const fields = D.copyFields || [];
             return `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
               <div class="mini">What the public catalogue says ${helpBtn('copy')}</div>
               ${explain('copy', 'Whose words these are', `<ol>
-                <li>A simulation arrives describing itself, so nothing here starts empty.</li>
+                <li>Every box below already holds the sentence the page is showing right now — from the simulation itself, or a wording that is true of all of them.</li>
                 <li>Anything you rewrite is marked <b>yours</b> and survives every later redeploy of that simulation.</li>
-                <li>Clearing a field hands it back to the simulation, which will refill it next time it announces itself.</li>
+                <li>Clearing a box hands it back, and the page returns to what the simulation says.</li>
                 <li>This page is public and read by people deciding whether to teach with it. Do not put the ending in it.</li>
               </ol>`)}
-              <div class="field" style="margin-bottom:12px">
-                <div><label class="f">Setting${mine.includes('world') ? ' · yours' : ''}</label>
-                  <input data-cf="world" value="${esc(d.world||'')}" placeholder="IT operations · managed services"></div>
-                <div><label class="f">You are${mine.includes('seat') ? ' · yours' : ''}</label>
-                  <input data-cf="seat" value="${esc(d.seat||'')}" placeholder="VP of Operations"></div>
-                <div><label class="f">Spans${mine.includes('clock') ? ' · yours' : ''}</label>
-                  <input data-cf="clock" value="${esc(d.clock||'')}" placeholder="02:14 Tuesday to Day 3"></div>
-              </div>
-              ${fld('teaches', 'Teaches', 'One line, shown on the list and in the sidebar.')}
-              ${fld('tangle', 'What makes it hard', 'The problem, without the answer.', 3)}
-              ${fld('turn', 'Why it teaches something', 'The argument for the format — usually about exposure.', 3)}
-              ${fld('after', 'Afterwards', 'What the debrief does.', 3)}
+              ${fields.length ? fields.map(f => `<div class="field" style="margin-bottom:12px"><div>
+                <label class="f">${esc(f.label)}${mine.includes(f.key) ? ' · yours' : ''}</label>
+                ${f.rows ? `<textarea rows="${f.rows}" data-cf="${esc(f.key)}" placeholder="${esc(f.eg||'')}">${esc(d[f.key] || '')}</textarea>`
+                         : `<input data-cf="${esc(f.key)}" value="${esc(d[f.key] || '')}" placeholder="${esc(f.eg||'')}">`}
+                ${f.hint ? `<div class="hint" style="margin:4px 0 0">${esc(f.hint)}</div>` : ''}
+              </div></div>`).join('') : '<div class="hint">Loading…</div>'}
+              <div class="hint">The four characters and the three moments come from the simulation and are not edited here — they describe what it does.</div>
               <button class="btn pri sm" data-copysave="${esc(si.id)}">Save catalogue page</button>
               <button class="btn sm" data-copy="${esc(si.id)}">Cancel</button>
-              <a class="btn sm" href="/" target="_blank" style="margin-left:6px">View it</a>
+              <a class="btn sm" href="/" target="_blank" style="margin-left:6px">View the page</a>
               <div data-copyout="${esc(si.id)}"></div>
             </div>`;
           })() : ''}
@@ -624,19 +614,25 @@ function catTab() {
     </div>` : ''}`;
 }
 function wireCat() {
-  app.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
+  app.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
     D.copyFor = D.copyFor === b.dataset.copy ? null : b.dataset.copy;
-    D.simEdit = null; D.reviewersFor = null; render(); });
+    D.simEdit = null; D.reviewersFor = null;
+    if (D.copyFor && !D.copyFields) {
+      const done = acting(b, 'Opening…');
+      try { D.copyFields = (await api('/api/admin', { action:'catalogue_fields' })).fields; done(); }
+      catch (e) { D.copyFields = []; done('Failed', 'bad'); }
+    }
+    render();
+  });
 
   app.querySelectorAll('[data-copysave]').forEach(btn => btn.onclick = async () => {
     const id = btn.dataset.copysave, panel = btn.parentElement;
-    const v = k => { const el = panel.querySelector(`[data-cf="${k}"]`); return el ? el.value : undefined; };
     const out = app.querySelector(`[data-copyout="${id}"]`);
     const done = acting(btn, 'Saving…');
+    const payload = { action:'save_detail', id };
+    panel.querySelectorAll('[data-cf]').forEach(el => { payload[el.dataset.cf] = el.value; });
     try {
-      await api('/api/admin', { action:'save_detail', id,
-        world:v('world'), seat:v('seat'), clock:v('clock'),
-        teaches:v('teaches'), tangle:v('tangle'), turn:v('turn'), after:v('after') });
+      await api('/api/admin', payload);
       done('Saved'); D.copyFor = null; load();
     } catch (e) { if (out) out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Not saved','bad'); }
   });

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const SCHEMA = require('../lib/schema.js');
+const { effective, FIELDS } = require('../lib/catalogue.js');
 const { sql, id } = require('../lib/db.js');
 const A = require('../lib/auth.js');
 
@@ -40,7 +41,10 @@ module.exports = async (req, res) => {
                  (SELECT count(*) FROM launches l JOIN courses c ON c.id = l.course_id
                    WHERE c.faculty_id = u.id) AS launches
           FROM users u WHERE u.role = 'faculty' ORDER BY u.created_at DESC`;
-        const sims = await s`SELECT * FROM sims ORDER BY number NULLS LAST, created_at`;
+        const simRows = await s`SELECT * FROM sims ORDER BY number NULLS LAST, created_at`;
+        // Every simulation carries the copy the public page will show, so the
+        // editor opens on real sentences rather than empty boxes.
+        const sims = simRows.map(r => Object.assign({}, r, { detail: effective(r.detail) }));
         const totals = (await s`
           SELECT
             (SELECT count(*) FROM users WHERE role = 'student') AS students,
@@ -199,6 +203,10 @@ module.exports = async (req, res) => {
       // The catalogue copy an administrator writes wins over what the
       // simulation sent about itself, and survives every later announcement.
       // Blanking a field hands it back to the simulation.
+      case 'catalogue_fields': {
+        return res.status(200).json({ fields: FIELDS });
+      }
+
       case 'save_detail': {
         const sid = String(b.id || '').trim();
         if (!sid) return res.status(400).json({ error: 'need_id' });
@@ -206,7 +214,7 @@ module.exports = async (req, res) => {
         if (!cur) return res.status(404).json({ error: 'no_such_sim' });
 
         const next = Object.assign({}, cur.detail || {});
-        const words = ['world', 'seat', 'clock', 'teaches', 'tangle', 'turn', 'after'];
+        const words = FIELDS.map(f => f.key);
         for (const k of words) {
           if (b[k] === undefined) continue;
           const v = String(b[k]).trim();
