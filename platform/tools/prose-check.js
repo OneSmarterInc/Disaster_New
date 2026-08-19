@@ -44,3 +44,20 @@ for (const [name, obj] of sources) {
 
 if (bad) { console.error(`\n${bad} thing${bad === 1 ? '' : 's'} to rewrite.`); process.exit(1); }
 console.log(`prose check: ${sources.length} sources, nothing overlong and none of the usual tells`);
+
+// And nothing published may state the outcome. This is the fault that reached a
+// live page twice: a guard looking for named terms passed a description that
+// simply said what the answer was, in ordinary words.
+{
+  const { statesOutcome } = require(path.join(__dirname, '../lib/catalogue.js'));
+  let told = 0;
+  for (const [name, obj] of sources) {
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v !== 'string') continue;
+      const hits = statesOutcome(v);
+      if (hits.length) { told++; console.log(`  ${name} · ${k} states the outcome: ${hits.join(', ')}`); }
+    }
+  }
+  if (told) { console.error('\nPublic copy must not say how it ends.'); process.exit(1); }
+  console.log('outcome check: nothing published says how a simulation ends');
+}

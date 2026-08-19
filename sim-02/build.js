@@ -38,15 +38,45 @@ if (leaked.length) {
 console.log(`scenario audit: clean (${forbidden.length} markers checked)`);
 
 // The catalogue copy is published on a public page, so it must give nothing
-// away either. Same markers, checked against what this simulation says about
-// itself — a description that names the answer is worse than no description.
+// away. Two checks, because the first one alone let a description through that
+// stated the resolution outright.
 {
-  const { META } = require('./lib/scenario.js');
-  const blurb = JSON.stringify(META || {}).toLowerCase();
-  const told = forbidden.filter(t => blurb.includes(t));
-  if (told.length) {
-    console.error('REFUSING: the catalogue copy gives away scenario content:', told.join(', '));
+  const S = require('./lib/scenario.js');
+  const blurb = JSON.stringify(S.META || {}).toLowerCase();
+
+  // 1. The named things — same markers that guard the browser bundle.
+  const named = forbidden.filter(t => blurb.includes(t));
+
+  // 2. Anything the copy has in common with the resolution. A run of five
+  //    words shared with GROUND_TRUTH means the description is doing the
+  //    simulation's job for it.
+  const norm = (t) => String(t).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const runs = (t, n) => {
+    const w = norm(t).split(' ');
+    const out = new Set();
+    for (let i = 0; i + n <= w.length; i++) out.add(w.slice(i, i + n).join(' '));
+    return out;
+  };
+  const truth = runs(JSON.stringify(S.GROUND_TRUTH || {}), 5);
+  const shared = [...runs(JSON.stringify(S.META || {}), 5)].filter(r => truth.has(r));
+
+  // 3. The shapes a resolution takes, whatever words it uses.
+  const TELLS = [
+    'both are true', 'neither alone', 'it was both', 'turns out to be both',
+    'the real cause', 'what actually caused', 'the answer is',
+    'destroys the evidence', 'unless somebody stops', 'unless someone stops'
+  ];
+  const shapes = TELLS.filter(t => blurb.includes(t));
+
+  const problems = [
+    ...named.map(t => `names "${t}"`),
+    ...shared.slice(0, 3).map(r => `shares a phrase with the resolution: "${r}"`),
+    ...shapes.map(t => `states the outcome: "${t}"`)
+  ];
+  if (problems.length) {
+    console.error('REFUSING: the catalogue copy gives the simulation away:');
+    problems.forEach(x => console.error('  · ' + x));
     process.exit(1);
   }
-  console.log('catalogue audit: clean');
+  console.log('catalogue audit: clean (named terms, shared phrasing, and stated outcomes)');
 }

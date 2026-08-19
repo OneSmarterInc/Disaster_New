@@ -62,3 +62,21 @@ function effective(detail) {
 }
 
 module.exports = { DEFAULTS, FIELDS, effective };
+
+
+// The catalogue is public. Copy that states the outcome is worse than no copy,
+// and an administrator writing it by hand is as likely as a developer shipping
+// it — this is the same list the simulations' own build guard uses.
+const OUTCOME_TELLS = [
+  'both are true', 'neither alone', 'it was both', 'turns out to be both',
+  'the real cause', 'what actually caused', 'the answer is', 'the culprit',
+  'destroys the evidence', 'unless somebody stops', 'unless someone stops'
+];
+
+function statesOutcome(text) {
+  const t = String(text || '').toLowerCase();
+  return OUTCOME_TELLS.filter(x => t.includes(x));
+}
+
+module.exports.OUTCOME_TELLS = OUTCOME_TELLS;
+module.exports.statesOutcome = statesOutcome;

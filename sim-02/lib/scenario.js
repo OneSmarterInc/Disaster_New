@@ -12,7 +12,7 @@ const META = {
   id: 'rapid-02-relay',
   title: 'What Did It Tell Them?',
   tagline: 'Twenty minutes after an AI told a customer the wrong number.',
-  description: 'A customer-facing AI assistant answered a technical question from a superseded datasheet, and the parts have been in service for six weeks. Either the document library is carrying stale revisions, or a routing change stopped the question ever reaching an engineer. Both are true, and neither alone would have done it — while an overnight job quietly destroys the evidence unless somebody stops it.',
+  description: 'An AI assistant answered a customer\'s technical question with the wrong figure, and the parts have been in service for six weeks. Two departments each have an account of how that happened, and each puts the fault on the other.',
   minutes: 20,
   detail: {
     world: 'Manufacturing · customer operations',

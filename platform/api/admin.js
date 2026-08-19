@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const SCHEMA = require('../lib/schema.js');
-const { effective, FIELDS } = require('../lib/catalogue.js');
+const { effective, FIELDS, statesOutcome } = require('../lib/catalogue.js');
 const { sql, id } = require('../lib/db.js');
 const A = require('../lib/auth.js');
 
@@ -230,6 +230,16 @@ module.exports = async (req, res) => {
         if (!sid) return res.status(400).json({ error: 'need_id' });
         const cur = (await s`SELECT detail FROM sims WHERE id = ${sid}`)[0];
         if (!cur) return res.status(404).json({ error: 'no_such_sim' });
+
+        // Refuse copy that gives the simulation away. The page is read by people
+        // deciding whether to teach with it, and a description that names the
+        // ending removes the reason to.
+        for (const f of FIELDS) {
+          if (b[f.key] === undefined) continue;
+          const told = statesOutcome(b[f.key]);
+          if (told.length) return res.status(400).json({ error: 'states_outcome',
+            message: `"${f.label}" gives the ending away — it says ${told.map(t => `"${t}"`).join(' and ')}. The catalogue is public.` });
+        }
 
         // 'description' is a column of its own; everything else lives in detail.
         if (b.description !== undefined) {

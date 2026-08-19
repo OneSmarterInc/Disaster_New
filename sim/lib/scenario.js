@@ -8,14 +8,14 @@ const META = {
   id: 'rapid-01-disaster',
   title: 'Disaster or Breach?',
   tagline: 'Twenty minutes inside an incident nobody can classify yet.',
-  description: 'Data corruption is spreading across client applications at two in the morning. A failing storage array and an intruder look identical at this hour, and the two response playbooks are opposed — the fastest way back destroys the evidence you would need if it turns out to be the other one. Students take advice from four people whose professional exposure runs in opposite directions.',
+  description: 'Data corruption is spreading across client applications at two in the morning. A failing storage array and an intruder look identical at this hour, and what you would do about one is the opposite of what you would do about the other.',
   minutes: 20,
   detail: {
     world: 'IT operations · managed services',
     seat: 'VP of Operations',
     clock: '02:14 Tuesday to Day 3',
     teaches: 'Sequencing under uncertainty · weighing advice from people with something at stake',
-    tangle: 'A failing disk and an intruder look identical at four in the morning. Restoring from backup is the fastest way to get clients working again. It also wipes the only evidence of which one this was.',
+    tangle: 'A failing disk and an intruder look identical at four in the morning, and the two things you would do about them are opposites. The fastest way to get clients working again is not the way to find out what happened.',
     turn: 'Two people in the room are blamed by opposite explanations. Both are good at their jobs and neither is lying. The best advice on offer comes from someone who would rather it were the other answer.',
     cast: [
       { name: 'Kate Sullivan', role: 'Director, Infrastructure & Architecture', stake: 'Specified the array. Owns the patch cadence.' },
