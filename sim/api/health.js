@@ -5,11 +5,20 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-// Read once at cold start, not per request.
-let BUILT_AT = 'unknown';
-try {
-  BUILT_AT = fs.statSync(path.join(__dirname, '../public/index.html')).mtime.toISOString();
-} catch (e) {}
+// Which build this is. File timestamps are useless here — Vercel normalises
+// them to a fixed epoch so that builds are reproducible, which is why this
+// reported October 2018. The commit is what actually identifies a deployment,
+// and Vercel supplies it. Falling back to a file time only helps locally.
+const BUILD = (() => {
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA;
+  if (sha) {
+    const ref = process.env.VERCEL_GIT_COMMIT_REF;
+    return sha.slice(0, 7) + (ref ? ' on ' + ref : '');
+  }
+  try {
+    return 'local, ' + fs.statSync(path.join(__dirname, '../public/index.html')).mtime.toISOString();
+  } catch (e) { return 'unknown'; }
+})();
 
 const fingerprint = (v) => v
   ? crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 8)
@@ -56,9 +65,10 @@ module.exports = async (req, res) => {
     // What this build can do. The platform compares these against what it
     // expects, so a deployment left behind is spotted rather than guessed at —
     // a stale sim looks identical to a broken one from the outside.
-    // When this bundle was built. The fastest way to tell a current deployment
-    // from one that answers identically because nothing visible changed.
-    builtAt: BUILT_AT,
+    // Which commit this deployment is running. The fastest way to tell a
+    // current build from one that answers identically because nothing visible
+    // changed.
+    build: BUILD,
     features: [
       'launch-token',        // accepts a signed token in place of an access code
       'launch-mode',         // plays or opens the session console, as asked

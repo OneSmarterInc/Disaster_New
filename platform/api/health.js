@@ -11,6 +11,10 @@ module.exports = async (req, res) => {
   const secret = process.env.LAUNCH_SECRET;
   return res.status(200).json({
     service: 'flexee-platform',
+    build: process.env.VERCEL_GIT_COMMIT_SHA
+      ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) +
+        (process.env.VERCEL_GIT_COMMIT_REF ? ' on ' + process.env.VERCEL_GIT_COMMIT_REF : '')
+      : 'local',
     database: (process.env.DATABASE_URL || process.env.POSTGRES_URL) ? 'configured' : 'MISSING',
     launchSecret: secret ? 'configured' : 'MISSING',
     launchSecretFingerprint: fingerprint(secret),

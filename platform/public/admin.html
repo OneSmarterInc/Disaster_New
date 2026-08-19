@@ -438,7 +438,7 @@ function catTab() {
       <div class="mini" style="margin-bottom:9px">Checked just now</div>
       ${D.checkOut.map(r => `<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;align-items:baseline">
         <div><b>${esc(r.title)}</b>
-          ${r.builtAt ? `<span class="sub" style="display:inline;margin-left:6px">built ${esc(new Date(r.builtAt).toLocaleString())}</span>` : ''}
+          ${r.build ? `<span class="sub" style="display:inline;margin-left:6px">${esc(r.build)}</span>` : ''}
           ${r.detail ? `<div class="hint" style="margin:2px 0 0">${esc(r.detail)}</div>` : ''}</div>
         ${dot(r.state === 'ready' ? 'ok' : r.state === 'unreachable' ? 'bad' : 'warn', r.state)}
       </div>`).join('')}
