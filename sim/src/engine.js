@@ -69,7 +69,7 @@ const BASE = (location.pathname.match(/^\/sim\d+/) || [''])[0];
 async function api(path, payload) {
   let r;
   try {
-    r = await fetch(path, {
+    r = await fetch(BASE + path, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' },
         LAUNCH_TOKEN ? { 'x-launch-token': LAUNCH_TOKEN }
