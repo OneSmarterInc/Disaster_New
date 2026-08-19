@@ -17,6 +17,11 @@
   </div>
 </div>
 <div class="wrap" id="app"></div>
+
+<div class="wrap"><div class="foot-note">
+  <span>&copy; 2026 Flexee LLC. All rights reserved.</span>
+  <span><a href="/">Simulations</a> &nbsp;·&nbsp; <a href="/signin.html">Sign in</a></span>
+</div></div>
 <script>
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -26,7 +31,7 @@ const D = {
   detail: null, err: null,
   q: {}, filter: {}, page: {},
   open: null, personEdit: null, invite: false, lastInvite: null,
-  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null, addSim: false, checkOut: null
+  link: null, simEdit: null, reviewersFor: null, maint: false, grantSent: null, help: null, addSim: false, checkOut: null, copyFor: null
 };
 
 async function api(path, payload) {
@@ -462,6 +467,42 @@ function catTab() {
             <div data-simout="${esc(si.id)}"></div>
           </div>` : ''}
 
+          ${D.copyFor === si.id ? (() => {
+            const d = si.detail || {};
+            const mine = d._edited || [];
+            const fld = (k, label, hint, rows) => `<div class="field" style="margin-bottom:12px"><div>
+              <label class="f">${label}${mine.includes(k) ? ' · yours' : ''}</label>
+              ${rows ? `<textarea rows="${rows}" data-cf="${k}">${esc(d[k]||'')}</textarea>`
+                     : `<input data-cf="${k}" value="${esc(d[k]||'')}">`}
+              ${hint ? `<div class="hint" style="margin:4px 0 0">${hint}</div>` : ''}
+            </div></div>`;
+            return `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+              <div class="mini">What the public catalogue says ${helpBtn('copy')}</div>
+              ${explain('copy', 'Whose words these are', `<ol>
+                <li>A simulation arrives describing itself, so nothing here starts empty.</li>
+                <li>Anything you rewrite is marked <b>yours</b> and survives every later redeploy of that simulation.</li>
+                <li>Clearing a field hands it back to the simulation, which will refill it next time it announces itself.</li>
+                <li>This page is public and read by people deciding whether to teach with it. Do not put the ending in it.</li>
+              </ol>`)}
+              <div class="field" style="margin-bottom:12px">
+                <div><label class="f">Setting${mine.includes('world') ? ' · yours' : ''}</label>
+                  <input data-cf="world" value="${esc(d.world||'')}" placeholder="IT operations · managed services"></div>
+                <div><label class="f">You are${mine.includes('seat') ? ' · yours' : ''}</label>
+                  <input data-cf="seat" value="${esc(d.seat||'')}" placeholder="VP of Operations"></div>
+                <div><label class="f">Spans${mine.includes('clock') ? ' · yours' : ''}</label>
+                  <input data-cf="clock" value="${esc(d.clock||'')}" placeholder="02:14 Tuesday to Day 3"></div>
+              </div>
+              ${fld('teaches', 'Teaches', 'One line, shown on the list and in the sidebar.')}
+              ${fld('tangle', 'What makes it hard', 'The problem, without the answer.', 3)}
+              ${fld('turn', 'Why it teaches something', 'The argument for the format — usually about exposure.', 3)}
+              ${fld('after', 'Afterwards', 'What the debrief does.', 3)}
+              <button class="btn pri sm" data-copysave="${esc(si.id)}">Save catalogue page</button>
+              <button class="btn sm" data-copy="${esc(si.id)}">Cancel</button>
+              <a class="btn sm" href="/" target="_blank" style="margin-left:6px">View it</a>
+              <div data-copyout="${esc(si.id)}"></div>
+            </div>`;
+          })() : ''}
+
           ${D.reviewersFor === si.id ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
             <div class="mini">Who can see it before it is published ${helpBtn('grant:'+si.id)}</div>
             ${explain('grant:'+si.id, 'How a reviewer gets in', `<ol>
@@ -498,6 +539,7 @@ function catTab() {
           ${si.published ? dot('ok','Published') : dot('warn', revs.length ? `Draft · ${revs.length} reviewing` : 'Draft')}
           <div>
             <button class="btn sm" data-simedit="${esc(si.id)}">${D.simEdit===si.id?'Close':'Edit'}</button>
+            <button class="btn sm" data-copy="${esc(si.id)}">${D.copyFor===si.id?'Close':'Catalogue page'}</button>
             ${!si.published ? `<button class="btn sm" data-rev="${esc(si.id)}">${D.reviewersFor===si.id?'Hide':'Reviewers'}</button>` : ''}
             <button class="btn sm" data-pub="${esc(si.id)}" data-now="${si.published?'1':'0'}">${si.published?'Unpublish':'Publish'}</button>
             <button class="btn sm danger" data-simdel="${esc(si.id)}">Delete</button>
@@ -582,6 +624,23 @@ function catTab() {
     </div>` : ''}`;
 }
 function wireCat() {
+  app.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
+    D.copyFor = D.copyFor === b.dataset.copy ? null : b.dataset.copy;
+    D.simEdit = null; D.reviewersFor = null; render(); });
+
+  app.querySelectorAll('[data-copysave]').forEach(btn => btn.onclick = async () => {
+    const id = btn.dataset.copysave, panel = btn.parentElement;
+    const v = k => { const el = panel.querySelector(`[data-cf="${k}"]`); return el ? el.value : undefined; };
+    const out = app.querySelector(`[data-copyout="${id}"]`);
+    const done = acting(btn, 'Saving…');
+    try {
+      await api('/api/admin', { action:'save_detail', id,
+        world:v('world'), seat:v('seat'), clock:v('clock'),
+        teaches:v('teaches'), tangle:v('tangle'), turn:v('turn'), after:v('after') });
+      done('Saved'); D.copyFor = null; load();
+    } catch (e) { if (out) out.innerHTML = `<div class="hint" style="color:var(--rose)">${esc(e.message)}</div>`; done('Not saved','bad'); }
+  });
+
   app.querySelectorAll('[data-simedit]').forEach(b => b.onclick = () => {
     D.simEdit = D.simEdit === b.dataset.simedit ? null : b.dataset.simedit; D.reviewersFor = null; render(); });
   app.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => {

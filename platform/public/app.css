@@ -361,3 +361,13 @@ td input,td select,td textarea{font-size:14.5px}
   .metrics > div{flex-direction:column;gap:1px}
   .metrics > div > span{flex:none}
 }
+
+
+/* ── footer ─────────────────────────────────────────────────────────────── */
+.foot-note{
+  border-top:1px solid var(--line);margin-top:56px;padding:22px 0 0;
+  display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);
+}
+.foot-note a{color:var(--ink3)}
+.foot-note a:hover{color:var(--ink);text-decoration:none}

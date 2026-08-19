@@ -55,10 +55,17 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, created: true, number: n });
     }
 
-    // The catalogue copy belongs to the simulation and is refreshed every time,
-    // unlike the title and tagline, which an administrator may have rewritten.
+    // The simulation's own copy refreshes on every announcement, except for any
+    // field an administrator has rewritten — theirs wins from then on, because
+    // a redeploy should not quietly undo their words.
     if (p.detail) {
-      await s`UPDATE sims SET detail = ${JSON.stringify(p.detail).slice(0, 12000)} WHERE id = ${p.sim}`;
+      const edited = (existing.detail && existing.detail._edited) || [];
+      const merged = Object.assign({}, p.detail);
+      for (const k of edited) {
+        if (existing.detail && existing.detail[k] !== undefined) merged[k] = existing.detail[k];
+      }
+      merged._edited = edited;
+      await s`UPDATE sims SET detail = ${JSON.stringify(merged).slice(0, 12000)} WHERE id = ${p.sim}`;
     }
 
     // Already known. Keep the address and duration current — those are facts

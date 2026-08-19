@@ -196,6 +196,30 @@ module.exports = async (req, res) => {
           problems
         });
       }
+      // The catalogue copy an administrator writes wins over what the
+      // simulation sent about itself, and survives every later announcement.
+      // Blanking a field hands it back to the simulation.
+      case 'save_detail': {
+        const sid = String(b.id || '').trim();
+        if (!sid) return res.status(400).json({ error: 'need_id' });
+        const cur = (await s`SELECT detail FROM sims WHERE id = ${sid}`)[0];
+        if (!cur) return res.status(404).json({ error: 'no_such_sim' });
+
+        const next = Object.assign({}, cur.detail || {});
+        const words = ['world', 'seat', 'clock', 'teaches', 'tangle', 'turn', 'after'];
+        for (const k of words) {
+          if (b[k] === undefined) continue;
+          const v = String(b[k]).trim();
+          if (v) next[k] = v.slice(0, 2000); else delete next[k];
+        }
+        // Anything an administrator has touched is theirs from now on.
+        next._edited = Array.from(new Set([...(cur.detail && cur.detail._edited || []),
+          ...words.filter(k => b[k] !== undefined && String(b[k]).trim())]));
+
+        await s`UPDATE sims SET detail = ${JSON.stringify(next).slice(0, 12000)} WHERE id = ${sid}`;
+        return res.status(200).json({ ok: true, detail: next });
+      }
+
       case 'save_sim': {
         const sid = String(b.id || '').trim();
         if (!sid) return res.status(400).json({ error: 'need_id' });
