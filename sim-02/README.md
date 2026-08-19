@@ -1,4 +1,4 @@
-# Flexee Rapid Sim 02 — Vercel deployment
+# Flexee RapidSim 02 — Vercel deployment
 
 The scenario is deliberately split. `public/index.html` is the interface only — the clock, the commitment mechanics, the transcript. It contains no character contracts, no knowledge sets, no scene text beyond the current moment, and no resolution. A student who opens the page source learns nothing about how it ends.
 

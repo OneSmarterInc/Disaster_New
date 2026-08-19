@@ -12,7 +12,7 @@ function deny(res, wants, title, message) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${title}</title><link rel="stylesheet" href="/app.css"></head><body>
     <div class="narrow">
-      <div class="eyebrow">Flexee Rapid Sims</div>
+      <div class="eyebrow">Flexee RapidSims</div>
       <h1>${title}</h1><p class="lede">${message}</p>
       <p><a href="/">Back to your courses</a></p>
     </div></body></html>`);

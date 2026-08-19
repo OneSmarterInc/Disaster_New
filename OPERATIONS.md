@@ -2,7 +2,7 @@
 
 Two Vercel projects from this repository, each with a different Root Directory.
 
-## sim/ — Rapid Sim 01
+## sim/ — RapidSim 01
 
 Root Directory `sim`. Serves the simulation and its facilitator session console.
 

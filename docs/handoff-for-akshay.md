@@ -1,4 +1,4 @@
-# Rapid Sim 02 — tree handoff
+# RapidSim 02 — tree handoff
 
 `rapid-sim-02-tree.tar.gz` unpacks to `sim-02/`. Copied from `sim/` at commit `ed0eb36` and edited from there. Drop it in the repo root alongside `sim/` and `platform/`, and give it its own Vercel project with Root Directory `sim-02/`.
 
@@ -6,7 +6,7 @@ Everything parses, the client boots against a stubbed DOM, and the build guard r
 
 ## Vercel setup
 
-Same environment variables as Rapid Sim 01: `ANTHROPIC_API_KEY`, `ACCESS_CODE`, `FACULTY_CODES`, `LAUNCH_SECRET` (must match the platform's exactly), and the Upstash Redis integration for sessions.
+Same environment variables as RapidSim 01: `ANTHROPIC_API_KEY`, `ACCESS_CODE`, `FACULTY_CODES`, `LAUNCH_SECRET` (must match the platform's exactly), and the Upstash Redis integration for sessions.
 
 If you change Root Directory after the first deploy, redeploy with the build cache disabled or you get the old output.
 
@@ -18,7 +18,7 @@ Two structural additions worth knowing about:
 
 **`sceneFor(phase, state)` takes run state.** The third moment has two variants depending on whether the student preserved the search index before a scheduled overnight job overwrote it. Variant content lives in `PHASES` as beats and telemetry rows carrying an `only` tag; `sceneFor` filters on tags computed from state. The client receives the same plain shape it always did, so this is invisible downstream. `api/scene.js` recomputes the flag from the recorded positions rather than trusting what the client sends, so a reload can't land someone in the wrong variant.
 
-**Disclosure detection moved to the server.** See below — this one matters for Rapid Sim 01 too.
+**Disclosure detection moved to the server.** See below — this one matters for RapidSim 01 too.
 
 ## Two bugs found in `sim/` while doing this
 

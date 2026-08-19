@@ -1,10 +1,10 @@
-# Flexee Rapid Sims
+# Flexee RapidSims
 
 Two deployments in one repository.
 
 ## sim/
 
-Rapid Sim 01 — Disaster or Breach? A twenty-minute simulation where students run
+RapidSim 01 — Disaster or Breach? A twenty-minute simulation where students run
 an IT incident and take advice from four AI characters whose professional
 exposure runs in opposite directions.
 
@@ -21,7 +21,7 @@ store for session state.
 
 ## sim-02/
 
-Rapid Sim 02 — What Did It Tell Them? A customer-facing AI assistant gave a
+RapidSim 02 — What Did It Tell Them? A customer-facing AI assistant gave a
 customer a specification figure from a superseded datasheet, and the parts are
 in service. Either the document library is carrying stale revisions, or a
 routing change stopped the question reaching an engineer. Both are true.
@@ -50,7 +50,7 @@ Needs Postgres, `LAUNCH_SECRET`, and `PUBLIC_BASE_URL`.
 
 ## docs/
 
-Design and specification documents: the Rapid Sim 02 scenario, the engine
+Design and specification documents: the RapidSim 02 scenario, the engine
 changes it needed, the platform pre-publication access spec, and the handoff
 notes.
 

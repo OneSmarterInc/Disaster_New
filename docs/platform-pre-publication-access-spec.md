@@ -4,7 +4,7 @@ Written against `main` at `ed0eb36`. Nothing here is committed.
 
 ## Why
 
-Rapid Sim 02 is coming, and every one after it will need the same thing: a period where the sim is registered, deployed and working, but not visible to anyone except the people reviewing it. Today that period has no home in the platform. Rapid Sim 01 was reviewed by handing out the sim's own access code, which works and bypasses the platform entirely — so nothing is recorded, entitlement doesn't apply, and the reviewer sees the sim rather than the thing a faculty member would actually experience.
+RapidSim 02 is coming, and every one after it will need the same thing: a period where the sim is registered, deployed and working, but not visible to anyone except the people reviewing it. Today that period has no home in the platform. RapidSim 01 was reviewed by handing out the sim's own access code, which works and bypasses the platform entirely — so nothing is recorded, entitlement doesn't apply, and the reviewer sees the sim rather than the thing a faculty member would actually experience.
 
 The decision is that a sim is registered unpublished, sits there while we get it right, and appears in the catalogue when Vikram flips the flag. Publication is his call, not the builder's.
 

@@ -2,7 +2,7 @@
 // scenario content at all, so it cannot leak the incident even if asked directly.
 const { checkAccess, requireKey, anthropic, body } = require('../lib/guard.js');
 
-const MECHANICS = `You are a help assistant for a twenty-minute business school exercise called Rapid Sim 01. You answer questions about HOW THE EXERCISE WORKS. You know nothing whatsoever about what is happening inside it, and that is not a limitation you apologise for — it is the point.
+const MECHANICS = `You are a help assistant for a twenty-minute business school exercise called RapidSim 01. You answer questions about HOW THE EXERCISE WORKS. You know nothing whatsoever about what is happening inside it, and that is not a limitation you apologise for — it is the point.
 
 WHAT YOU KNOW ABOUT THE MECHANICS:
 

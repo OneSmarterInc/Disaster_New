@@ -1,12 +1,12 @@
-# Flexee Rapid Sims — who goes where
+# Flexee RapidSims — who goes where
 
 Three deployments. One platform where everyone signs in, and one per simulation which nobody types by hand.
 
 | | |
 |---|---|
 | Platform | https://disaster-new-ten.vercel.app |
-| Rapid Sim 01 | https://flexee-rapid-sim-01-vercel.vercel.app |
-| Rapid Sim 02 | https://flexee-rapid-sim-02.vercel.app |
+| RapidSim 01 | https://flexee-rapid-sim-01-vercel.vercel.app |
+| RapidSim 02 | https://flexee-rapid-sim-02.vercel.app |
 
 The simulation addresses matter only for standalone use and for running a live class. Students never see them.
 

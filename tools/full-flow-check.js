@@ -123,7 +123,7 @@ const call = (h, body, cookie) => new Promise(res => {
 
   r = await call(faculty, { action:'overview' }, facCookie);
   if (!r.body.catalogue) { console.log('  overview returned:', JSON.stringify(r.body).slice(0,200)); process.exit(1); }
-  ok('draft sim invisible before a grant', r.body.catalogue.length===1, 'sees only Rapid Sim 01');
+  ok('draft sim invisible before a grant', r.body.catalogue.length===1, 'sees only RapidSim 01');
 
   await call(admin, { action:'grant_sim_access', simId:'rapid-02-relay', email:'chuck@t.com', note:'reviewing' }, adminCookie);
   r = await call(faculty, { action:'overview' }, facCookie);

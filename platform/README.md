@@ -1,7 +1,7 @@
-# Flexee Rapid Sims — platform
+# Flexee RapidSims — platform
 
 Catalogue, faculty accounts, courses, student enrolment and entitlement for the
-Rapid Sims. Payment is handled outside this system: a faculty member marks a
+RapidSims. Payment is handled outside this system: a faculty member marks a
 student or a whole section as paid, and that flag is what unlocks a launch.
 
 ## How it fits together

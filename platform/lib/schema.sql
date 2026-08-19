@@ -1,4 +1,4 @@
--- Flexee Rapid Sims platform.
+-- Flexee RapidSims platform.
 -- Deliberately small: people, courses, enrolments, entitlement. No payment tables —
 -- money is handled outside the system and lands here as a "paid" flag.
 
@@ -142,7 +142,7 @@ CREATE INDEX IF NOT EXISTS sim_access_sim_idx ON sim_access(sim_id);
 
 -- Added after the sims table existed, so it has to be an alter rather than part
 -- of the create. Every simulation carries a short number people can say out
--- loud — 'Rapid Sim 2' rather than 'rapid-02-relay'. Names change, ids are
+-- loud — 'RapidSim 2' rather than 'rapid-02-relay'. Names change, ids are
 -- awkward in conversation, numbers are neither.
 ALTER TABLE sims ADD COLUMN IF NOT EXISTS number INTEGER;
 CREATE UNIQUE INDEX IF NOT EXISTS sims_number_idx ON sims(number) WHERE number IS NOT NULL;

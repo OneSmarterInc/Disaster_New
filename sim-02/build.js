@@ -17,7 +17,7 @@ console.log(`built ${path.relative(process.cwd(), dest)} — ${out.length} bytes
 
 // Guard: the scenario must never end up in the browser bundle.
 // Checked case-insensitively on distinctive fragments. A previous version of the
-// Rapid Sim 01 guard tested for a phrase the bundle had reworded, so it passed on
+// RapidSim 01 guard tested for a phrase the bundle had reworded, so it passed on
 // a file that leaked — match on the smallest distinctive piece instead. The
 // figures 260 and Ridgeline are absent deliberately, as is 'superseded': all
 // three appear in the opening screens, which state both explanations upfront by

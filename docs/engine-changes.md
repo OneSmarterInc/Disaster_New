@@ -1,4 +1,4 @@
-# Rapid Sim 02 — what has to change outside scenario.js
+# RapidSim 02 — what has to change outside scenario.js
 
 The scenario file is a drop-in replacement for `sim/lib/scenario.js`. Four things around it need work. Nothing here is committed.
 
@@ -42,7 +42,7 @@ Store the quote. The debrief uses it, and it's how you diagnose a wrong branch w
 
 ## 4. `build.js` — replace the forbidden list
 
-The current list checks for Rapid Sim 01 strings that don't exist in this sim, so it would pass clean on an empty audit. Replace with:
+The current list checks for RapidSim 01 strings that don't exist in this sim, so it would pass clean on an empty audit. Replace with:
 
 ```js
 const forbidden = ['deflection', 'Revision C', 'week three', 'GROUND_TRUTH', 'KNOWLEDGE', '02:00'];
@@ -65,4 +65,4 @@ Devin's ladder detection follows Sophia's regex pattern, tightened to tier-three
 
 ## Before any deploy
 
-Two checks from the Rapid Sim 01 list, both of which caught real bugs: the static check for called-but-undefined functions, and booting the client against a stubbed DOM. Syntax checks won't catch either failure.
+Two checks from the RapidSim 01 list, both of which caught real bugs: the static check for called-but-undefined functions, and booting the client against a stubbed DOM. Syntax checks won't catch either failure.

@@ -1,6 +1,6 @@
-# Rapid Sim 02 — "What Did It Tell Them?"
+# RapidSim 02 — "What Did It Tell Them?"
 
-Scenario specification. Written to the Rapid Sim format brief. No shared names, roles or subject matter with Rapid Sim 01.
+Scenario specification. Written to the RapidSim format brief. No shared names, roles or subject matter with RapidSim 01.
 
 Company: **Calder Sealing Systems**. Assistant: **Relay**. Vendor: **Trellis Systems**.
 Student seat: **VP of Customer Operations**.
@@ -124,7 +124,7 @@ Timed interjections at each drop. Makes no technical call. Wants one sentence he
 
 ## 4. Rules every agent carries
 
-Carried forward from Rapid Sim 01 verbatim in intent.
+Carried forward from RapidSim 01 verbatim in intent.
 
 **Out of scope.** If asked something outside your knowledge or your seat, say plainly that you don't know or that it isn't your area. Never invent technical facts, log entries, timestamps, names, document numbers or findings not in your knowledge list. Deferring to a colleague is preferred over guessing.
 
@@ -226,5 +226,5 @@ Released only after all three positions are locked.
 
 - Two actions were cut from the drop-1 set to fit six. Verify in playtest that halting Relay and pulling the log don't dominate every run.
 - Five voices, four interactive. Watch whether the bridge feels crowded; Grant is the one to cut if it does, and the sim survives without him at some cost to the commercial-interest lesson.
-- Grant and Devin are adjacent in subject matter, which raises the candour-leak risk that hit Rapid Sim 01. Test specifically for Grant becoming frank about Trellis's interest after Devin's tier-three disclosure.
+- Grant and Devin are adjacent in subject matter, which raises the candour-leak risk that hit RapidSim 01. Test specifically for Grant becoming frank about Trellis's interest after Devin's tier-three disclosure.
 - Faculty cover note to be written in two variants, executive and student, against one build.

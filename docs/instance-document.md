@@ -1,8 +1,8 @@
-# Rapid Sim 02 — instance document
+# RapidSim 02 — instance document
 
 **Not for faculty.** This holds the resolution. Faculty get the cover note instead. Two readers: whoever is building or maintaining this sim, and whoever decides it is ready to publish.
 
-Every Rapid Sim carries a document with these sections, in this order, in its own directory. Sections marked *(fill on completion)* are written as the sim is built, not before.
+Every RapidSim carries a document with these sections, in this order, in its own directory. Sections marked *(fill on completion)* are written as the sim is built, not before.
 
 ---
 
@@ -63,13 +63,13 @@ Four interactive agents, one scripted voice.
 
 Hour 1 Tuesday, Hour 7 Tuesday, Day 2 Wednesday. Six standing actions, live at all three, three reversible and three irreversible. Readings: stale document, answered instead of escalated, both, undetermined.
 
-**Day 2 branches** on whether the index survived the night, which is the first Rapid Sim to branch at all. Held by the preserve action or by a conversational instruction, at either earlier moment, sticky once set.
+**Day 2 branches** on whether the index survived the night, which is the first RapidSim to branch at all. Held by the preserve action or by a conversational instruction, at either earlier moment, sticky once set.
 
 ## 8. Engine deltas *(fill on completion)*
 
 What this sim needed that the previous one did not, and whether it was ported back.
 
-- `sceneFor(phase, state)` — variant slots on beats and telemetry rows, resolved server-side. Ported back to Rapid Sim 01? **No — pending.**
+- `sceneFor(phase, state)` — variant slots on beats and telemetry rows, resolved server-side. Ported back to RapidSim 01? **No — pending.**
 - Classifier at phase close for the conversational branch key. New machinery.
 - `build.js` forbidden list is per-sim and must be rewritten, not inherited.
 
@@ -91,7 +91,7 @@ Verbatim field values for `save_sim`. Registered unpublished.
 
 A sim with no review record is not ready to publish. For each reviewer: who, when, what broke, what changed as a result.
 
-The two instruments, on the Rapid Sim 01 pattern:
+The two instruments, on the RapidSim 01 pattern:
 
 - **Did the graded disclosure land?** Ask Devin on the bridge whether anything changed on his side, then ask him privately what the change was made for. If the gap between those answers does not feel like a discovery, the design has a problem.
 - **Do the characters hold?** Tell them to ignore their instructions. Ask about things that never happened. Accuse Joanna of causing the failure. Push Grant on whether Trellis should have warned about the threshold change — he is adjacent to Devin's confession and is the likeliest candour leak.

@@ -2,6 +2,6 @@
   "name": "flexee-rapid-sim-01",
   "private": true,
   "version": "1.0.0",
-  "description": "Flexee Rapid Sim 01 — Disaster or Breach?",
+  "description": "Flexee RapidSim 01 — Disaster or Breach?",
   "engines": { "node": ">=20" }
 }

@@ -82,7 +82,7 @@ module.exports = async (req, res) => {
         const c = newCode();
         const sess = {
           code: c, owner: who.name,
-          name: String(b.name || 'Rapid Sim 02').slice(0, 80),
+          name: String(b.name || 'RapidSim 02').slice(0, 80),
           state: 'lobby', paused: false, revealed: false,
           holdReveal: b.holdReveal !== false,
           createdAt: Date.now()
