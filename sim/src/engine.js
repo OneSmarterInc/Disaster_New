@@ -129,11 +129,14 @@ async function askCharacter(id, message, channel) {
 }
 
 
-function goOffline() {
+// Two ways to end up scripted: the bridge stopped answering, or somebody chose
+// it. The first wants a banner explaining what happened; the second does not,
+// because a deliberate choice presented as a failure reads as a crash.
+function goOffline(chosen) {
   if (OFFLINE) return;
   OFFLINE = true;
   refreshCog();
-  showBanner();
+  if (!chosen) showBanner();
 }
 
 function showBanner() {
@@ -694,7 +697,7 @@ function renderJoin() {
       <button class="btn pri" id="jgo" style="padding:12px 24px">Join</button>
     </div>
     <div id="jerr" style="color:var(--sophia);font-size:14px"></div>
-    <p style="color:var(--dimmer);font-size:14px;margin-top:18px">Nothing is stored about you beyond this name, and the session deletes itself after two days.</p>
+    <p style="color:var(--dimmer);font-size:14px;margin-top:18px">While the session runs we hold your name, which group you are in, and how far you have got. Nothing else, and the whole session deletes itself after two days.</p>
   </div></div>`;
   const go = async () => {
     const n = document.getElementById('jn').value.trim();
@@ -879,7 +882,6 @@ function openSettings() {
       ${labelRow('code', 'Access code')}
       <div class="guide" id="g-code" style="display:none">
         <p>If this sim was hosted for you, you were given a code. It's checked on the server; the API key stays there and never reaches your browser.</p>
-        <p>If you're running the file on your own machine instead, leave this blank and use the key field below.</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input id="ac" type="text" placeholder="access code" value="${esc(ACCESS_CODE || '')}"
@@ -923,7 +925,7 @@ function openSettings() {
     }
     b.textContent = 'Use code'; b.disabled = false;
   };
-  sheet.querySelector('#sk-scripted').onclick = () => { goOffline(); sheet.remove(); refreshCog(); };
+  sheet.querySelector('#sk-scripted').onclick = () => { goOffline(true); sheet.remove(); refreshCog(); };
 }
 
 // ---------- opening: story → the room → the rules ----------

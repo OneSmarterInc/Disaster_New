@@ -88,6 +88,7 @@ console.log(`scenario audit: clean (${forbidden.length} markers checked)`);
   const { execFileSync } = require('child_process');
   try {
     execFileSync(process.execPath, [require('path').join(__dirname, 'tools/prefix-check.js')], { stdio: 'inherit' });
+    execFileSync(process.execPath, [require('path').join(__dirname, 'tools/session-contract-check.js')], { stdio: 'inherit' });
   } catch (e) {
     process.exit(1);
   }

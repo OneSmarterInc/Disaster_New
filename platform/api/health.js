@@ -7,6 +7,18 @@ const fingerprint = (v) => v
   ? crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 8)
   : null;
 
+// This endpoint is deliberately readable. Everything on it is a diagnostic
+// boolean — configured or missing — and knowing that a database is reachable
+// helps nobody attack it. What does not belong in public is anything derived
+// from a secret, so the launch fingerprint is shown only to a caller who
+// already holds the secret it is derived from. That is also the one field
+// nobody can act on without it.
+function holdsTheSecret(req) {
+  const given = String(req.headers['x-health-key'] || (req.query && req.query.key) || '');
+  const want = String(process.env.LAUNCH_SECRET || '');
+  return !!want && given === want;
+}
+
 module.exports = async (req, res) => {
   const secret = process.env.LAUNCH_SECRET;
   return res.status(200).json({

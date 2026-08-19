@@ -103,7 +103,10 @@ module.exports = async (req, res) => {
       simId, courseId, mode, minutes: 10
     });
 
-    const url = sim.launch_url.replace(/\/$/, '') + '/?lt=' + encodeURIComponent(token);
+    // In the fragment, not the query. A fragment is never sent in the HTTP
+    // request, so the token stays out of access logs and proxy logs on the way
+    // there. The simulation already reads both.
+    const url = sim.launch_url.replace(/\/$/, '') + '/#lt=' + encodeURIComponent(token);
     if (wants === 'json') return res.status(200).json({ url });
     return res.redirect(302, url);
 

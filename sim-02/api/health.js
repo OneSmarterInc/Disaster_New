@@ -27,6 +27,16 @@ const fingerprint = (v) => v
 const { announce } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
 
+// The fingerprint confirms whether this simulation and the platform share a
+// secret, which is the single most useful thing on here when something is
+// misconfigured — and the only field derived from a secret. Shown to a caller
+// who already holds it; everything else is a diagnostic boolean and stays open.
+function holdsTheSecret(req) {
+  const given = String(req.headers['x-health-key'] || (req.query && req.query.key) || '');
+  const want = String(process.env.LAUNCH_SECRET || '');
+  return !!want && given === want;
+}
+
 module.exports = async (req, res) => {
   // Often the first thing anyone touches on a fresh deployment, and the one
   // place we can afford to wait for the announcement to actually land.
@@ -53,7 +63,7 @@ module.exports = async (req, res) => {
     launchSecret: secret ? 'configured' : 'MISSING',
     // Same secret on both sides gives the same eight characters. Different
     // values give different ones, and neither reveals the secret itself.
-    launchSecretFingerprint: fingerprint(secret),
+    launchSecretFingerprint: holdsTheSecret(req) ? fingerprint(secret) : 'hidden',
     platformUrl: process.env.PLATFORM_URL || 'MISSING (completions will not be reported)',
     // The address this simulation puts in the catalogue. Without SIM_URL it
     // registers whichever host the first request arrived on, which may be a

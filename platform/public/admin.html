@@ -401,7 +401,11 @@ function crsTab() {
         <td data-l="Enrolled" class="num">${c.enrolled}</td>
         <td data-l="Released" class="num"><span class="ratio ${Number(c.paid) < Number(c.enrolled) ? 'part' : ''}">${c.paid}</span></td>
         <td data-l="Launches" class="num">${c.launches}</td>
-      </tr>`).join('') : `<tr><td colspan="6" class="empty">Nothing matches that.</td></tr>`}
+      </tr>`).join('') : `<tr><td colspan="6" class="empty">${D.coursesFailed
+          ? `<b style="color:var(--rose)">Could not load courses.</b>
+             <div class="hint" style="margin:6px 0 10px">${esc(D.coursesFailed)}</div>
+             <button class="btn sm" id="crsretry">Try again</button>`
+          : 'Nothing matches that.'}</td></tr>`}
       </tbody></table></div>
       ${foot('crs', P, 'course')}
     </div>`;

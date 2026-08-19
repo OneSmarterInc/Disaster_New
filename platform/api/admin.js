@@ -1,5 +1,10 @@
 const crypto = require('crypto');
 const SCHEMA = require('../lib/schema.js');
+
+// A simulation shows its launch fingerprint only to a caller holding the shared
+// secret. The console is one, and it is the field that tells an administrator
+// why a launch is being refused.
+const KEY_HEADER = process.env.LAUNCH_SECRET ? { 'x-health-key': process.env.LAUNCH_SECRET } : {};
 const { effective, FIELDS, statesOutcome } = require('../lib/catalogue.js');
 const { sql, id } = require('../lib/db.js');
 const A = require('../lib/auth.js');
@@ -156,7 +161,7 @@ module.exports = async (req, res) => {
         }
         let health;
         try {
-          const r = await fetch(raw + '/api/health', { signal: AbortSignal.timeout(8000) });
+          const r = await fetch(raw + '/api/health', { headers: KEY_HEADER, signal: AbortSignal.timeout(8000) });
           if (!r.ok) return res.status(502).json({ error: 'no_health',
             message: `That address answered ${r.status}. Is it a simulation, and is it deployed?` });
           health = await r.json();
@@ -218,7 +223,7 @@ module.exports = async (req, res) => {
         let refreshed = false;
         try {
           const r = await fetch(String(row.launch_url).replace(/\/+$/, '') + '/api/health',
-            { signal: AbortSignal.timeout(7000) });
+            { headers: KEY_HEADER, signal: AbortSignal.timeout(7000) });
           refreshed = r.ok;
         } catch (e) { /* it will announce itself next time it is used */ }
         return res.status(200).json({ ok: true, refreshed });
@@ -441,7 +446,9 @@ module.exports = async (req, res) => {
         for (const sim of sims) {
           const base = String(sim.launch_url).replace(/\/+$/, '');
           try {
-            const r = await fetch(base + '/api/health', { signal: AbortSignal.timeout(7000) });
+            const r = await fetch(base + '/api/health', {
+              headers: process.env.LAUNCH_SECRET ? { 'x-health-key': process.env.LAUNCH_SECRET } : {},
+              signal: AbortSignal.timeout(7000) });
             if (!r.ok) { results.push({ id: sim.id, title: sim.title, state: 'unreachable',
               detail: `answered ${r.status}` }); continue; }
             const h = await r.json();

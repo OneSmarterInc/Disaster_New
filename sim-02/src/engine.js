@@ -136,11 +136,14 @@ async function askCharacter(id, message, channel) {
 }
 
 
-function goOffline() {
+// Two ways to end up scripted: the bridge stopped answering, or somebody chose
+// it. The first wants a banner explaining what happened; the second does not,
+// because a deliberate choice presented as a failure reads as a crash.
+function goOffline(chosen) {
   if (OFFLINE) return;
   OFFLINE = true;
   refreshCog();
-  showBanner();
+  if (!chosen) showBanner();
 }
 
 function showBanner() {
@@ -446,7 +449,7 @@ const GUIDE = {
   action: `<p><b>What we're looking for:</b> one action, because in a real hour you get one.</p>
     <p>We're not watching which option you pick. Every one of these has been the right call in a real incident somewhere. We're watching the <b>order</b> you take them in across the three moments — specifically whether the things you can't take back come before or after the things you can.</p>
     <p>The reversible / irreversible tag on each option is doing real work. Read it.</p>`,
-  tripwire: `<p><b>What we're looking for:</b> something specific enough that you'd recognise it the moment it happened, and that could actually happen tonight.</p>
+  tripwire: `<p><b>What we're looking for:</b> something specific enough that you'd recognise it the moment it happened, and that could actually happen in the next day or two.</p>
     <p>Most people write a tripwire that can never fire, because it asks for proof rather than for a signal. Here's the difference, using a completely different situation so it doesn't tip you off about this one:</p>
     <div class="ex bad"><span class="tag">Can never fire</span>"If I get evidence the supplier is in trouble."</div>
     <div class="ex good"><span class="tag">Will fire, or won't</span>"If their Q3 shipment slips more than a week without them raising it first."</div>
@@ -707,7 +710,7 @@ async function pushPosition(done) {
   if (!inSession() || !SESSION.groupId) return;
   try {
     await sessionApi({
-      action: 'submit', groupId: SESSION.groupId,
+      action: 'submit', groupId: SESSION.groupId, participantId: SESSION.participantId,
       positions: S.positions, phase: S.phase, done: !!done,
       ladderEarnedAt: S.ladderEarnedAt, privateCount: Object.keys(S.privateOpened).length
     });
@@ -725,7 +728,7 @@ function renderJoin() {
       <button class="btn pri" id="jgo" style="padding:12px 24px">Join</button>
     </div>
     <div id="jerr" style="color:var(--alert);font-size:14px"></div>
-    <p style="color:var(--dimmer);font-size:14px;margin-top:18px">Nothing is stored about you beyond this name, and the session deletes itself after two days.</p>
+    <p style="color:var(--dimmer);font-size:14px;margin-top:18px">While the session runs we hold your name, which group you are in, and how far you have got. Nothing else, and the whole session deletes itself after two days.</p>
   </div></div>`;
   const go = async () => {
     const n = document.getElementById('jn').value.trim();
@@ -795,7 +798,7 @@ const FAQ = [
   ['What happens when I record a position?',
    'It locks, and the incident moves to the next moment. You can\'t come back to this hour or edit what you wrote, so ask everything you want to ask first.'],
   ['When should I record it, then?',
-   'When you\'ve stopped learning things — not when you feel certain. Certainty isn\'t coming, and clients are down while you wait for it.'],
+   'When you\'ve stopped learning things — not when you feel certain. Certainty isn\'t coming, and those parts are in service while you wait for it.'],
   ['What does reversible mean?',
    'An action you could undo, or that only costs you time. Irreversible ones can\'t be taken back. Which you pick matters less than the order you do them in.'],
   ['Can I come back to this later?',
@@ -910,7 +913,6 @@ function openSettings() {
       ${labelRow('code', 'Access code')}
       <div class="guide" id="g-code" style="display:none">
         <p>If this sim was hosted for you, you were given a code. It's checked on the server; the API key stays there and never reaches your browser.</p>
-        <p>If you're running the file on your own machine instead, leave this blank and use the key field below.</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input id="ac" type="text" placeholder="access code" value="${esc(ACCESS_CODE || '')}"
@@ -954,7 +956,7 @@ function openSettings() {
     }
     b.textContent = 'Use code'; b.disabled = false;
   };
-  sheet.querySelector('#sk-scripted').onclick = () => { goOffline(); sheet.remove(); refreshCog(); };
+  sheet.querySelector('#sk-scripted').onclick = () => { goOffline(true); sheet.remove(); refreshCog(); };
 }
 
 // ---------- opening: story → the room → the rules ----------
@@ -1109,20 +1111,20 @@ function renderDebrief(D) {
     <p class="verdict ${D.preservation.tone}" style="font-size:15.5px">${esc(D.preservation.text)}</p>
     <p>${priv
       ? `You went off the call ${priv === 1 ? 'once' : priv === 2 ? 'twice' : priv + ' times'}. People say different things when the room isn't listening, and knowing when to take someone off the bridge is most of this job.`
-      : 'You never took anyone aside. Everything you heard, you heard in front of the people it would cost. That is the single cheapest thing you left on the table tonight.'}</p>
+      : 'You never took anyone aside. Everything you heard, you heard in front of the people it would cost. That is the single cheapest thing you left on the table.'}</p>
 
     ${D.arc ? `<div class="rule"></div><h3>Taken together</h3><p>${esc(D.arc)}</p>` : ''}
 
     <div class="rule"></div>
     <h3>Carry this forward</h3>
-    <p>Download the transcript before you close this. It has everything said tonight, including whatever you got out of people privately, and your three positions in your own words. That's the thing worth keeping — not because anyone will collect it, but because reading your first position back in a fortnight is a different experience from remembering it.</p>
-    <p>The transferable part isn't about any of tonight's specifics. It's that when you receive expert judgment from someone with a stake in the conclusion, you don't discard it and you don't swallow it — you ask what they'd have to say that costs them, and you sequence your own actions so the ones you can't take back come last.</p>
+    <p>Download the transcript before you close this. It has everything said today, including whatever you got out of people privately, and your three positions in your own words. That's the thing worth keeping — not because anyone will collect it, but because reading your first position back in a fortnight is a different experience from remembering it.</p>
+    <p>The transferable part isn't about any of this one's specifics. It's that when you receive expert judgment from someone with a stake in the conclusion, you don't discard it and you don't swallow it — you ask what they'd have to say that costs them, and you sequence your own actions so the ones you can't take back come last.</p>
 
     <div class="center" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn pri" id="dl" style="padding:13px 26px">Download your transcript</button>
       <button class="btn" id="again" style="padding:13px 26px">Run it again</button>
     </div>
-    <p style="text-align:center;font-size:13px;color:var(--dimmer);margin-top:14px">Everything said tonight, including the private conversations, plus your three positions. Nothing is kept once you close this page.</p>
+    <p style="text-align:center;font-size:13px;color:var(--dimmer);margin-top:14px">Everything said, including the private conversations, plus your three positions. Nothing is kept once you close this page.</p>
   </div></div>`;
   document.getElementById('again').onclick = () => location.reload();
   document.getElementById('dl').onclick = downloadTranscript;
