@@ -80,3 +80,15 @@ console.log(`scenario audit: clean (${forbidden.length} markers checked)`);
   }
   console.log('catalogue audit: clean (named terms, shared phrasing, and stated outcomes)');
 }
+
+// Served under a path behind the platform's domain, every request has to carry
+// that path. Checked here because the failure only shows up when somebody opens
+// it at /sim01, by which time it is in front of a class.
+{
+  const { execFileSync } = require('child_process');
+  try {
+    execFileSync(process.execPath, [require('path').join(__dirname, 'tools/prefix-check.js')], { stdio: 'inherit' });
+  } catch (e) {
+    process.exit(1);
+  }
+}
