@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flexee RapidSims</title>
+<link rel="stylesheet" href="/sim-detail.css">
 <script src="/sim-detail.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -62,50 +63,14 @@ a:hover{text-decoration:underline}
 .teaches{border-top:1px solid var(--line);margin-top:16px;padding-top:14px;font-size:14px;color:var(--ink2)}
 .teaches span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);margin-right:10px}
 
-/* ── one simulation ─────────────────────────────────────────────────────── */
-.crumb{padding:26px 0 0}
-.sim-head{padding:8px 0 30px;border-bottom:1px solid var(--line);margin-bottom:34px}
-.sim-head h1{font-size:42px;font-weight:300;letter-spacing:-.03em;line-height:1.1;margin:6px 0 12px}
-.sim-head .tag{font-size:19px;color:var(--amber);font-style:italic;max-width:52ch}
-.sim-head .facts{margin-top:20px}
-
-.two{display:grid;grid-template-columns:1fr 300px;gap:44px;align-items:start}
-.prose h3{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--ink3);font-weight:500;margin:32px 0 12px}
-.prose h3:first-child{margin-top:0}
-.prose p{font-size:16.5px;color:var(--ink2);margin-bottom:14px;max-width:66ch}
-.prose p strong{color:var(--ink);font-weight:500}
-
-.beats{border-left:1px solid var(--line2);padding-left:20px;margin:6px 0 4px}
-.beat{margin-bottom:16px}
-.beat .t{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}
-.beat p{margin:4px 0 0;font-size:15.5px}
-
-.room{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line)}
-.who{background:var(--panel);padding:13px 16px}
-.who .n{font-size:15.5px;font-weight:500}
-.who .r{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink3);margin-top:2px}
-.who .x{font-size:13.5px;color:var(--ink2);margin-top:7px;font-style:italic}
-
-.side{position:sticky;top:78px}
-.box{background:var(--panel);border:1px solid var(--line);padding:20px 22px;margin-bottom:14px}
-.box h4{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);
-  font-weight:500;margin-bottom:12px}
-.box .line{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px;border-bottom:1px solid var(--line)}
-.box .line:last-of-type{border-bottom:none}
-.box .line span{color:var(--ink3)}
-.box .line b{font-weight:500;text-align:right}
-.box p{font-size:14px;color:var(--ink2);margin-bottom:12px}
-
 .quote{border-left:2px solid var(--amber);background:var(--amber-bg);padding:16px 20px;margin:20px 0;
   font-size:16px;color:var(--ink2);line-height:1.6}
 .quote b{color:var(--ink);font-weight:500}
 
 @media (max-width:880px){
-  .two{grid-template-columns:1fr;gap:28px}
-  .side{position:static}
+  /* .two, .side and .sim-head are handled in sim-detail.css, which both this
+     page and the faculty console load */
   .hero h1{font-size:34px}
-  .sim-head h1{font-size:32px}
   .card{flex-direction:column}
   .card .num{flex:none;border-right:none;border-bottom:1px solid var(--line);padding:10px;justify-content:flex-start;padding-left:26px}
 }
