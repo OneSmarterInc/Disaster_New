@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flexee RapidSims</title>
+<script src="/sim-detail.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -192,80 +193,23 @@ function list(){
       <b>They all work the same way.</b> Two people in the room get blamed by opposite answers. Both are honest.
       Both want it to be the other one. Nobody is lying, and that is what makes it hard.
     </div>`;
-  app.querySelectorAll('[data-open]').forEach(c => c.onclick = () => { VIEW = c.dataset.open; render(); });
+  app.querySelectorAll('[data-open]').forEach(c => c.onclick = () => {
+    VIEW = c.dataset.open; setLink(VIEW); render(); });
 }
 
 function detail(){
-  const s = SIMS.find(x => x.id === VIEW);
-  if (!s) { VIEW = null; return list(); }
-  const d = s.detail || {};
-  app.innerHTML = `
-    <div class="crumb"><a id="back">← All simulations</a></div>
-    <div class="sim-head">
-      <div class="eyebrow">${s.number ? 'RapidSim ' + String(s.number).padStart(2,'0') : 'RapidSim'}${d.world ? ' · ' + esc(d.world) : ''}</div>
-      <h1>${esc(s.title)}</h1>
-      ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
-      <div class="facts">
-        ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
-        <span>played <b>individually</b></span>
-        <span><b>no</b> preparation</span>
-        <span><b>not</b> marked</span>
-        <span>runs <b>standalone</b></span>
-      </div>
-    </div>
+  const sim = SIMS.find(x => x.id === VIEW);
+  if (!sim) { VIEW = null; return list(); }
+  app.innerHTML = `<div class="crumb"><a id="back">← All simulations</a></div>` +
+    simDetailHTML(sim);
+  document.getElementById('back').onclick = () => { VIEW = null; setLink(null); render(); };
+}
 
-    <div class="two">
-      <div class="prose">
-        ${s.description ? `<h3>The situation</h3><p>${esc(s.description)}</p>` : ''}
-        ${d.tangle ? `<h3>What makes it hard</h3><p>${esc(d.tangle)}</p>` : ''}
-        ${d.turn ? `<h3>Why it teaches something</h3><p>${esc(d.turn)}</p>` : ''}
-
-        ${Array.isArray(d.cast) && d.cast.length ? `<h3>The room</h3>
-          <p>${esc(d.roomIntro || '')}</p>
-          <div class="room">${d.cast.map(c => `<div class="who">
-            <div class="n">${esc(c.name)}</div>
-            <div class="r">${esc(c.role)}</div>
-            ${c.stake ? `<div class="x">${esc(c.stake)}</div>` : ''}
-          </div>`).join('')}</div>` : ''}
-
-        ${Array.isArray(d.beats) && d.beats.length ? `<h3>How the twenty minutes go</h3>
-          <p>${esc(d.momentsIntro || '')}</p>
-          <div class="beats">${d.beats.map(b => `<div class="beat">
-            <div class="t">${esc(b.at)}</div><p>${esc(b.what)}</p></div>`).join('')}</div>` : ''}
-
-        ${d.after ? `<h3>Afterwards</h3><p>${esc(d.after)}</p>` : ''}
-        ${d.discussion ? `<p>${esc(d.discussion)}</p>` : ''}
-      </div>
-
-      <div class="side">
-        <div class="box">
-          <h4>At a glance</h4>
-          ${d.seat ? `<div class="line"><span>You are</span><b>${esc(d.seat)}</b></div>` : ''}
-          ${d.world ? `<div class="line"><span>Setting</span><b>${esc(d.world)}</b></div>` : ''}
-          ${d.clock ? `<div class="line"><span>Spans</span><b>${esc(d.clock)}</b></div>` : ''}
-          <div class="line"><span>Decisions</span><b>Three</b></div>
-          <div class="line"><span>Quantitative</span><b>None</b></div>
-          <div class="line"><span>Played</span><b>Individually</b></div>
-          <div class="line"><span>Session</span><b>About an hour</b></div>
-        </div>
-
-        ${d.teaches ? `<div class="box"><h4>Teaches</h4><p style="margin:0">${esc(d.teaches)}</p></div>` : ''}
-
-        <div class="box">
-          <h4>Try it</h4>
-          <p>${esc(d.tryIt || '')}</p>
-          <a class="btn pri" href="mailto:support@flexee.org?subject=${encodeURIComponent('RapidSims — preview request: ' + s.title)}&body=${encodeURIComponent('I would like to try this before using it with a class.\n\nName:\nInstitution:\nCourse:\nRoughly how many students:\n')}" style="display:block;text-align:center">Request a preview</a>
-          <div style="font-size:12.5px;color:var(--ink3);margin-top:10px">Already have an account?
-            <a href="/signin.html">Sign in</a> and it will be listed under Simulations.</div>
-        </div>
-
-        <div class="box">
-          <h4>Running a session</h4>
-          <p style="margin:0">${esc(d.sessionShape || '')}</p>
-        </div>
-      </div>
-    </div>`;
-  document.getElementById('back').onclick = () => { VIEW = null; render(); };
+// A page somebody can send to a colleague. Without this the address bar says
+// nothing about which simulation is open, so a link to one is a link to the list.
+function setLink(id) {
+  const url = id ? location.pathname + '?sim=' + encodeURIComponent(id) : location.pathname;
+  history.replaceState(null, '', url);
 }
 
 function render(){
@@ -278,6 +222,9 @@ document.getElementById('home').onclick = () => { VIEW = null; render(); };
   greet();
   try { SIMS = (await api('/api/auth', { action:'catalogue' })).sims || []; }
   catch (e) { ERR = e.message; }
+  // Opened straight at one? Show it.
+  const asked = new URLSearchParams(location.search).get('sim');
+  if (asked && SIMS.some(x => x.id === asked)) VIEW = asked;
   render();
 })();
 </script>

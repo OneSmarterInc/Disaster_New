@@ -23,3 +23,17 @@ for (const f of files.filter(x => x.endsWith('.html'))) {
 }
 if (bad) { console.error(`\n${bad} dead link${bad === 1 ? '' : 's'}.`); process.exit(1); }
 console.log('link check: every internal link points at a page that exists');
+
+// A page calling into the shared renderer must actually load it, or the eye
+// opens onto a ReferenceError.
+{
+  let bad = 0;
+  for (const f of files.filter(x => x.endsWith('.html'))) {
+    const s = fs.readFileSync(path.join(dir, f), 'utf8');
+    if (/simDetailHTML\(/.test(s) && !/src="\/sim-detail\.js"/.test(s)) {
+      bad++; console.log(`  ${f} uses simDetailHTML but never loads /sim-detail.js`);
+    }
+  }
+  if (bad) { console.error('\nA shared renderer that is not loaded throws on first use.'); process.exit(1); }
+  console.log('shared script check: every page that renders a simulation loads the renderer');
+}

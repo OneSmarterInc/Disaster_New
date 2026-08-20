@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Your courses — Flexee RapidSims</title>
 <link rel="stylesheet" href="/app.css">
+<script src="/sim-detail.js"></script>
 </head>
 <body class="console">
 <div class="top">
@@ -30,7 +31,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;
 const F = {
   view:'home', tab:'crs', data:null, simsOverview:null, course:null, progress:null,
   me:null, err:null, q:{}, filter:{}, sel:new Set(),
-  newCourse:false, editCourse:false, addSim:false, help:null
+  newCourse:false, editCourse:false, addSim:false, help:null, looking:null
 };
 
 async function api(path, payload) {
@@ -49,6 +50,12 @@ const when = (t) => {
 const daysLeft = t => Math.max(0, Math.ceil((new Date(t) - Date.now()) / 86400000));
 const simLabel = x => (x.number ? String(x.number).padStart(2,'0') + ' · ' : '') + x.title;
 const dot = (k, l) => `<span class="st ${k}">${esc(l)}</span>`;
+
+// Look at what a simulation is before deciding anything about it — the same page
+// a colleague would see on the public catalogue.
+const eye = (id) => `<button class="eye" data-look="${esc(id)}" title="What is this simulation?" aria-label="What is this simulation?">
+  <svg viewBox="0 0 24 24"><path d="M1.5 12S5 5.5 12 5.5 22.5 12 22.5 12 19 18.5 12 18.5 1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+</button>`;
 
 // Explanations behind a question mark: there when you want them, gone when you
 // don't. A facilitator runs this twice a term and forgets in between.
@@ -217,7 +224,7 @@ function simsTab() {
       : shown.length ? shown.map(x => {
         const p = prevOf(x.id), live = p && daysLeft(p.expires_at) > 0;
         return `<tr>
-          <td data-l="Simulation"><div class="nm">${esc(simLabel(x))}</div>
+          <td data-l="Simulation"><div class="nm">${esc(simLabel(x))}${eye(x.id)}</div>
             <div class="meta dim">${esc(x.tagline || '')}${x.minutes ? ' · about ' + x.minutes + ' minutes' : ''}</div></td>
           <td data-l="Courses" class="num">${x.inUse ? x.courses : '—'}</td>
           <td data-l="Started" class="num">${x.inUse ? x.started : '—'}</td>
@@ -300,7 +307,7 @@ function renderCourse() {
         return `<div class="sim">
           <div class="no">${x.number ? String(x.number).padStart(2,'0') : '··'}</div>
           <div class="body">
-            <div class="t">${esc(x.title)}</div>
+            <div class="t">${esc(x.title)}${eye(x.sim_id)}</div>
             <div class="sub" style="margin-top:5px"><b style="color:var(--ink)">${x.finished||0}</b> finished · <b style="color:var(--ink)">${x.started||0}</b> started${x.expected_seats ? ' · ' + x.expected_seats + ' expected' : ''}</div>
             <div style="height:3px;background:var(--line);margin-top:8px;max-width:260px"><i style="display:block;height:3px;background:var(--green);width:${pct}%"></i></div>
           </div>
@@ -520,12 +527,45 @@ function renderPlayed() {
   document.getElementById('back').onclick = () => openCourse(course.id);
 }
 
+// Opened over whatever the facilitator was doing, so closing it puts them back
+// exactly where they were rather than on a page they have to navigate out of.
+function wireLook() {
+  app.querySelectorAll('[data-look]').forEach(b => b.onclick = () => {
+    F.looking = b.dataset.look; drawLook();
+  });
+}
+function drawLook() {
+  const old = document.getElementById('lookSheet');
+  if (old) old.remove();
+  if (!F.looking) return;
+
+  const sim = (F.data.catalogue || []).find(x => x.id === F.looking);
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.id = 'lookSheet';
+  sheet.innerHTML = `<div class="inner">
+    <div class="close"><button class="btn sm" id="lookClose">Close</button></div>
+    ${sim ? simDetailHTML(sim, { forFaculty: true })
+          : '<div class="empty">That simulation is not in your list any more.</div>'}
+  </div>`;
+  document.body.appendChild(sheet);
+
+  const shut = () => { F.looking = null; drawLook(); };
+  document.getElementById('lookClose').onclick = shut;
+  sheet.onclick = (e) => { if (e.target === sheet) shut(); };
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { shut(); document.removeEventListener('keydown', esc); }
+  });
+  document.getElementById('lookClose').focus();
+}
+
 function wireHelp() {
   app.querySelectorAll('[data-help]').forEach(b => b.onclick = () => {
     F.help = F.help === b.dataset.help ? null : b.dataset.help; render(); });
 }
 function wireCommon() {
   wireHelp();
+  wireLook();
   app.querySelectorAll('[data-q]').forEach(i => i.oninput = () => {
     const k = i.dataset.q; F.q[k] = i.value; render();
     const again = app.querySelector(`[data-q="${k}"]`);

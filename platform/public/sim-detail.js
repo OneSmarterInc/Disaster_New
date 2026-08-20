@@ -1,0 +1,88 @@
+// What a simulation's page says about it.
+//
+// The public catalogue and the faculty console both show this, and they used to
+// be one implementation because there was only one page. Written once here so a
+// change to the wording, or a new section, reaches both — two copies of a
+// description drifting apart is exactly the fault we have spent a day chasing in
+// other forms.
+//
+// `opts.forFaculty` drops the "request a preview" panel, since somebody looking
+// at this from inside their own console already has access.
+(function () {
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function simDetailHTML(s, opts) {
+    const o = opts || {};
+    const d = s.detail || {};
+    const num = s.number ? String(s.number).padStart(2, '0') : null;
+
+    return `
+    <div class="sim-head">
+      <div class="eyebrow">${num ? 'RapidSim ' + num : 'RapidSim'}${d.world ? ' · ' + esc(d.world) : ''}</div>
+      <h1>${esc(s.title)}</h1>
+      ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
+      <div class="facts">
+        ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
+        <span>played <b>individually</b></span>
+        <span><b>no</b> preparation</span>
+        <span><b>not</b> marked</span>
+        <span>runs <b>standalone</b></span>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="prose">
+        ${s.description ? `<h3>The situation</h3><p>${esc(s.description)}</p>` : ''}
+        ${d.tangle ? `<h3>What makes it hard</h3><p>${esc(d.tangle)}</p>` : ''}
+        ${d.turn ? `<h3>Why it teaches something</h3><p>${esc(d.turn)}</p>` : ''}
+
+        ${Array.isArray(d.cast) && d.cast.length ? `<h3>The room</h3>
+          ${d.roomIntro ? `<p>${esc(d.roomIntro)}</p>` : ''}
+          <div class="room">${d.cast.map((c) => `<div class="who">
+            <div class="n">${esc(c.name)}</div>
+            <div class="r">${esc(c.role)}</div>
+            ${c.stake ? `<div class="x">${esc(c.stake)}</div>` : ''}
+          </div>`).join('')}</div>` : ''}
+
+        ${Array.isArray(d.beats) && d.beats.length ? `<h3>How the twenty minutes go</h3>
+          ${d.momentsIntro ? `<p>${esc(d.momentsIntro)}</p>` : ''}
+          <div class="beats">${d.beats.map((b) => `<div class="beat">
+            <div class="t">${esc(b.at)}</div><p>${esc(b.what)}</p></div>`).join('')}</div>` : ''}
+
+        ${d.after ? `<h3>Afterwards</h3><p>${esc(d.after)}</p>` : ''}
+        ${d.discussion ? `<p>${esc(d.discussion)}</p>` : ''}
+      </div>
+
+      <div class="side">
+        <div class="box">
+          <h4>At a glance</h4>
+          ${d.seat ? `<div class="line"><span>You are</span><b>${esc(d.seat)}</b></div>` : ''}
+          ${d.world ? `<div class="line"><span>Setting</span><b>${esc(d.world)}</b></div>` : ''}
+          ${d.clock ? `<div class="line"><span>Spans</span><b>${esc(d.clock)}</b></div>` : ''}
+          <div class="line"><span>Decisions</span><b>Three</b></div>
+          <div class="line"><span>Quantitative</span><b>None</b></div>
+          <div class="line"><span>Played</span><b>Individually</b></div>
+          <div class="line"><span>Session</span><b>About an hour</b></div>
+        </div>
+
+        ${d.teaches ? `<div class="box"><h4>Teaches</h4><p style="margin:0">${esc(d.teaches)}</p></div>` : ''}
+
+        ${o.forFaculty ? '' : `<div class="box">
+          <h4>Try it</h4>
+          ${d.tryIt ? `<p>${esc(d.tryIt)}</p>` : ''}
+          <a class="btn pri" href="mailto:support@flexee.org?subject=${encodeURIComponent('RapidSims — preview request: ' + s.title)}&body=${encodeURIComponent('I would like to try this before using it with a class.\n\nName:\nInstitution:\nCourse:\nRoughly how many students:\n')}" style="display:block;text-align:center">Request a preview</a>
+          <div style="font-size:12.5px;color:var(--ink3);margin-top:10px">Already have an account?
+            <a href="/signin.html">Sign in</a> and it will be listed under Simulations.</div>
+        </div>`}
+
+        ${d.sessionShape ? `<div class="box">
+          <h4>Running a session</h4>
+          <p style="margin:0">${esc(d.sessionShape)}</p>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  window.simDetailHTML = simDetailHTML;
+})();
