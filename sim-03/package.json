@@ -1,0 +1,12 @@
+{
+  "name": "flexee-rapid-sim-03",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Flexee RapidSim 03 — local optimization against system outcome (engine only, no scenario)",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node test/engine.test.js",
+    "guard": "node guard.js ./test/fixture-process.js",
+    "check": "npm test && npm run guard"
+  }
+}

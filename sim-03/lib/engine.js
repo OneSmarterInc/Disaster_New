@@ -1,0 +1,376 @@
+// SERVER ONLY. This file is never sent to a browser.
+//
+// RapidSim 03 — local optimization against system outcome.
+//
+// The lesson: a participant who owns one station of a process improves the
+// thing in front of them, and the cost lands somewhere they cannot see. The
+// engine exists to make that structurally true rather than narratively true.
+// Downstream state is not hidden by the client declining to render it. It is
+// hidden because visible() never returns it and the transport has no other
+// path to the browser.
+//
+// Two properties matter more than anything else here:
+//
+//   1. Downstream effects are DEFERRED. If an action's cost showed up in the
+//      same round it was taken, the participant would learn the mapping by
+//      round three and the sim would become an optimisation puzzle. The lag is
+//      what makes local reasoning look correct for long enough to commit to it.
+//
+//   2. The sim is WINNABLE. There is an inspect action that reveals downstream
+//      readings, priced in local performance. A participant who spends on it
+//      loses the local scoreboard and saves the person downstream. That trade
+//      IS the lesson. Without it this is a trick, not a simulation.
+
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Leak protection
+//
+// One array, used both as the written list and as the detector. Sim 01 shipped
+// a forbidden-terms list that had drifted from the regex meant to enforce it,
+// so the check never fired and the markers went to the browser. Never maintain
+// two copies of this.
+// ---------------------------------------------------------------------------
+
+const PROTECTED_KEYS = [
+  'downstream',
+  'pending',
+  'harm',
+  'strain',
+  'rework',
+  'trueCycleTime',
+  'harmThreshold',
+  'downstreamEffects'
+];
+
+// Everything visible() is permitted to emit at the top level. An allow-list
+// rather than a deny-list, because a new state field added later defaults to
+// hidden instead of defaulting to leaked.
+const VISIBLE_KEYS = [
+  'round',
+  'roundsTotal',
+  'stationId',
+  'stationName',
+  'inbound',
+  'cleared',
+  'backlog',
+  'localScore',
+  'localCycleTime',
+  'actionsTaken',
+  'readings',
+  'finished'
+];
+
+// ---------------------------------------------------------------------------
+// Session
+// ---------------------------------------------------------------------------
+
+class Session {
+  // `process` is a process definition — see data/schema.md. It is passed in
+  // rather than required at module scope so the engine can be tested against a
+  // synthetic process before any scenario exists.
+  constructor(processDef, opts = {}) {
+    validateProcess(processDef);
+    this.process = processDef;
+
+    this.round = 0;
+    this.roundsTotal = processDef.rounds;
+    this.finished = false;
+
+    // The station the participant owns. Everything else is downstream or
+    // upstream of them and invisible either way.
+    this.stationId = opts.stationId || processDef.participantStation;
+    const own = processDef.stations.find(s => s.id === this.stationId);
+    if (!own) throw new Error(`unknown participant station: ${this.stationId}`);
+    this.stationName = own.name;
+
+    // Visible local state.
+    this.inbound = own.openingInbound;
+    this.cleared = 0;
+    this.backlog = own.openingBacklog;
+    this.localScore = 0;
+    this.localCycleTime = own.baseCycleTime;
+    this.actionsTaken = [];
+    this.readings = [];        // populated only by inspect actions
+
+    // Hidden system state. Keyed by station id.
+    this.downstream = {};
+    for (const s of processDef.stations) {
+      if (s.id === this.stationId) continue;
+      this.downstream[s.id] = { strain: s.openingStrain || 0, rework: 0 };
+    }
+
+    // Effects waiting to land. Each is { round, stationId, field, delta }.
+    this.pending = [];
+
+    this.harm = { triggered: false, atRound: null, stationId: null, person: null };
+    this.transcript = [];
+  }
+
+  // -------------------------------------------------------------------------
+  // The only thing the client is ever given.
+  // -------------------------------------------------------------------------
+  visible() {
+    const out = {};
+    for (const k of VISIBLE_KEYS) {
+      if (this[k] === undefined) continue;
+      out[k] = deepCopy(this[k]);
+    }
+    out.availableActions = this.availableActions().map(a => ({
+      id: a.id,
+      label: a.label,
+      localCost: a.localCost || 0
+    }));
+    return out;
+  }
+
+  // Action definitions carry their downstream consequences. Those must never
+  // reach the client, so this strips to id, label and the local price only.
+  availableActions() {
+    if (this.finished) return [];
+    return this.process.actions.filter(a => {
+      if (a.availableFrom !== undefined && this.round < a.availableFrom) return false;
+      if (a.oncePerRun && this.actionsTaken.includes(a.id)) return false;
+      return true;
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // A round.
+  // -------------------------------------------------------------------------
+  act(actionId) {
+    if (this.finished) throw new Error('run is over');
+    const action = this.availableActions().find(a => a.id === actionId);
+    if (!action) throw new Error(`unavailable action: ${actionId}`);
+
+    const before = this.snapshotLocal();
+
+    // Local effects land immediately. This is the whole reason local reasoning
+    // feels correct — the feedback is fast and it is real.
+    applyLocal(this, action);
+    this.actionsTaken.push(action.id);
+
+    // Downstream effects are queued against a future round.
+    for (const e of action.downstreamEffects || []) {
+      this.pending.push({
+        round: this.round + (e.lag === undefined ? 1 : e.lag),
+        stationId: e.stationId,
+        field: e.field,
+        delta: e.delta
+      });
+    }
+
+    // Inspect actions are the escape hatch. They read hidden state and copy a
+    // single reading into visible state, which is the only sanctioned path
+    // from downstream to the participant.
+    let reading = null;
+    if (action.inspect) {
+      reading = this.readDownstream(action.inspect);
+      this.readings.push(reading);
+    }
+
+    this.transcript.push({
+      round: this.round,
+      actionId: action.id,
+      label: action.label,
+      localBefore: before,
+      localAfter: this.snapshotLocal(),
+      reading
+    });
+
+    this.advance();
+    return { visible: this.visible(), reading };
+  }
+
+  // Land anything due, run arrivals, check for harm, roll the clock.
+  advance() {
+    this.round += 1;
+
+    const due = this.pending.filter(p => p.round <= this.round);
+    this.pending = this.pending.filter(p => p.round > this.round);
+    for (const p of due) {
+      const st = this.downstream[p.stationId];
+      if (!st) continue;
+      st[p.field] = (st[p.field] || 0) + p.delta;
+      if (st[p.field] < 0) st[p.field] = 0;
+    }
+
+    this.inbound = this.process.arrivalsPerRound;
+    this.backlog += this.inbound;
+
+    this.checkHarm();
+
+    if (this.round >= this.roundsTotal) this.finished = true;
+  }
+
+  // Harm is deterministic and lands on a named person, never on a metric.
+  // It fires once. A run that has already harmed someone does not harm them
+  // twice for a worse score — the participant either got there or did not.
+  checkHarm() {
+    if (this.harm.triggered) return;
+    for (const s of this.process.stations) {
+      const st = this.downstream[s.id];
+      if (!st) continue;
+      if (s.harmThreshold !== undefined && st.strain >= s.harmThreshold) {
+        this.harm = {
+          triggered: true,
+          atRound: this.round,
+          stationId: s.id,
+          person: s.owner
+        };
+        return;
+      }
+    }
+  }
+
+  readDownstream(spec) {
+    const st = this.downstream[spec.stationId];
+    const station = this.process.stations.find(s => s.id === spec.stationId);
+    if (!st || !station) throw new Error(`cannot inspect ${spec.stationId}`);
+    // A reading is a rendered sentence, not a number the participant can
+    // arithmetic against. They should come away knowing something is wrong
+    // downstream, not holding a gauge they can optimise to zero.
+    return {
+      round: this.round,
+      stationId: spec.stationId,
+      stationName: station.name,
+      text: describeStrain(st.strain, station)
+    };
+  }
+
+  snapshotLocal() {
+    return {
+      cleared: this.cleared,
+      backlog: this.backlog,
+      localScore: this.localScore,
+      localCycleTime: this.localCycleTime
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Serialisation. Plain JSON so it can sit in Redis between turns the way
+  // 01 and 02 do. No Maps — 02's askCounts Map needed special handling on both
+  // sides of the wire and it was a recurring source of bugs.
+  // -------------------------------------------------------------------------
+  toJSON() {
+    return {
+      round: this.round,
+      roundsTotal: this.roundsTotal,
+      finished: this.finished,
+      stationId: this.stationId,
+      stationName: this.stationName,
+      inbound: this.inbound,
+      cleared: this.cleared,
+      backlog: this.backlog,
+      localScore: this.localScore,
+      localCycleTime: this.localCycleTime,
+      actionsTaken: this.actionsTaken,
+      readings: this.readings,
+      downstream: this.downstream,
+      pending: this.pending,
+      harm: this.harm,
+      transcript: this.transcript
+    };
+  }
+
+  static fromJSON(processDef, obj) {
+    const s = new Session(processDef, { stationId: obj.stationId });
+    Object.assign(s, obj);
+    return s;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Local effects
+// ---------------------------------------------------------------------------
+
+function applyLocal(session, action) {
+  const l = action.local || {};
+  const throughput = Math.min(session.backlog, l.clears || 0);
+  session.cleared += throughput;
+  session.backlog -= throughput;
+
+  if (l.cycleTimeDelta) {
+    session.localCycleTime = Math.max(1, session.localCycleTime + l.cycleTimeDelta);
+  }
+
+  // The local scoreboard is what the participant is measured on, and it is
+  // honest. Improving it really does improve it. That is the trap.
+  session.localScore += (l.scoreDelta || 0) + throughput;
+  session.localScore -= (action.localCost || 0);
+}
+
+function describeStrain(strain, station) {
+  const bands = station.strainBands || [
+    [0, 'nothing unusual'],
+    [3, 'running behind, catching up'],
+    [6, 'consistently behind'],
+    [9, 'not coping']
+  ];
+  let text = bands[0][1];
+  for (const [floor, label] of bands) if (strain >= floor) text = label;
+  return text;
+}
+
+// ---------------------------------------------------------------------------
+// Process definition validation
+//
+// The engine computes what is legal rather than being told. If a definition is
+// wrong the tests should say so loudly at construction, not silently produce a
+// sim nobody can win.
+// ---------------------------------------------------------------------------
+
+function validateProcess(p) {
+  if (!p || typeof p !== 'object') throw new Error('process definition required');
+  const need = ['id', 'stations', 'actions', 'rounds', 'participantStation', 'arrivalsPerRound'];
+  for (const k of need) {
+    if (p[k] === undefined) throw new Error(`process definition missing: ${k}`);
+  }
+  if (!Array.isArray(p.stations) || p.stations.length < 2) {
+    throw new Error('a process needs at least two stations, or there is no downstream');
+  }
+  if (!Array.isArray(p.actions) || p.actions.length < 2) {
+    throw new Error('a process needs at least two actions, or there is no decision');
+  }
+
+  const ids = new Set();
+  for (const s of p.stations) {
+    if (!s.id) throw new Error('station missing id');
+    if (ids.has(s.id)) throw new Error(`duplicate station id: ${s.id}`);
+    ids.add(s.id);
+    if (s.harmThreshold !== undefined && !s.owner) {
+      // Harm must land on a named person. A station that can harm without an
+      // owner would produce harm to a metric, which is the failure mode the
+      // design rules exist to prevent.
+      throw new Error(`station ${s.id} can harm but names nobody`);
+    }
+  }
+
+  for (const a of p.actions) {
+    if (!a.id) throw new Error('action missing id');
+    if (!a.label) throw new Error(`action ${a.id} missing label`);
+    for (const e of a.downstreamEffects || []) {
+      if (!ids.has(e.stationId)) {
+        throw new Error(`action ${a.id} targets unknown station ${e.stationId}`);
+      }
+      if (e.lag !== undefined && e.lag < 1) {
+        // A same-round downstream effect is visible in the same breath as the
+        // action that caused it, which teaches the mapping and destroys the sim.
+        throw new Error(`action ${a.id} has a downstream effect with lag < 1`);
+      }
+    }
+    if (a.inspect && !ids.has(a.inspect.stationId)) {
+      throw new Error(`action ${a.id} inspects unknown station ${a.inspect.stationId}`);
+    }
+  }
+
+  if (!p.actions.some(a => a.inspect)) {
+    throw new Error('no inspect action: the sim would be unwinnable');
+  }
+}
+
+function deepCopy(v) {
+  return v === null || typeof v !== 'object' ? v : JSON.parse(JSON.stringify(v));
+}
+
+module.exports = { Session, PROTECTED_KEYS, VISIBLE_KEYS, validateProcess, describeStrain };
