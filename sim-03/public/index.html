@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>The Bench Is Clear — Harlow Instruments</title>
+<style>
+  :root {
+    --ink: #10131a;
+    --paper: #f4f2ed;
+    --panel: #ffffff;
+    --rule: #d9d5cc;
+    --muted: #6b6659;
+    --accent: #1f4d3d;
+    --accent-soft: #e8f0eb;
+    --warn: #8a4b1e;
+    --shadow: 0 1px 2px rgba(16,19,26,.06), 0 8px 24px rgba(16,19,26,.05);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.55 ui-serif, Georgia, "Times New Roman", serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  h1, h2, h3 { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 0 0 12px; }
+  h3 { font-size: 15px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  p { margin: 0 0 14px; }
+  .sub { color: var(--muted); font-size: 15px; margin: 0 0 24px; font-family: ui-sans-serif, system-ui, sans-serif; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin: 0 0 18px;
+    box-shadow: var(--shadow);
+  }
+
+  /* The scoreboard. Deliberately the most prominent thing on the screen —
+     it is what the participant is measured on and it should feel that way. */
+  .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin: 0 0 18px; }
+  .cell { background: var(--panel); padding: 14px 16px; }
+  .cell .k { font: 600 11px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 6px; }
+  .cell .v { font: 600 26px/1.1 ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .cell .v.up { color: var(--accent); }
+
+  .choices { display: grid; gap: 10px; }
+  button.choice {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 9px;
+    padding: 14px 16px; font: inherit; color: inherit;
+    transition: border-color .12s, background .12s, transform .06s;
+  }
+  button.choice:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  button.choice:active:not(:disabled) { transform: translateY(1px); }
+  button.choice:disabled { opacity: .45; cursor: not-allowed; }
+  button.choice .lab { font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 600; display: block; margin-bottom: 3px; }
+  button.choice .bl { color: var(--muted); font-size: 14px; display: block; }
+  button.choice .cost { float: right; font: 600 12px/1 ui-sans-serif, system-ui, sans-serif; color: var(--warn); background: #f6ece3; border-radius: 20px; padding: 5px 10px; margin-left: 12px; }
+
+  button.primary {
+    cursor: pointer; font: 600 15px/1 ui-sans-serif, system-ui, sans-serif;
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 13px 22px;
+  }
+  button.primary:hover { background: #17392d; }
+
+  .reading { border-left: 3px solid var(--warn); background: #fbf5ef; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 0 0 18px; }
+  .reading .who { font: 600 11px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .07em; color: var(--warn); margin-bottom: 6px; }
+
+  .day { font: 600 12px/1 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; }
+  .clock { float: right; font-variant-numeric: tabular-nums; }
+  .clock.low { color: var(--warn); }
+
+  ul.brief { margin: 0; padding: 0; list-style: none; }
+  ul.brief li { margin: 0 0 12px; }
+
+  table.tl { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0 20px; }
+  table.tl th { text-align: left; font: 600 11px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 0 10px 8px 0; border-bottom: 1px solid var(--rule); }
+  table.tl td { padding: 9px 10px 9px 0; border-bottom: 1px solid #efece5; font-variant-numeric: tabular-nums; }
+  table.tl td.saw { color: var(--warn); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; }
+
+  .tail { border: 1px solid #e0c4ad; background: #fbf1e8; border-radius: 10px; padding: 18px 22px; margin: 0 0 18px; }
+  .tail .name { font: 600 17px/1.2 ui-sans-serif, system-ui, sans-serif; margin-bottom: 4px; }
+
+  .qs { counter-reset: q; padding: 0; list-style: none; margin: 0; }
+  .qs li { counter-increment: q; position: relative; padding-left: 30px; margin: 0 0 12px; }
+  .qs li::before { content: counter(q); position: absolute; left: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 600 12px/20px ui-sans-serif, system-ui, sans-serif; text-align: center; }
+
+  .err { background: #fdecec; border: 1px solid #e8b9b9; color: #8a2020; border-radius: 8px; padding: 12px 16px; margin: 0 0 16px; font-size: 14px; }
+  .hidden { display: none; }
+
+  @media (max-width: 620px) {
+    .board { grid-template-columns: repeat(2, 1fr); }
+    .wrap { padding: 20px 14px 60px; }
+    h1 { font-size: 23px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+// Client. Knows nothing.
+//
+// Every string a participant reads comes from the server on the turn it is
+// needed. There is no action table here, no cost table, no notion that a
+// second step exists. If you find yourself wanting to branch on which option
+// was chosen, that logic belongs on the server — putting it here ships the
+// answer key.
+//
+// The clock is the one piece of real logic in this file, and it is advisory:
+// the server does not enforce it. A participant who lets it run out gets the
+// decision made for them by the client, which is the same as a real deadline.
+
+(function () {
+  'use strict';
+
+  const app = document.getElementById('app');
+  const SECONDS_PER_DAY = 90;
+
+  const state = {
+    runId: null,
+    view: null,
+    reading: null,
+    brief: null,
+    timer: null,
+    left: SECONDS_PER_DAY,
+    busy: false
+  };
+
+  // Resume across a lost tab or a break between class sessions.
+  const KEY = 'rapidsim03.run';
+  const remember = (id) => { try { sessionStorage.setItem(KEY, id); } catch (e) {} };
+  const recall = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const forget = () => { try { sessionStorage.removeItem(KEY); } catch (e) {} };
+
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  async function post(action, extra) {
+    const headers = { 'content-type': 'application/json' };
+    // Passed through by the platform when the sim is launched from a course.
+    const params = new URLSearchParams(location.search);
+    const lt = params.get('lt') || params.get('launch');
+    if (lt) headers['x-launch-token'] = lt;
+    const ac = params.get('code');
+    if (ac) headers['x-access-code'] = ac;
+
+    const r = await fetch('/api/run', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(Object.assign({ action: action, runId: state.runId }, extra || {}))
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const e = new Error(data.message || data.error || ('HTTP ' + r.status));
+      e.code = data.error;
+      throw e;
+    }
+    return data;
+  }
+
+  function fail(msg) {
+    const d = document.createElement('div');
+    d.className = 'err';
+    d.textContent = msg;
+    app.prepend(d);
+  }
+
+  // -------------------------------------------------------------------------
+  // Screens
+  // -------------------------------------------------------------------------
+
+  function renderBrief() {
+    const b = state.brief.brief;
+    app.innerHTML =
+      '<h1>' + esc(b.heading) + '</h1>' +
+      '<p class="sub">' + esc(b.clock) + ' · you run the ' + esc(state.brief.station).toLowerCase() + '</p>' +
+      '<div class="panel"><ul class="brief">' +
+      b.lines.map(l => '<li>' + esc(l) + '</li>').join('') +
+      '</ul></div>' +
+      '<button class="primary" id="go">Start day 1</button>';
+    document.getElementById('go').onclick = start;
+  }
+
+  function renderDay() {
+    const v = state.view;
+    const day = v.round + 1;
+
+    let readingHtml = '';
+    if (state.reading) {
+      readingHtml =
+        '<div class="reading"><div class="who">' + esc(state.reading.stationName) + '</div>' +
+        esc(state.reading.text) + '</div>';
+    }
+
+    app.innerHTML =
+      '<div class="day">Day ' + day + ' of ' + v.roundsTotal +
+      '<span class="clock" id="clk">1:30</span></div>' +
+      '<div class="board">' +
+      cell('Units cleared', v.cleared) +
+      cell('Bench score', v.localScore, true) +
+      cell('In the queue', v.backlog) +
+      cell('Cycle time', v.localCycleTime + 'h') +
+      '</div>' +
+      readingHtml +
+      '<div class="panel"><h3>What do you do today?</h3><div class="choices" id="ch">' +
+      v.availableActions.map(a =>
+        '<button class="choice" data-id="' + esc(a.id) + '">' +
+        (a.localCost ? '<span class="cost">−' + a.localCost + ' bench score</span>' : '') +
+        '<span class="lab">' + esc(a.label) + '</span>' +
+        '<span class="bl">' + esc(a.blurb || '') + '</span>' +
+        '</button>').join('') +
+      '</div></div>';
+
+    Array.prototype.forEach.call(document.querySelectorAll('.choice'), (btn) => {
+      btn.onclick = () => choose(btn.getAttribute('data-id'));
+    });
+
+    startClock(v.availableActions);
+  }
+
+  function cell(k, v, accent) {
+    return '<div class="cell"><div class="k">' + esc(k) + '</div>' +
+      '<div class="v' + (accent ? ' up' : '') + '">' + esc(v) + '</div></div>';
+  }
+
+  function renderDebrief(d) {
+    const tail = d.outcome
+      ? '<div class="tail"><div class="name">' + esc(d.outcome.person) + '</div>' +
+        esc(d.outcome.what) + ' Day ' + esc(d.outcome.atRound) + '.</div>'
+      : '';
+
+    app.innerHTML =
+      '<h1>' + esc(d.title) + '</h1>' +
+      '<p class="sub">Bench score ' + esc(d.localScore) + ' · ' + esc(d.cleared) + ' units cleared · ' +
+      'you called the field desk ' + esc(d.counts.timesLooked) +
+      (d.counts.timesLooked === 1 ? ' time' : ' times') + '</p>' +
+      tail +
+      '<div class="panel"><p>' + esc(d.body) + '</p></div>' +
+      '<div class="panel"><h3>Day by day</h3>' +
+      '<table class="tl"><thead><tr><th>Day</th><th>What you did</th><th>Cleared</th><th>Score</th><th></th></tr></thead><tbody>' +
+      d.timeline.map(t =>
+        '<tr><td>' + esc(t.day) + '</td><td>' + esc(t.did) + '</td><td>' + esc(t.cleared) +
+        '</td><td>' + esc(t.score) + '</td><td class="saw">' + (t.sawIt ? 'you looked' : '') + '</td></tr>'
+      ).join('') +
+      '</tbody></table></div>' +
+      '<div class="panel"><h3>For the debrief</h3><ul class="qs">' +
+      d.questions.map(q => '<li>' + esc(q) + '</li>').join('') +
+      '</ul></div>';
+
+    forget();
+  }
+
+  // -------------------------------------------------------------------------
+  // The clock
+  //
+  // Advisory, and it does not stop the run. When it expires the most recently
+  // hovered option is not chosen for them — the first one is, which is the
+  // fast one, because a decision not made under time pressure defaults to the
+  // path of least resistance. That is not a trick; it is the point.
+  // -------------------------------------------------------------------------
+
+  function startClock(actions) {
+    stopClock();
+    state.left = SECONDS_PER_DAY;
+    const el = document.getElementById('clk');
+    const tick = () => {
+      state.left -= 1;
+      if (el) {
+        const m = Math.floor(Math.max(state.left, 0) / 60);
+        const s = Math.max(state.left, 0) % 60;
+        el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+        if (state.left <= 15) el.className = 'clock low';
+      }
+      if (state.left <= 0) {
+        stopClock();
+        if (!state.busy && actions.length) choose(actions[0].id);
+      }
+    };
+    state.timer = setInterval(tick, 1000);
+  }
+
+  function stopClock() {
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  }
+
+  // -------------------------------------------------------------------------
+  // Flow
+  // -------------------------------------------------------------------------
+
+  async function start() {
+    try {
+      const d = await post('start');
+      state.runId = d.runId;
+      state.view = d.view;
+      state.reading = null;
+      remember(d.runId);
+      renderDay();
+    } catch (e) { fail(e.message); }
+  }
+
+  async function choose(id) {
+    if (state.busy) return;
+    state.busy = true;
+    stopClock();
+    Array.prototype.forEach.call(document.querySelectorAll('.choice'), b => b.disabled = true);
+    try {
+      const d = await post('act', { choice: id });
+      state.view = d.view;
+      state.reading = d.reading || null;
+      state.busy = false;
+      if (d.finished) return finish();
+      renderDay();
+    } catch (e) {
+      state.busy = false;
+      fail(e.message);
+    }
+  }
+
+  async function finish() {
+    try {
+      const d = await post('debrief');
+      renderDebrief(d.debrief);
+    } catch (e) { fail(e.message); }
+  }
+
+  async function boot() {
+    try {
+      state.brief = await post('brief');
+    } catch (e) {
+      return fail('Could not reach the server. ' + e.message);
+    }
+
+    const prior = recall();
+    if (prior) {
+      state.runId = prior;
+      try {
+        const d = await post('resume');
+        state.view = d.view;
+        if (d.finished) return finish();
+        return renderDay();
+      } catch (e) {
+        // Expired or unknown. Start clean rather than showing an error for
+        // something the participant did not do.
+        forget();
+        state.runId = null;
+      }
+    }
+    renderBrief();
+  }
+
+  boot();
+})();
+
+</script>
+</body>
+</html>
