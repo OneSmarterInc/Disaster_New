@@ -2,7 +2,7 @@
 
 Local optimization against system outcome. Twenty minutes, played alone.
 
-    npm run check    # build, 42 tests, 11 design invariants, end-to-end boot
+    npm run check    # build, 45 tests, 11 design invariants, end-to-end boot
 
 Built and tested on Node v22. No model in the loop, so no ANTHROPIC_API_KEY —
 01 and 02 both need one and somebody will assume this does too.
@@ -64,7 +64,7 @@ what a participant "knew" must compare the TEXT they read against the calm
 band, never the number behind it. Comparing against zero produced a debrief
 that accused people of ignoring warnings they never received.
 
-**Seven endings, and they are not decorative.** `test/scenario.test.js` pins
+**Eight endings, and they are not decorative.** `test/scenario.test.js` pins
 each one to a play plan. Two of them — `looked-too-early` and `acted-blind` —
 exist because the obvious three-verdict version described runs that had not
 happened.

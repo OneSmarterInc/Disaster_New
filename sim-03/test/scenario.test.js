@@ -31,7 +31,12 @@ const PLANS = {
   lookedIgnored: ['clear_fast', 'clear_fast', 'clear_fast', 'clear_fast', 'call_field', 'clear_fast'],
   lookedLate:    ['clear_fast', 'clear_fast', 'clear_fast', 'clear_fast', 'call_field', 'reissue', 'reissue', 'bench_test'],
   blindFix:      ['clear_fast', 'clear_fast', 'call_field', 'reissue', 'call_field', 'reissue', 'bench_test', 'bench_test'],
-  careful:       ['bench_test']
+  careful:       ['bench_test'],
+  // Found by brute-force search over play plans rather than written by hand.
+  // Both were reachable but unpinned, which meant two of the eight endings
+  // could have broken without a single test noticing.
+  sawAndActed:   ['clear_fast', 'clear_fast', 'clear_fast', 'call_field', 'call_field', 'call_field', 'reissue', 'call_field'],
+  luckyRun:      ['call_field', 'call_field', 'call_field', 'call_field', 'call_field', 'clear_fast', 'bench_test', 'bench_test']
 };
 
 // ---------------------------------------------------------------------------
@@ -44,7 +49,9 @@ const EXPECTED = {
   lookedIgnored: 'looked-did-nothing',
   lookedLate:    'looked-too-late',
   blindFix:      'acted-blind',
-  careful:       'never-caused-it'
+  careful:       'never-caused-it',
+  sawAndActed:   'saw-and-acted',
+  luckyRun:      'lucky'
 };
 
 for (const [plan, verdict] of Object.entries(EXPECTED)) {
@@ -52,6 +59,14 @@ for (const [plan, verdict] of Object.entries(EXPECTED)) {
     assert.strictEqual(play(PLANS[plan]).debrief.verdict, verdict);
   });
 }
+
+test('every verdict defined in the scenario is pinned by a test here', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'lib', 'scenario.js'), 'utf8');
+  const defined = [...new Set([...src.matchAll(/^    '([a-z-]+)': \{/gm)].map(m => m[1]))];
+  const pinned = Object.values(EXPECTED);
+  const loose = defined.filter(v => !pinned.includes(v));
+  assert.strictEqual(loose.length, 0, `verdicts with copy but no test: ${loose.join(', ')}`);
+});
 
 test('every ending has a title and a body', () => {
   for (const plan of Object.keys(PLANS)) {
@@ -82,7 +97,7 @@ test('a run that harms somebody names them', () => {
 });
 
 test('a run that harms nobody claims no outcome', () => {
-  for (const plan of ['blindFix', 'careful']) {
+  for (const plan of ['blindFix', 'careful', 'sawAndActed', 'luckyRun']) {
     assert.strictEqual(play(PLANS[plan]).debrief.outcome, null, `${plan} reported harm`);
   }
 });
@@ -99,7 +114,7 @@ console.log('\nthe score gradient runs the wrong way, on purpose');
 
 test('the worst outcome carries the best score', () => {
   const greedy = play(PLANS.greedy).debrief.localScore;
-  for (const plan of ['lookedEarly', 'lookedIgnored', 'lookedLate', 'blindFix', 'careful']) {
+  for (const plan of ['lookedEarly', 'lookedIgnored', 'lookedLate', 'blindFix', 'careful', 'sawAndActed', 'luckyRun']) {
     assert.ok(play(PLANS[plan]).debrief.localScore < greedy,
       `${plan} scores at least as well as pure local optimisation — the trap does not pay`);
   }

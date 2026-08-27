@@ -62,6 +62,20 @@ const ok = (cond, msg) => {
   const h = await call(health, {});
   ok(h.body && h.body.sim, 'health responds with a sim id');
 
+  // The catalogue reads this endpoint. It was never exercised until a
+  // deployment showed nothing on the home page.
+  const meta = require('../api/meta.js');
+  const m = await call(meta, {});
+  ok(m.status === 200 && m.body.meta && m.body.meta.id, 'meta returns a catalogue entry');
+  ok(m.body.meta.title && m.body.meta.minutes && m.body.meta.detail,
+     'the catalogue entry has what the platform renders');
+  // Naming Dev here is correct — the catalogue is faculty-facing and the
+  // opening brief names him too. What it must not carry is the mechanism.
+  const cat = JSON.stringify(m.body).toLowerCase();
+  ok(cat.includes('okonjo'), 'the catalogue names who is at stake');
+  ok(!['symptom code', 'wrong part', 'first-time-fix', 'bench-test'].some(s => cat.includes(s)),
+     'catalogue copy does not give away the mechanism');
+
   const brief = await call(run, { action: 'brief' });
   ok(brief.status === 200 && brief.body.brief.lines.length > 0, 'brief returns opening copy');
   ok(!JSON.stringify(brief.body).toLowerCase().includes('strain'),
