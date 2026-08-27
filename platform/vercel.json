@@ -40,6 +40,14 @@
     {
       "source": "/sim02/:path*",
       "destination": "https://flexee-rapid-sim-02.vercel.app/:path*"
+    },
+    {
+      "source": "/sim03",
+      "destination": "https://flexee-rapid-sim-03.vercel.app/"
+    },
+    {
+      "source": "/sim03/:path*",
+      "destination": "https://flexee-rapid-sim-03.vercel.app/:path*"
     }
   ],
   "headers": [
@@ -54,6 +62,15 @@
     },
     {
       "source": "/sim02/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/sim03/(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",

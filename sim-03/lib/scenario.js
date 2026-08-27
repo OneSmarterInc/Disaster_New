@@ -33,7 +33,17 @@ const META = {
       { at: 'Day 4', what: 'Your numbers are the best on the bench. Nothing else has changed that you can see.' },
       { at: 'Day 8', what: 'You find out what the other four steps of the process have been doing.' }
     ],
-    after: 'The debrief shows your scoreboard next to something you were never shown, day by day. Most people finish this sim believing they did well, and they are right about the part they could see.'
+    after: 'The debrief shows your scoreboard next to something you were never shown, day by day. Most people finish this sim believing they did well, and they are right about the part they could see.',
+
+    // The catalogue's defaults describe a four-character conversation sim with
+    // three written moments. This one has neither, so every shared field is
+    // overridden here — otherwise the public page describes a sim that does
+    // not exist.
+    roomIntro: 'Nobody to talk to. Two people are named at the start and you never meet either of them: the colleague who set your targets, and the one who has to work with whatever you decide. That is the point of the format rather than a limitation of it.',
+    momentsIntro: 'Eight decisions, ninety seconds each, and the clock does not wait. There is nothing to write down and nothing to defend until it is over. What the student is doing is running a job, and the record of what they did is kept for them.',
+    discussion: 'Everyone played the same eight days and the class will have split three or four ways. The interesting argument is not who scored best — it is between the student who found out what was happening and carried on anyway, and the student who never found out at all, because they will defend themselves very differently.',
+    tryIt: 'Seven days with any of them, free. Play it the way your students will, then decide.',
+    sessionShape: 'Five minutes to get everyone in. Twenty to play. Ten to read what they got. Twenty-five to argue about it. Nothing to prepare.'
   }
 };
 

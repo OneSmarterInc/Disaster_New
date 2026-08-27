@@ -26,7 +26,10 @@ const mustPass = [
 
 const mustRoute = {
   '/sim01': 1, '/sim01/': 1, '/sim01/api/scene': 1, '/sim01/faculty.html': 1,
-  '/sim02': 1, '/sim02/api/chat': 1
+  '/sim02': 1, '/sim02/api/chat': 1,
+  // 03 has no chat endpoint and no faculty console — it is played alone, so
+  // /api/run is the whole surface.
+  '/sim03': 1, '/sim03/': 1, '/sim03/api/run': 1, '/sim03/api/health': 1
 };
 
 let bad = 0;

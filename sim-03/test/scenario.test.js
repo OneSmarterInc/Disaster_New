@@ -152,5 +152,38 @@ test('catalogue copy does not give the ending away', () => {
   }
 });
 
+// ---------------------------------------------------------------------------
+console.log('\nplatform catalogue contract');
+// ---------------------------------------------------------------------------
+
+test('the sim supplies every catalogue field rather than inheriting defaults', () => {
+  // The platform's defaults describe a four-character conversation sim with
+  // three written moments. This sim has neither, so inheriting any of them
+  // would put a description of a different product on the public page.
+  const cat = require('../../platform/lib/catalogue.js');
+  const eff = cat.effective(S.META.detail);
+  const inherited = Object.keys(eff)
+    .filter(k => typeof eff[k] === 'string' && eff[k] && S.META.detail[k] === undefined);
+  assert.strictEqual(inherited.length, 0,
+    `these fall back to platform copy written for a different sim: ${inherited.join(', ')}`);
+});
+
+test('the catalogue entry carries what registration needs', () => {
+  for (const k of ['id', 'title', 'tagline', 'description', 'minutes']) {
+    assert.ok(S.META[k], `META.${k} is missing and registration would reject or blank it`);
+  }
+  assert.ok(S.META.detail.cast.length > 0, 'no cast means an empty section on the detail page');
+  assert.ok(S.META.detail.beats.length > 0, 'no beats means an empty section on the detail page');
+});
+
+test('the platform routes this sim', () => {
+  const cfg = JSON.parse(require('fs').readFileSync(
+    require('path').join(__dirname, '..', '..', 'platform', 'vercel.json'), 'utf8'));
+  const routed = cfg.rewrites.filter(r => r.source.startsWith('/sim03'));
+  assert.ok(routed.length >= 2, 'platform/vercel.json has no /sim03 rewrite');
+  assert.ok(cfg.headers.some(h => h.source.startsWith('/sim03')),
+    '/sim03 is missing the noindex header that 01 and 02 carry');
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);
