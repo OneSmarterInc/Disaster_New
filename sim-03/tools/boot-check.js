@@ -127,6 +127,27 @@ const ok = (cond, msg) => {
   const missing = await call(run, { action: 'resume', runId: 'nope' });
   ok(missing.status === 404, 'an unknown run is a clean 404');
 
+  // ---------------------------------------------------------------------------
+  // Deployability. The first deploy failed because .vercelignore stripped src/
+  // and then Vercel ran the build script that reads it. Nothing in the engine
+  // or scenario tests could have caught that.
+  // ---------------------------------------------------------------------------
+  const fs = require('fs');
+  const ignore = fs.readFileSync(path.join(__dirname, '..', '.vercelignore'), 'utf8')
+    .split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+
+  const buildNeeds = ['/src/', '/lib/', '/public/', '/build.js', '/package.json'];
+  for (const need of buildNeeds) {
+    ok(!ignore.some(l => need.startsWith(l.replace(/\/$/, '') + '/') || l === need),
+       `.vercelignore keeps ${need}`);
+  }
+  ok(ignore.every(l => l.startsWith('/')),
+     '.vercelignore patterns are anchored (a bare rule also strips platform/tools)');
+
+  const pkg = require('../package.json');
+  ok(!pkg.scripts.build || fs.existsSync(path.join(__dirname, '..', 'src', 'shell.html')),
+     'the build script has the sources it reads');
+
   console.log(failed ? `\n${failed} failed\n` : '\nall clear\n');
   process.exit(failed ? 1 : 0);
 })().catch(e => { console.error('boot check threw:', e); process.exit(1); });
