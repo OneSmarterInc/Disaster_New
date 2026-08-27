@@ -204,6 +204,17 @@ const ok = (cond, msg) => {
   ok(shellSrc.includes('Newsreader') && shellSrc.includes('IBM Plex Mono'),
      'shell uses the shared type pairing');
 
+  // The sim is served both directly and proxied under /sim03. An absolute
+  // '/api/run' works in the first case and 404s in the second — which is what
+  // shipped, and it looked like a routing fault rather than a client bug.
+  ok(clientSrc.includes("match(/^\\/sim\\d+/)"),
+     'the client derives its API base from the path prefix');
+  ok(!/fetch\('\/api/.test(clientSrc),
+     'no absolute /api path survives in the client');
+  const derive = (pathname) => (pathname.match(/^\/sim\d+/) || [''])[0] + '/api/run';
+  ok(derive('/') === '/api/run', 'served directly, the API is at /api/run');
+  ok(derive('/sim03') === '/sim03/api/run', 'served under /sim03, the API follows the prefix');
+
   const buildNeeds = ['/src/', '/lib/', '/public/', '/build.js', '/package.json'];
   for (const need of buildNeeds) {
     ok(!ignore.some(l => need.startsWith(l.replace(/\/$/, '') + '/') || l === need),

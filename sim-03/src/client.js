@@ -44,6 +44,12 @@
     return m ? decodeURIComponent(m[1]) : null;
   }
 
+  // The sim is served two ways: directly at its own deployment, where the API
+  // sits at /api/run, and proxied by the platform under /sim03, where the same
+  // endpoint is at /sim03/api/run. An absolute path works in the first case and
+  // 404s in the second, which is exactly what it did. 01 and 02 both do this.
+  const BASE = (location.pathname.match(/^\/sim\d+/) || [''])[0];
+
   const CODE_KEY = 'rapidsim03.code';
   let ACCESS_CODE = fromUrl('code');
   if (ACCESS_CODE) { try { sessionStorage.setItem(CODE_KEY, ACCESS_CODE); } catch (e) {} }
@@ -57,7 +63,7 @@
     if (lt) headers['x-launch-token'] = lt;
     if (ACCESS_CODE) headers['x-access-code'] = ACCESS_CODE;
 
-    const r = await fetch('/api/run', {
+    const r = await fetch(BASE + '/api/run', {
       method: 'POST',
       headers,
       body: JSON.stringify(Object.assign({ action: action, runId: state.runId }, extra || {}))
