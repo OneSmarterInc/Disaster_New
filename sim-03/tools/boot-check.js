@@ -59,8 +59,24 @@ const ok = (cond, msg) => {
 (async () => {
   console.log('\nboot check\n');
 
+  // Health with nothing configured: must name every missing variable and must
+  // not invent a fingerprint out of an empty secret.
   const h = await call(health, {});
   ok(h.body && h.body.sim, 'health responds with a sim id');
+  ok(h.body.launchSecretFingerprint === null,
+     'no fingerprint is printed when no secret is set');
+  ok(h.body.canAnnounce === false, 'health reports it cannot announce itself');
+
+  process.env.LAUNCH_SECRET = 'test-secret-value';
+  process.env.PLATFORM_URL = 'https://example.invalid';
+  const h2 = await call(health, {});
+  ok(/^[0-9a-f]{8}$/.test(h2.body.launchSecretFingerprint),
+     'a set secret yields an eight-character fingerprint');
+  ok(!JSON.stringify(h2.body).includes('test-secret-value'),
+     'health never echoes the secret itself');
+  ok(h2.body.canAnnounce === true, 'health reports it can announce once configured');
+  process.env.LAUNCH_SECRET = '';
+  process.env.PLATFORM_URL = '';
 
   // The catalogue reads this endpoint. It was never exercised until a
   // deployment showed nothing on the home page.
