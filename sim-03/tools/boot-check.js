@@ -166,6 +166,24 @@ const ok = (cond, msg) => {
   const ignore = fs.readFileSync(path.join(__dirname, '..', '.vercelignore'), 'utf8')
     .split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
 
+  // Every class the client emits must have a rule in the shell. A renamed
+  // class in one file and not the other renders as unstyled markup, which no
+  // other check would notice.
+  const clientSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'client.js'), 'utf8');
+  const shellSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'shell.html'), 'utf8');
+  const emitted = [...new Set([...clientSrc.matchAll(/class=\\?["']([a-z0-9 _-]+)/gi)]
+    .flatMap(m => m[1].split(/\s+/)))].filter(Boolean);
+  const unstyled = emitted.filter(c => !shellSrc.includes('.' + c));
+  ok(unstyled.length === 0, `every class the client emits is styled${unstyled.length ? ': missing ' + unstyled.join(', ') : ''}`);
+
+  // Shared design language with 01 and 02. If these drift, three interlinked
+  // sims start looking like three products.
+  for (const token of ['--night', '--bone', '--amber', '--serif', '--mono']) {
+    ok(shellSrc.includes(token), `shell defines ${token}`);
+  }
+  ok(shellSrc.includes('Newsreader') && shellSrc.includes('IBM Plex Mono'),
+     'shell uses the shared type pairing');
+
   const buildNeeds = ['/src/', '/lib/', '/public/', '/build.js', '/package.json'];
   for (const need of buildNeeds) {
     ok(!ignore.some(l => need.startsWith(l.replace(/\/$/, '') + '/') || l === need),
