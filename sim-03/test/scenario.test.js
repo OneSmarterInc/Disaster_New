@@ -153,6 +153,57 @@ test('catalogue copy does not give the ending away', () => {
 });
 
 // ---------------------------------------------------------------------------
+console.log('\neight days, eight days');
+// ---------------------------------------------------------------------------
+
+test('every day has its own situation', () => {
+  const notes = S.PROCESS.days.map(d => d.note);
+  assert.strictEqual(notes.length, S.PROCESS.rounds, 'a day is missing a docket');
+  assert.strictEqual(new Set(notes).size, notes.length, 'two days say the same thing');
+  for (const n of notes) assert.ok(n && n.length > 40, `docket too thin: ${n}`);
+});
+
+test('every day words its choices differently', () => {
+  const seen = {};
+  for (const d of S.PROCESS.days) {
+    for (const [id, v] of Object.entries(d.variants || {})) {
+      seen[id] = seen[id] || [];
+      if (v.label) seen[id].push(v.label);
+    }
+  }
+  for (const [id, labels] of Object.entries(seen)) {
+    assert.ok(new Set(labels).size >= Math.max(2, labels.length - 1),
+      `${id} reuses the same label across days`);
+  }
+});
+
+test('the arrival rate is not flat', () => {
+  const arrivals = S.PROCESS.days.map(d => d.arrivals);
+  assert.ok(new Set(arrivals).size >= 4,
+    'arrivals barely vary — the backlog settles and the screen stops saying anything');
+});
+
+test('the choices themselves stay constant', () => {
+  // Varying the wording is the point; varying the options would turn a habit
+  // into a puzzle, which is a different exercise.
+  const s = new Session(S.PROCESS);
+  const counts = [];
+  while (!s.finished) { counts.push(s.availableActions().length); s.act('clear_fast'); }
+  assert.deepStrictEqual([...new Set(counts)].sort(), [3, 4],
+    'the option set should change exactly once, when the remedy unlocks');
+});
+
+test('the debrief does not claim nothing ever pointed at it', () => {
+  // Day 7 mentions the northern region, so the earlier wording became untrue
+  // the moment the dockets were written.
+  const s = new Session(S.PROCESS);
+  while (!s.finished) s.act('clear_fast');
+  const d = S.debriefFor(s);
+  assert.ok(!/at no point did anything on your screen mention him/.test(d.body),
+    'the debrief contradicts the day 7 docket');
+});
+
+// ---------------------------------------------------------------------------
 console.log('\nplatform catalogue contract');
 // ---------------------------------------------------------------------------
 

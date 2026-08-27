@@ -156,9 +156,12 @@
         esc(state.reading.text) + '</div>';
     }
 
+    const note = v.note ? '<div class="docket">' + esc(v.note) + '</div>' : '';
+
     app.innerHTML =
       '<div class="day">Day ' + day + ' of ' + v.roundsTotal +
       '<span class="clock" id="clk">1:30</span></div>' +
+      note +
       '<div class="board">' +
       cell('Units cleared', v.cleared) +
       cell('Bench score', v.localScore, true) +

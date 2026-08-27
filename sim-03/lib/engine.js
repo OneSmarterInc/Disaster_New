@@ -138,13 +138,28 @@ class Session {
     // A participant with the network tab open would have the shape of the sim
     // before their first decision. So the browser gets an opaque token that
     // means nothing outside this one run, and act() maps it back.
-    out.availableActions = this.availableActions().map(a => ({
-      id: this.tokenFor(a.id),
-      label: a.label,
-      blurb: a.blurb || '',
-      localCost: a.localCost || 0
-    }));
+    // Each day carries its own situation and its own phrasing for the same
+    // four choices. The choices do not change — the habit forming is the
+    // lesson — but a participant should have to read the day rather than
+    // recognise a button position.
+    const day = this.today();
+    out.note = day ? day.note : null;
+    out.availableActions = this.availableActions().map(a => {
+      const v = (day && day.variants && day.variants[a.id]) || {};
+      return {
+        id: this.tokenFor(a.id),
+        label: v.label || a.label,
+        blurb: v.blurb || a.blurb || '',
+        localCost: a.localCost || 0
+      };
+    });
     return out;
+  }
+
+  today() {
+    const days = this.process.days;
+    if (!days || !days.length) return null;
+    return days[Math.min(this.round, days.length - 1)];
   }
 
   tokenFor(actionId) {
@@ -183,6 +198,7 @@ class Session {
     if (!action) throw new Error(`unavailable action: ${actionId}`);
 
     const before = this.snapshotLocal();
+    const before_day = this.today();
 
     // Local effects land immediately. This is the whole reason local reasoning
     // feels correct — the feedback is fast and it is real.
@@ -220,6 +236,7 @@ class Session {
       label: action.label,
       localBefore: before,
       localAfter: this.snapshotLocal(),
+      note: before_day ? before_day.note : null,
       reading
     });
 
@@ -240,7 +257,13 @@ class Session {
       if (st[p.field] < 0) st[p.field] = 0;
     }
 
-    this.inbound = this.process.arrivalsPerRound;
+    // Arrivals vary by day when the scenario says so. A flat arrival rate
+    // makes the backlog settle after day four and then the screen stops
+    // telling the participant anything.
+    const day = this.today();
+    this.inbound = (day && day.arrivals !== undefined)
+      ? day.arrivals
+      : this.process.arrivalsPerRound;
     this.backlog += this.inbound;
 
     this.checkHarm();

@@ -101,6 +101,95 @@ const PROCESS = {
     }
   ],
 
+  // Eight days, each with its own docket and its own phrasing for the same
+  // four choices. The choices are constant on purpose — the failure being
+  // taught is a habit, not a dilemma, and it only forms if the same option is
+  // available every morning. What varies is what landed on the bench, so a
+  // participant has to read the day rather than recognise a button.
+  //
+  // Arrivals vary too. A flat rate made the backlog settle by day four and the
+  // screen stopped saying anything.
+  days: [
+    {
+      note: 'Monday. Seven units waiting from the weekend, and six more came in overnight. Nothing unusual in any of them.',
+      arrivals: 6,
+      variants: {
+        clear_fast: { label: 'Work through them on the codes', blurb: 'Read each fault code, call the likely part, move on. Five units.' },
+        bench_test: { label: 'Put each one on the rig', blurb: 'Confirm the fault before you call it. Two units.' },
+        call_field: { label: 'Ring the field desk', blurb: 'Ask how last week\'s jobs went. It will cost you the morning.' }
+      }
+    },
+    {
+      note: 'Four identical pumps from the same hospital, same fault code on all four. Someone has had a bad week over there.',
+      arrivals: 5,
+      variants: {
+        clear_fast: { label: 'Call all four the same way', blurb: 'Same code, same part. No reason to think otherwise. Five units.' },
+        bench_test: { label: 'Test one, then decide', blurb: 'If the first one confirms, the rest probably follow. Two units.' },
+        call_field: { label: 'Ask about the last batch', blurb: 'You sent this hospital four units a fortnight ago. Costs you the morning.' }
+      }
+    },
+    {
+      note: 'A centrifuge you cleared eleven days ago is back on the bench with the same complaint.',
+      arrivals: 4,
+      variants: {
+        clear_fast: { label: 'Re-clear it and move on', blurb: 'Call it again, work the rest of the queue. Five units.' },
+        bench_test: { label: 'Strip the centrifuge properly', blurb: 'Find out why it came back. Two units, and the day is gone.' },
+        call_field: { label: 'Ask the field desk about it', blurb: 'Somebody drove out to this one already. Costs you the morning.' },
+        reissue: { label: 'Recall the centrifuge batch', blurb: 'Re-check what went out with it and correct the parts lists.' }
+      }
+    },
+    {
+      note: 'Priya asked for your numbers for the quarter-end pack. She wants them by Thursday.',
+      arrivals: 7,
+      variants: {
+        clear_fast: { label: 'Clear hard for the numbers', blurb: 'Codes only. It is what the pack measures. Five units.' },
+        bench_test: { label: 'Test properly and take the hit', blurb: 'Your Thursday figure will be the worst on the bench. Two units.' },
+        call_field: { label: 'Ring the field desk anyway', blurb: 'Not what Thursday is about. Costs you the morning.' },
+        reissue: { label: 'Correct the calls, not the count', blurb: 'Corrections do not count as clears. Nothing for the Thursday pack.' }
+      }
+    },
+    {
+      note: 'Two units arrive with no symptom note at all — just the code and a delivery docket.',
+      arrivals: 3,
+      variants: {
+        clear_fast: { label: 'Go on the code alone', blurb: 'It is all you have and it is usually right. Five units.' },
+        bench_test: { label: 'Work out what is actually wrong', blurb: 'No note means finding out yourself. Two units.' },
+        call_field: { label: 'Ask someone who sees the machines', blurb: 'The field engineers stand in front of these. Costs you the morning.' },
+        reissue: { label: 'Correct what you sent last week', blurb: 'Re-check the parts lists and send amendments.' }
+      }
+    },
+    {
+      note: 'A unit from a customer with penalties in their contract. Dispatch have flagged it twice.',
+      arrivals: 5,
+      variants: {
+        clear_fast: { label: 'Get it out today', blurb: 'The penalty clock is on the days it sits, not the visits. Five units.' },
+        bench_test: { label: 'Be certain on this one', blurb: 'Slower out of the door, right when it arrives. Two units.' },
+        call_field: { label: 'Find out who is covering it', blurb: 'And how their week is going. Costs you the morning.' },
+        reissue: { label: 'Send amendments on the old jobs', blurb: 'Nothing to show for the day, but the lists go out right.' }
+      }
+    },
+    {
+      note: 'Dispatch mention in passing that the northern region is running two jobs for every one booked.',
+      arrivals: 4,
+      variants: {
+        clear_fast: { label: 'Keep the bench moving', blurb: 'Not your region and not your problem. Five units.' },
+        bench_test: { label: 'Slow down and be sure', blurb: 'Two units, and the queue grows behind you.' },
+        call_field: { label: 'Ring the field desk and ask', blurb: 'Dispatch said something. Find out what. Costs the morning.' },
+        reissue: { label: 'Re-check the northern jobs', blurb: 'Start with the region dispatch just mentioned.' }
+      }
+    },
+    {
+      note: 'Last day of the month. Whatever is on the board tonight is what goes in the report.',
+      arrivals: 6,
+      variants: {
+        clear_fast: { label: 'Finish the month strong', blurb: 'One more good day on the board. Five units.' },
+        bench_test: { label: 'Test them properly', blurb: 'On the last day of the month. Two units.' },
+        call_field: { label: 'Call before the month closes', blurb: 'Four points off the monthly figure, on the day it is counted.' },
+        reissue: { label: 'Fix them before the report closes', blurb: 'Corrections, on the day the numbers are counted.' }
+      }
+    }
+  ],
+
   actions: [
     {
       // The trap, and it has to pay. Symptom-code triage is fast, defensible,
@@ -212,7 +301,7 @@ function debriefFor(session) {
   const VERDICTS = {
     'never-looked': {
       title: 'You never found out.',
-      body: 'You ran eight days on the bench and every signal you were given said you were doing well. They were not wrong. Units cleared went up, cycle time came down, and Priya would have written you a good review on the numbers she had. You also put Dev Okonjo on a first-time-fix review, and at no point did anything on your screen mention him. The information was available for four points of bench score a day. You were never told it was there, and you never went looking.'
+      body: 'You ran eight days on the bench and every signal you were given said you were doing well. They were not wrong. Units cleared went up, cycle time came down, and Priya would have written you a good review on the numbers she had. You also put Dev Okonjo on a first-time-fix review. The only thing that ever pointed at it was a remark from dispatch on day seven about the northern region running two jobs for every one booked, and by then it was already done. The information was available every single morning for four points of bench score. You were never told it was there, and you never went looking.'
     },
     'looked-too-early': {
       title: 'You looked, and you were told everything was fine.',
