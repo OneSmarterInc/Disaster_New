@@ -33,6 +33,7 @@
 // ---------------------------------------------------------------------------
 
 const PROTECTED_KEYS = [
+  'readLog',
   'downstream',
   'pending',
   'harm',
@@ -105,6 +106,22 @@ class Session {
 
     this.harm = { triggered: false, atRound: null, stationId: null, person: null };
     this.transcript = [];
+
+    // One opaque token per action, minted per run. Random rather than derived,
+    // so two participants comparing screens learn nothing from matching tokens.
+    // What each inspect actually showed, with the figure behind it. Server
+    // only — never in VISIBLE_KEYS. The debrief needs to know whether a
+    // participant who looked was shown anything, because looking too early
+    // and being told everything is fine is a different run from looking late
+    // and ignoring it, and they must not get the same ending.
+    this.readLog = [];
+
+    this.tokens = {};
+    for (const a of processDef.actions) {
+      let t;
+      do { t = Math.random().toString(36).slice(2, 10); } while (this.tokens[t]);
+      this.tokens[t] = a.id;
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -116,12 +133,33 @@ class Session {
       if (this[k] === undefined) continue;
       out[k] = deepCopy(this[k]);
     }
+    // Action ids are semantic — `call_field` announces that there is a field
+    // to call, and `clear_fast` announces which option the sim considers fast.
+    // A participant with the network tab open would have the shape of the sim
+    // before their first decision. So the browser gets an opaque token that
+    // means nothing outside this one run, and act() maps it back.
     out.availableActions = this.availableActions().map(a => ({
-      id: a.id,
+      id: this.tokenFor(a.id),
       label: a.label,
+      blurb: a.blurb || '',
       localCost: a.localCost || 0
     }));
     return out;
+  }
+
+  tokenFor(actionId) {
+    for (const [tok, id] of Object.entries(this.tokens)) {
+      if (id === actionId) return tok;
+    }
+    throw new Error(`no token for ${actionId}`);
+  }
+
+  resolveToken(given) {
+    // Accept a token from the browser, or a real id from server-side callers
+    // and tests. The browser is never given a real id, so a real id arriving
+    // over HTTP simply matches nothing a participant could have guessed.
+    if (this.tokens[given]) return this.tokens[given];
+    return given;
   }
 
   // Action definitions carry their downstream consequences. Those must never
@@ -138,8 +176,9 @@ class Session {
   // -------------------------------------------------------------------------
   // A round.
   // -------------------------------------------------------------------------
-  act(actionId) {
+  act(given) {
     if (this.finished) throw new Error('run is over');
+    const actionId = this.resolveToken(String(given));
     const action = this.availableActions().find(a => a.id === actionId);
     if (!action) throw new Error(`unavailable action: ${actionId}`);
 
@@ -167,6 +206,12 @@ class Session {
     if (action.inspect) {
       reading = this.readDownstream(action.inspect);
       this.readings.push(reading);
+      this.readLog.push({
+        round: this.round,
+        stationId: action.inspect.stationId,
+        strain: this.downstream[action.inspect.stationId].strain,
+        text: reading.text
+      });
     }
 
     this.transcript.push({
@@ -269,7 +314,9 @@ class Session {
       downstream: this.downstream,
       pending: this.pending,
       harm: this.harm,
-      transcript: this.transcript
+      transcript: this.transcript,
+      readLog: this.readLog,
+      tokens: this.tokens
     };
   }
 

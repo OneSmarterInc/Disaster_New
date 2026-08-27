@@ -12,10 +12,13 @@
 'use strict';
 
 const path = require('path');
-const { Session } = require('./lib/engine');
+const { Session } = require('../lib/engine');
 
-const target = process.argv[2] || './test/fixture-process.js';
-const proc = require(path.resolve(process.cwd(), target));
+// Defaults to the real scenario. Point it at the fixture with an argument.
+const target = process.argv[2];
+const proc = target
+  ? require(path.resolve(process.cwd(), target))
+  : require('../lib/scenario').PROCESS;
 
 const failures = [];
 function check(name, fn, why) {
@@ -45,7 +48,7 @@ const inspectAction = proc.actions.find(a => a.inspect);
 const remedyAction = proc.actions
   .find(a => (a.downstreamEffects || []).some(e => e.delta < 0));
 
-console.log(`\nguard: ${target}\n`);
+console.log(`\nguard: ${target || 'lib/scenario.js (PROCESS)'}\n`);
 
 check('a locally optimal action exists', () => !!greedyAction,
   'no action improves local performance at downstream cost — there is no trap');

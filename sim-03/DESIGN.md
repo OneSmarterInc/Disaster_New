@@ -1,6 +1,7 @@
 # RapidSim 03 — design note
 
-**Status:** engine built and tested. No scenario. Not deployable.
+**Status:** built. Scenario, client and API complete; full check green.
+Not yet playtested with people, and not yet deployed.
 
 ## The competency
 
@@ -52,37 +53,52 @@ next step is not coping, not holding a strain figure.
 
 ## What is not built
 
-**The scenario.** Deliberately. The house process runs a full paper playtest
-before the build, and inventing a company and its characters inside a code
-commit is how placeholder people reach production. The engine runs against a
-synthetic fixture in `test/` with flat generic names precisely so nobody
-mistakes it for scenario content.
+**The instructor transcript view.** This sim needs it more than 01 or 02 do.
+The failure is invisible by construction: a participant who plays the local
+scoreboard finishes with the best numbers in the room and every signal they
+were given said so. Without the transcript on screen, the debrief is one
+person's word against their own memory of a scoreboard that told them they
+were winning. `api/run.js` already returns the whole day-by-day timeline, so
+the adapter is a reshape rather than new logic. The platform spec exists.
 
-Scenario work needs to decide: the process and its stations, who owns the
-station downstream and what happens to them, the real action set and its
-costs, and the round count against the twenty-minute clock. The fixture uses
-eight rounds as a placeholder, which is a guess, not a finding.
+**A faculty page.** 01 and 02 have `public/faculty.html`. This sim is played
+alone with no session code, so there is nothing to facilitate mid-run — but a
+faculty member still needs to see who finished and which of the seven endings
+they got, and that is the same transcript view.
 
-**Everything client-facing.** No `api/`, no `src/`, no build step, no
-`vercel.json`. There is no point assembling a client around an engine whose
-scenario does not exist.
+**Deployment.** No Vercel project, no KV store attached, no routing under
+`/sim03`. Nothing here has run against real Redis.
 
-**The debrief.** This sim needs the instructor transcript view more than 01 or
-02 do, and arguably more than RapidSim+ 01. The failure is invisible by
-construction: a participant who plays the local scoreboard has a good run by
-every signal they were shown. Without the transcript on screen, the debrief is
-one person's word against their own memory of a scoreboard that told them they
-were winning. The platform spec already exists.
+## Answered during the build
 
-## Open questions for playtest
+**The early-look trap is real, and it was nearly a bug.** A participant who
+calls the field desk on day 3 is told Dev is closing his calls, because what
+they sent him has not arrived yet. They reasonably conclude that looking costs
+four points and returns nothing, and they never look again. The first version
+of the debrief told those people they had been warned and ignored it, which
+was false. It now has its own ending, and it is the most uncomfortable one the
+sim produces: they did the right thing once, it appeared not to work, and the
+appearance was an artefact of the two-day lag.
 
-Whether eight rounds is right against twenty minutes, or whether the deferral
-lag needs to shrink to keep the arc inside the clock.
+**Acting without evidence needed its own ending too.** A participant who
+reissues corrections having never seen a bad reading is not lucky. They
+reasoned from the structure — they knew what clearing from a symptom code was,
+and they knew somebody downstream was fitting their calls. That is harder than
+responding to a warning and almost nobody does it.
 
-Whether a participant who inspects early and finds nothing wrong — because
-nothing is wrong yet — concludes the inspect action is worthless and stops
-paying for it. That is realistic behaviour and it may be the most interesting
-thing the sim produces, or it may make the sim unwinnable in practice.
+**Eight rounds fits.** Ninety seconds each gives twelve minutes of play, which
+leaves three for the brief and five for the debrief inside the twenty.
 
-Whether the local scoreboard needs a visible comparison against peers to make
-the pressure real, and whether that tips it from pressure into coercion.
+## Open questions for playtest with people
+
+Whether the clock at ninety seconds is pressure or panic. The client defaults
+to the first option when it expires, which is the fast one, and that is a
+deliberate claim about what happens to a decision nobody has time to make. It
+may be too harsh.
+
+Whether the scoreboard needs a comparison against other people on the bench to
+make the pressure real, and whether that tips it from pressure into coercion.
+
+Whether anyone reads the brief closely enough to notice Dev is named in it. If
+they do not, the harm lands as a twist rather than as something they were told
+about and did not think to protect.

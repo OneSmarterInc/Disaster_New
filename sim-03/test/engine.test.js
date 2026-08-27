@@ -229,6 +229,43 @@ test('the transcript records every action taken', () => {
     ['clear_fast', 'clear_complete', 'walk_downstream']);
 });
 
+
+// ---------------------------------------------------------------------------
+console.log('\naction tokens');
+// ---------------------------------------------------------------------------
+
+test('the browser is given opaque tokens, not action ids', () => {
+  const s = new Session(proc);
+  for (const a of s.visible().availableActions) {
+    assert.ok(!proc.actions.some(pa => pa.id === a.id),
+      `real action id ${a.id} reached the client`);
+  }
+});
+
+test('two runs get different tokens for the same action', () => {
+  const a = new Session(proc), b = new Session(proc);
+  assert.notDeepStrictEqual(
+    a.visible().availableActions.map(x => x.id),
+    b.visible().availableActions.map(x => x.id),
+    'tokens are stable across runs — comparing screens would leak');
+});
+
+test('a token from the run resolves to its action', () => {
+  const s = new Session(proc);
+  const tok = s.visible().availableActions[0].id;
+  const before = s.actionsTaken.length;
+  s.act(tok);
+  assert.strictEqual(s.actionsTaken.length, before + 1);
+});
+
+test('tokens survive a JSON round trip', () => {
+  const s = new Session(proc);
+  const tok = s.visible().availableActions[0].id;
+  const revived = Session.fromJSON(proc, JSON.parse(JSON.stringify(s)));
+  assert.strictEqual(revived.tokens[tok], s.tokens[tok]);
+  revived.act(tok);   // must not throw
+});
+
 // ---------------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);
