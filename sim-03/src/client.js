@@ -75,9 +75,9 @@
     app.innerHTML =
       '<h1>' + esc(b.heading) + '</h1>' +
       '<p class="sub">' + esc(b.clock) + ' · you run the ' + esc(state.brief.station).toLowerCase() + '</p>' +
-      '<div class="panel"><ul class="brief">' +
-      b.lines.map(l => '<li>' + esc(l) + '</li>').join('') +
-      '</ul></div>' +
+      '<div class="panel brief">' +
+      b.lines.map(l => '<p>' + esc(l) + '</p>').join('') +
+      '</div>' +
       '<button class="primary" id="go">Start day 1</button>';
     document.getElementById('go').onclick = start;
   }

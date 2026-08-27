@@ -78,8 +78,11 @@
   .clock { float: right; font-variant-numeric: tabular-nums; }
   .clock.low { color: var(--warn); }
 
-  ul.brief { margin: 0; padding: 0; list-style: none; }
-  ul.brief li { margin: 0 0 12px; }
+  /* Prose, not a list. Marked up as <li> it rendered as bullets anywhere the
+     stylesheet did not reach — copy out of the page and you got a bulleted
+     list, which is not how any of this copy is written. */
+  .panel.brief p { margin: 0 0 13px; }
+  .panel.brief p:last-child { margin-bottom: 0; }
 
   table.tl { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0 20px; }
   table.tl th { text-align: left; font: 600 11px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 0 10px 8px 0; border-bottom: 1px solid var(--rule); }
