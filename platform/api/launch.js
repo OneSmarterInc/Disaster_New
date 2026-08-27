@@ -88,8 +88,33 @@ module.exports = async (req, res) => {
           ORDER BY e.paid DESC LIMIT 1`;
       }
       const en = rows[0];
-      if (!en || en.dropped) return deny(res, wants, 'Not enrolled',
-        "You're not enrolled in a course that uses this simulation.");
+      if (!en || en.dropped) {
+        // Two quite different failures were both reported as "Not enrolled",
+        // which sent people looking at the student's enrolment when the real
+        // problem was usually that nobody had added the simulation to the
+        // course. Say which one it is.
+        // Two statements rather than one composed. The neon driver's templates
+        // cannot be nested — OPERATIONS.md says so and this is exactly the
+        // shape that tempts you to try.
+        const enrolledAtAll = courseId
+          ? await s`
+              SELECT c.title FROM enrolments e JOIN courses c ON c.id = e.course_id
+              WHERE e.student_id = ${me.id} AND e.dropped = false
+                AND e.course_id = ${courseId}
+              LIMIT 1`
+          : await s`
+              SELECT c.title FROM enrolments e JOIN courses c ON c.id = e.course_id
+              WHERE e.student_id = ${me.id} AND e.dropped = false
+              LIMIT 1`;
+
+        if (enrolledAtAll.length) {
+          return deny(res, wants, 'Not on this course yet',
+            `You're enrolled on ${enrolledAtAll[0].title}, but this simulation hasn't been added to it. ` +
+            'Your instructor adds it from their course page.');
+        }
+        return deny(res, wants, 'Not enrolled',
+          "You're not enrolled on a course that uses this simulation.");
+      }
       if (!en.paid) return deny(res, wants, 'Waiting on your instructor',
         'Your enrolment is confirmed, but access to this simulation hasn\'t been released yet. Your instructor releases it once your registration is settled.');
       asRole = 'student';
