@@ -1,57 +1,78 @@
 #!/usr/bin/env node
-// A simulation announces itself and appears in the catalogue, unpublished. On
-// any later announcement only its address and duration are refreshed — an
-// administrator's wording must survive a redeploy.
-// facts refreshed, never an administrator's words.
-const path=require('path');
-const P = (x) => path.join(__dirname, '../..', x);
+// Registration contract, including a one-time scenario catalogue replacement.
+const assert = require('assert/strict');
+const path = require('path');
+const P = x => path.join(__dirname, '../..', x);
 process.env.LAUNCH_SECRET = 'shared';
-const DB = { sims: [] };
-require.cache[require.resolve(P('platform/lib/db.js'))] = { exports: {
-  sql: () => (strings, ...v) => {
-    const q = strings.join('?').replace(/\s+/g,' ').trim();
-    if (q.startsWith('SELECT * FROM sims WHERE id')) return Promise.resolve(DB.sims.filter(s=>s.id===v[0]));
-    if (q.includes('number IS NOT NULL')) return Promise.resolve(DB.sims.filter(s=>s.number));
-    if (q.startsWith('INSERT INTO sims')) { DB.sims.push({ id:v[0],number:v[1],title:v[2],tagline:v[3],description:v[4],minutes:v[5],launch_url:v[6],published:v[7] }); return Promise.resolve([]); }
-    if (q.startsWith('UPDATE sims SET launch_url')) { DB.sims.find(s=>s.id===v[1]).launch_url=v[0]; return Promise.resolve([]); }
-    if (q.startsWith('UPDATE sims SET minutes')) { DB.sims.find(s=>s.id===v[1]).minutes=v[0]; return Promise.resolve([]); }
-    if (q.startsWith('UPDATE sims SET tagline')) { DB.sims.find(s=>s.id===v[1]).tagline=v[0]; return Promise.resolve([]); }
-    if (q.startsWith('UPDATE sims SET description')) { DB.sims.find(s=>s.id===v[1]).description=v[0]; return Promise.resolve([]); }
-    return Promise.resolve([]);
-  }, id: p=>p+'_1', joinCode:()=>'X' }};
-const h = require(P('platform/api/register.js'));
+const DB = { sims:[], course_sims:[], launches:[], completions:[], previews:[], sim_access:[] };
+const row = id => DB.sims.find(s => s.id === id);
+require.cache[require.resolve(P('platform/lib/db.js'))] = { exports:{
+  sql:() => (strings, ...v) => {
+    const q = strings.join('?').replace(/\s+/g, ' ').trim();
+    if (q.startsWith('SELECT (SELECT count(*) FROM course_sims')) {
+      const n = ['course_sims','launches','completions','previews','sim_access'].reduce((sum, table) => sum + DB[table].filter(x => x.sim_id === v[0]).length, 0);
+      return Promise.resolve([{ n }]);
+    }
+    if (q.startsWith('DELETE FROM sims WHERE id')) { DB.sims = DB.sims.filter(s => s.id !== v[0]); return Promise.resolve([]); }
+    if (q.startsWith('SELECT * FROM sims WHERE id')) return Promise.resolve(DB.sims.filter(s => s.id === v[0]));
+    if (q.includes('number IS NOT NULL')) return Promise.resolve(DB.sims.filter(s => s.number));
+    if (q.startsWith('INSERT INTO sims')) {
+      DB.sims.push({ id:v[0], number:v[1], title:v[2], tagline:v[3], description:v[4], minutes:v[5], launch_url:v[6], published:false, detail:v[7] ? JSON.parse(v[7]) : null });
+      return Promise.resolve([]);
+    }
+    const updates = { 'UPDATE sims SET detail':'detail', 'UPDATE sims SET launch_url':'launch_url', 'UPDATE sims SET minutes':'minutes', 'UPDATE sims SET title':'title', 'UPDATE sims SET tagline':'tagline', 'UPDATE sims SET description':'description' };
+    const prefix = Object.keys(updates).find(x => q.startsWith(x));
+    if (prefix) { row(v[1])[updates[prefix]] = updates[prefix] === 'detail' ? JSON.parse(v[0]) : v[0]; return Promise.resolve([]); }
+    throw new Error(`Unrecognised registration query: ${q}`);
+  },
+  id:p => `${p}_1`, joinCode:() => 'X'
+} };
+const handler = require(P('platform/api/register.js'));
 const { signBack } = require(P('sim/lib/launch.js'));
-const call = b => new Promise(res => {
-  const r={_c:200,status(c){this._c=c;return this;},json(d){res({status:this._c,body:d});},setHeader(){},end(){res({status:this._c});}};
-  h({method:'POST',body:b,headers:{}},r);
+const call = body => new Promise(resolve => {
+  const response = { _c:200, status(c){ this._c=c; return this; }, json(data){ resolve({status:this._c, body:data}); }, setHeader(){}, end(){ resolve({status:this._c}); } };
+  handler({ method:'POST', body, headers:{} }, response);
 });
-const announce = (o) => signBack(Object.assign({ kind:'register', exp: Date.now()+60000 }, o));
+const announce = data => signBack(Object.assign({ kind:'register', exp:Date.now()+60000 }, data));
 
 (async () => {
-  let r = await call({ token: announce({ sim:'rapid-01-disaster', title:'Disaster or Breach?',
-    tagline:'From the sim.', description:'Written by the developer.', minutes:20, launchUrl:'https://sim1.test' }) });
-  console.log('  first announcement      :', r.status, '| created', r.body.created, '| number', r.body.number);
-  console.log('    published on arrival  :', DB.sims[0].published, '(must be false)');
+  let result = await call({ token:announce({ sim:'rapid-01-disaster', title:'Disaster or Breach?', tagline:'From sim.', description:'Developer copy.', minutes:20, launchUrl:'https://sim1.test', detail:{ tryIt:'Play.' } }) });
+  assert.equal(result.body.created, true);
+  assert.equal(row('rapid-01-disaster').published, false);
+  Object.assign(row('rapid-01-disaster'), { title:'Admin title', tagline:'Admin tagline', published:true });
+  row('rapid-01-disaster').detail._edited = ['title','tagline'];
+  await call({ token:announce({ sim:'rapid-01-disaster', title:'Developer title', tagline:'Developer tagline', description:'New description', minutes:25, launchUrl:'https://sim1-new.test', detail:{ tryIt:'Play again.' } }) });
+  assert.equal(row('rapid-01-disaster').title, 'Admin title');
+  assert.equal(row('rapid-01-disaster').tagline, 'Admin tagline');
+  assert.equal(row('rapid-01-disaster').description, 'New description');
+  assert.equal(row('rapid-01-disaster').launch_url, 'https://sim1-new.test');
+  assert.equal(row('rapid-01-disaster').minutes, 25);
+  assert.equal(row('rapid-01-disaster').published, true);
 
-  r = await call({ token: announce({ sim:'rapid-02-relay', title:'What Did It Tell Them?', minutes:20, launchUrl:'https://sim2.test' }) });
-  console.log('  a second simulation     :', r.status, '| number', r.body.number);
+  DB.sims.push({ id:'rapid-03-bench', number:3, title:'The Bench Is Clear', tagline:'Old scenario', description:'Old Harlow content', minutes:45, launch_url:'https://old.test', published:true, detail:{ _edited:['title'], cast:[{name:'Harlow'}] } });
+  DB.sims.push({ id:'rapid-sim-03', number:4, title:'Temporary duplicate', published:false, detail:{} });
+  const replacement = { sim:'rapid-03-bench', catalogueRevision:'claims-interview-v1', replaces:['rapid-sim-03'], title:"Why Don't They Have Any Patience?", tagline:'Three interviews.', description:'Document a dental-claims intake process.', minutes:90, launchUrl:'https://sim3.test', detail:{ cast:[{name:'Ray Duffy'}], tryIt:'Play the complete sequence.' } };
+  result = await call({ token:announce(replacement) });
+  assert.equal(result.body.catalogueRefreshed, true);
+  assert.deepEqual(result.body.aliasesRemoved, ['rapid-sim-03']);
+  assert.equal(row('rapid-sim-03'), undefined);
+  assert.equal(row('rapid-03-bench').title, replacement.title);
+  assert.equal(row('rapid-03-bench').published, true);
+  assert.equal(row('rapid-03-bench').detail.cast[0].name, 'Ray Duffy');
+  assert.equal(row('rapid-03-bench').detail._source_revision, 'claims-interview-v1');
 
-  // an administrator rewrites the words
-  DB.sims[0].title = 'Disaster or Breach? (exec)';
-  DB.sims[0].tagline = 'Rewritten by the administrator.';
-  DB.sims[0].published = true;
+  row('rapid-03-bench').title = 'Faculty-facing title';
+  row('rapid-03-bench').detail._edited = ['title'];
+  result = await call({ token:announce(replacement) });
+  assert.equal(result.body.catalogueRefreshed, false);
+  assert.equal(row('rapid-03-bench').title, 'Faculty-facing title');
 
-  r = await call({ token: announce({ sim:'rapid-01-disaster', title:'Disaster or Breach?',
-    tagline:'From the sim.', description:'Written by the developer.', minutes:25, launchUrl:'https://sim1-new.test' }) });
-  console.log('  announcing again        :', r.status, '| created', r.body.created);
-  console.log('    title kept            :', DB.sims[0].title);
-  console.log('    tagline kept          :', DB.sims[0].tagline);
-  console.log('    address refreshed     :', DB.sims[0].launch_url);
-  console.log('    duration refreshed    :', DB.sims[0].minutes);
-  console.log('    still published       :', DB.sims[0].published);
-
-  r = await call({ token: 'forged.nonsense' });
-  console.log('  forged                  :', r.status, r.body.error);
-  r = await call({ token: announce({ sim:'x', launchUrl:'not-a-url' }) });
-  console.log('  no real address         :', r.status, r.body.error);
-})();
+  DB.sims.push({ id:'used-alias', number:5, title:'Used', published:false, detail:{} });
+  DB.course_sims.push({ sim_id:'used-alias' });
+  result = await call({ token:announce(Object.assign({}, replacement, { replaces:['used-alias'] })) });
+  assert.ok(row('used-alias'));
+  assert.deepEqual(result.body.aliasesRemoved, []);
+  assert.equal((await call({ token:'forged.nonsense' })).status, 401);
+  assert.equal((await call({ token:announce({ sim:'x', launchUrl:'not-a-url' }) })).status, 400);
+  console.log('registration contract: all checks passed');
+})().catch(error => { console.error(error); process.exitCode = 1; });

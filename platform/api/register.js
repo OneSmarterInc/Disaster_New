@@ -38,8 +38,32 @@ module.exports = async (req, res) => {
 
   const s = sql();
   try {
+    // Remove an unused temporary catalogue identity created during a scenario
+    // replacement. Never delete an alias that already has course, launch,
+    // completion, preview or access history attached.
+    const aliasesRemoved = [];
+    const aliases = Array.isArray(p.replaces)
+      ? p.replaces.map(x => clip(x, 200)).filter(x => x && x !== p.sim).slice(0, 5)
+      : [];
+    for (const alias of aliases) {
+      const usage = (await s`
+        SELECT
+          (SELECT count(*) FROM course_sims WHERE sim_id = ${alias}) +
+          (SELECT count(*) FROM launches WHERE sim_id = ${alias}) +
+          (SELECT count(*) FROM completions WHERE sim_id = ${alias}) +
+          (SELECT count(*) FROM previews WHERE sim_id = ${alias}) +
+          (SELECT count(*) FROM sim_access WHERE sim_id = ${alias}) AS n`)[0];
+      if (usage && Number(usage.n) === 0) {
+        await s`DELETE FROM sims WHERE id = ${alias}`;
+        aliasesRemoved.push(alias);
+      }
+    }
+
     const existing = (await s`SELECT * FROM sims WHERE id = ${p.sim}`)[0];
     const minutes = Number.isFinite(+p.minutes) ? Math.max(1, Math.min(600, Math.round(+p.minutes))) : null;
+    const sourceRevision = clip(p.catalogueRevision, 120);
+    const initialDetail = p.detail ? Object.assign({}, p.detail,
+      sourceRevision ? { _source_revision: sourceRevision } : {}) : null;
 
     if (!existing) {
       // Give it the next free number so it reads sensibly straight away. An
@@ -51,20 +75,28 @@ module.exports = async (req, res) => {
       await s`INSERT INTO sims (id, number, title, tagline, description, minutes, launch_url, published, detail)
               VALUES (${p.sim}, ${n}, ${clip(p.title, 200) || p.sim}, ${clip(p.tagline, 300)},
                       ${clip(p.description, 4000)}, ${minutes}, ${clip(p.launchUrl, 500)}, false,
-                      ${p.detail ? JSON.stringify(p.detail).slice(0, 12000) : null})`;
-      return res.status(200).json({ ok: true, created: true, number: n });
+                      ${initialDetail ? JSON.stringify(initialDetail).slice(0, 12000) : null})`;
+      return res.status(200).json({ ok: true, created: true, number: n, aliasesRemoved });
     }
+
+    // A scenario replacement may deliberately keep the established catalogue
+    // id so existing approvals, course assignments, launches and completions
+    // remain attached. On the first announcement of a new source revision,
+    // replace stale catalogue copy once. Later admin edits are protected again.
+    const storedRevision = existing.detail && existing.detail._source_revision;
+    const replacingScenario = !!(sourceRevision && sourceRevision !== storedRevision);
 
     // The simulation's own copy refreshes on every announcement, except for any
     // field an administrator has rewritten — theirs wins from then on, because
     // a redeploy should not quietly undo their words.
     if (p.detail) {
-      const edited = (existing.detail && existing.detail._edited) || [];
+      const edited = replacingScenario ? [] : ((existing.detail && existing.detail._edited) || []);
       const merged = Object.assign({}, p.detail);
       for (const k of edited) {
         if (existing.detail && existing.detail[k] !== undefined) merged[k] = existing.detail[k];
       }
       merged._edited = edited;
+      if (sourceRevision) merged._source_revision = sourceRevision;
       await s`UPDATE sims SET detail = ${JSON.stringify(merged).slice(0, 12000)} WHERE id = ${p.sim}`;
     }
 
@@ -78,12 +110,18 @@ module.exports = async (req, res) => {
     // first sounds cautious and is not: it meant a rewrite in the simulation
     // reached half the page and stopped, so a description could sit there for
     // days saying something its author had already deleted.
-    const edited = (existing.detail && existing.detail._edited) || [];
-    if (!edited.includes('title') && p.title) await s`UPDATE sims SET title = ${clip(p.title, 200)} WHERE id = ${p.sim}`;
-    if (!edited.includes('tagline') && p.tagline) await s`UPDATE sims SET tagline = ${clip(p.tagline, 300)} WHERE id = ${p.sim}`;
-    if (!edited.includes('description') && p.description) await s`UPDATE sims SET description = ${clip(p.description, 4000)} WHERE id = ${p.sim}`;
+    const edited = replacingScenario ? [] : ((existing.detail && existing.detail._edited) || []);
+    if (replacingScenario || !edited.includes('title')) {
+      if (p.title) await s`UPDATE sims SET title = ${clip(p.title, 200)} WHERE id = ${p.sim}`;
+    }
+    if (replacingScenario || !edited.includes('tagline')) {
+      if (p.tagline) await s`UPDATE sims SET tagline = ${clip(p.tagline, 300)} WHERE id = ${p.sim}`;
+    }
+    if (replacingScenario || !edited.includes('description')) {
+      if (p.description) await s`UPDATE sims SET description = ${clip(p.description, 4000)} WHERE id = ${p.sim}`;
+    }
 
-    return res.status(200).json({ ok: true, created: false });
+    return res.status(200).json({ ok: true, created: false, catalogueRefreshed: replacingScenario, aliasesRemoved });
   } catch (e) {
     if (e.code === 'NO_SECRET') return res.status(500).json({ error: 'no_secret' });
     if (e.code === 'NO_DB') return res.status(503).json({ error: 'no_db' });
