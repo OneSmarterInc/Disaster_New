@@ -43,11 +43,11 @@
     },
     {
       "source": "/sim03",
-      "destination": "https://disaster-new-3cxv.vercel.app/"
+      "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/"
     },
     {
       "source": "/sim03/:path*",
-      "destination": "https://disaster-new-3cxv.vercel.app/:path*"
+      "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/:path*"
     }
   ],
   "headers": [
