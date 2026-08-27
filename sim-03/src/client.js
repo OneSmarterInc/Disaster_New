@@ -163,8 +163,7 @@
       '<span class="clock" id="clk">1:30</span></div>' +
       note +
       '<div class="board">' +
-      cell('Units cleared', v.cleared) +
-      cell('Bench score', v.localScore, true) +
+      cell('Units cleared', v.cleared, true) +
       cell('In the queue', v.backlog) +
       cell('Cycle time', v.localCycleTime + 'h') +
       '</div>' +
@@ -172,7 +171,6 @@
       '<div class="panel"><h3>What do you do today?</h3><div class="choices" id="ch">' +
       v.availableActions.map(a =>
         '<button class="choice" data-id="' + esc(a.id) + '">' +
-        (a.localCost ? '<span class="cost">−' + a.localCost + ' bench score</span>' : '') +
         '<span class="lab">' + esc(a.label) + '</span>' +
         '<span class="bl">' + esc(a.blurb || '') + '</span>' +
         '</button>').join('') +

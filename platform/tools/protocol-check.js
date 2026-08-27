@@ -94,5 +94,18 @@ for (const n of ['sim01', 'sim02', 'sim03']) {
   ok(cfg.headers.some(h => h.source.startsWith('/' + n)), `/${n} carries the noindex header`);
 }
 
+// The launch URL a student actually clicks. This is where the trailing slash
+// came from, and it is worth asserting rather than eyeballing.
+console.log('\nlaunch links');
+const buildUrl = (stored) => stored.replace(/\/+$/, '') + '#lt=TOKEN';
+for (const stored of ['https://rapidsims.flexee.org/sim03',
+                      'https://rapidsims.flexee.org/sim03/']) {
+  const url = buildUrl(stored);
+  ok(!url.includes('/#'), `no slash before the fragment for ${stored}`);
+  const routePath = url.split('#')[0].replace('https://rapidsims.flexee.org', '');
+  ok(cfg.rewrites.some(r => r.source === routePath),
+     `the resulting path ${routePath} matches a rewrite exactly`);
+}
+
 console.log(bad ? `\n${bad} failed\n` : '\nall sims speak the platform protocol\n');
 process.exit(bad ? 1 : 0);

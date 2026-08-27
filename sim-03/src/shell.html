@@ -51,7 +51,7 @@ p{margin:0 0 14px}
 
 /* The scoreboard. The most prominent thing on screen, because it is what the
    participant is measured on and it should feel that way. Numbers in mono. */
-.board{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
   border:1px solid var(--line);margin:0 0 16px}
 .cell{background:var(--panel);padding:13px 15px}
 .cell .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
@@ -125,7 +125,7 @@ table.tl tr:last-child td{border-bottom:none}
 .hidden{display:none}
 
 @media (max-width:620px){
-  .board{grid-template-columns:repeat(2,1fr)}
+  .board{grid-template-columns:repeat(3,1fr)}
   .wrap{padding:24px 15px 64px}
   h1{font-size:25px}
   button.choice .cost{float:none;display:inline-block;margin:0 0 7px}

@@ -106,7 +106,13 @@ module.exports = async (req, res) => {
     // In the fragment, not the query. A fragment is never sent in the HTTP
     // request, so the token stays out of access logs and proxy logs on the way
     // there. The simulation already reads both.
-    const url = sim.launch_url.replace(/\/$/, '') + '/#lt=' + encodeURIComponent(token);
+    // No trailing slash before the fragment. This built /sim03/#lt=... , and a
+    // sim served under a platform path prefix has a rewrite for /sim03 and for
+    // /sim03/:path* but that middle form matched neither — a student clicking
+    // through landed on a 404 while the sim itself was healthy. Both forms are
+    // routed now, but emitting the canonical one means a future sim does not
+    // depend on someone having added the extra rule.
+    const url = sim.launch_url.replace(/\/+$/, '') + '#lt=' + encodeURIComponent(token);
     if (wants === 'json') return res.status(200).json({ url });
     return res.redirect(302, url);
 

@@ -47,6 +47,12 @@ const PROTECTED_KEYS = [
 // Everything visible() is permitted to emit at the top level. An allow-list
 // rather than a deny-list, because a new state field added later defaults to
 // hidden instead of defaulting to leaked.
+// localScore is deliberately absent. It is invented — a real diagnosis bench is
+// measured on units cleared and cycle time, and those two being real is what
+// makes the trap work. Showing a made-up points figure tells the participant
+// they are playing a game with a number to maximise, and a negative one reads
+// as losing rather than as a working month. It stays server-side for the
+// debrief, which needs one figure to compare runs against each other.
 const VISIBLE_KEYS = [
   'round',
   'roundsTotal',
@@ -55,7 +61,6 @@ const VISIBLE_KEYS = [
   'inbound',
   'cleared',
   'backlog',
-  'localScore',
   'localCycleTime',
   'actionsTaken',
   'readings',
@@ -146,11 +151,16 @@ class Session {
     out.note = day ? day.note : null;
     out.availableActions = this.availableActions().map(a => {
       const v = (day && day.variants && day.variants[a.id]) || {};
+      // No price tag. Announcing "-4 bench score" turns the decision into
+      // arithmetic — the participant compares numbers and takes the cheapest
+      // instead of deciding whether to find out what happens to their work.
+      // The cost is real and it lands where it should: a morning spent on the
+      // phone clears nothing, and units cleared not moving says it better than
+      // a label ever could.
       return {
         id: this.tokenFor(a.id),
         label: v.label || a.label,
-        blurb: v.blurb || a.blurb || '',
-        localCost: a.localCost || 0
+        blurb: v.blurb || a.blurb || ''
       };
     });
     return out;

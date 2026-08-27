@@ -123,8 +123,12 @@ const ok = (cond, msg) => {
   const first = started.body.view;
   ok(Array.isArray(first.availableActions) && first.availableActions.length >= 3,
      'the first day offers a choice');
-  ok(first.availableActions.every(a => a.label && typeof a.localCost === 'number'),
-     'every option carries a label and a price');
+  ok(first.availableActions.every(a => a.label && a.blurb),
+     'every option carries a label and a line about what it means');
+  ok(first.availableActions.every(a => a.localCost === undefined),
+     'no option carries a price — that turns the decision into arithmetic');
+  ok(first.localScore === undefined && first.note,
+     'the day shows its situation and not an invented points figure');
 
   // Play the greedy path all the way through, using only what the client sees.
   let view = first, guard = 0, finished = false, sawReading = false;

@@ -51,7 +51,7 @@ p{margin:0 0 14px}
 
 /* The scoreboard. The most prominent thing on screen, because it is what the
    participant is measured on and it should feel that way. Numbers in mono. */
-.board{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
   border:1px solid var(--line);margin:0 0 16px}
 .cell{background:var(--panel);padding:13px 15px}
 .cell .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
@@ -125,7 +125,7 @@ table.tl tr:last-child td{border-bottom:none}
 .hidden{display:none}
 
 @media (max-width:620px){
-  .board{grid-template-columns:repeat(2,1fr)}
+  .board{grid-template-columns:repeat(3,1fr)}
   .wrap{padding:24px 15px 64px}
   h1{font-size:25px}
   button.choice .cost{float:none;display:inline-block;margin:0 0 7px}
@@ -300,8 +300,7 @@ table.tl tr:last-child td{border-bottom:none}
       '<span class="clock" id="clk">1:30</span></div>' +
       note +
       '<div class="board">' +
-      cell('Units cleared', v.cleared) +
-      cell('Bench score', v.localScore, true) +
+      cell('Units cleared', v.cleared, true) +
       cell('In the queue', v.backlog) +
       cell('Cycle time', v.localCycleTime + 'h') +
       '</div>' +
@@ -309,7 +308,6 @@ table.tl tr:last-child td{border-bottom:none}
       '<div class="panel"><h3>What do you do today?</h3><div class="choices" id="ch">' +
       v.availableActions.map(a =>
         '<button class="choice" data-id="' + esc(a.id) + '">' +
-        (a.localCost ? '<span class="cost">−' + a.localCost + ' bench score</span>' : '') +
         '<span class="lab">' + esc(a.label) + '</span>' +
         '<span class="bl">' + esc(a.blurb || '') + '</span>' +
         '</button>').join('') +

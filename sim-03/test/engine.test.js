@@ -234,6 +234,23 @@ test('the transcript records every action taken', () => {
 console.log('\naction tokens');
 // ---------------------------------------------------------------------------
 
+test('the participant is never shown the points figure', () => {
+  const s = new Session(proc);
+  s.act('clear_fast');
+  const v = s.visible();
+  assert.strictEqual(v.localScore, undefined, 'the invented score reached the client');
+  assert.ok(!JSON.stringify(v).includes('localScore'), 'localScore leaked somewhere in the view');
+  assert.ok(typeof s.localScore === 'number', 'but the debrief still needs it server-side');
+});
+
+test('the options carry no price tag', () => {
+  const s = new Session(proc);
+  for (const a of s.visible().availableActions) {
+    assert.strictEqual(a.localCost, undefined,
+      'a price on the button turns the decision into arithmetic');
+  }
+});
+
 test('the browser is given opaque tokens, not action ids', () => {
   const s = new Session(proc);
   for (const a of s.visible().availableActions) {
