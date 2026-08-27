@@ -6,7 +6,7 @@ const store = require('../lib/store');
 const { Session, SOURCES } = require('../src/engine');
 const { validate, review } = require('../src/report');
 const { ROWS, DISPOSITIONS } = require('../data/report');
-const { WINDOWS, feasibleOrderings } = require('../data/calendar');
+const { WINDOWS, AVAILABILITY, feasibleOrderings } = require('../data/calendar');
 const { serialize, hydrate } = require('../lib/session');
 const { reportCompletion } = require('../lib/launch');
 
@@ -39,6 +39,31 @@ module.exports = async (req, res) => {
       title: 'Why Don\'t They Have Any Patience?',
       organization: 'Wexford Benefit Administrators',
       assignment: 'Document how claims are handled from arrival until adjudication. Verify handoffs, waits, outputs, provider contact, and anything the partial chart cannot establish.',
+      context: [
+        'Wexford administers dental claims for self-funded employer plans. Around twelve hundred claims arrive each working day.',
+        'The claims platform is being replaced. The configuration team needs a verified account of what happens from arrival until adjudication.',
+        'The vendor\'s chart is incomplete and came from an earlier engagement. Treat it as a starting point, not a finding.',
+        'You have three fixed fifteen-minute appointments and no second visits.'
+      ],
+      requirements: [
+        'Every point where a claim changes hands or waits',
+        'What each step produces and who receives it',
+        'Every point where the submitting provider is contacted, or contacts Wexford',
+        'Anything on the chart that you cannot verify'
+      ],
+      chart: [
+        { id: 'arrival', title: 'Claim arrives', detail: 'Post · fax to outside conversion vendor · fax converted here · clearinghouse', purpose: 'Intake', owner: 'Mail room', timing: 'Releases 09:00 and 14:00' },
+        { id: 'log', title: 'Receipt log', detail: 'All non-electronic claims posted to a spreadsheet before onward routing', purpose: null, owner: 'Log desk', timing: 'Approx. 6 hours/day' },
+        { id: 'gap', title: 'Not documented', detail: 'A step exists; no detail was recorded', purpose: null, owner: null, timing: null },
+        { id: 'adjudication', title: 'Adjudication', detail: 'Out of scope', purpose: null, owner: null, timing: null }
+      ],
+      observation: {
+        heading: 'First-pass review desk',
+        instruction: 'Watch a batch move through first-pass review. Record the observed per-claim timing on your working chart.',
+        finding: 'Across the observed batch, routine claims move at approximately thirty seconds per claim.'
+      },
+      windows: WINDOWS,
+      availability: AVAILABILITY,
       orderings: feasibleOrderings(),
       sources: Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [k, { name: v.name, role: v.role }])),
       rows: ROWS,

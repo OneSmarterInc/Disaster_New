@@ -1,0 +1,18 @@
+'use strict';
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const root = path.join(__dirname, '..');
+const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+const js = fs.readFileSync(path.join(root, 'public', 'client.js'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'public', 'app.css'), 'utf8');
+assert.match(html, /window\.SIM_BASE/);
+assert.ok(html.includes("window.SIM_BASE + '/client.js"));
+assert.match(js, /id="question"/);
+assert.match(js, /id="root"/);
+assert.match(js, /form\.requestSubmit\(\)/);
+assert.match(js, /partial chart/i);
+assert.match(js, /Observation window/i);
+assert.doesNotMatch(css, /pointer-events\s*:\s*none[^}]*textarea/i);
+assert.match(css, /caret-color:var\(--amber\)/);
+console.log('client contract: passed');
