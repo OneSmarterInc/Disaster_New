@@ -82,6 +82,8 @@ function announce(meta, selfUrl) {
     tagline: meta.tagline,
     description: meta.description,
     minutes: meta.minutes,
+    catalogueRevision: meta.catalogueRevision || null,
+    replaces: Array.isArray(meta.replaces) ? meta.replaces.slice(0, 5) : [],
     detail: meta.detail || null,
     // The platform appends the launch token to this address. A trailing slash
     // creates a different route when the sim is mounted below /sim03.
