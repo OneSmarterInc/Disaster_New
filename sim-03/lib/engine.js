@@ -240,10 +240,16 @@ class Session {
       });
     }
 
+    // Record the wording the participant actually read, not the generic name.
+    // The debrief shows this back to them day by day, and it should match what
+    // was on the screen at the time — on day 4 they chose "Clear hard for the
+    // numbers", and being told they chose "Clear from the symptom code" makes
+    // the record feel like somebody else's.
+    const dayVariant = (before_day && before_day.variants && before_day.variants[action.id]) || {};
     this.transcript.push({
       round: this.round,
       actionId: action.id,
-      label: action.label,
+      label: dayVariant.label || action.label,
       localBefore: before,
       localAfter: this.snapshotLocal(),
       note: before_day ? before_day.note : null,

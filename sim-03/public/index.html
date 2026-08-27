@@ -333,16 +333,16 @@ table.tl tr:last-child td{border-bottom:none}
 
     app.innerHTML =
       '<h1>' + esc(d.title) + '</h1>' +
-      '<p class="sub">Bench score ' + esc(d.localScore) + ' · ' + esc(d.cleared) + ' units cleared · ' +
+      '<p class="sub">' + esc(d.cleared) + ' units cleared · cycle time ' + esc(d.cycleTime) + 'h · ' +
       'you called the field desk ' + esc(d.counts.timesLooked) +
       (d.counts.timesLooked === 1 ? ' time' : ' times') + '</p>' +
       tail +
       '<div class="panel"><p>' + esc(d.body) + '</p></div>' +
       '<div class="panel"><h3>Day by day</h3>' +
-      '<table class="tl"><thead><tr><th>Day</th><th>What you did</th><th>Cleared</th><th>Score</th><th></th></tr></thead><tbody>' +
+      '<table class="tl"><thead><tr><th>Day</th><th>What you did</th><th>Cleared</th><th>Cycle</th><th></th></tr></thead><tbody>' +
       d.timeline.map(t =>
         '<tr><td>' + esc(t.day) + '</td><td>' + esc(t.did) + '</td><td>' + esc(t.cleared) +
-        '</td><td>' + esc(t.score) + '</td><td class="saw">' + (t.sawIt ? 'you looked' : '') + '</td></tr>'
+        '</td><td>' + esc(t.cycleTime) + 'h</td><td class="saw">' + (t.sawIt ? 'you looked' : '') + '</td></tr>'
       ).join('') +
       '</tbody></table></div>' +
       '<div class="panel"><h3>For the debrief</h3><ul class="qs">' +

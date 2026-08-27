@@ -190,8 +190,17 @@ const ok = (cond, msg) => {
   }
   const d2 = await call(run, { action: 'debrief', runId: id2 });
   ok(!d2.body.debrief.outcome, 'the careful path harms nobody');
-  ok(d2.body.debrief.localScore < d.body.debrief.localScore,
-     'and it costs the participant on the only score they are shown');
+  // The cost now shows where the participant actually saw it: units cleared.
+  // The invented score is gone from the debrief too — reporting a number they
+  // were never shown during the run asks them to care about it retrospectively.
+  ok(d2.body.debrief.cleared < d.body.debrief.cleared,
+     'the careful path clears fewer units — the cost lands on a real number');
+  ok(d2.body.debrief.localScore === undefined,
+     'the debrief does not report the invented score either');
+  ok(typeof d2.body.debrief.cycleTime === 'number',
+     'the debrief reports cycle time, which was on screen all along');
+  ok(d2.body.debrief.timeline.every(t => t.score === undefined),
+     'the day-by-day table has no points column');
 
   // Resume, because faculty run these across a break.
   const again = await call(run, { action: 'resume', runId });

@@ -342,8 +342,11 @@ function debriefFor(session) {
       what: 'First-time-fix review, northern region.'
     } : null,
     counts: { fastClears: fast, timesLooked: looked, timesShownSomething: wasShown.length, corrections: remedied },
-    localScore: session.localScore,
+    // Not the invented score. They never saw it during the run, so reporting
+    // it here asks them to care about a number that meant nothing at the time.
+    // These two are what was on their screen for eight days.
     cleared: session.cleared,
+    cycleTime: session.localCycleTime,
     // The whole run, day by day, with what was happening at Field alongside
     // what the participant was shown. This is the point of the debrief: the
     // two columns next to each other.
@@ -351,12 +354,12 @@ function debriefFor(session) {
       day: i + 1,
       did: t.label,
       cleared: t.localAfter.cleared,
-      score: t.localAfter.localScore,
+      cycleTime: t.localAfter.localCycleTime,
       sawIt: !!t.reading
     })),
     questions: [
       'At what point did you have enough information to act differently, and what did you do with it?',
-      'Calling the field desk cost four points and returned a sentence. What would it have to have returned for you to have called it twice?',
+      'Calling the field desk cost you a morning and returned one sentence. What would it have had to say for you to have called again?',
       'If you called once and were told everything was fine, what did that teach you, and was it true?',
       'Priya measures units cleared and cycle time. What would she have to measure instead, and what would that break?'
     ]

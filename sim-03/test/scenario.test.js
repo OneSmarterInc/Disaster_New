@@ -113,16 +113,16 @@ console.log('\nthe score gradient runs the wrong way, on purpose');
 // ---------------------------------------------------------------------------
 
 test('the worst outcome carries the best score', () => {
-  const greedy = play(PLANS.greedy).debrief.localScore;
+  const greedy = play(PLANS.greedy).session.localScore;
   for (const plan of ['lookedEarly', 'lookedIgnored', 'lookedLate', 'blindFix', 'careful', 'sawAndActed', 'luckyRun']) {
-    assert.ok(play(PLANS[plan]).debrief.localScore < greedy,
+    assert.ok(play(PLANS[plan]).session.localScore < greedy,
       `${plan} scores at least as well as pure local optimisation — the trap does not pay`);
   }
 });
 
 test('the two clean runs score worst of all', () => {
-  const clean = ['blindFix', 'careful'].map(p => play(PLANS[p]).debrief.localScore);
-  const dirty = ['greedy', 'lookedEarly', 'lookedIgnored'].map(p => play(PLANS[p]).debrief.localScore);
+  const clean = ['blindFix', 'careful'].map(p => play(PLANS[p]).session.localScore);
+  const dirty = ['greedy', 'lookedEarly', 'lookedIgnored'].map(p => play(PLANS[p]).session.localScore);
   assert.ok(Math.max(...clean) < Math.min(...dirty),
     'protecting Dev is not the most expensive thing a participant can do — the dilemma is soft');
 });
