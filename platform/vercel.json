@@ -30,6 +30,10 @@
       "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/"
     },
     {
+      "source": "/sim01/",
+      "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/"
+    },
+    {
       "source": "/sim01/:path*",
       "destination": "https://flexee-rapid-sim-01-vercel.vercel.app/:path*"
     },
@@ -38,11 +42,19 @@
       "destination": "https://flexee-rapid-sim-02.vercel.app/"
     },
     {
+      "source": "/sim02/",
+      "destination": "https://flexee-rapid-sim-02.vercel.app/"
+    },
+    {
       "source": "/sim02/:path*",
       "destination": "https://flexee-rapid-sim-02.vercel.app/:path*"
     },
     {
       "source": "/sim03",
+      "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/"
+    },
+    {
+      "source": "/sim03/",
       "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/"
     },
     {

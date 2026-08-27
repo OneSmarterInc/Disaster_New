@@ -84,6 +84,11 @@ const cfg = require(path.join(root, 'platform', 'vercel.json'));
 for (const n of ['sim01', 'sim02', 'sim03']) {
   const routed = cfg.rewrites.filter(r => r.source.startsWith('/' + n));
   ok(routed.length >= 2, `/${n} is routed`);
+  // A registered address ending in "/" produces launch links at /simNN/ ,
+  // which is a different path and matched nothing. A student clicking through
+  // from a course got a 404 while the sim itself was perfectly healthy.
+  ok(routed.some(r => r.source === '/' + n + '/'),
+     `/${n}/ with a trailing slash is routed`);
   ok(routed.every(r => /^https:\/\/[a-z0-9.-]+\//.test(r.destination)),
      `/${n} points at a real address`);
   ok(cfg.headers.some(h => h.source.startsWith('/' + n)), `/${n} carries the noindex header`);
