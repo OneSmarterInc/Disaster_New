@@ -15,7 +15,7 @@ const META = {
   id: 'rapid-03-bench',
   title: 'The Bench Is Clear',
   tagline: 'Twelve minutes running one step of a process that has five.',
-  description: 'You run the diagnosis bench. Your numbers are good and getting better. Somewhere past the end of your desk, a colleague you have never met is having a much worse month, and the two facts are related.',
+  description: 'You run the diagnosis bench, and your numbers are good. Further down the line, someone you have never met is having a bad month, and you are the reason. You cannot see him from where you sit.',
   minutes: 20,
   detail: {
     world: 'Field service · laboratory instruments',
