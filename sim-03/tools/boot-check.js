@@ -67,6 +67,21 @@ const ok = (cond, msg) => {
      'no fingerprint is printed when no secret is set');
   ok(h.body.canAnnounce === false, 'health reports it cannot announce itself');
 
+  // Behind a path prefix the sim cannot work its own address out — the rewrite
+  // strips /sim03 and the host header names the platform. Health must say so
+  // rather than quietly reporting a derived value that sends launches to the
+  // catalogue.
+  const bare = await call(health, {});
+  ok(/set SIM_URL/.test(String(bare.body.registersAs)),
+     'health warns when SIM_URL is unset rather than implying a good address');
+  ok(bare.body.missing.some(m => m.startsWith('SIM_URL')),
+     'SIM_URL is listed as missing');
+
+  process.env.SIM_URL = 'https://rapidsims.flexee.org/sim03';
+  const withUrl = await call(health, {});
+  ok(withUrl.body.registersAs === 'https://rapidsims.flexee.org/sim03',
+     'health reports the address launches will be built from');
+
   process.env.LAUNCH_SECRET = 'test-secret-value';
   process.env.PLATFORM_URL = 'https://example.invalid';
   const h2 = await call(health, {});
@@ -77,6 +92,7 @@ const ok = (cond, msg) => {
   ok(h2.body.canAnnounce === true, 'health reports it can announce once configured');
   process.env.LAUNCH_SECRET = '';
   process.env.PLATFORM_URL = '';
+  process.env.SIM_URL = '';
 
   // The catalogue reads this endpoint. It was never exercised until a
   // deployment showed nothing on the home page.
