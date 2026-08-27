@@ -1,13 +1,8 @@
-# Patterns here are NOT anchored to this directory — Vercel applies them across
-# the whole clone, so a bare `tools/` also strips platform/tools. Anchor
-# everything with a leading slash.
-#
-# Do NOT ignore src/. `npm run build` reads it, and Vercel runs that script
-# during deploy. Ignoring it strips the sources and then runs the thing that
-# reads them, which is exactly how this file broke the first deploy.
-#
-# lib/ is imported by the API functions and bundled with them; it is never served.
-
+# Paths are rooted at this Vercel project. Runtime code under lib/, src/ and
+# data/ must remain available because serverless functions import it.
 /test/
-/tools/
-/DESIGN.md
+/HANDOFF.md
+/INTRO_BRIEF.md
+/PLATFORM_SPEC_transcript_view.md
+/playtest.js
+/demo-report.js

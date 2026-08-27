@@ -1,15 +1,11 @@
 {
-  "name": "flexee-rapid-sim-03",
+  "name": "rapidsimplus-claims-interview",
   "private": true,
   "version": "1.0.0",
-  "description": "Flexee RapidSim 03 — The Bench Is Clear",
   "engines": { "node": ">=20" },
   "scripts": {
-    "build": "node build.js",
-    "test": "node test/engine.test.js && node test/scenario.test.js",
-    "guard": "node tools/design-guard.js",
-    "boot": "node tools/boot-check.js",
-    "flow": "node tools/flow-check.js",
-    "check": "npm run build && npm test && npm run guard && npm run boot && npm run flow"
+    "test": "node test/run.js && node test/engine.test.js && node test/report.test.js && node test/api.test.js && node guard.js",
+    "playtest": "node playtest.js",
+    "check": "npm test && npm run playtest"
   }
 }
