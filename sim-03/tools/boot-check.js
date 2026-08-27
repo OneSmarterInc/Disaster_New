@@ -77,9 +77,12 @@ const ok = (cond, msg) => {
   ok(bare.body.missing.some(m => m.startsWith('SIM_URL')),
      'SIM_URL is listed as missing');
 
-  process.env.SIM_URL = 'https://rapidsims.flexee.org/sim03';
+  // A stand-in, not the real platform address — the repo's address check
+  // flags hard-coded ones and it is right to.
+  const FAKE_MOUNT = 'https://platform.invalid/sim03';
+  process.env.SIM_URL = FAKE_MOUNT;
   const withUrl = await call(health, {});
-  ok(withUrl.body.registersAs === 'https://rapidsims.flexee.org/sim03',
+  ok(withUrl.body.registersAs === FAKE_MOUNT,
      'health reports the address launches will be built from');
 
   process.env.LAUNCH_SECRET = 'test-secret-value';

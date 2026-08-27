@@ -9,6 +9,7 @@
     "test": "node test/engine.test.js && node test/scenario.test.js",
     "guard": "node tools/design-guard.js",
     "boot": "node tools/boot-check.js",
-    "check": "npm run build && npm test && npm run guard && npm run boot"
+    "flow": "node tools/flow-check.js",
+    "check": "npm run build && npm test && npm run guard && npm run boot && npm run flow"
   }
 }

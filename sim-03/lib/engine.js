@@ -349,7 +349,10 @@ class Session {
       harm: this.harm,
       transcript: this.transcript,
       readLog: this.readLog,
-      tokens: this.tokens
+      tokens: this.tokens,
+      // Who launched this run, captured at the start while the token was still
+      // valid. Never sent to the browser — it is not in VISIBLE_KEYS.
+      launch: this.launch || null
     };
   }
 

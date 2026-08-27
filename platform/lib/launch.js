@@ -38,7 +38,11 @@ function verify(token) {
 
 // Deliberately minimal: the sim learns who is playing and in what capacity,
 // and nothing else about them.
-function launchToken({ userId, name, role, simId, courseId, mode, minutes = 10 }) {
+// The default has to outlive the longest sim, not the shortest. Ten minutes
+// was under the length of every simulation in the catalogue, so a token could
+// expire mid-run — and it did, silently, because the sims only need it at the
+// start and at the end.
+function launchToken({ userId, name, role, simId, courseId, mode, minutes = 60 }) {
   return sign({
     sub: userId,
     name,

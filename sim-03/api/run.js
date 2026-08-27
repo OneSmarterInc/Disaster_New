@@ -61,6 +61,12 @@ module.exports = async (req, res) => {
       case 'start': {
         const id = newId();
         const s = new Session(S.PROCESS);
+        // Remember who launched this run. The launch token is short-lived and
+        // this sim takes twelve minutes to play, so by the time the debrief is
+        // reached the token has expired and req.launch is gone. Reading it at
+        // the end meant no completion was ever reported and faculty saw every
+        // run as started and never finished.
+        if (req.launch) s.launch = req.launch;
         await saveRun(id, s);
         return res.status(200).json({ runId: id, view: s.visible() });
       }
@@ -111,9 +117,13 @@ module.exports = async (req, res) => {
 
         // Best effort. If the platform is unreachable the participant's
         // debrief is unaffected — they are looking at it right now.
-        if (req.launch) {
+        // Prefer what was stored when the run began. req.launch is only there
+        // if the token is somehow still valid, which for a twelve-minute sim
+        // it usually is not.
+        const who = s.launch || req.launch;
+        if (who) {
           reportCompletion({
-            launch: req.launch,
+            launch: who,
             summary: d.title,
             metrics: {
               verdict: d.verdict,

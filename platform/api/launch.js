@@ -125,7 +125,12 @@ module.exports = async (req, res) => {
 
     const token = launchToken({
       userId: me.id, name: me.name, role: asRole,
-      simId, courseId, mode, minutes: 10
+      // Long enough to outlive the thing it launches. Ten minutes was shorter
+      // than a twenty-minute simulation, so a token could expire mid-run — and
+      // in sim 03 it expired on day seven of eight, before the debrief, which
+      // is where a completion gets reported. Faculty saw every run as started
+      // and never finished.
+      simId, courseId, mode, minutes: 60
     });
 
     // In the fragment, not the query. A fragment is never sent in the HTTP
