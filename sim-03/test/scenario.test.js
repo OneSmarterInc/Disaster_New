@@ -204,6 +204,42 @@ test('the debrief does not claim nothing ever pointed at it', () => {
 });
 
 // ---------------------------------------------------------------------------
+console.log('\nno invented currency reaches the player');
+// ---------------------------------------------------------------------------
+
+test('nothing a participant reads mentions points or a score', () => {
+  // The score was removed from the screen but survived in the dockets, four
+  // of the eight endings and one debrief question, quoting a currency the
+  // participant had never seen. Sweep everything readable rather than trusting
+  // a search-and-replace.
+  const readable = [];
+  S.BRIEF.lines.forEach(l => readable.push(l));
+  S.PROCESS.days.forEach(d => {
+    readable.push(d.note);
+    Object.values(d.variants || {}).forEach(v => {
+      if (v.label) readable.push(v.label);
+      if (v.blurb) readable.push(v.blurb);
+    });
+  });
+  S.PROCESS.actions.forEach(a => { readable.push(a.label); if (a.blurb) readable.push(a.blurb); });
+  S.PROCESS.stations.forEach(st => (st.strainBands || []).forEach(b => readable.push(b[1])));
+  for (const plan of Object.values(PLANS)) {
+    const { debrief } = play(plan);
+    readable.push(debrief.title, debrief.body, ...debrief.questions);
+  }
+  const offenders = readable.filter(x => /bench score|\bpoints\b|\bscore\b/i.test(x));
+  assert.strictEqual(offenders.length, 0,
+    `player-facing copy still names a currency they never saw:\n  ${offenders.join('\n  ')}`);
+});
+
+test('the brief has no fields the client never renders', () => {
+  // scoreboardNote was written, never rendered, and named two numbers when the
+  // board shows three.
+  assert.deepStrictEqual(Object.keys(S.BRIEF).sort(), ['clock', 'heading', 'lines'],
+    'BRIEF carries a field nothing displays, which will drift from the screen');
+});
+
+// ---------------------------------------------------------------------------
 console.log('\nplatform catalogue contract');
 // ---------------------------------------------------------------------------
 

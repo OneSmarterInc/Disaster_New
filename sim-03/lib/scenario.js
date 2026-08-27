@@ -111,7 +111,7 @@ const PROCESS = {
   // screen stopped saying anything.
   days: [
     {
-      note: 'Monday. Seven units waiting from the weekend, and six more came in overnight. Nothing unusual in any of them.',
+      note: 'Monday. Seven units waiting from the weekend, and more arriving through the day. Nothing unusual in any of them.',
       arrivals: 6,
       variants: {
         clear_fast: { label: 'Work through them on the codes', blurb: 'Read each fault code, call the likely part, move on. Five units.' },
@@ -184,7 +184,7 @@ const PROCESS = {
       variants: {
         clear_fast: { label: 'Finish the month strong', blurb: 'One more good day on the board. Five units.' },
         bench_test: { label: 'Test them properly', blurb: 'On the last day of the month. Two units.' },
-        call_field: { label: 'Call before the month closes', blurb: 'Four points off the monthly figure, on the day it is counted.' },
+        call_field: { label: 'Call before the month closes', blurb: 'A morning on the phone, on the day the numbers are counted.' },
         reissue: { label: 'Fix them before the report closes', blurb: 'Corrections, on the day the numbers are counted.' }
       }
     }
@@ -255,8 +255,10 @@ const BRIEF = {
     'The field engineer for the northern region is Dev Okonjo. You have never met him.',
     'Priya Raman set your targets last quarter: units cleared, and bench cycle time. Both are on your screen. Neither has moved in the wrong direction since you took the bench.',
     'You have eight working days and about ninety seconds to decide each one.'
-  ],
-  scoreboardNote: 'Units cleared and cycle time are the two numbers your supervisor sees.'
+  ]
+  // No scoreboardNote. It was written, never rendered, and named two numbers
+  // when the board shows three — dead copy that would have drifted further
+  // from the screen every time the board changed.
 };
 
 // ---------------------------------------------------------------------------
@@ -301,15 +303,15 @@ function debriefFor(session) {
   const VERDICTS = {
     'never-looked': {
       title: 'You never found out.',
-      body: 'You ran eight days on the bench and every signal you were given said you were doing well. They were not wrong. Units cleared went up, cycle time came down, and Priya would have written you a good review on the numbers she had. You also put Dev Okonjo on a first-time-fix review. The only thing that ever pointed at it was a remark from dispatch on day seven about the northern region running two jobs for every one booked, and by then it was already done. The information was available every single morning for four points of bench score. You were never told it was there, and you never went looking.'
+      body: 'You ran eight days on the bench and every signal you were given said you were doing well. They were not wrong. Units cleared went up, cycle time came down, and Priya would have written you a good review on the numbers she had. You also put Dev Okonjo on a first-time-fix review. The only thing that ever pointed at it was a remark from dispatch on day seven about the northern region running two jobs for every one booked, and by then it was already done. The information sat there every single morning, one option down the list, for the price of a day\'s clearing. You were never told it was there, and you never went looking.'
     },
     'looked-too-early': {
       title: 'You looked, and you were told everything was fine.',
-      body: 'You spent bench score to call the field desk and Dev was closing his calls. Nothing unusual on the board. That was true when you asked, and it was already wrong — what you had sent him had not arrived yet. So you learned that looking costs four points and returns nothing, which is a reasonable thing to learn from what happened, and it is the reason you never called again. This is the most uncomfortable run this sim produces. You did the right thing once, it appeared not to work, and the appearance was a consequence of the delay rather than of Dev being fine.'
+      body: 'You gave up a morning to call the field desk and Dev was closing his calls. Nothing unusual on the board. That was true when you asked, and it was already wrong — what you had sent him had not arrived yet. So you learned that looking costs you a day and returns nothing, which is a reasonable thing to learn from what happened, and it is the reason you never called again. This is the most uncomfortable run this sim produces. You did the right thing once, it appeared not to work, and the appearance was a consequence of the delay rather than of Dev being fine.'
     },
     'looked-did-nothing': {
       title: 'You found out and kept going.',
-      body: 'You spent bench score to call the field desk, and this time it told you something: Dev was running behind on his jobs. You carried on clearing from the symptom code anyway. That is the most common shape this sim produces and it is worth sitting with. Knowing did not change what you did, because the thing that would have changed it — reissuing last week\'s diagnoses — cost more than the knowing did.'
+      body: 'You gave up a morning to call the field desk, and this time it told you something: Dev was running behind on his jobs. You carried on clearing from the symptom code anyway. That is the most common shape this sim produces and it is worth sitting with. Knowing did not change what you did, because the thing that would have changed it — reissuing last week\'s diagnoses — cost more than the knowing did.'
     },
     'looked-too-late': {
       title: 'You acted, but not in time.',
@@ -321,7 +323,7 @@ function debriefFor(session) {
     },
     'never-caused-it': {
       title: 'You never sent Dev a wrong part.',
-      body: 'You bench-tested, every day, for eight days. Dev had an ordinary month and will never know why. Your own numbers are the worst any run of this produces, and Priya measures units cleared and cycle time, so on the only evidence she has you are the weakest person on the bench. Worth asking what happens to somebody who plays it this way for a year, and whether the answer is a reason to do it differently or a reason to change what gets measured.'
+      body: 'You bench-tested, every day, for eight days. Dev had an ordinary month and will never know why. You cleared fewer units than any other way of playing this, and Priya measures units cleared and cycle time, so on the only evidence she has you are the weakest person on the bench. Worth asking what happens to somebody who plays it this way for a year, and whether the answer is a reason to do it differently or a reason to change what gets measured.'
     },
     'acted-blind': {
       title: 'You corrected work you were never told was wrong.',
@@ -329,7 +331,7 @@ function debriefFor(session) {
     },
     'saw-and-acted': {
       title: 'You paid to see, and then you paid to fix it.',
-      body: 'You spent bench score finding out what happened downstream, and you spent more of it putting things right. Your scoreboard is worse than it would have been. Look at where you finished against the run that never looked — that gap is the price of the only thing that went right here, and nobody at Harlow would ever see it.'
+      body: 'You gave up days finding out what happened downstream, and gave up more of them putting things right. Your figures are worse than they would have been. Look at what you cleared against a run that never looked — that gap is the price of the only thing that went right here, and nobody at Harlow would ever see it.'
     }
   };
 
@@ -357,10 +359,17 @@ function debriefFor(session) {
       cycleTime: t.localAfter.localCycleTime,
       sawIt: !!t.reading
     })),
+    // Fitted to the run that actually happened. Asking somebody what a second
+    // call would have had to return, when they never made a first one, reads
+    // as a debrief written for a different person.
     questions: [
       'At what point did you have enough information to act differently, and what did you do with it?',
-      'Calling the field desk cost you a morning and returned one sentence. What would it have had to say for you to have called again?',
-      'If you called once and were told everything was fine, what did that teach you, and was it true?',
+      ...(looked === 0
+        ? ['One option every morning was to find out what happened to your work. You never took it. What would have had to be different for you to?']
+        : ['Calling the field desk cost you a morning and returned one sentence. What would it have had to say for you to have called again?']),
+      ...(looked > 0 && !shown
+        ? ['You called and were told everything was fine. What did that teach you, and was it true?']
+        : []),
       'Priya measures units cleared and cycle time. What would she have to measure instead, and what would that break?'
     ]
   };
