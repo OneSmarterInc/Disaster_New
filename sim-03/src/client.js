@@ -36,14 +36,26 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+  // Read from the hash as well as the query, the way 01 does — a code pasted
+  // after a # never reaches the server as a query parameter, and people paste
+  // whatever they were given.
+  function fromUrl(name) {
+    const m = (location.hash + location.search).match(new RegExp(name + '=([^&]+)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  const CODE_KEY = 'rapidsim03.code';
+  let ACCESS_CODE = fromUrl('code');
+  if (ACCESS_CODE) { try { sessionStorage.setItem(CODE_KEY, ACCESS_CODE); } catch (e) {} }
+  else { try { ACCESS_CODE = sessionStorage.getItem(CODE_KEY); } catch (e) {} }
+
   async function post(action, extra) {
     const headers = { 'content-type': 'application/json' };
     // Passed through by the platform when the sim is launched from a course.
-    const params = new URLSearchParams(location.search);
-    const lt = params.get('lt') || params.get('launch');
+    // A launch token stands in for the access code entirely.
+    const lt = fromUrl('lt') || fromUrl('launch');
     if (lt) headers['x-launch-token'] = lt;
-    const ac = params.get('code');
-    if (ac) headers['x-access-code'] = ac;
+    if (ACCESS_CODE) headers['x-access-code'] = ACCESS_CODE;
 
     const r = await fetch('/api/run', {
       method: 'POST',
@@ -57,6 +69,51 @@
       throw e;
     }
     return data;
+  }
+
+  // -------------------------------------------------------------------------
+  // The access gate
+  //
+  // Standalone deployments set ACCESS_CODE and everyone is given the same
+  // string. Without this screen a 401 arrives as a bare error message and the
+  // participant has nowhere to type — which is what 03 did until now, while
+  // 01 and 02 both prompt.
+  // -------------------------------------------------------------------------
+
+  function renderGate(message) {
+    app.innerHTML =
+      '<h1>You\'ll need an access code</h1>' +
+      '<p class="sub">Harlow Instruments — diagnosis bench</p>' +
+      '<div class="panel">' +
+      '<p>' + esc(message || 'Enter the code you were given.') + '</p>' +
+      '<div class="gate">' +
+      '<input id="codein" type="text" autocomplete="off" spellcheck="false" placeholder="access code">' +
+      '<button class="primary" id="codego">Continue</button>' +
+      '</div></div>';
+
+    const input = document.getElementById('codein');
+    const go = () => {
+      const v = input.value.trim();
+      if (!v) return;
+      ACCESS_CODE = v;
+      try { sessionStorage.setItem(CODE_KEY, v); } catch (e) {}
+      boot();
+    };
+    document.getElementById('codego').onclick = go;
+    input.onkeydown = (ev) => { if (ev.key === 'Enter') go(); };
+    input.focus();
+  }
+
+  // A launch that fails is almost always a mismatched LAUNCH_SECRET between
+  // the platform and this deployment, and it is not something the participant
+  // can fix by typing. Say so rather than showing them a code box.
+  function renderBadLaunch() {
+    app.innerHTML =
+      '<h1>This sim did not accept your link</h1>' +
+      '<p class="sub">Harlow Instruments — diagnosis bench</p>' +
+      '<div class="panel"><p>The link may have expired — go back to your course and start it again. ' +
+      'If it keeps happening, this simulation and the platform are not sharing the same launch secret, ' +
+      'which is something an administrator has to put right.</p></div>';
   }
 
   function fail(msg) {
@@ -228,6 +285,12 @@
     try {
       state.brief = await post('brief');
     } catch (e) {
+      if (e.code === 'launch_token_invalid') return renderBadLaunch();
+      if (e.code === 'access_code_required') {
+        return renderGate(ACCESS_CODE
+          ? 'That code was not accepted. Check it and try again.'
+          : 'Enter the code you were given.');
+      }
       return fail('Could not reach the server. ' + e.message);
     }
 

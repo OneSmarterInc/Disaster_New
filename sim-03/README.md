@@ -18,6 +18,14 @@ code instead of bench-testing.
 
 There is a way to find out. It costs four bench points and returns a sentence.
 
+## Getting in
+
+Two ways, same as 01 and 02. A launch token signed by the platform, which also
+says who is playing, or the shared `ACCESS_CODE` for standalone use. The code
+can arrive as `?code=` or `#code=` in the link, or be typed into the gate.
+
+Set no `ACCESS_CODE` and the deployment is open to anyone with the address.
+
 ## Layout
 
     lib/engine.js             session, clock, deferred effects, harm, tokens

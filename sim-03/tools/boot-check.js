@@ -37,9 +37,9 @@ const health = require('../api/health.js');
 // ---------------------------------------------------------------------------
 // Minimal req/res doubles
 // ---------------------------------------------------------------------------
-function call(handler, body) {
+function call(handler, body, headers) {
   return new Promise((resolve) => {
-    const req = { method: 'POST', headers: {}, body };
+    const req = { method: 'POST', headers: headers || {}, body };
     const res = {
       _status: 200,
       status(c) { this._status = c; return this; },
@@ -91,6 +91,26 @@ const ok = (cond, msg) => {
   ok(cat.includes('okonjo'), 'the catalogue names who is at stake');
   ok(!['symptom code', 'wrong part', 'first-time-fix', 'bench-test'].some(s => cat.includes(s)),
      'catalogue copy does not give away the mechanism');
+
+  // The access gate. Standalone deployments set ACCESS_CODE; the server must
+  // reject a request without it and accept one with it.
+  process.env.ACCESS_CODE = 'test-code-123';
+  const noCode = await call(run, { action: 'brief' });
+  ok(noCode.status === 401 && noCode.body.error === 'access_code_required',
+     'a request with no access code is refused when one is required');
+  const withCode = await call(run, { action: 'brief' }, { 'x-access-code': 'test-code-123' });
+  ok(withCode.status === 200, 'the right access code is accepted');
+  const wrongCode = await call(run, { action: 'brief' }, { 'x-access-code': 'nope' });
+  ok(wrongCode.status === 401, 'a wrong access code is refused');
+  process.env.ACCESS_CODE = '';
+
+  // And the client has somewhere to type it. Without this screen a 401 is a
+  // dead end — 01 and 02 both prompt.
+  const clientJs = require('fs').readFileSync(path.join(__dirname, '..', 'src', 'client.js'), 'utf8');
+  ok(clientJs.includes('access_code_required') && clientJs.includes('renderGate'),
+     'the client prompts for a code rather than dead-ending on 401');
+  ok(clientJs.includes('launch_token_invalid') && clientJs.includes('renderBadLaunch'),
+     'a bad launch token gets its own message, not a code box it cannot fix');
 
   const brief = await call(run, { action: 'brief' });
   ok(brief.status === 200 && brief.body.brief.lines.length > 0, 'brief returns opening copy');

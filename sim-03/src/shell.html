@@ -108,6 +108,13 @@ table.tl tr:last-child td{border-bottom:none}
   border:1px solid var(--line2);color:var(--dimmer);font-family:var(--mono);font-size:10px;
   line-height:18px;text-align:center}
 
+.gate{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap}
+.gate input{flex:1;min-width:180px;background:var(--night);color:var(--bone);
+  border:1px solid var(--line2);padding:11px 13px;font-family:var(--mono);font-size:13px;
+  letter-spacing:.04em}
+.gate input::placeholder{color:var(--dimmer)}
+.gate input:focus{border-color:var(--amber);outline:none}
+
 .err{border:1px solid var(--alert);background:rgba(206,124,141,.08);color:var(--alert);
   padding:12px 16px;margin:0 0 16px;font-size:14.5px}
 .hidden{display:none}
