@@ -1,288 +1,186 @@
-// Engine tests. Run with: node test/engine.test.js
-//
-// Four things are being defended here, in order of how badly it hurts when
-// they break:
-//
-//   1. Nothing hidden reaches visible(). If this fails the sim teaches nothing,
-//      because the participant can read the answer.
-//   2. Downstream effects are deferred. If this fails the participant learns
-//      the mapping and the sim becomes an optimisation puzzle.
-//   3. The sim is winnable AND losable. Both paths must exist or it is a trick.
-//   4. State survives a round trip through JSON, because faculty run these
-//      across breaks and a lost session is a lost exercise.
-
 'use strict';
 
 const assert = require('assert');
-const { Session, PROTECTED_KEYS } = require('../lib/engine');
-const proc = require('./fixture-process');
+const { Session } = require('../src/engine');
+const { feasibleOrderings } = require('../data/calendar');
+const { RUTH } = require('../data/contracts');
 
-let passed = 0, failed = 0;
-function test(name, fn) {
-  try { fn(); passed++; console.log(`  ok   ${name}`); }
-  catch (e) { failed++; console.error(`  FAIL ${name}\n       ${e.message}`); }
+let pass = 0, fail = 0;
+function t(name, fn) {
+  try { fn(); console.log(`  ok   ${name}`); pass++; }
+  catch (e) { console.log(`  FAIL ${name}\n         ${e.message}`); fail++; }
 }
 
-// ---------------------------------------------------------------------------
-console.log('\nleak protection');
-// ---------------------------------------------------------------------------
+console.log('\ncalendar');
 
-test('visible() emits no protected key at the top level', () => {
-  const s = new Session(proc);
-  const v = s.visible();
-  for (const k of PROTECTED_KEYS) {
-    assert.strictEqual(v[k], undefined, `visible() leaked ${k}`);
-  }
+t('exactly two orderings are feasible', () => {
+  const o = feasibleOrderings().map((x) => x.join('>'));
+  assert.strictEqual(o.length, 2, `got ${o.length}: ${o.join(' | ')}`);
+  assert.ok(o.includes('ruth>terry>ray'), o.join(' | '));
+  assert.ok(o.includes('terry>ray>ruth'), o.join(' | '));
 });
 
-test('visible() emits no protected key anywhere in the tree', () => {
-  const s = new Session(proc);
-  s.act('clear_fast');
-  s.act('walk_downstream');
-  s.act('clear_fast');
-  const blob = JSON.stringify(s.visible());
-  for (const k of PROTECTED_KEYS) {
-    // Match the key position specifically. Matching a bare quoted token also
-    // matches any string VALUE that happens to equal a protected word, which
-    // is a false positive waiting to happen the moment a station is named
-    // something sensible like "settlement" or "rework".
-    assert.ok(!blob.includes(`"${k}":`), `visible() leaked ${k} in a nested object`);
-  }
+t('an infeasible ordering is refused', () => {
+  assert.throws(() => new Session().chooseOrder(['ray', 'terry', 'ruth']));
 });
 
-test('available actions do not carry their downstream consequences', () => {
-  const s = new Session(proc);
-  const blob = JSON.stringify(s.visible().availableActions);
-  assert.ok(!blob.includes('downstreamEffects'), 'action list leaked its effects');
-  assert.ok(!blob.includes('inspect'), 'action list leaked which action inspects');
-  assert.ok(!blob.includes('strain'), 'action list leaked the hidden field name');
+console.log('\nclock');
+
+t('a generic opener costs 180s of 900', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const r = s.ask('So what do you do here?');
+  assert.strictEqual(r.bucket, 'GENERIC_DESCRIPTIVE');
+  assert.strictEqual(r.cost, 180);
+  assert.strictEqual(r.remaining, 720);
 });
 
-test('an inspect reading is prose, not a number', () => {
-  const s = new Session(proc);
-  s.act('clear_fast');
-  s.act('clear_fast');
-  const { reading } = s.act('walk_downstream');
-  assert.ok(reading && typeof reading.text === 'string');
-  assert.ok(!/\d/.test(reading.text), 'reading contained a figure to optimise against');
+t('three generic questions burn 540s — over a third of the window', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  s.ask('What do you do here?');
+  s.ask('Walk me through your day');
+  const r = s.ask('Tell me about your role');
+  assert.strictEqual(r.remaining, 900 - 540);
 });
 
-// ---------------------------------------------------------------------------
-console.log('\ndeferral');
-// ---------------------------------------------------------------------------
-
-test('a downstream effect does not land in the round it was caused', () => {
-  const s = new Session(proc);
-  const before = s.downstream.settlement.strain;
-  s.act('clear_fast');
-  assert.strictEqual(s.downstream.settlement.strain, before,
-    'lag 2 effect landed immediately');
+t('the window hard-stops and refuses further questions', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  for (let i = 0; i < 5; i++) s.ask('Walk me through your day');
+  const r = s.ask('Why does the log exist?');
+  assert.strictEqual(r.error, 'WINDOW_CLOSED');
 });
 
-test('a downstream effect lands on schedule', () => {
-  const s = new Session(proc);
-  // Taken during round 0 with lag 2, so it is due at round 2, and round 2 is
-  // reached by the second advance. The participant therefore takes one whole
-  // decision after the causing one before anything shows.
-  s.act('clear_fast');            // acts in round 0, queues for round 2, clock -> 1
-  assert.strictEqual(s.downstream.settlement.strain, 0, 'landed same round');
-  s.act('clear_complete');        // clock -> 2, the effect lands
-  assert.strictEqual(s.downstream.settlement.strain, 2);
+console.log('\nposture');
+
+t('Ruth opens on exception handling and answers in her open voice', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  const r = s.ask("What happens when a claim doesn't match?");
+  assert.strictEqual(r.postureBefore, 'GUARDED');
+  assert.strictEqual(r.postureAfter, 'OPEN');
+  assert.match(r.answer, /one in seven/);
 });
 
-test('the definition rejects a same-round downstream effect', () => {
-  const bad = JSON.parse(JSON.stringify(proc));
-  bad.actions[0].downstreamEffects[0].lag = 0;
-  assert.throws(() => new Session(bad), /lag < 1/);
+t('Ruth opens on a counterfactual', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  assert.strictEqual(s.ask('What happens when you are out sick?').postureAfter, 'OPEN');
 });
 
-// ---------------------------------------------------------------------------
-console.log('\nthe trap and the way out');
-// ---------------------------------------------------------------------------
-
-test('pure local optimisation harms a named person', () => {
-  const s = new Session(proc);
-  while (!s.finished) s.act('clear_fast');
-  assert.ok(s.harm.triggered, 'the locally optimal path caused no harm — no lesson');
-  assert.strictEqual(typeof s.harm.person, 'string');
-  assert.ok(s.harm.person.length > 0, 'harm landed on nobody');
+t('Ruth opens on sender perspective', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  assert.strictEqual(s.ask('What does the provider hear from us?').postureAfter, 'OPEN');
 });
 
-test('pure local optimisation scores well locally', () => {
-  const greedy = new Session(proc);
-  while (!greedy.finished) greedy.act('clear_fast');
-  const careful = new Session(proc);
-  while (!careful.finished) careful.act('clear_complete');
-  assert.ok(greedy.localScore > careful.localScore,
-    'the trap must pay, or nobody falls into it');
+t('ambiguous pressure moves her nowhere', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  const r = s.ask('What slows you down?');
+  assert.strictEqual(r.postureAfter, 'GUARDED');
+  assert.strictEqual(r.postureChanged, false);
 });
 
-test('a participant who looks and then acts avoids the harm', () => {
-  const s = new Session(proc);
-  s.act('clear_fast');
-  s.act('walk_downstream');
-  s.act('clear_fast');
-  s.act('walk_downstream');
-  while (!s.finished) s.act('rework_batch');
-  assert.ok(!s.harm.triggered, 'the sim is unwinnable as configured');
+t('efficiency framing closes her permanently', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  assert.strictEqual(s.ask('Could this be automated?').postureAfter, 'CLOSED');
+  const after = s.ask("What happens when a claim doesn't match?");
+  assert.strictEqual(after.postureAfter, 'CLOSED');
 });
 
-test('avoiding the harm costs local score', () => {
-  const greedy = new Session(proc);
-  while (!greedy.finished) greedy.act('clear_fast');
-  const wise = new Session(proc);
-  wise.act('clear_fast');
-  wise.act('walk_downstream');
-  wise.act('clear_fast');
-  wise.act('walk_downstream');
-  while (!wise.finished) wise.act('rework_batch');
-  assert.ok(wise.localScore < greedy.localScore,
-    'if the right answer is also locally optimal there is no dilemma');
+t('an already-open Ruth still closes on efficiency framing', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  s.ask("What happens when a claim doesn't match?");
+  assert.strictEqual(s.ask('How much of this could the new system handle?').postureAfter, 'CLOSED');
 });
 
-test('harm fires once and keeps its round', () => {
-  const s = new Session(proc);
-  while (!s.finished) s.act('clear_fast');
-  const at = s.harm.atRound;
-  s.checkHarm();
-  assert.strictEqual(s.harm.atRound, at);
+t('current-state automation does NOT close her', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  const r = s.ask('Is any of this automated already?');
+  assert.notStrictEqual(r.postureAfter, 'CLOSED', 'documentation question closed the door');
 });
 
-// ---------------------------------------------------------------------------
-console.log('\nvalidation');
-// ---------------------------------------------------------------------------
+console.log('\nrepeat escalation');
 
-test('a station that can harm must name somebody', () => {
-  const bad = JSON.parse(JSON.stringify(proc));
-  delete bad.stations[2].owner;
-  assert.throws(() => new Session(bad), /names nobody/);
+t("Terry's audit guess only cracks on a second ask", () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  assert.match(s.ask('Who reads the log?').answer, /Audit pull it/);
+  assert.match(s.ask('Have you ever seen anyone pull it up?').answer, /not personally/);
 });
 
-test('a process with no inspect action is rejected', () => {
-  const bad = JSON.parse(JSON.stringify(proc));
-  bad.actions = bad.actions.filter(a => !a.inspect);
-  assert.throws(() => new Session(bad), /unwinnable/);
+t("Ruth's sender answer escalates across three asks", () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  assert.match(s.ask('What does the provider hear from us?').answer, /no patience/);
+  assert.match(s.ask('How long is the gap between copies?').answer, /Six days/);
+  assert.match(s.ask('Do we send anything back to them?').answer, /never had cause to check/);
 });
 
-test('a single-station process is rejected', () => {
-  const bad = JSON.parse(JSON.stringify(proc));
-  bad.stations = [bad.stations[1]];
-  assert.throws(() => new Session(bad), /at least two stations/);
+console.log('\nleak — closed Ruth must not emit protected content');
+
+// The forbidden list and the detector are the same array. A mismatch
+// between a written list and the regex that enforces it is how markers
+// ship undetected.
+const PROTECTED = [
+  'one in seven', 'repeat', 'duplicate', 'extraction', 'tooth',
+  'conversion vendor', 'my own list', 'no patience', 'two teeth',
+  'denial letter', 'holidays', 'second person'
+];
+
+t('no protected term appears in any CLOSED variant', () => {
+  const variants = RUTH.answers.CLOSED.ANY.join(' ').toLowerCase();
+  const hits = PROTECTED.filter((p) => variants.includes(p.toLowerCase()));
+  assert.deepStrictEqual(hits, [], `leaked: ${hits.join(', ')}`);
 });
 
-test('an action targeting an unknown station is rejected', () => {
-  const bad = JSON.parse(JSON.stringify(proc));
-  bad.actions[0].downstreamEffects[0].stationId = 'nowhere';
-  assert.throws(() => new Session(bad), /unknown station/);
+t('a closed Ruth leaks nothing across 20 probing questions', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  s.ask('Could this be automated?');
+  s.remaining = 999999; // probe past the clock deliberately
+  const probes = [
+    "What happens when a claim doesn't match?", 'Do you get many repeat claims?',
+    'What would happen if you stopped?', 'What does the provider hear from us?',
+    'How do you tell a duplicate from a real second claim?', 'What is only in your head?',
+    'Who covers when you take leave?', 'What are the harder claims like?',
+    'Why do they send it again?', 'What system do you use?',
+    'How many claims a day?', 'Who reads it after you?',
+    'What slows you down?', 'How long have you been here?',
+    'What if the tooth number is missing?', 'Is there anything you catch that nothing else would?',
+    'What did the provider know before the second copy?', 'What do you do with the hard ones?',
+    'Where does it go next?', 'Tell me about your role'
+  ];
+  const said = probes.map((p) => s.ask(p).answer).join(' ').toLowerCase();
+  const hits = PROTECTED.filter((p) => said.includes(p.toLowerCase()));
+  assert.deepStrictEqual(hits, [], `leaked: ${hits.join(', ')}`);
 });
 
-// ---------------------------------------------------------------------------
-console.log('\nlifecycle and persistence');
-// ---------------------------------------------------------------------------
-
-test('the run ends after the configured number of rounds', () => {
-  const s = new Session(proc);
-  let n = 0;
-  while (!s.finished) { s.act('clear_complete'); n++; if (n > 50) break; }
-  assert.strictEqual(n, proc.rounds);
+t('closed variants do not repeat verbatim before the rotation is exhausted', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  s.ask('Could this be automated?');
+  s.remaining = 999999;
+  // The efficiency question already consumed the first variant. A window
+  // with 810s left affords nine more questions, so the rotation has to
+  // cover nine without repeating.
+  const said = [];
+  for (let i = 0; i < 9; i++) said.push(s.ask('What happens when it does not match?').answer);
+  assert.strictEqual(new Set(said).size, 9, 'closed rotation repeated within a single window');
 });
 
-test('acting after the end throws', () => {
-  const s = new Session(proc);
-  while (!s.finished) s.act('clear_complete');
-  assert.throws(() => s.act('clear_complete'), /run is over/);
+console.log('\ninstructor summary');
+
+t('summary reports the closing question and the unused seconds', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  s.ask('What do you do here?');
+  s.ask('Could this be automated?');
+  const w1 = s.summary().byWindow[0];
+  assert.strictEqual(w1.openerBucket, 'GENERIC_DESCRIPTIVE');
+  assert.strictEqual(w1.postureEnd, 'CLOSED');
+  assert.match(w1.closedBy.question, /automated/);
+  assert.strictEqual(w1.secondsUnused, 900 - 180 - 90);
 });
 
-test('an unavailable action throws rather than silently doing nothing', () => {
-  const s = new Session(proc);
-  assert.throws(() => s.act('rework_batch'), /unavailable/);
+t('summary records which rooms sender perspective reached', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  s.ask('What do you tell them when they call?');
+  s.advanceWindow();
+  s.ask('Do we send anything back to them?');
+  const names = s.summary().senderPerspectiveAskedIn;
+  assert.deepStrictEqual(names, ['Terry Voss', 'Ray Duffy']);
 });
 
-test('state survives a JSON round trip', () => {
-  const s = new Session(proc);
-  s.act('clear_fast');
-  s.act('walk_downstream');
-  const revived = Session.fromJSON(proc, JSON.parse(JSON.stringify(s)));
-  assert.deepStrictEqual(revived.downstream, s.downstream);
-  assert.deepStrictEqual(revived.pending, s.pending);
-  assert.deepStrictEqual(revived.transcript, s.transcript);
-  assert.strictEqual(revived.round, s.round);
-});
-
-test('a revived session continues to behave', () => {
-  const a = new Session(proc);
-  a.act('clear_fast');
-  const b = Session.fromJSON(proc, JSON.parse(JSON.stringify(a)));
-  a.act('clear_fast');
-  b.act('clear_fast');
-  assert.deepStrictEqual(b.downstream, a.downstream);
-  assert.strictEqual(b.localScore, a.localScore);
-});
-
-test('the transcript records every action taken', () => {
-  const s = new Session(proc);
-  s.act('clear_fast');
-  s.act('clear_complete');
-  s.act('walk_downstream');
-  assert.strictEqual(s.transcript.length, 3);
-  assert.deepStrictEqual(s.transcript.map(t => t.actionId),
-    ['clear_fast', 'clear_complete', 'walk_downstream']);
-});
-
-
-// ---------------------------------------------------------------------------
-console.log('\naction tokens');
-// ---------------------------------------------------------------------------
-
-test('the participant is never shown the points figure', () => {
-  const s = new Session(proc);
-  s.act('clear_fast');
-  const v = s.visible();
-  assert.strictEqual(v.localScore, undefined, 'the invented score reached the client');
-  assert.ok(!JSON.stringify(v).includes('localScore'), 'localScore leaked somewhere in the view');
-  assert.ok(typeof s.localScore === 'number', 'but the debrief still needs it server-side');
-});
-
-test('the options carry no price tag', () => {
-  const s = new Session(proc);
-  for (const a of s.visible().availableActions) {
-    assert.strictEqual(a.localCost, undefined,
-      'a price on the button turns the decision into arithmetic');
-  }
-});
-
-test('the browser is given opaque tokens, not action ids', () => {
-  const s = new Session(proc);
-  for (const a of s.visible().availableActions) {
-    assert.ok(!proc.actions.some(pa => pa.id === a.id),
-      `real action id ${a.id} reached the client`);
-  }
-});
-
-test('two runs get different tokens for the same action', () => {
-  const a = new Session(proc), b = new Session(proc);
-  assert.notDeepStrictEqual(
-    a.visible().availableActions.map(x => x.id),
-    b.visible().availableActions.map(x => x.id),
-    'tokens are stable across runs — comparing screens would leak');
-});
-
-test('a token from the run resolves to its action', () => {
-  const s = new Session(proc);
-  const tok = s.visible().availableActions[0].id;
-  const before = s.actionsTaken.length;
-  s.act(tok);
-  assert.strictEqual(s.actionsTaken.length, before + 1);
-});
-
-test('tokens survive a JSON round trip', () => {
-  const s = new Session(proc);
-  const tok = s.visible().availableActions[0].id;
-  const revived = Session.fromJSON(proc, JSON.parse(JSON.stringify(s)));
-  assert.strictEqual(revived.tokens[tok], s.tokens[tok]);
-  revived.act(tok);   // must not throw
-});
-
-// ---------------------------------------------------------------------------
-console.log(`\n${passed} passed, ${failed} failed\n`);
-process.exit(failed ? 1 : 0);
+console.log(`\n${pass} passed, ${fail} failed\n`);
+process.exit(fail ? 1 : 0);

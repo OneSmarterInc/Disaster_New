@@ -83,10 +83,8 @@ function announce(meta, selfUrl) {
     description: meta.description,
     minutes: meta.minutes,
     detail: meta.detail || null,
-    // Strip any trailing slash. The platform builds launch links by appending
-    // to this, so a stored '/sim03/' produces '/sim03/#lt=...', which is a
-    // different path from '/sim03' and matched no rewrite — a student clicking
-    // through from a course got a 404 while the sim itself was healthy.
+    // The platform appends the launch token to this address. A trailing slash
+    // creates a different route when the sim is mounted below /sim03.
     launchUrl: String(selfUrl || '').replace(/\/+$/, ''),
     iat: Date.now(),
     exp: Date.now() + 5 * 60000

@@ -66,9 +66,6 @@ module.exports = {
     return out;
   },
 
-  // Individual runs. Sims 01 and 02 are group-played and key everything off a
-  // session code; 03 is played alone, so a run needs its own key with no
-  // session around it. Same TTL — two days covers a class and a break.
   async getRaw(key) { return J(await cmd(['GET', key])); },
   async putRaw(key, obj) {
     await cmd(['SET', key, JSON.stringify(obj), 'EX', String(TTL)]);
