@@ -24,6 +24,8 @@ async function call(action, extra = {}) {
   let r = await call('brief');
   assert.equal(r.status, 200);
   assert.equal(r.payload.orderings.length, 2);
+  assert.equal(r.payload.sources.terry.suggestions.length, 3);
+  assert.match(r.payload.sources.terry.suggestions[0], /receipt log/i);
 
   r = await call('start', { order: ['terry', 'ray', 'ruth'] });
   assert.equal(r.status, 200);

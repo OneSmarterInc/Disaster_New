@@ -42,6 +42,22 @@ t('three generic questions burn 540s — over a third of the window', () => {
   assert.strictEqual(r.remaining, 900 - 540);
 });
 
+t('ordinary conversation does not repeat one stuck fallback', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const a = s.ask('Can you tell me about the cafeteria?').answer;
+  const b = s.ask('Who handles building maintenance?').answer;
+  const c = s.ask('Where are the meeting rooms?').answer;
+  assert.notStrictEqual(a, b);
+  assert.notStrictEqual(b, c);
+});
+
+t('a review-desk clarification receives a relevant answer', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const r = s.ask('What is the review desk?');
+  assert.strictEqual(r.bucket, 'ROLE_CLARIFICATION');
+  assert.match(r.answer, /Ruth Kessler|first-pass/i);
+});
+
 t('the window hard-stops and refuses further questions', () => {
   const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
   for (let i = 0; i < 5; i++) s.ask('Walk me through your day');

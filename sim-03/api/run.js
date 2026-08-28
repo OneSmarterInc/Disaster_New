@@ -65,7 +65,27 @@ module.exports = async (req, res) => {
       windows: WINDOWS,
       availability: AVAILABILITY,
       orderings: feasibleOrderings(),
-      sources: Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [k, { name: v.name, role: v.role }])),
+      sources: Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [k, {
+        name: v.name,
+        role: v.role,
+        suggestions: {
+          ray: [
+            'How many claims arrive through each channel?',
+            'What happens to claims that arrive after the final release?',
+            'Do providers receive confirmation that a claim arrived?'
+          ],
+          terry: [
+            'Why was the receipt log created?',
+            'Who uses the receipt log now?',
+            'What do providers hear when they call for status?'
+          ],
+          ruth: [
+            'What happens when a claim looks like a duplicate?',
+            'What changes when you are unavailable?',
+            'What do providers hear after submitting a claim?'
+          ]
+        }[k]
+      }])),
       rows: ROWS,
       dispositions: DISPOSITIONS
     });

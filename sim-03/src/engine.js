@@ -38,7 +38,11 @@ function resolveAnswer(character, posture, bucket, askCounts) {
   // variant index carries no bucket meaning.
   const n = askCounts.get(countKey) || 0;
   askCounts.set(countKey, n + 1);
-  const index = Math.min(n, variants.length - 1);
+  // Evidence-bearing buckets deliberately stop at their final escalation.
+  // Conversational fallbacks and greetings rotate so ordinary phrasing does
+  // not make a character sound like a stuck chatbot.
+  const rotates = key === 'UNMATCHED' || key === 'SOCIAL_OPENING';
+  const index = rotates ? n % variants.length : Math.min(n, variants.length - 1);
   return { text: variants[index], index, key };
 }
 
