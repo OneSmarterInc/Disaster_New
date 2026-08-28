@@ -2,6 +2,11 @@
 // them, not as the phrasing bank would like them written.
 
 module.exports = [
+  // --- OTHER_SOURCE_REQUEST -----------------------------------------
+  ['@Ray please answer', 'OTHER_SOURCE_REQUEST'],
+  ['Could I speak to Terry?', 'OTHER_SOURCE_REQUEST'],
+  ['Switch to Ruth', 'OTHER_SOURCE_REQUEST'],
+
   // --- SOCIAL_OPENING ------------------------------------------------
   ['Hi', 'SOCIAL_OPENING'],
   ["Hi, what's today's agenda?", 'SOCIAL_OPENING'],
@@ -59,6 +64,7 @@ module.exports = [
   // --- COUNTERFACTUAL -----------------------------------------------
   ['What would happen if you stopped doing it?', 'COUNTERFACTUAL'],
   ["What happens when you're out sick?", 'COUNTERFACTUAL'],
+  ['What changes when you are unavailable?', 'COUNTERFACTUAL'],
   ['Could someone else pick this up?', 'COUNTERFACTUAL'],
   ['Who covers when you take leave?', 'COUNTERFACTUAL'],
   ['What would be missed if this went away?', 'COUNTERFACTUAL'],

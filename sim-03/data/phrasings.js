@@ -17,6 +17,16 @@
 
 module.exports = [
   {
+    bucket: 'OTHER_SOURCE_REQUEST',
+    cost: 30,
+    patterns: [
+      /@\s*(ray|terry|ruth)\b/,
+      /\b(ray|terry|ruth)\s+(please\s+)?(answer|respond|reply|take this)\b/,
+      /\b(can|could|may) i (ask|speak to|talk to) (ray|terry|ruth)\b/,
+      /\b(ask|switch to|bring in|call) (ray|terry|ruth)\b/
+    ]
+  },
+  {
     bucket: 'SOCIAL_OPENING',
     cost: 30,
     patterns: [
@@ -114,6 +124,7 @@ module.exports = [
       /\bif (you|this|it|that|the \w+) (stopped|stops|went away|disappeared|didn'?t exist|weren'?t)\b/,
       /\bif (you|we) (didn'?t|stopped|quit)\b/,
       /\bwhen you('| a)?re (out|away|off|sick|on (leave|holiday|vacation))\b/,
+      /\bwhat (changes|happens) when you (are|aren'?t) (unavailable|available|away|absent|off)\b/,
       /\bwho (covers|does it|would do it) (when|if) you\b/,
       /\bwhat would (be missed|we lose|happen)\b/,
       /\bcould (someone|somebody|anyone) else (do|pick|handle|cover|take)\b/,
