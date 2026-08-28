@@ -11,6 +11,7 @@ store.configured = () => true;
 store.getRaw = async (key) => memory.get(key) || null;
 store.putRaw = async (key, value) => { memory.set(key, value); return value; };
 const run = require('../api/run');
+const { classify } = require('../src/classifier');
 
 async function call(action, extra = {}) {
   const req = { method: 'POST', headers: {}, body: { action, ...extra } };
@@ -24,8 +25,13 @@ async function call(action, extra = {}) {
   let r = await call('brief');
   assert.equal(r.status, 200);
   assert.equal(r.payload.orderings.length, 2);
-  assert.equal(r.payload.sources.terry.suggestions.length, 3);
+  assert.equal(r.payload.sources.terry.suggestions.length, 7);
   assert.match(r.payload.sources.terry.suggestions[0], /receipt log/i);
+  for (const source of Object.values(r.payload.sources)) {
+    for (const question of source.suggestions) {
+      assert.notEqual(classify(question).bucket, 'UNMATCHED', `unmatched suggestion: ${question}`);
+    }
+  }
 
   r = await call('start', { order: ['terry', 'ray', 'ruth'] });
   assert.equal(r.status, 200);

@@ -15,6 +15,8 @@ assert.match(js, /partial chart/i);
 assert.match(js, /Observation window/i);
 assert.match(js, /Question starters/);
 assert.match(js, /data-starter/);
+assert.match(js, /Suggestions update as you ask/);
+assert.match(js, /filter\(q=>!asked\.has\(clean\(q\)\)\)\.slice\(0,5\)/);
 assert.match(css, /\.question-starters/);
 assert.match(css, /\.starter/);
 assert.doesNotMatch(css, /pointer-events\s*:\s*none[^}]*textarea/i);

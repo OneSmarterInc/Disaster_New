@@ -22,6 +22,8 @@ module.exports = [
     patterns: [
       /@\s*(ray|terry|ruth)\b/,
       /\b(ray|terry|ruth)\s+(please\s+)?(answer|respond|reply|take this)\b/,
+      /\b(is|are) (ray|terry|ruth) (available|availble|here|free)\b/,
+      /\b(can|could) (ray|terry|ruth) (answer|join|respond|help)\b/,
       /\b(can|could|may) i (ask|speak to|talk to) (ray|terry|ruth)\b/,
       /\b(ask|switch to|bring in|call) (ray|terry|ruth)\b/
     ]
@@ -71,7 +73,8 @@ module.exports = [
       /\bwhere (do|does) (it|things|work) (get )?(stuck|held up|backed up)\b/,
       /\bwhat (holds|slows) (you|it|things) up\b/,
       /\bmost (difficult|frustrating) part\b/,
-      /\bwhat takes (the )?(longest|most time)\b/
+      /\bwhat takes (the )?(longest|most time)\b/,
+      /\bwhat makes\b[^?]*\btake longer\b/
     ]
   },
   {
@@ -99,6 +102,9 @@ module.exports = [
     bucket: 'SENDER_PERSPECTIVE',
     cost: 90,
     patterns: [
+      /\bwhat (does|do) (a |the )?(provider|providers|they) hear\b/,
+      /\bwhen (a |the )?(provider|providers|they) call\b/,
+      /\b(call|calls|calling) (us |here )?for (a )?status\b/,
       /\b(provider|sender|submitter|office|practice|dentist|customer|they)\b[^?]*\b(hear|receive|get|see|told)\b/,
       /\b(hear|receive|get|see)\b[^?]*\bfrom us\b/,
       /\bdo we (send|give|return)\b[^?]*\b(back|anything|confirmation|acknowledg)/,
@@ -179,6 +185,7 @@ module.exports = [
     patterns: [
       /\bwho (reads?|uses?|looks? at|pulls?|needs?|sees?|reviews?)\b/,
       /\bwhere does (it|that|this) go\b/,
+      /\bwhere does (a |the )?claim go\b/,
       /\bwhat happens (to|next|after)\b/,
       /\bafter you\b/,
       /\bgoes? (to|on to)\b/,
@@ -237,6 +244,7 @@ module.exports = [
       /\bwhat('s| is) (your|the) (job|role|process)\b/,
       /\bhow does (it|this|the process) work\b/,
       /\bwhat happens here\b/,
+      /\bwhat (information|details|fields) do you (enter|record|log|capture)\b/,
       /\btypical day\b/,
       /\bwhat('s| is) your day\b/
     ]
