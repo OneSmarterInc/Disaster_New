@@ -2,6 +2,16 @@
 // them, not as the phrasing bank would like them written.
 
 module.exports = [
+  // --- SOCIAL_OPENING ------------------------------------------------
+  ['Hi', 'SOCIAL_OPENING'],
+  ["Hi, what's today's agenda?", 'SOCIAL_OPENING'],
+  ['Good morning, how are you?', 'SOCIAL_OPENING'],
+
+  // --- ROLE_CLARIFICATION -------------------------------------------
+  ['What is the review desk?', 'ROLE_CLARIFICATION'],
+  ['Who works at first-pass review?', 'ROLE_CLARIFICATION'],
+  ['What do you mean by the review desk?', 'ROLE_CLARIFICATION'],
+
   // --- GENERIC_DESCRIPTIVE (the expensive opener) -------------------
   ['So what do you do here?', 'GENERIC_DESCRIPTIVE'],
   ['Can you walk me through what you do?', 'GENERIC_DESCRIPTIVE'],

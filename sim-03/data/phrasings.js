@@ -17,6 +17,25 @@
 
 module.exports = [
   {
+    bucket: 'SOCIAL_OPENING',
+    cost: 30,
+    patterns: [
+      /^(hi|hello|hey|good (morning|afternoon|evening))\b/,
+      /\bwhat('s| is) (today'?s )?agenda\b/,
+      /\bhow are you\b/
+    ]
+  },
+  {
+    bucket: 'ROLE_CLARIFICATION',
+    cost: 60,
+    patterns: [
+      /\bwhat (is|does) (the )?(review desk|first[- ]pass review)\b/,
+      /\bwho (is|works|runs|handles) (at |on )?(the )?(review desk|first[- ]pass review)\b/,
+      /\bwhat do you mean by (the )?(review desk|first[- ]pass review)\b/,
+      /\b(review desk|first[- ]pass review) mean\b/
+    ]
+  },
+  {
     // CARVE-OUT. Must precede EFFICIENCY_FRAMING.
     // Asking what a process ALREADY does is documentation. Asking what it
     // COULD do instead is scoping. Only the second one closes Ruth, and a
