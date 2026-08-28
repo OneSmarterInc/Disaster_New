@@ -19,6 +19,9 @@ const RAY = {
   role: 'Intake',
   posture: null,
   answers: {
+    OTHER_SOURCE_REQUEST: [
+      "This appointment is with me. Terry and Ruth have their own fixed interview slots; you can ask them when those open."
+    ],
     SOCIAL_OPENING: [
       "Morning. I've got a release to get downstairs, but ask what you need about intake.",
       "Hello. I can speak to how claims arrive and how I send the batches on."
@@ -72,6 +75,9 @@ const TERRY = {
   role: 'Receipt log',
   posture: null,
   answers: {
+    OTHER_SOURCE_REQUEST: [
+      "This is your appointment with me. Ray and Ruth have separate fixed slots, so I can't bring them into this one."
+    ],
     SOCIAL_OPENING: [
       "Hello. I've got the receipt batches in front of me, so ask away.",
       "Morning. I can help with the receipt log and the calls that come through this desk."
@@ -135,6 +141,9 @@ const RUTH = {
   },
   answers: {
     GUARDED: {
+      OTHER_SOURCE_REQUEST: [
+        "Ray isn't in this appointment. You can ask him in his scheduled slot; right now you're speaking with me."
+      ],
       SOCIAL_OPENING: [
         "Hello. I have a batch moving, but I can answer questions about first-pass review.",
         "Morning. Ask what you need about the review step."
@@ -161,9 +170,16 @@ const RUTH = {
       AMBIGUOUS_PRESSURE: [
         "Some claims take longer than others. That's the nature of it."
       ],
-      UNMATCHED: ["I couldn't say. That's not something I'd see from here."]
+      UNMATCHED: [
+        "I couldn't say. That's not something I'd see from here.",
+        "That sits outside first-pass review. Ask me about what reaches this desk, what I check, or where it goes next.",
+        "I don't have a reliable answer for that from this part of the process."
+      ]
     },
     OPEN: {
+      OTHER_SOURCE_REQUEST: [
+        "Ray isn't in this appointment. You can ask him in his scheduled slot; right now you're speaking with me."
+      ],
       SOCIAL_OPENING: [
         "Hello. I can answer questions about first-pass review while I work through this batch.",
         "Morning. Go ahead — ask about what reaches this desk and what I check."
@@ -199,7 +215,11 @@ const RUTH = {
         "Twenty-three years. My manager keeps me because he has to, not because he thinks much of the work. I'm aware of that."
       ],
       AMBIGUOUS_PRESSURE: ["The repeats. Everything else moves."],
-      UNMATCHED: ["That's not something I'd see from here, but Ray might."]
+      UNMATCHED: [
+        "That's not something I'd see from here. Ray may know if it concerns intake.",
+        "I can't verify that from first-pass review. I can tell you what arrives here, what I check, and what leaves this desk.",
+        "I wouldn't want to guess. That part is outside what I can see from this desk."
+      ]
     },
     CLOSED: {
       // Every bucket resolves to this rotation. Reworded, never

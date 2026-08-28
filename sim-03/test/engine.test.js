@@ -58,6 +58,21 @@ t('a review-desk clarification receives a relevant answer', () => {
   assert.match(r.answer, /Ruth Kessler|first-pass/i);
 });
 
+t('the suggested absence question opens Ruth and answers the question', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  s.ask('What happens when a claim looks like a duplicate?');
+  const r = s.ask('What changes when you are unavailable?');
+  assert.strictEqual(r.bucket, 'COUNTERFACTUAL');
+  assert.match(r.answer, /isn't a second person|not here/i);
+});
+
+t('mentioning another person explains the private appointment boundary', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  const r = s.ask('@Ray please answer');
+  assert.strictEqual(r.bucket, 'OTHER_SOURCE_REQUEST');
+  assert.match(r.answer, /isn't in this appointment|scheduled slot/i);
+});
+
 t('the window hard-stops and refuses further questions', () => {
   const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
   for (let i = 0; i < 5; i++) s.ask('Walk me through your day');
