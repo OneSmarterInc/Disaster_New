@@ -73,6 +73,20 @@ t('mentioning another person explains the private appointment boundary', () => {
   assert.match(r.answer, /isn't in this appointment|scheduled slot/i);
 });
 
+t('a misspelled availability request stays inside the private-slot boundary', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const r = s.ask('is ray availble?');
+  assert.strictEqual(r.bucket, 'OTHER_SOURCE_REQUEST');
+  assert.match(r.answer, /separate fixed slots|appointment/i);
+});
+
+t('a provider status-call question gets Terry\'s status answer', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const r = s.ask('What do providers hear when they call for status?');
+  assert.strictEqual(r.bucket, 'SENDER_PERSPECTIVE');
+  assert.match(r.answer, /status calls|came in/i);
+});
+
 t('the window hard-stops and refuses further questions', () => {
   const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
   for (let i = 0; i < 5; i++) s.ask('Walk me through your day');

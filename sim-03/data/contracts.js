@@ -200,7 +200,7 @@ const RUTH = {
         "Well — no, I suppose not, from us. I'd assumed the system did something. I've never had cause to check."
       ],
       VOLUME_TIMING: [
-        "Thirty seconds across the day. But that's six clean ones at ten or twelve seconds and then one that takes three minutes. The average doesn't describe anything I actually do."
+        "Eight hundred and fifty a day, across six batches. It averages thirty seconds a claim, but that's six clean ones at ten or twelve seconds and then one that takes three minutes. The average doesn't describe anything I actually do."
       ],
       DOWNSTREAM_CONSUMER: [
         "Adjudication. And if I've flagged it as a repeat it goes to the queue for that instead."

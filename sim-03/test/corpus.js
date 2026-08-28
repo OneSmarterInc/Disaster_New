@@ -6,6 +6,8 @@ module.exports = [
   ['@Ray please answer', 'OTHER_SOURCE_REQUEST'],
   ['Could I speak to Terry?', 'OTHER_SOURCE_REQUEST'],
   ['Switch to Ruth', 'OTHER_SOURCE_REQUEST'],
+  ['is ray availble?', 'OTHER_SOURCE_REQUEST'],
+  ['Can Terry answer this?', 'OTHER_SOURCE_REQUEST'],
 
   // --- SOCIAL_OPENING ------------------------------------------------
   ['Hi', 'SOCIAL_OPENING'],
@@ -59,6 +61,8 @@ module.exports = [
   ['Do they get a confirmation of any kind?', 'SENDER_PERSPECTIVE'],
   ['Who handles status calls?', 'SENDER_PERSPECTIVE'],
   ['What do you tell them when they call?', 'SENDER_PERSPECTIVE'],
+  ['What do providers hear when they call for status?', 'SENDER_PERSPECTIVE'],
+  ['When providers call, what can you tell them?', 'SENDER_PERSPECTIVE'],
   ['How long is the gap between the first and second copy?', 'SENDER_PERSPECTIVE'],
 
   // --- COUNTERFACTUAL -----------------------------------------------

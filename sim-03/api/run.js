@@ -72,17 +72,29 @@ module.exports = async (req, res) => {
           ray: [
             'How many claims arrive through each channel?',
             'What happens to claims that arrive after the final release?',
-            'Do providers receive confirmation that a claim arrived?'
+            'Do providers receive confirmation that a claim arrived?',
+            'How do you decide which faxes go to the vendor?',
+            'What systems do you use for vendor faxes?',
+            'What happens when an intake item is illegible?',
+            'Who receives the batches after you release them?'
           ],
           terry: [
             'Why was the receipt log created?',
             'Who uses the receipt log now?',
-            'What do providers hear when they call for status?'
+            'What do providers hear when they call for status?',
+            'How many claims do you log each day?',
+            'What information do you enter in the receipt log?',
+            'What happens when a control number is missing?',
+            'What would happen if the receipt log stopped?'
           ],
           ruth: [
             'What happens when a claim looks like a duplicate?',
             'What changes when you are unavailable?',
-            'What do providers hear after submitting a claim?'
+            'What do providers hear after submitting a claim?',
+            'How many claims reach first-pass review each day?',
+            'What systems or tools do you use during review?',
+            'Where does a claim go after first-pass review?',
+            'What makes one claim take longer than another?'
           ]
         }[k]
       }])),
