@@ -44,14 +44,19 @@ a:hover{text-decoration:underline}
 .hero{padding:60px 0 34px;border-bottom:1px solid var(--line);margin-bottom:34px}
 .hero h1{font-size:46px;font-weight:300;letter-spacing:-.03em;line-height:1.08;margin:8px 0 16px}
 .hero h1 em{font-style:italic;color:var(--amber)}
-.hero p{font-size:18px;color:var(--ink2);max-width:58ch;line-height:1.62}
+.hero p{font-size:18px;color:var(--ink2);max-width:58ch;line-height:1.62;margin-bottom:10px}
+.hero p:last-child{margin-bottom:0}
+
+/* Section header between the two product lines */
+.section-head{margin:44px 0 20px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.section-head:first-of-type{margin-top:0}
+.section-head h2{font-size:28px;font-weight:400;letter-spacing:-.02em;line-height:1.15;margin-bottom:6px}
+.section-head h2 em{font-style:italic;color:var(--amber)}
+.section-head p{font-size:15.5px;color:var(--ink2);max-width:56ch;line-height:1.55;margin:0}
 
 .card{background:var(--panel);border:1px solid var(--line);margin-bottom:14px;display:flex;
       gap:0;cursor:pointer;transition:.12s}
 .card:hover{border-color:var(--line2)}
-.card .num{flex:0 0 74px;border-right:1px solid var(--line);background:var(--sunk);
-  display:flex;align-items:flex-start;justify-content:center;padding-top:24px;
-  font-family:var(--mono);font-size:15px;color:var(--ink3)}
 .card .body{padding:24px 26px;flex:1;min-width:0}
 .card h2{font-size:24px;font-weight:400;letter-spacing:-.02em;margin-bottom:6px}
 .card .tag{color:var(--amber);font-style:italic;font-size:16.5px;margin-bottom:12px}
@@ -71,8 +76,7 @@ a:hover{text-decoration:underline}
   /* .two, .side and .sim-head are handled in sim-detail.css, which both this
      page and the faculty console load */
   .hero h1{font-size:34px}
-  .card{flex-direction:column}
-  .card .num{flex:none;border-right:none;border-bottom:1px solid var(--line);padding:10px;justify-content:flex-start;padding-left:26px}
+  .section-head h2{font-size:22px}
 }
 </style>
 </head>
@@ -119,31 +123,60 @@ async function greet() {
   } catch (e) { /* signed out, or no database — the catalogue does not care */ }
 }
 
+// Classify a sim as 'rapidsim' or 'rapidsim-plus'.
+// Prefers an explicit sim.type field if present. Falls back to duration:
+// 60 minutes or more is treated as a RapidSim+.
+function classify(sim) {
+  if (sim.type === 'rapidsim' || sim.type === 'rapidsim-plus') return sim.type;
+  return (Number(sim.minutes) || 0) >= 60 ? 'rapidsim-plus' : 'rapidsim';
+}
+
+function cardHTML(s) {
+  return `<div class="card" data-open="${esc(s.id)}">
+    <div class="body">
+      <h2>${esc(s.title)}</h2>
+      ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
+      ${s.description ? `<p>${esc(s.description)}</p>` : ''}
+      <div class="facts">
+        ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
+        <span>played <b>individually</b></span>
+        <span><b>no</b> preparation</span>
+        <span><b>not</b> marked</span>
+      </div>
+      ${s.detail && s.detail.teaches ? `<div class="teaches"><span>Teaches</span>${esc(s.detail.teaches)}</div>` : ''}
+    </div>
+  </div>`;
+}
+
 function list(){
+  const rapidsims = SIMS.filter(s => classify(s) === 'rapidsim');
+  const rapidsimsPlus = SIMS.filter(s => classify(s) === 'rapidsim-plus');
+
   app.innerHTML = `
     <div class="hero">
       <div class="eyebrow">Flexee</div>
       <h1>Rapid<em>Sims</em></h1>
-      <p>Twenty-minute simulations for the classroom.</p>
+      <p>Short-form simulations for the classroom.</p>
+      <p>RapidSims put students in a twenty-minute decision. RapidSims+ put them in a longer investigation.</p>
     </div>
 
-    ${SIMS.length ? `<div class="eyebrow" style="margin-bottom:14px">${SIMS.length} simulation${SIMS.length===1?'':'s'}</div>` : ''}
-    ${SIMS.length ? SIMS.map(s => `<div class="card" data-open="${esc(s.id)}">
-      <div class="num">${s.number ? String(s.number).padStart(2,'0') : '··'}</div>
-      <div class="body">
-        <h2>${esc(s.title)}</h2>
-        ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
-        ${s.description ? `<p>${esc(s.description)}</p>` : ''}
-        <div class="facts">
-          ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
-          <span>played <b>individually</b></span>
-          <span><b>no</b> preparation</span>
-          <span><b>not</b> marked</span>
+    ${SIMS.length ? `
+      ${rapidsims.length ? `
+        <div class="section-head">
+          <h2>Rapid<em>Sims</em></h2>
+          <p>Twenty minutes. One decision. Nothing to prepare.</p>
         </div>
-        ${s.detail && s.detail.teaches ? `<div class="teaches"><span>Teaches</span>${esc(s.detail.teaches)}</div>` : ''}
-      </div>
-    </div>`).join('')
-    : `<div class="card" style="cursor:default"><div class="body">
+        ${rapidsims.map(cardHTML).join('')}
+      ` : ''}
+
+      ${rapidsimsPlus.length ? `
+        <div class="section-head">
+          <h2>Rapid<em>Sims+</em></h2>
+          <p>Longer. Investigative. Still nothing to prepare.</p>
+        </div>
+        ${rapidsimsPlus.map(cardHTML).join('')}
+      ` : ''}
+    ` : `<div class="card" style="cursor:default"><div class="body">
         <p style="margin:0">${ERR ? 'The catalogue is not available at the moment.' : 'Nothing published yet.'}</p></div></div>`}
 
     <div class="box" style="margin-top:34px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
