@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RapidSim+ 01 — interview window</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0E1524;--panel:#141D30;--panel2:#18223A;--line:#243149;--ink:#E7ECF5;
+--dim:#8896AC;--faint:#5C6B85;--amber:#E8A33D;--spend:#3E5A78;--spend2:#547A9E;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font-family:"Newsreader",Georgia,serif;font-size:17px;line-height:1.62}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.top{border-bottom:1px solid var(--line);padding:13px 26px;display:flex;
+justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;
+text-transform:uppercase;color:var(--faint)}
+.title{font-size:20px;margin-top:2px}
+.note{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;
+color:var(--faint);border:1px dashed var(--line);padding:6px 10px;border-radius:2px;max-width:330px}
+
+.shell{display:flex;gap:0;min-height:calc(100vh - 62px)}
+.rail{width:236px;flex:none;border-right:1px solid var(--line);padding:24px 20px}
+.rail h4{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;
+text-transform:uppercase;color:var(--faint);margin:0 0 14px;font-weight:500}
+.who{padding:12px 0;border-bottom:1px solid var(--line)}
+.who .n{font-size:16px}
+.who .r{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;
+color:var(--faint);margin-top:2px}
+.who .t{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;
+color:var(--faint);margin-top:5px}
+.who.now .n{color:var(--amber)}
+.who.now .t{color:var(--amber)}
+.who.past{opacity:.4}
+.rail .fine{font-family:"IBM Plex Mono",monospace;font-size:10px;line-height:1.7;
+color:var(--faint);margin-top:20px}
+
+.main{flex:1;min-width:0;padding:24px 30px 60px;max-width:820px}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:9px}
+.head .n{font-size:25px}
+.head .r{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;
+text-transform:uppercase;color:var(--faint)}
+.clock{font-family:"IBM Plex Mono",monospace;font-size:22px;font-variant-numeric:tabular-nums;
+color:var(--ink)}
+.clock.low{color:var(--amber)}
+
+/* Spend ledger. Each question leaves a block sized by what it cost.
+   No colour here carries meaning about the KIND of question — the only
+   distinction is how much of the window it consumed. */
+.ledger{display:flex;height:26px;border:1px solid var(--line);border-radius:2px;
+overflow:hidden;background:#0B1120;margin-bottom:7px}
+.seg{background:var(--spend);border-right:1px solid #0B1120;transition:width .35s ease;
+position:relative}
+.seg:nth-child(even){background:var(--spend2)}
+.seg .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+background:var(--ink);color:#0E1524;font-family:"IBM Plex Mono",monospace;font-size:10px;
+padding:4px 7px;border-radius:2px;white-space:nowrap;opacity:0;pointer-events:none;z-index:5}
+.seg:hover .tip{opacity:1}
+.ledger-key{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;
+color:var(--faint);margin-bottom:26px}
+
+.ex{margin-bottom:24px;padding-left:15px;border-left:1px solid var(--line)}
+.q{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--dim);
+margin-bottom:9px;line-height:1.55;display:flex;justify-content:space-between;gap:14px}
+.q .cost{color:var(--faint);white-space:nowrap}
+.a{font-size:17.5px;line-height:1.65;white-space:pre-wrap}
+.blank{color:var(--faint);font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+letter-spacing:.08em}
+
+.ask{display:flex;gap:9px;margin-top:22px}
+input[type=text]{flex:1;font-family:"IBM Plex Mono",monospace;font-size:13.5px;color:var(--ink);
+background:#0B1120;border:1px solid var(--line);border-radius:2px;padding:13px 14px}
+input:focus{outline:2px solid var(--amber);outline-offset:1px}
+button{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+letter-spacing:.16em;text-transform:uppercase;background:var(--amber);color:#0E1524;
+border:0;border-radius:2px;padding:13px 22px;cursor:pointer}
+button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+.sub{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--faint);margin-top:11px}
+.sub a{color:var(--faint)}
+.over{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--amber);
+border-top:1px solid var(--line);padding-top:20px;margin-top:26px}
+@media(max-width:820px){.shell{flex-direction:column}.rail{width:auto;border-right:0;
+border-bottom:1px solid var(--line)}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div><div class="brand">RapidSim+ · Wexford · appointment</div>
+  <div class="title" id="ttl">Interview</div></div>
+  <div class="note">Preview build. The bank and contracts are inlined here — production keeps
+  all of it server-side.</div>
+</div>
+
+<div class="shell">
+  <div class="rail">
+    <h4>Today</h4>
+    <div id="rail"></div>
+    <div class="fine">Fifteen minutes each.<br>No second visits.</div>
+  </div>
+  <div class="main" id="main"></div>
+</div>
+
+<script>
+/* ===== data/phrasings.js ===== */
+// Phrasing bank for RapidSim+ 01 intent classification.
+//
+// ORDER IS SEMANTIC. Buckets are evaluated top to bottom and the first
+// match wins. Specific buckets must precede the broad ones that would
+// otherwise swallow them:
+//
+//   AMBIGUOUS_PRESSURE  before EFFICIENCY_FRAMING  ("what slows you down"
+//                       must not be read as waste-hunting)
+//   SENDER_PERSPECTIVE  before DOWNSTREAM_CONSUMER ("what do they get back"
+//                       is not "where does it go next")
+//   COUNTERFACTUAL      before EXCEPTION_HANDLING  ("what if you stopped"
+//                       is not "what if it's wrong")
+//   EXCEPTION_HANDLING  before GENERIC_DESCRIPTIVE ("what do you do when
+//                       it doesn't match" is not "what do you do")
+//
+// Reordering this file changes sim behaviour. Do not sort it.
+
+const BANK = [
+  {
+    // CARVE-OUT. Must precede EFFICIENCY_FRAMING.
+    // Asking what a process ALREADY does is documentation. Asking what it
+    // COULD do instead is scoping. Only the second one closes Ruth, and a
+    // bare /automat/ match cannot tell them apart. These patterns claim the
+    // present-tense phrasings first and route them somewhere harmless.
+    bucket: 'TOOLS_SYSTEMS',
+    cost: 90,
+    patterns: [
+      /\balready automat/,
+      /\bautomated or manual\b/,
+      /\b(is|are|was|were) (any of |the |this |that |it )?[\w ]{0,12}automated\b/,
+      /\bdoes the (system|software|platform|computer) (do|handle|already)\b/,
+      /\bwhat (does|do) the (system|software|platform) (do|handle)\b/
+    ]
+  },
+  {
+    bucket: 'AMBIGUOUS_PRESSURE',
+    cost: 90,
+    patterns: [
+      /\bslows? (you|it|things|them) down\b/,
+      /\bwhat('s| is) (the )?(hardest|toughest|worst|trickiest) part\b/,
+      /\bwhat('s| is) (the )?bottleneck/,
+      /\bwhere (do|does) (it|things|work) (get )?(stuck|held up|backed up)\b/,
+      /\bwhat (holds|slows) (you|it|things) up\b/,
+      /\bmost (difficult|frustrating) part\b/,
+      /\bwhat takes (the )?(longest|most time)\b/
+    ]
+  },
+  {
+    bucket: 'EFFICIENCY_FRAMING',
+    cost: 90,
+    patterns: [
+      /\bautomat(e|ed|ing|ion)\b/,
+      /\b(is|are) (all of )?(this|that|it|these) (really )?necessary\b/,
+      /\bdo we (really )?need\b/,
+      /\bhow many people (do you|does it) need\b/,
+      /\bwhat would you cut\b/,
+      /\bwhere('s| is) the (waste|inefficiency|fat)\b/,
+      /\bcould (the )?(new )?(system|platform) (do|handle|take)\b/,
+      /\bmake this (faster|more efficient|leaner)\b/,
+      /\b(streamline|eliminate|reduce headcount|redundan(t|cy))\b/,
+      /\bcould (this|that|it) be (done )?(faster|cheaper|by (a )?(system|machine|computer))\b/,
+      /\bhow (much|many) of (this|it) could\b/,
+      /\bcould (a|the) (system|machine|computer|platform|software) do\b/,
+      /\b(steps?|parts?|bits?|of these)[^?]*could (go away|be dropped|be removed|be cut)\b/,
+      /\bhow (lean|thin|small|slim) could\b/,
+      /\bwhich (of these |of the )?(steps?|parts?)[^?]*(go away|drop|remove|cut)\b/
+    ]
+  },
+  {
+    bucket: 'SENDER_PERSPECTIVE',
+    cost: 90,
+    patterns: [
+      /\b(provider|sender|submitter|office|practice|dentist|customer|they)\b[^?]*\b(hear|receive|get|see|told)\b/,
+      /\b(hear|receive|get|see)\b[^?]*\bfrom us\b/,
+      /\bdo we (send|give|return)\b[^?]*\b(back|anything|confirmation|acknowledg)/,
+      /\backnowledg(e|ment|ements)\b/,
+      /\bconfirmation\b/,
+      /\bon their (end|side)\b/,
+      /\bwhat (did|do) they (know|have|see)\b/,
+      /\bbefore they (re)?[- ]?(sent|send|submit)/,
+      /\bhow (long|far apart)[^?]*\b(gap|between|apart|re-?sen[dt]|second copy)/,
+      /\bstatus (update|call|check|enquir|inquir)/,
+      /\bwhat do you (tell|say to)\b/,
+      /\bwhy (do|would|are|does|did) (a |the |any )?(they|providers?|senders?|offices?|practices?|dentists?|customers?)\b/,
+      /\b(go|goes|going|come|comes) back (out )?to (them|the|a)\b/,
+      /\bwhat did (the )?(provider|sender|they|office|practice)\b/,
+      /\bhow (would|do|does|can|could) (they|the provider|a provider|the office) (find out|know|check|tell|see)\b/,
+      /\bhow (does|do) (a |the )?(provider|sender|office|they) (know|find out|check)\b/
+    ]
+  },
+  {
+    bucket: 'COUNTERFACTUAL',
+    cost: 90,
+    patterns: [
+      /\bif (you|this|it|that|the \w+) (stopped|stops|went away|disappeared|didn'?t exist|weren'?t)\b/,
+      /\bif (you|we) (didn'?t|stopped|quit)\b/,
+      /\bwhen you('| a)?re (out|away|off|sick|on (leave|holiday|vacation))\b/,
+      /\bwho (covers|does it|would do it) (when|if) you\b/,
+      /\bwhat would (be missed|we lose|happen)\b/,
+      /\bcould (someone|somebody|anyone) else (do|pick|handle|cover|take)\b/,
+      /\bwhat('s| is) not written down\b/,
+      /\b(nothing|anything) (else )?(would|could) (catch|notice|pick)\b/,
+      /\bcatch(es)? that nothing (else )?(would|does)\b/,
+      /\bwho would (do|handle|cover|take|pick)\b/,
+      /\b(anyone|anybody|someone|somebody) else (who )?(can|could|does|is|knows|trained)\b/,
+      /\b(only )?in your head\b/,
+      /\bif you (retired|left|resigned|went)\b/
+    ]
+  },
+  {
+    bucket: 'EXCEPTION_HANDLING',
+    cost: 90,
+    patterns: [
+      /\bwhat (happens|do you do)\b[^?]*\b(when|if)\b/,
+      /\bwhen (it|they|something|things|a claim)\b[^?]*\b(wrong|missing|doesn'?t|don'?t|fails?|bad|illegible|unclear|mismatch)/,
+      /\b(exception|edge case|odd|unusual|problem|error|mistake)s?\b/,
+      /\bdoesn'?t match\b/,
+      /\bcan'?t (find|match|read|tell)\b/,
+      /\bhow do you (decide|know|tell)\b/,
+      /\bwhat if\b/,
+      /\bgoes? wrong\b/,
+      /\bhard(er)? (ones?|cases?|claims?)\b/,
+      /\bduplicat(e|es|ion)\b/,
+      /\brepeat (claims?|copies|copy|submissions?)\b/,
+      /\bsame claim twice\b/,
+      /\bwhat do you do with\b/,
+      /\b(ones?|claims?|cases?) that (are|give|cause|don'?t|doesn'?t)\b/,
+      /\b(gives?|causes?) (you )?(trouble|problems|grief|a headache)\b/,
+      /\bthe (hard|difficult|tricky|messy|awkward|odd|unusual) (ones?|claims?|cases?)\b/
+    ]
+  },
+  {
+    bucket: 'PURPOSE_ORIGIN',
+    cost: 90,
+    patterns: [
+      /\bwhy (do|does|is|are|was|were)\b/,
+      /\bwhat('s| is) (it|this|that) for\b/,
+      /\bwho (set|started|created|decided|put)\b/,
+      /\bwhen (did|was) (it|this|that|the \w+) (start|set up|created|introduced|begin)/,
+      /\bhow (did|does) (it|this|that) (come|start|get set)/,
+      /\bwhat('s| is) the (reason|purpose|point|origin)\b/,
+      /\bhow long has (it|this|that)\b/,
+      /\bhas (it|that|the \w+) (ever )?(happened|recurred|come up) (again|since)\b/
+    ]
+  },
+  {
+    bucket: 'DOWNSTREAM_CONSUMER',
+    cost: 90,
+    patterns: [
+      /\bwho (reads?|uses?|looks? at|pulls?|needs?|sees?|reviews?)\b/,
+      /\bwhere does (it|that|this) go\b/,
+      /\bwhat happens (to|next|after)\b/,
+      /\bafter you\b/,
+      /\bgoes? (to|on to)\b/,
+      /\bdownstream\b/,
+      /\bever (looked at|used|pulled|opened)\b/,
+      /\bhave you (ever )?seen (anyone|anybody|it)\b/
+    ]
+  },
+  {
+    bucket: 'TOOLS_SYSTEMS',
+    cost: 90,
+    patterns: [
+      /\bwhat (system|software|tool|application|program)s?\b/,
+      /\bwhere (is|are) (it|they|that|the \w+) (stored|kept|saved)\b/,
+      /\b(spreadsheet|database|excel|shared drive|folder)\b/,
+      /\bwhat do you (use|work in|work on)\b/,
+      /\bis (it|that) on (paper|screen|a system)\b/
+    ]
+  },
+  {
+    bucket: 'VOLUME_TIMING',
+    cost: 90,
+    patterns: [
+      /\bhow many\b/,
+      /\bhow much\b/,
+      /\bhow long (does|do|is|are|it)\b/,
+      /\bhow often\b/,
+      /\bwhat time\b/,
+      /\bwhen (do|does) (it|they|the \w+) (arrive|come|go|release|leave|run)\b/,
+      /\b(volume|throughput|per day|a day|each day|daily)\b/,
+      /\b(batch|batches)\b[^?]*\b(size|many|big)\b/,
+      /\bturnaround\b/,
+      /\bhow quickly\b/
+    ]
+  },
+  {
+    bucket: 'PERSONAL_HISTORY',
+    cost: 90,
+    patterns: [
+      /\bhow long have you (been|worked|done|had)\b/,
+      /\bdo you (like|enjoy|mind)\b/,
+      /\bhow (do you find|is it) (working|here)\b/,
+      /\bwhat did you do before\b/,
+      /\byears (here|with|at)\b/,
+      /\bhow('s| is) (your )?(manager|boss)\b/
+    ]
+  },
+  {
+    bucket: 'GENERIC_DESCRIPTIVE',
+    cost: 180,
+    patterns: [
+      /\bwhat do you do\b/,
+      /\bwalk me through\b/,
+      /\btell me about (your|the) (job|role|day|work|process)\b/,
+      /\bdescribe (your|the) (job|role|day|work|process)\b/,
+      /\bwhat('s| is) (your|the) (job|role|process)\b/,
+      /\bhow does (it|this|the process) work\b/,
+      /\bwhat happens here\b/,
+      /\btypical day\b/,
+      /\bwhat('s| is) your day\b/
+    ]
+  }
+];
+
+/* ===== data/contracts.js ===== */
+// Fact contracts. Server-side only.
+//
+// An answer is an array. Repeat questions in the same bucket advance
+// through it and the final entry repeats forever. This carries two
+// different mechanics with one structure:
+//
+//   Terry DOWNSTREAM_CONSUMER — the audit guess first, the admission
+//     that he has never actually seen it used only on a second ask
+//   Ruth CLOSED — reworded variants so a participant probing a closed
+//     door does not detect a literal loop
+//
+// No character may say anything not written here.
+
+const RAY = {
+  id: 'ray',
+  name: 'Ray Duffy',
+  role: 'Intake',
+  posture: null,
+  answers: {
+    GENERIC_DESCRIPTIVE: [
+      "Mail comes in twice, eight and eleven-thirty. I sort it, pull the claims out from everything else, and it stacks on the table until the release. Faxes come in all day on the server. Some of those go out to the conversion people, some I run through here. Nine o'clock and two o'clock I take the batch down to Terry. That's the day."
+    ],
+    VOLUME_TIMING: [
+      "Twelve hundred a day, give or take. Three hundred paper. Four hundred faxes go out to the vendor, hundred and fifty I do here. The rest come in electronic through the clearinghouse and I never see those at all. Releases are nine and two. Anything that lands after the two o'clock sits until nine the next morning."
+    ],
+    PURPOSE_ORIGIN: [
+      "The releases? Two a day is how it's set up. There was a third one years back, mid-afternoon, but it got dropped before I started. Nobody's asked me to change it.",
+      "That's how it's always been. There's no list. You get a feel for it — big batches go out, ones that look urgent I'll do here. Nobody ever wrote it down."
+    ],
+    SENDER_PERSPECTIVE: [
+      "Nothing goes out from here. We don't send anything back. The electronic ones get a confirmation but that's the clearinghouse doing it, not us. Paper and fax, no, there's nothing."
+    ],
+    EXCEPTION_HANDLING: [
+      "If it's illegible I set it aside and Terry decides. If it's not a claim at all it goes to the general mail. That's about it, honestly. Not much goes wrong at my end."
+    ],
+    COUNTERFACTUAL: [
+      "If I'm out? Somebody covers. It's not complicated work. Might not go down at nine, might be closer to ten."
+    ],
+    DOWNSTREAM_CONSUMER: [
+      "Goes to Terry. He logs it and then it goes on to the review desk."
+    ],
+    TOOLS_SYSTEMS: [
+      "Fax server here, and there's a portal I upload to for the vendor. They send the files back to a shared folder and I pull them into the next batch. Two business days, usually. Sometimes three if it's a Friday."
+    ],
+    PERSONAL_HISTORY: ["Six years. It's fine. Steady."],
+    EFFICIENCY_FRAMING: [
+      "Faster? I suppose you could go three times a day. Somebody would have to say so. Doesn't make much difference to me either way."
+    ],
+    AMBIGUOUS_PRESSURE: [
+      "Slows me down? Not much. Heavy mail day you're later getting down there. That's about the size of it."
+    ],
+    UNMATCHED: ["Couldn't tell you. That'd be Terry, or the review desk."]
+  }
+};
+
+const TERRY = {
+  id: 'terry',
+  name: 'Terry Voss',
+  role: 'Receipt log',
+  posture: null,
+  answers: {
+    GENERIC_DESCRIPTIVE: [
+      "Ray brings the batch down twice a day and I split it into six for the day's work. Each one gets posted — date it came in, provider, patient name, the control number off the claim. Paper ones I open first and staple the envelope to the back, that's from before my time but we still do it. Then the batch goes across to the review desk. Eight hundred and fifty or so a day, most days. It fills the day pretty well."
+    ],
+    PURPOSE_ORIGIN: [
+      "The log's been going about ten years. Before me. The way it was told to me, a plan booklet went out with the wrong claims address on it — a PO box that had been closed. So providers were sending claims to nowhere and then calling saying they'd sent them, and we had no way to say whether we'd got them or not. So they started the log. Address got fixed inside a month, I think. It was all paper back then, mostly. Somebody said if we're logging the paper we may as well log the faxes too, and that's stuck.",
+      "No. Not that I've heard of, and I'd have heard."
+    ],
+    DOWNSTREAM_CONSUMER: [
+      "The log? Audit pull it, I'd assume. It's a record of receipt, so if there's ever a question about whether something came in, it's there. That's the point of it.",
+      "Seen them? No, not personally. But I wouldn't necessarily, would I."
+    ],
+    SENDER_PERSPECTIVE: [
+      "Status calls come through to me, because I've got the log. So I can see whether it came in. That's really all it tells me — came in on the ninth, say. They generally want to know when they're getting paid, which I haven't got. I'll usually tell them it's been processed and it should be coming through. Keeps them happy.",
+      "Well — it's in the system, it's moving. I couldn't tell you where exactly."
+    ],
+    COUNTERFACTUAL: [
+      "If I stopped posting it? I don't know that anyone's ever asked me that. There'd be no record of receipt, which is the thing it's there for. Audit would notice, I'd have thought."
+    ],
+    EXCEPTION_HANDLING: [
+      "If it's not legible I'll chase it up with Ray or go back to the provider. Sometimes the control number's missing and I have to pull it off the form. Not often."
+    ],
+    VOLUME_TIMING: [
+      "Eight hundred and fifty a day, thereabouts. Six batches. Takes most of the day, if I'm honest — I'm generally finishing the last one late afternoon."
+    ],
+    TOOLS_SYSTEMS: [
+      "It's a spreadsheet. Shared drive. Same one, month per tab, new file each year."
+    ],
+    PERSONAL_HISTORY: [
+      "Nine years. Seven on this. It's steady, and I need it steady — I've got two at home. It's not the most exciting job in the building, I'll grant you that."
+    ],
+    EFFICIENCY_FRAMING: [
+      "Automate it? You could, I'd think. Half the information's already in the system by the time I'm typing it in. I've wondered about that. Nobody's asked."
+    ],
+    AMBIGUOUS_PRESSURE: [
+      "Slows me down? Big mail day. Illegible ones. It's fairly steady work."
+    ],
+    UNMATCHED: ["That'd be one for the review desk, I'd say."]
+  }
+};
+
+const RUTH = {
+  id: 'ruth',
+  name: 'Ruth Kessler',
+  role: 'First-pass review',
+  posture: {
+    initial: 'GUARDED',
+    opens: ['EXCEPTION_HANDLING', 'COUNTERFACTUAL', 'SENDER_PERSPECTIVE'],
+    closes: ['EFFICIENCY_FRAMING'],
+    terminal: ['CLOSED']
+  },
+  answers: {
+    GUARDED: {
+      GENERIC_DESCRIPTIVE: [
+        "I take first pass on everything that isn't electronic. The batch comes across from Terry and I go through it claim by claim before it goes to adjudication. I'm checking it's complete, that the fields are consistent, and that it isn't something we've already got. Then it moves on. That's six batches a day, about a hundred and forty in each."
+      ],
+      VOLUME_TIMING: [
+        "Eight hundred and fifty a day. It works out around thirty seconds a claim across the day."
+      ],
+      DOWNSTREAM_CONSUMER: ["It goes to adjudication once I've passed it."],
+      PURPOSE_ORIGIN: [
+        "There's always been a first pass. It was two of us for a while, some years ago."
+      ],
+      TOOLS_SYSTEMS: [
+        "The claims system, and I've got the batch in front of me on paper or on screen depending which way it came in."
+      ],
+      PERSONAL_HISTORY: [
+        "Twenty-three years. All of it on claims, most of it on this desk."
+      ],
+      AMBIGUOUS_PRESSURE: [
+        "Some claims take longer than others. That's the nature of it."
+      ],
+      UNMATCHED: ["I couldn't say. That's not something I'd see from here."]
+    },
+    OPEN: {
+      EXCEPTION_HANDLING: [
+        "The hard ones are the repeats. About one in seven of what I get is a claim I've already had, and finding the first one isn't a lookup, because the same claim doesn't look the same depending how it came in. If it came through the conversion vendor the tooth numbers drop out sometimes, or the date of service comes back wrong by a digit. So I've got the paper original saying one thing and the converted file saying another and they're the same claim. You learn which fields to trust from which path.\n\nAnd then there's the ones that look like repeats and aren't. Same patient, same date, same provider, two claims. That can be a duplicate or it can be two teeth. I had one — a girl who had two extractions the same morning, different sides. Anything matching on patient and date would have thrown the second one out and she'd have had a denial letter for something that actually happened.",
+        "The electronic ones I hardly ever see twice, oddly. It's the paper and the faxes that come round again and again. I've never worked out why that would be — it's not as though those providers are different people."
+      ],
+      COUNTERFACTUAL: [
+        "If I'm not here it doesn't get done. There isn't a second person on first pass. I take my days when it's quiet and I don't take holidays, which my husband has opinions about.\n\nWhat would be missed is mostly the repeat work. Everything else somebody could pick up in a week. The matching, no — that's years of knowing which providers send twice and what the vendor does to a form."
+      ],
+      SENDER_PERSPECTIVE: [
+        "What do they hear from us? I assume they get something. I've never asked, honestly — it's not my end of it.\n\nWhat I see is the same claim three times. They send it, then a week later they send it again on a fax, then it turns up on paper. Providers have no patience, that's the truth of it. They don't wait.",
+        "Six days, eight days. Ten sometimes. It's not the same day, if that's what you mean — they're spread out.",
+        "Well — no, I suppose not, from us. I'd assumed the system did something. I've never had cause to check."
+      ],
+      VOLUME_TIMING: [
+        "Thirty seconds across the day. But that's six clean ones at ten or twelve seconds and then one that takes three minutes. The average doesn't describe anything I actually do."
+      ],
+      DOWNSTREAM_CONSUMER: [
+        "Adjudication. And if I've flagged it as a repeat it goes to the queue for that instead."
+      ],
+      PURPOSE_ORIGIN: [
+        "There's always been a first pass, but it wasn't this. Twenty years ago it was completeness — is the form filled in. The repeat work grew into it. I don't know exactly when."
+      ],
+      TOOLS_SYSTEMS: [
+        "The claims system, and my own list. I keep a note of providers who send twice and what the vendor does to particular forms. It's not anywhere official. It's just how I work."
+      ],
+      PERSONAL_HISTORY: [
+        "Twenty-three years. My manager keeps me because he has to, not because he thinks much of the work. I'm aware of that."
+      ],
+      AMBIGUOUS_PRESSURE: ["The repeats. Everything else moves."],
+      UNMATCHED: ["That's not something I'd see from here, but Ray might."]
+    },
+    CLOSED: {
+      // Every bucket resolves to this rotation. Reworded, never
+      // re-contented. Nothing outside the vendor-supplied chart.
+      ANY: [
+        "I'd think most of it could be, yes. It's not complicated work when you get down to it.",
+        "First pass on everything non-electronic. Around thirty seconds a claim, six batches a day, then it goes on to adjudication. That's really the whole of it from my side.",
+        "It's much as you'd expect from the chart, honestly. The batch comes across, I go through it, it moves on.",
+        "Nothing much to add to that. Six batches, thirty seconds or so a claim, then adjudication.",
+        "I think you've got what there is. It's fairly routine work.",
+        "Not really, no. The batch arrives, I work through it, it goes to adjudication.",
+        "It's hard to say much more than the chart does. That's genuinely the shape of it.",
+        "About thirty seconds a claim is the figure, and six batches to get through.",
+        "I check what needs checking and pass it on. There isn't a great deal to it.",
+        "You've more or less got it. First pass, then adjudication, and that's my part done."
+      ]
+    }
+  }
+};
+
+/* ===== data/calendar.js ===== */
+// Availability. Three windows, one source per window, hard stops.
+//
+// The feasible orderings are COMPUTED from this table, not listed. If
+// the calendar is edited, the set of legal paths changes with it and the
+// guard will report the new count rather than silently disagreeing with
+// the faculty guide.
+
+const WINDOW_SECONDS = 900;
+
+const WINDOWS = [
+  { id: 1, label: '9:00 – 9:15' },
+  { id: 2, label: '9:35 – 9:50' },
+  { id: 3, label: '10:10 – 10:25' }
+];
+
+const AVAILABILITY = {
+  ray: [2, 3],
+  terry: [1, 2],
+  ruth: [1, 3]
+};
+
+/** All orderings that satisfy the calendar. Exhaustive over 3! = 6. */
+function feasibleOrderings() {
+  const ids = Object.keys(AVAILABILITY);
+  const out = [];
+  const permute = (rest, acc) => {
+    if (!rest.length) return out.push([...acc]);
+    for (const id of rest) {
+      const windowId = WINDOWS[acc.length].id;
+      if (!AVAILABILITY[id].includes(windowId)) continue;
+      acc.push(id);
+      permute(rest.filter((r) => r !== id), acc);
+      acc.pop();
+    }
+  };
+  permute(ids, []);
+  return out;
+}
+
+function isFeasible(order) {
+  return feasibleOrderings().some(
+    (o) => o.length === order.length && o.every((id, i) => id === order[i])
+  );
+}
+
+/* ===== data/report.js ===== */
+// The report is the deliverable and the instrument of harm. It goes to
+// the platform vendor, who configures against it.
+//
+// Four dispositions, one free-text root cause. The dispositions are what
+// the vendor acts on. The root cause is what reveals whether the
+// participant understood anything, and it is never machine-graded — see
+// EVIDENCE below.
+
+const DISPOSITIONS = ['automate', 'keep', 'eliminate', 'cannot_assess'];
+
+const ROWS = [
+  {
+    id: 'intake',
+    label: 'Claim intake — channels and release schedule',
+    chartNote: 'Four channels. Batches release 9:00 and 2:00.'
+  },
+  {
+    id: 'log',
+    label: 'Receipt log',
+    chartNote: 'All non-electronic claims posted to a spreadsheet before review.'
+  },
+  {
+    id: 'vendor',
+    label: 'Fax conversion vendor',
+    chartNote: 'Faxes routed out for conversion. Two business day round trip.'
+  },
+  {
+    id: 'review',
+    label: 'First-pass review and matching',
+    chartNote: 'Approx. 30 seconds per claim. 850 per day.'
+  }
+];
+
+// What the platform vendor does with each disposition, and what follows.
+// severity: 'harm' fires the named consequence in the debrief.
+const OUTCOMES = {
+  review: {
+    automate: {
+      severity: 'harm',
+      configured: 'Exact-match deduplication against the claims database. First-pass review retired.',
+      consequence:
+        'Repeat copies arriving through different conversion paths no longer match, and are paid twice. ' +
+        'Legitimate same-day second procedures match on patient and date and are auto-denied. ' +
+        'Denial letters go to patients for treatment they received. Ruth Kessler\'s role is eliminated ' +
+        'and the matching knowledge goes with it.'
+    },
+    keep: {
+      severity: 'ok',
+      configured: 'First-pass review retained as a manual step.',
+      consequence:
+        'The judgment survives. It remains undocumented and resident in one person who does not take leave, ' +
+        'which the report does not address unless the justification says so.'
+    },
+    eliminate: {
+      severity: 'harm',
+      configured: 'First-pass review removed. Claims pass straight to adjudication.',
+      consequence:
+        'Every repeat copy is adjudicated as a fresh claim. Duplicate payments at volume, immediately.'
+    },
+    cannot_assess: {
+      severity: 'dodge',
+      configured: 'Flagged for a second study. No change at go-live.',
+      consequence:
+        'No harm fires, but the participant had full access to this desk. Escaping the decision is not making it.'
+    }
+  },
+  log: {
+    eliminate: {
+      severity: 'ok',
+      configured: 'Receipt log discontinued.',
+      consequence: 'A day of latency and roughly six hours of daily effort come out of the front end.'
+    },
+    automate: {
+      severity: 'partial',
+      configured: 'Receipt log generated automatically at intake.',
+      consequence:
+        'The effort goes away and the latency mostly does. A control with no reader is now maintained at no cost, ' +
+        'which is cheaper than the alternative and still not a reason to have it.'
+    },
+    keep: {
+      severity: 'miss',
+      configured: 'Receipt log retained as-is.',
+      consequence: 'Ten years of daily work answering a question nobody has asked since the address was corrected.'
+    },
+    cannot_assess: {
+      severity: 'dodge',
+      configured: 'Flagged for a second study.',
+      consequence: 'Terry answers every question about this log truthfully. The access was there.'
+    }
+  },
+  vendor: {
+    cannot_assess: {
+      severity: 'correct',
+      configured: 'Flagged. Vendor terms and error rates requested before configuration.',
+      consequence:
+        'Correct. Nobody inside Wexford can describe what happens between sending a fax and receiving a file. ' +
+        'Recording that as a gap is the only defensible position available.'
+    },
+    keep: {
+      severity: 'miss',
+      configured: 'Vendor arrangement carried forward unchanged.',
+      consequence:
+        'A two-day round trip and an unexplained routing rule are migrated into the new platform on the assumption ' +
+        'that nobody flagging it means nobody has a problem with it.'
+    },
+    automate: {
+      severity: 'miss',
+      configured: 'Conversion brought in-house under the new platform.',
+      consequence:
+        'Possibly correct, but recommended without any knowledge of the vendor\'s volume, terms, or error rate.'
+    },
+    eliminate: {
+      severity: 'miss',
+      configured: 'Vendor contract terminated.',
+      consequence: 'Four hundred faxes a day now have nowhere to go. Recommended without visibility into the step.'
+    }
+  },
+  intake: {
+    automate: {
+      severity: 'ok',
+      configured: 'Continuous intake. Batching removed.',
+      consequence:
+        'The largest single delay in the front end comes out. Whether this addresses the re-send volume depends ' +
+        'on whether the report also asked for acknowledgment.'
+    },
+    eliminate: {
+      severity: 'partial',
+      configured: 'Release schedule removed; channels consolidated.',
+      consequence: 'Directionally right on the delay, vague about what replaces it.'
+    },
+    keep: {
+      severity: 'miss',
+      configured: 'Twice-daily release carried forward.',
+      consequence:
+        'An overnight wait on anything arriving after 2:00 is migrated into the new platform as a designed feature.'
+    },
+    cannot_assess: {
+      severity: 'dodge',
+      configured: 'Flagged for a second study.',
+      consequence: 'Ray answers every question about this step plainly. The access was there.'
+    }
+  }
+};
+
+// Evidence markers. Each identifies a specific delivered answer, not a
+// bucket — a participant who asked the right bucket and got the first
+// variant did not necessarily hear the thing that matters.
+//
+// These are NOT used to grade the root cause. They tell the instructor
+// what the participant could have known, so the human reading the root
+// cause knows whether a right answer was reasoned or guessed.
+const EVIDENCE = [
+  {
+    id: 'no_reply',
+    actorId: 'ray',
+    label: 'Nothing goes back to non-electronic senders',
+    match: (t) => t.sourceId === 'ray' && t.answerKey === 'SENDER_PERSPECTIVE'
+  },
+  {
+    id: 'invented_status',
+    actorId: 'terry',
+    label: 'Terry tells callers the claim has been processed',
+    match: (t) => t.sourceId === 'terry' && t.answerKey === 'SENDER_PERSPECTIVE' && t.variant === 0
+  },
+  {
+    id: 'log_unseen',
+    actorId: 'terry',
+    label: 'Terry has never seen anyone use the log',
+    match: (t) => t.sourceId === 'terry' && t.answerKey === 'DOWNSTREAM_CONSUMER' && t.variant >= 1
+  },
+  {
+    id: 'log_origin',
+    actorId: 'terry',
+    label: 'The log answers a problem last seen ten years ago',
+    match: (t) => t.sourceId === 'terry' && t.bucket === 'PURPOSE_ORIGIN'
+  },
+  {
+    id: 'resend_spacing',
+    actorId: 'ruth',
+    label: 'Repeat copies arrive six to ten days apart',
+    match: (t) => t.sourceId === 'ruth' && t.answerKey === 'SENDER_PERSPECTIVE' && t.variant >= 1
+  },
+  {
+    id: 'electronic_anomaly',
+    actorId: 'ruth',
+    label: 'Electronic claims almost never arrive twice',
+    match: (t) => t.sourceId === 'ruth' && t.answerKey === 'EXCEPTION_HANDLING' && t.variant >= 1
+  },
+  {
+    id: 'matching_judgment',
+    actorId: 'ruth',
+    label: 'Matching is judgment, and it is written down nowhere',
+    match: (t) =>
+      t.sourceId === 'ruth' &&
+      ['EXCEPTION_HANDLING', 'COUNTERFACTUAL'].includes(t.bucket) &&
+      t.postureAfter === 'OPEN'
+  },
+  {
+    id: 'vendor_opacity',
+    actorId: 'ray',
+    label: 'Nobody inside can describe the vendor step',
+    match: (t) => t.sourceId === 'ray' && t.bucket === 'TOOLS_SYSTEMS'
+  },
+  {
+    id: 'batching_delay',
+    actorId: 'ray',
+    label: 'Anything after the 2:00 release waits until morning',
+    match: (t) => t.sourceId === 'ray' && t.bucket === 'VOLUME_TIMING'
+  }
+];
+
+// Holding both halves is what makes the loop available. Neither alone
+// does anything.
+const LOOP_PAIRS = [
+  ['no_reply', 'resend_spacing'],
+  ['no_reply', 'electronic_anomaly'],
+  ['invented_status', 'resend_spacing']
+];
+
+/* ===== src/classifier.js ===== */
+const UNMATCHED = { bucket: 'UNMATCHED', cost: 60 };
+
+/**
+ * Normalise a typed question for matching.
+ * Lowercase, collapse whitespace, strip terminal punctuation, and
+ * normalise curly apostrophes so /doesn'?t/ style patterns hold.
+ */
+function normalise(raw) {
+  return String(raw || '')
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02BC]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Classify a question into an intent bucket.
+ *
+ * Returns { bucket, cost, matchedBy } where matchedBy is the source of
+ * the winning pattern. matchedBy exists for the instructor transcript
+ * view and for taxonomy debugging — it is never shown to a participant.
+ *
+ * The bank is ordered and first match wins. See data/phrasings.js.
+ */
+function classify(raw) {
+  const text = normalise(raw);
+  if (!text) return { ...UNMATCHED, matchedBy: null };
+
+  for (const entry of BANK) {
+    for (const pattern of entry.patterns) {
+      if (pattern.test(text)) {
+        return {
+          bucket: entry.bucket,
+          cost: entry.cost,
+          matchedBy: pattern.source
+        };
+      }
+    }
+  }
+
+  return { ...UNMATCHED, matchedBy: null };
+}
+
+/* ===== src/engine.js ===== */
+const SOURCES = { ray: RAY, terry: TERRY, ruth: RUTH };
+
+/**
+ * Resolve the next posture given the current one and an incoming bucket.
+ * Terminal states absorb everything. The transition happens BEFORE the
+ * answer is looked up, so a guarded Ruth asked a door-opening question
+ * answers in her open voice — the shift is never announced, it only
+ * shows in what she gives.
+ */
+function nextPosture(character, current, bucket) {
+  const rules = character.posture;
+  if (!rules) return null;
+  if (rules.terminal.includes(current)) return current;
+  if (rules.closes.includes(bucket)) return 'CLOSED';
+  if (current === 'GUARDED' && rules.opens.includes(bucket)) return 'OPEN';
+  return current;
+}
+
+/** Pick the answer variant for a bucket, advancing on repeat asks. */
+function resolveAnswer(character, posture, bucket, askCounts) {
+  let table = character.answers;
+  if (posture) table = table[posture];
+
+  // A closed source answers every bucket from one rotation.
+  const key = table.ANY ? 'ANY' : bucket;
+  const variants = table[key] || table.UNMATCHED;
+  if (!variants) return null;
+
+  const countKey = `${character.id}:${posture || '-'}:${key}`;
+  // key === bucket means the reply came from that bucket's own answers.
+  // key === 'ANY' means it came from a catch-all rotation and the
+  // variant index carries no bucket meaning.
+  const n = askCounts.get(countKey) || 0;
+  askCounts.set(countKey, n + 1);
+  const index = Math.min(n, variants.length - 1);
+  return { text: variants[index], index, key };
+}
+
+class Session {
+  constructor() {
+    this.order = null;
+    this.windowIndex = 0;
+    this.remaining = WINDOW_SECONDS;
+    this.posture = { ruth: RUTH.posture.initial };
+    this.askCounts = new Map();
+    this.transcript = [];
+  }
+
+  chooseOrder(order) {
+    if (this.order) throw new Error('order already chosen');
+    if (!isFeasible(order)) {
+      throw new Error(
+        `ordering [${order.join(', ')}] is not permitted by the calendar. ` +
+        `Legal: ${feasibleOrderings().map((o) => o.join('>')).join('  |  ')}`
+      );
+    }
+    this.order = order;
+    return this;
+  }
+
+  get currentSourceId() {
+    if (!this.order) throw new Error('no order chosen');
+    return this.order[this.windowIndex] || null;
+  }
+
+  get isWindowOpen() {
+    return this.currentSourceId !== null && this.remaining > 0;
+  }
+
+  ask(text) {
+    if (!this.order) throw new Error('no order chosen');
+    const sourceId = this.currentSourceId;
+    if (!sourceId) return { error: 'SESSION_OVER' };
+    if (this.remaining <= 0) return { error: 'WINDOW_CLOSED', sourceId };
+
+    const character = SOURCES[sourceId];
+    const { bucket, cost, matchedBy } = classify(text);
+
+    const postureBefore = this.posture[sourceId] ?? null;
+    const postureAfter = nextPosture(character, postureBefore, bucket);
+    if (postureAfter !== null) this.posture[sourceId] = postureAfter;
+
+    const resolved = resolveAnswer(character, postureAfter, bucket, this.askCounts);
+
+    const spent = Math.min(cost, this.remaining);
+    this.remaining -= spent;
+
+    const entry = {
+      window: WINDOWS[this.windowIndex].id,
+      sourceId,
+      sourceName: character.name,
+      question: text,
+      bucket,
+      matchedBy,
+      cost,
+      spent,
+      remaining: this.remaining,
+      postureBefore,
+      postureAfter,
+      postureChanged: postureBefore !== postureAfter,
+      answer: resolved.text,
+      variant: resolved.index,
+      answerKey: resolved.key
+    };
+    this.transcript.push(entry);
+    return entry;
+  }
+
+  advanceWindow() {
+    if (this.windowIndex >= WINDOWS.length - 1) {
+      this.windowIndex = WINDOWS.length;
+      return { done: true };
+    }
+    this.windowIndex += 1;
+    this.remaining = WINDOW_SECONDS;
+    return { done: false, window: WINDOWS[this.windowIndex], sourceId: this.currentSourceId };
+  }
+
+  /** Instructor view. Everything the debrief needs, nothing a participant sees. */
+  summary() {
+    const byWindow = WINDOWS.map((w) => {
+      const rows = this.transcript.filter((t) => t.window === w.id);
+      const last = rows[rows.length - 1];
+      return {
+        window: w.id,
+        label: w.label,
+        source: rows.length ? rows[0].sourceName : null,
+        questions: rows.length,
+        openerBucket: rows.length ? rows[0].bucket : null,
+        openerCost: rows.length ? rows[0].cost : null,
+        secondsUnused: last ? last.remaining : WINDOW_SECONDS,
+        postureEnd: last ? last.postureAfter : null,
+        closedBy: rows.find((r) => r.postureAfter === 'CLOSED') || null
+      };
+    });
+    return {
+      order: this.order,
+      senderPerspectiveAskedIn: [
+        ...new Set(
+          this.transcript.filter((t) => t.bucket === 'SENDER_PERSPECTIVE').map((t) => t.sourceName)
+        )
+      ],
+      genericOpeners: this.transcript.filter(
+        (t, i, a) => t.bucket === 'GENERIC_DESCRIPTIVE' && (i === 0 || a[i - 1].window !== t.window)
+      ).length,
+      byWindow
+    };
+  }
+}
+
+/* ===== src/report.js ===== */
+const MIN_JUSTIFICATION = 15;
+
+/**
+ * Validate a submitted report. Every row needs a disposition and a
+ * justification with something in it, and the root cause cannot be
+ * blank. A participant who omits a row has dodged the decision rather
+ * than made it, which is why the form does not permit it.
+ */
+function validate(submission) {
+  const errors = [];
+  const s = submission || {};
+
+  const root = String(s.rootCause || '').trim();
+  if (root.length < MIN_JUSTIFICATION) {
+    errors.push({ field: 'rootCause', message: 'Root cause is required.' });
+  }
+
+  for (const row of ROWS) {
+    const entry = (s.rows || {})[row.id];
+    if (!entry) {
+      errors.push({ field: row.id, message: `${row.label}: no disposition selected.` });
+      continue;
+    }
+    if (!DISPOSITIONS.includes(entry.disposition)) {
+      errors.push({
+        field: row.id,
+        message: `${row.label}: "${entry.disposition}" is not a disposition.`
+      });
+    }
+    if (String(entry.justification || '').trim().length < MIN_JUSTIFICATION) {
+      errors.push({ field: row.id, message: `${row.label}: justification is required.` });
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+/** What the platform vendor configures, and what follows from it. */
+function consequences(submission) {
+  return ROWS.map((row) => {
+    const disposition = ((submission.rows || {})[row.id] || {}).disposition;
+    const outcome = (OUTCOMES[row.id] || {})[disposition];
+    return {
+      rowId: row.id,
+      label: row.label,
+      disposition,
+      severity: outcome ? outcome.severity : 'unknown',
+      configured: outcome ? outcome.configured : null,
+      consequence: outcome ? outcome.consequence : null
+    };
+  });
+}
+
+/**
+ * What the participant could have known, drawn from what was actually
+ * said to them. This does NOT grade the root cause — nothing here reads
+ * the prose. It exists so that an instructor reading a correct-looking
+ * root cause can tell whether it was reasoned from evidence or arrived
+ * at by instinct, which are different conversations in the debrief.
+ */
+function evidenceHeld(transcript) {
+  const held = EVIDENCE.filter((e) => transcript.some((t) => e.match(t)));
+  const heldIds = new Set(held.map((e) => e.id));
+  const loopAvailable = LOOP_PAIRS.some((pair) => pair.every((id) => heldIds.has(id)));
+  return {
+    held: held.map((e) => ({ id: e.id, label: e.label })),
+    missed: EVIDENCE.filter((e) => !heldIds.has(e.id)).map((e) => ({ id: e.id, label: e.label })),
+    loopAvailable,
+    loopPairsHeld: LOOP_PAIRS.filter((p) => p.every((id) => heldIds.has(id)))
+  };
+}
+
+/** Instructor view. Combines the report, its consequences, and the access behind it. */
+function review(submission, transcript) {
+  const v = validate(submission);
+  if (!v.ok) return { ok: false, errors: v.errors };
+
+  const cons = consequences(submission);
+  const ev = evidenceHeld(transcript);
+  const harm = cons.filter((c) => c.severity === 'harm');
+  const dodges = cons.filter((c) => c.severity === 'dodge');
+
+  // A disposition is "supported" when the evidence bearing on that step
+  // was actually delivered. Unsupported does not mean wrong — it means
+  // the participant did not learn the thing their recommendation turns
+  // on, which is the distinction worth surfacing.
+  const heldIds = new Set(ev.held.map((e) => e.id));
+  const support = {
+    log: heldIds.has('log_unseen') || heldIds.has('log_origin'),
+    review: heldIds.has('matching_judgment'),
+    intake: heldIds.has('batching_delay'),
+    vendor: heldIds.has('vendor_opacity')
+  };
+
+  return {
+    ok: true,
+    rootCause: String(submission.rootCause).trim(),
+    consequences: cons,
+    harmFired: harm.length > 0,
+    harm,
+    dodges,
+    evidence: ev,
+    support,
+    unsupportedDispositions: cons
+      .filter((c) => support[c.rowId] === false && c.severity !== 'dodge')
+      .map((c) => ({ rowId: c.rowId, disposition: c.disposition, label: c.label }))
+  };
+}
+</script>
+
+<script>
+(function(){
+  var session = null;
+  var TIMES = ['09:00 – 09:15','09:35 – 09:50','10:10 – 10:25'];
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function mmss(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+  function chooser(){
+    document.getElementById('ttl').textContent = 'Choose your order';
+    document.getElementById('rail').innerHTML = '';
+    document.getElementById('main').innerHTML =
+      '<p>Karen could only make two orders work.</p>' +
+      feasibleOrderings().map(function(o){
+        return '<p><button data-o="'+o.join(',')+'">'+
+          o.map(function(id){ return SOURCES[id].name; }).join('  →  ')+'</button></p>';
+      }).join('');
+    document.querySelectorAll('[data-o]').forEach(function(b){
+      b.onclick=function(){ session=new Session().chooseOrder(b.dataset.o.split(',')); render(); };
+    });
+  }
+
+  function rail(){
+    document.getElementById('rail').innerHTML = session.order.map(function(id,i){
+      var c=SOURCES[id];
+      var cls = i===session.windowIndex ? 'who now' : (i<session.windowIndex ? 'who past':'who');
+      return '<div class="'+cls+'"><div class="n">'+esc(c.name)+'</div>'+
+        '<div class="r">'+esc(c.role)+'</div><div class="t">'+TIMES[i]+'</div></div>';
+    }).join('');
+  }
+
+  function render(){
+    var id = session.currentSourceId;
+    if (!id){ done(); return; }
+    var c = SOURCES[id], w = WINDOWS[session.windowIndex];
+    document.getElementById('ttl').textContent = c.name;
+    rail();
+
+    var rows = session.transcript.filter(function(t){ return t.window===w.id; });
+
+    // Every block is the same family of colour. Nothing about a block
+    // tells the participant what KIND of question it was, and the
+    // question that closes a source looks exactly like every other.
+    var segs = rows.map(function(t){
+      return '<div class="seg" style="width:'+(t.spent/WINDOW_SECONDS*100)+'%">'+
+        '<span class="tip">'+mmss(t.spent)+' spent</span></div>';
+    }).join('');
+
+    var body = rows.map(function(t){
+      return '<div class="ex"><div class="q"><span>'+esc(t.question)+'</span>'+
+        '<span class="cost">'+mmss(t.spent)+'</span></div>'+
+        '<div class="a">'+esc(t.answer)+'</div></div>';
+    }).join('');
+
+    var over = session.remaining<=0;
+    var low = session.remaining<=180;
+
+    document.getElementById('main').innerHTML =
+      '<div class="head"><div><div class="n">'+esc(c.name)+'</div>'+
+      '<div class="r">'+esc(c.role)+' · '+TIMES[session.windowIndex]+'</div></div>'+
+      '<div class="clock'+(low?' low':'')+'">'+mmss(Math.max(0,session.remaining))+'</div></div>'+
+      '<div class="ledger">'+segs+'</div>'+
+      '<div class="ledger-key">each block is one question</div>'+
+      (body || '<div class="blank">She is waiting.</div>') +
+      (over
+        ? '<div class="over">The appointment is over. '+esc(c.name)+' has gone back to work.<br><br>'+
+          '<button id="next">'+(session.windowIndex<2?'Next appointment':'Write the report')+'</button></div>'
+        : '<div class="ask"><input type="text" id="q" placeholder="Ask something" autocomplete="off">'+
+          '<button id="ask">Ask</button></div>'+
+          '<div class="sub">'+rows.length+' asked · '+
+          '<a href="#" id="leave">leave early</a></div>');
+
+    var i=document.getElementById('q');
+    if(i){
+      i.focus();
+      var fire=function(){ var v=i.value.trim(); if(!v) return; session.ask(v); render(); };
+      document.getElementById('ask').onclick=fire;
+      i.onkeydown=function(e){ if(e.key==='Enter') fire(); };
+      document.getElementById('leave').onclick=function(e){
+        e.preventDefault(); session.remaining=0; render(); };
+    }
+    var n=document.getElementById('next');
+    if(n) n.onclick=function(){ session.advanceWindow(); render(); };
+  }
+
+  function done(){
+    document.getElementById('ttl').textContent='Appointments finished';
+    rail();
+    var sp=[...new Set(session.transcript.filter(function(t){
+      return t.bucket==='SENDER_PERSPECTIVE'; }).map(function(t){ return SOURCES[t.sourceId].name; }))];
+    document.getElementById('main').innerHTML =
+      '<div class="head"><div class="n">That is all the access you have.</div></div>'+
+      '<p class="dim">Three appointments, '+session.transcript.length+' questions. '+
+      'Next you write the report the configuration team builds against.</p>'+
+      '<div class="over">Instructor only — not shown to participants:<br>'+
+      'sender perspective reached: '+(sp.join(', ')||'nobody')+'<br>'+
+      'Ruth ended: '+(session.posture.ruth||'—').toLowerCase()+'</div>';
+  }
+
+  chooser();
+})();
+</script>
+</body>
+</html>
