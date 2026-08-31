@@ -140,7 +140,10 @@ module.exports = async (req, res) => {
       s.submission = b.submission;
       await save(runId, s);
       const result = review(s.submission, s.transcript);
-      const who = s.launch || req.launch;
+      // The current verified launch wins over a context saved on an older resumed run.
+      // Otherwise a student can finish successfully while the result is attributed
+      // to the old/null course and disappears from the instructor's course view.
+      const who = req.launch || s.launch;
       if (who) {
         const envelope = buildEnvelope(s, result, { sessionId: runId,
           participant: { id: who.sub, displayName: who.name || null },

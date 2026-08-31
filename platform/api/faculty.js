@@ -94,13 +94,15 @@ module.exports = async (req, res) => {
           JOIN users u ON u.id = e.student_id
           LEFT JOIN LATERAL (
             SELECT * FROM completions c2
-            WHERE c2.user_id = u.id AND c2.course_id = ${course.id} AND c2.sim_id = ${simId}
-            ORDER BY c2.completed_at DESC LIMIT 1
+            WHERE c2.user_id = u.id AND c2.sim_id = ${simId}
+              AND (c2.course_id = ${course.id} OR c2.course_id IS NULL)
+            ORDER BY (c2.course_id = ${course.id}) DESC, c2.completed_at DESC LIMIT 1
           ) cp ON true
           LEFT JOIN LATERAL (
             SELECT recorded_at, envelope FROM transcripts t
-            WHERE t.user_id = u.id AND t.course_id = ${course.id} AND t.sim_id = ${simId}
-            ORDER BY t.recorded_at DESC LIMIT 1
+            WHERE t.user_id = u.id AND t.sim_id = ${simId}
+              AND (t.course_id = ${course.id} OR t.course_id IS NULL)
+            ORDER BY (t.course_id = ${course.id}) DESC, t.recorded_at DESC LIMIT 1
           ) tr ON true
           WHERE e.course_id = ${course.id}
           ORDER BY e.dropped, u.name`;
