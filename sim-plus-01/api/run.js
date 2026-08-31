@@ -17,6 +17,20 @@ const id = () => crypto.randomBytes(12).toString('hex');
 const load = async (runId) => { const raw = await store.getRaw(key(runId)); return raw ? hydrate(raw) : null; };
 const save = (runId, session) => store.putRaw(key(runId), serialize(session));
 
+const GENERIC_STARTERS = [
+  "What happens when something doesn't go the way it should?",
+  'Who receives this after you?',
+  'What would happen if this stopped?',
+  'Why is it done this way?',
+  'What does the person on the other end see?'
+];
+
+const CHART_FIELDS = {
+  intake: ['longestWait', 'faxRouting', 'providerReceipt'],
+  log: ['purpose', 'receiver'],
+  review: ['step', 'owner', 'receiver', 'catches', 'dependsOn']
+};
+
 async function resolveRunId(req, requested) {
   const explicit = String(requested || '').trim();
   if (explicit) return explicit;
@@ -24,6 +38,38 @@ async function resolveRunId(req, requested) {
   if (!sub) return '';
   const pointer = await store.getRaw(participantKey(sub));
   return pointer && pointer.runId ? String(pointer.runId) : '';
+}
+
+function normalizeChart(raw, observationSeconds) {
+  const input = raw || {};
+  const chart = { intake: {}, log: {}, review: { timingSeconds: Number(observationSeconds) } };
+  const errors = [];
+  for (const [step, fields] of Object.entries(CHART_FIELDS)) {
+    for (const field of fields) {
+      const source = ((input[step] || {})[field]) || {};
+      const value = String(source.value || '').trim().slice(0, 800);
+      const couldNotEstablish = source.couldNotEstablish === true;
+      if (!value && !couldNotEstablish) errors.push(`${step}.${field}`);
+      chart[step][field] = { value, couldNotEstablish };
+    }
+  }
+  return { ok: errors.length === 0, errors, chart };
+}
+
+function participantOutcome(s, result) {
+  return {
+    rootCause: result.rootCause,
+    consequences: result.consequences.map((c) => ({
+      rowId: c.rowId,
+      label: c.label,
+      disposition: c.disposition,
+      configured: c.configured,
+      consequence: c.consequence
+    })),
+    submission: s.submission,
+    completedChart: s.completedChart,
+    observationSeconds: s.observationSeconds
+  };
 }
 
 function publicState(s) {
@@ -51,6 +97,8 @@ function publicState(s) {
     remaining: s.remaining,
     finishedInterviews: sourceId === null,
     observationSeconds: s.observationSeconds ?? null,
+    chartCompleted: !!s.completedChart,
+    completedChart: s.completedChart || null,
     windowHistory,
     source: sourceId ? { id: sourceId, name: SOURCES[sourceId].name, role: SOURCES[sourceId].role } : null,
     conversation: sourceId ? s.transcript.filter(t => t.sourceId === sourceId).map(t => ({ question: t.question, answer: t.answer, spent: t.spent, remaining: t.remaining })) : []
@@ -88,20 +136,13 @@ module.exports = async (req, res) => {
       ],
       observation: {
         heading: 'First-pass review desk',
-        instruction: 'Watch a batch move through first-pass review. Record the observed per-claim timing on your working chart.'
+        instruction: 'Watch the batch. When it is done, record what you think a claim takes.'
       },
+      starters: GENERIC_STARTERS,
       windows: WINDOWS,
       availability: AVAILABILITY,
       orderings: feasibleOrderings(),
-      sources: Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [k, {
-        name: v.name,
-        role: v.role,
-        suggestions: {
-          ray: ['How many claims arrive through each channel?','What happens to claims that arrive after the final release?','Do providers receive confirmation that a claim arrived?','How do you decide which faxes go to the vendor?','What systems do you use for vendor faxes?','What happens when an intake item is illegible?','Who receives the batches after you release them?'],
-          terry: ['Why was the receipt log created?','Who uses the receipt log now?','What do providers hear when they call for status?','How many claims do you log each day?','What information do you enter in the receipt log?','What happens when a control number is missing?','What would happen if the receipt log stopped?'],
-          ruth: ['What happens when a claim looks like a duplicate?','What changes when you are unavailable?','What do providers hear after submitting a claim?','How many claims reach first-pass review each day?','What systems or tools do you use during review?','Where does a claim go after first-pass review?','What makes one claim take longer than another?']
-        }[k]
-      }])),
+      sources: Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [k, { name: v.name, role: v.role }])),
       rows: ROWS,
       dispositions: DISPOSITIONS
     });
@@ -141,8 +182,18 @@ module.exports = async (req, res) => {
       return res.status(200).json({ done: result.done, state: publicState(s) });
     }
 
+    if (b.action === 'save_chart') {
+      if (s.currentSourceId !== null) return res.status(409).json({ error: 'interviews_not_complete' });
+      const normalized = normalizeChart(b.chart, s.observationSeconds);
+      if (!normalized.ok) return res.status(400).json({ error: 'chart_incomplete', fields: normalized.errors, message: 'Fill each chart field or mark it could not be established.' });
+      s.completedChart = normalized.chart;
+      await save(runId, s);
+      return res.status(200).json({ state: publicState(s) });
+    }
+
     if (b.action === 'submit') {
       if (s.currentSourceId !== null) return res.status(409).json({ error: 'interviews_not_complete' });
+      if (!s.completedChart) return res.status(409).json({ error: 'chart_not_complete', message: 'Complete the process chart before filing the report.' });
       const checked = validate(b.submission);
       if (!checked.ok) return res.status(400).json(checked);
       s.submission = b.submission;
@@ -150,19 +201,23 @@ module.exports = async (req, res) => {
       const result = review(s.submission, s.transcript);
       const who = req.launch || s.launch;
       if (who) {
-        const envelope = buildEnvelope(s, result, { sessionId: runId,
+        const envelope = buildEnvelope(s, result, {
+          sessionId: runId,
           observationSeconds: s.observationSeconds,
           participant: { id: who.sub, displayName: who.name || null },
-          cohortId: who.course || null, completedAt: new Date().toISOString() });
+          cohortId: who.course || null,
+          completedAt: new Date().toISOString()
+        });
         await reportTranscript({ launch: who, envelope });
         await reportCompletion({ launch: who, summary: result.harmFired ? 'Recommendation caused harm' : 'Report completed', metrics: { harmFired: result.harmFired, evidenceHeld: result.evidence.held.length, loopAvailable: result.evidence.loopAvailable } });
       }
-      return res.status(200).json({ review: result });
+      return res.status(200).json({ outcome: participantOutcome(s, result) });
     }
 
     if (b.action === 'review') {
       if (!s.submission) return res.status(409).json({ error: 'report_not_submitted' });
-      return res.status(200).json({ review: review(s.submission, s.transcript) });
+      const result = review(s.submission, s.transcript);
+      return res.status(200).json({ outcome: participantOutcome(s, result) });
     }
 
     return res.status(400).json({ error: 'unknown_action' });
