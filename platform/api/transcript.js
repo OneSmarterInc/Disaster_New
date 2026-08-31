@@ -16,6 +16,7 @@
 // answer key.
 const { sql, id } = require('../lib/db.js');
 const { verify } = require('../lib/launch.js');
+const { ensureTranscripts } = require('../lib/transcripts.js');
 
 const MAX_BYTES = 256 * 1024;
 
@@ -70,6 +71,7 @@ module.exports = async (req, res) => {
 
   const s = sql();
   try {
+    await ensureTranscripts(s);
     const known = await s`
       SELECT 1 FROM launches
       WHERE user_id = ${payload.sub} AND sim_id = ${payload.sim}

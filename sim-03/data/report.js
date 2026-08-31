@@ -154,36 +154,43 @@ const OUTCOMES = {
 const EVIDENCE = [
   {
     id: 'no_reply',
+    actorId: 'ray',
     label: 'Nothing goes back to non-electronic senders',
     match: (t) => t.sourceId === 'ray' && t.answerKey === 'SENDER_PERSPECTIVE'
   },
   {
     id: 'invented_status',
+    actorId: 'terry',
     label: 'Terry tells callers the claim has been processed',
     match: (t) => t.sourceId === 'terry' && t.answerKey === 'SENDER_PERSPECTIVE' && t.variant === 0
   },
   {
     id: 'log_unseen',
+    actorId: 'terry',
     label: 'Terry has never seen anyone use the log',
     match: (t) => t.sourceId === 'terry' && t.answerKey === 'DOWNSTREAM_CONSUMER' && t.variant >= 1
   },
   {
     id: 'log_origin',
+    actorId: 'terry',
     label: 'The log answers a problem last seen ten years ago',
     match: (t) => t.sourceId === 'terry' && t.bucket === 'PURPOSE_ORIGIN'
   },
   {
     id: 'resend_spacing',
+    actorId: 'ruth',
     label: 'Repeat copies arrive six to ten days apart',
     match: (t) => t.sourceId === 'ruth' && t.answerKey === 'SENDER_PERSPECTIVE' && t.variant >= 1
   },
   {
     id: 'electronic_anomaly',
+    actorId: 'ruth',
     label: 'Electronic claims almost never arrive twice',
     match: (t) => t.sourceId === 'ruth' && t.answerKey === 'EXCEPTION_HANDLING' && t.variant >= 1
   },
   {
     id: 'matching_judgment',
+    actorId: 'ruth',
     label: 'Matching is judgment, and it is written down nowhere',
     match: (t) =>
       t.sourceId === 'ruth' &&
@@ -192,11 +199,13 @@ const EVIDENCE = [
   },
   {
     id: 'vendor_opacity',
+    actorId: 'ray',
     label: 'Nobody inside can describe the vendor step',
     match: (t) => t.sourceId === 'ray' && t.bucket === 'TOOLS_SYSTEMS'
   },
   {
     id: 'batching_delay',
+    actorId: 'ray',
     label: 'Anything after the 2:00 release waits until morning',
     match: (t) => t.sourceId === 'ray' && t.bucket === 'VOLUME_TIMING'
   }

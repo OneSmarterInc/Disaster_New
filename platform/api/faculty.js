@@ -79,6 +79,7 @@ module.exports = async (req, res) => {
 
       // Who in this course has played this sim, and what came back.
       case 'sim_progress': {
+        await ensureTranscripts(s);
         const course = await ownCourse(s, me.id, String(b.courseId || ''));
         if (!course) return res.status(404).json({ error: 'no_such_course' });
         const simId = String(b.simId || '');
