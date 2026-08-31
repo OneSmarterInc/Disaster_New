@@ -560,25 +560,34 @@ function wireLook() {
 function drawLook() {
   const old = document.getElementById('lookSheet');
   if (old) old.remove();
+  document.body.classList.remove('sheet-open');
   if (!F.looking) return;
 
   const sim = (F.data.catalogue || []).find(x => x.id === F.looking);
   const sheet = document.createElement('div');
   sheet.className = 'sheet';
   sheet.id = 'lookSheet';
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.setAttribute('aria-label', sim ? sim.title : 'Simulation preview');
   sheet.innerHTML = `<div class="inner">
     <div class="close"><button class="btn sm" id="lookClose">Close</button></div>
     ${sim ? simDetailHTML(sim, { forFaculty: true })
           : '<div class="empty">That simulation is not in your list any more.</div>'}
   </div>`;
   document.body.appendChild(sheet);
+  document.body.classList.add('sheet-open');
 
-  const shut = () => { F.looking = null; drawLook(); };
+  const shut = () => {
+    F.looking = null;
+    document.removeEventListener('keydown', onKey);
+    document.body.classList.remove('sheet-open');
+    sheet.remove();
+  };
+  const onKey = (e) => { if (e.key === 'Escape') shut(); };
   document.getElementById('lookClose').onclick = shut;
   sheet.onclick = (e) => { if (e.target === sheet) shut(); };
-  document.addEventListener('keydown', function esc(e) {
-    if (e.key === 'Escape') { shut(); document.removeEventListener('keydown', esc); }
-  });
+  document.addEventListener('keydown', onKey);
   document.getElementById('lookClose').focus();
 }
 
