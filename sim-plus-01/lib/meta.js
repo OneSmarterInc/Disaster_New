@@ -2,8 +2,8 @@
 // Shop-window copy, supplied by the sim so a new one arrives with its own
 // description rather than waiting for somebody to write one.
 module.exports = {
-  id: 'rapidsimplus-01',
-  number: 101,
+  id: 'rapid-03-bench',
+  number: 3,
   title: 'Why Don’t They Have Any Patience?',
   tagline: 'Three appointments, fifteen minutes each, and no second visits.',
   minutes: 155,
