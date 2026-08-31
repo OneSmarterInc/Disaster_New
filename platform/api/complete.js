@@ -32,11 +32,21 @@ module.exports = async (req, res) => {
   const s = sql();
   try {
     // Only accept a completion for someone who really launched this sim.
-    const known = await s`
-      SELECT 1 FROM launches
-      WHERE user_id = ${payload.sub} AND sim_id = ${payload.sim}
-      LIMIT 1`;
+    // Bind the completion to a launch the platform actually issued. Do not
+    // trust a stale/null course carried by a resumed simulation run: that
+    // stores a valid completion globally but makes it invisible to faculty.
+    const known = payload.course
+      ? await s`
+          SELECT course_id, as_role FROM launches
+          WHERE user_id = ${payload.sub} AND sim_id = ${payload.sim}
+            AND course_id = ${payload.course}
+          ORDER BY created_at DESC LIMIT 1`
+      : await s`
+          SELECT course_id, as_role FROM launches
+          WHERE user_id = ${payload.sub} AND sim_id = ${payload.sim}
+          ORDER BY created_at DESC LIMIT 1`;
     if (!known.length) return res.status(404).json({ error: 'no_matching_launch' });
+    const courseId = known[0].course_id || null;
 
     const dur = payload.duration && Number.isFinite(+payload.duration)
       ? Math.max(0, Math.min(86400, Math.round(+payload.duration))) : null;
@@ -52,7 +62,7 @@ module.exports = async (req, res) => {
     }
 
     await s`INSERT INTO completions (id, user_id, sim_id, course_id, duration_seconds, summary, metrics)
-            VALUES (${id('cmp')}, ${payload.sub}, ${payload.sim}, ${payload.course || null},
+            VALUES (${id('cmp')}, ${payload.sub}, ${payload.sim}, ${courseId},
                     ${dur}, ${payload.summary ? String(payload.summary).slice(0, 400) : null},
                     ${metrics ? JSON.stringify(metrics) : null})`;
 
