@@ -424,9 +424,12 @@ function wireCrs() {
 function catTab() {
   const all = D.data.sims || [];
   const f0 = D.filter.cat || 'All';
-  const list = all
+  const matching = all
     .filter(si => f0 === 'All' || (f0 === 'Published') === !!si.published)
     .filter(si => matches('cat', [si.title, si.id, si.tagline, si.description, String(si.number||'')]));
+  const rapid = matching.filter(si => (Number(si.minutes) || 0) < 60);
+  const rapidPlus = matching.filter(si => (Number(si.minutes) || 0) >= 60);
+  const list = rapid.concat(rapidPlus);
   return `
     ${toolbar('cat','Search simulations',['All','Published','Draft'],
       `<button class="btn" id="chk">Check all</button>
@@ -458,14 +461,20 @@ function catTab() {
       <div style="margin-top:10px"><button class="btn sm" id="chkdone">Done</button></div>
     </div></div>` : ''}
     <div class="panel">
-    ${list.length ? list.map(si => {
+    ${list.length ? list.map((si, index) => {
       const revs = (D.grants || []).filter(g => g.sim_id === si.id);
-      return `<div class="sim">
+      const plus = (Number(si.minutes) || 0) >= 60;
+      const beginsLine = index === 0 || (index === rapid.length && rapidPlus.length);
+      const lineHead = beginsLine ? `<div class="section" style="padding:14px 18px;margin:0;border-top:${index ? '1px solid var(--line)' : '0'}">
+        <span>${plus ? 'RapidSims+' : 'RapidSims'} <span class="count">${plus ? rapidPlus.length : rapid.length}</span></span>
+        <span class="sub">${plus ? 'Longer investigations' : 'Twenty-minute decisions'}</span>
+      </div>` : '';
+      return lineHead + `<div class="sim">
         <div class="no">${si.number ? String(si.number).padStart(2,'0') : '··'}</div>
         <div class="body">
           <div class="t">${esc(si.title)}</div>
           <div class="tag">${esc(si.tagline || '')}</div>
-          <div class="id">${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url || '')}</div>
+          <div class="id">${plus ? 'RapidSim+' : 'RapidSim'} · ${esc(si.id)} · ${si.minutes || '?'} min · ${esc(si.launch_url || '')}</div>
 
           ${D.simEdit === si.id ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
             <div class="field">

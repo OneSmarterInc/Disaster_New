@@ -199,9 +199,12 @@ function simsTab() {
     return Object.assign({}, si, u || {}, { inUse: !!u });
   });
   const f0 = F.filter.sim || 'All';
-  const shown = rows
+  const matching = rows
     .filter(x => f0 === 'All' || (f0 === 'In use') === x.inUse)
     .filter(x => matches('sim', [x.title, x.tagline, String(x.number||'')]));
+  const rapid = matching.filter(x => (Number(x.minutes) || 0) < 60);
+  const rapidPlus = matching.filter(x => (Number(x.minutes) || 0) >= 60);
+  const shown = rapid.concat(rapidPlus);
   return `
     <div class="toolbar">
       <div class="search"><input data-q="sim" type="text" placeholder="Search simulations" value="${esc(F.q.sim||'')}"></div>
@@ -222,11 +225,18 @@ function simsTab() {
         <b style="color:var(--rose)">Could not load your simulations.</b>
         <div class="hint" style="margin:6px 0 10px">${esc(F.simsFailed)}</div>
         <button class="btn sm" id="simretry">Try again</button></td></tr>`
-      : shown.length ? shown.map(x => {
+      : shown.length ? shown.map((x, index) => {
         const p = prevOf(x.id), live = p && daysLeft(p.expires_at) > 0;
-        return `<tr>
+        const plus = (Number(x.minutes) || 0) >= 60;
+        const beginsLine = index === 0 || (index === rapid.length && rapidPlus.length);
+        const lineHead = beginsLine ? `<tr><td colspan="5" style="background:var(--sunk);padding:13px 16px;border-top:${index ? '1px solid var(--line2)' : '0'}">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
+            <b>${plus ? 'RapidSims+' : 'RapidSims'}</b>
+            <span class="sub">${plus ? 'Longer investigations' : 'Twenty-minute decisions'} · ${plus ? rapidPlus.length : rapid.length}</span>
+          </div></td></tr>` : '';
+        return lineHead + `<tr>
           <td data-l="Simulation"><div class="nm">${esc(simLabel(x))}${eye(x.id)}</div>
-            <div class="meta dim">${esc(x.tagline || '')}${x.minutes ? ' · about ' + x.minutes + ' minutes' : ''}</div></td>
+            <div class="meta dim">${plus ? 'RapidSim+' : 'RapidSim'} · ${esc(x.tagline || '')}${x.minutes ? ' · about ' + x.minutes + ' minutes' : ''}</div></td>
           <td data-l="Courses" class="num">${x.inUse ? x.courses : '—'}</td>
           <td data-l="Started" class="num">${x.inUse ? x.started : '—'}</td>
           <td data-l="Finished" class="num">${x.inUse ? `<span class="ratio ${Number(x.finished)<Number(x.started)?'part':''}">${x.finished}</span>` : '—'}</td>
