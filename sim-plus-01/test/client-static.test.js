@@ -1,0 +1,13 @@
+'use strict';
+const fs = require('fs');
+const vm = require('vm');
+const assert = require('assert');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'public', 'index.html'), 'utf8');
+const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+assert.strictEqual(scripts.length, 1, 'participant page must have one inline client script');
+new vm.Script(scripts[0], { filename: 'public/index.html' });
+assert(!html.includes("require('../data/contracts"), 'answer contracts must not ship to participant');
+assert(!html.includes("require('../data/phrasings"), 'classification bank must not ship to participant');
+assert(html.includes("'x-launch-token'"), 'platform launch token must be forwarded');
+assert(html.includes("justification:fd.get"), 'each report row must submit its justification');
+console.log('client static checks: PASS');
