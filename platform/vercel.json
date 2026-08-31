@@ -51,15 +51,15 @@
     },
     {
       "source": "/simplus01",
-      "destination": "https://flexee-rapid-sim-plus-01.vercel.app/"
+      "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/"
     },
     {
       "source": "/simplus01/",
-      "destination": "https://flexee-rapid-sim-plus-01.vercel.app/"
+      "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/"
     },
     {
       "source": "/simplus01/:path*",
-      "destination": "https://flexee-rapid-sim-plus-01.vercel.app/:path*"
+      "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/:path*"
     },
     {
       "source": "/sim03",
