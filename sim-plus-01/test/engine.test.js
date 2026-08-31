@@ -42,6 +42,51 @@ t('three generic questions burn 540s — over a third of the window', () => {
   assert.strictEqual(r.remaining, 900 - 540);
 });
 
+t('ordinary conversation does not repeat one stuck fallback', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const a = s.ask('Can you tell me about the cafeteria?').answer;
+  const b = s.ask('Who handles building maintenance?').answer;
+  const c = s.ask('Where are the meeting rooms?').answer;
+  assert.notStrictEqual(a, b);
+  assert.notStrictEqual(b, c);
+});
+
+t('a review-desk clarification receives a relevant answer', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const r = s.ask('What is the review desk?');
+  assert.strictEqual(r.bucket, 'ROLE_CLARIFICATION');
+  assert.match(r.answer, /Ruth Kessler|first-pass/i);
+});
+
+t('the suggested absence question opens Ruth and answers the question', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  s.ask('What happens when a claim looks like a duplicate?');
+  const r = s.ask('What changes when you are unavailable?');
+  assert.strictEqual(r.bucket, 'COUNTERFACTUAL');
+  assert.match(r.answer, /isn't a second person|not here/i);
+});
+
+t('mentioning another person explains the private appointment boundary', () => {
+  const s = new Session().chooseOrder(['ruth', 'terry', 'ray']);
+  const r = s.ask('@Ray please answer');
+  assert.strictEqual(r.bucket, 'OTHER_SOURCE_REQUEST');
+  assert.match(r.answer, /isn't in this appointment|scheduled slot/i);
+});
+
+t('a misspelled availability request stays inside the private-slot boundary', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const r = s.ask('is ray availble?');
+  assert.strictEqual(r.bucket, 'OTHER_SOURCE_REQUEST');
+  assert.match(r.answer, /separate fixed slots|appointment/i);
+});
+
+t('a provider status-call question gets Terry\'s status answer', () => {
+  const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
+  const r = s.ask('What do providers hear when they call for status?');
+  assert.strictEqual(r.bucket, 'SENDER_PERSPECTIVE');
+  assert.match(r.answer, /status calls|came in/i);
+});
+
 t('the window hard-stops and refuses further questions', () => {
   const s = new Session().chooseOrder(['terry', 'ray', 'ruth']);
   for (let i = 0; i < 5; i++) s.ask('Walk me through your day');

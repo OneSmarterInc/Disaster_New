@@ -1,16 +1,11 @@
 {
-  "name": "flexee-rapidsimplus-01",
-  "version": "0.2.0",
+  "name": "rapidsimplus-claims-interview",
   "private": true,
-  "description": "Flexee RapidSim+ 01 — Why Don’t They Have Any Patience?",
-  "main": "src/engine.js",
+  "version": "1.0.0",
+  "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node test/run.js && node test/engine.test.js && node test/report.test.js && node test/transcript.test.js && node test/store.test.js && node test/api.test.js && node test/client-static.test.js && node guard.js",
+    "test": "node test/run.js && node test/engine.test.js && node test/report.test.js && node test/api.test.js && node test/client-contract.test.js && node guard.js",
     "playtest": "node playtest.js",
-    "harness": "python3 build-harness.py",
-    "transcript": "node demo-transcript.js"
-  },
-  "engines": {
-    "node": ">=20"
+    "check": "npm test && npm run playtest"
   }
 }

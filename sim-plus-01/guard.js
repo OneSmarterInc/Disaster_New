@@ -8,6 +8,7 @@
 const bank = require('./data/phrasings');
 
 const CONTRACT_BUCKETS = [
+  'OTHER_SOURCE_REQUEST','SOCIAL_OPENING','ROLE_CLARIFICATION',
   'GENERIC_DESCRIPTIVE','PURPOSE_ORIGIN','DOWNSTREAM_CONSUMER',
   'EXCEPTION_HANDLING','COUNTERFACTUAL','SENDER_PERSPECTIVE',
   'VOLUME_TIMING','PERSONAL_HISTORY','TOOLS_SYSTEMS',
@@ -76,40 +77,6 @@ for (const e of EVIDENCE) {
   if (src.includes('variant') && !src.includes('answerKey'))
     err(`marker "${e.id}" tests variant without guarding answerKey`);
 }
-
-// --- persistence invariants -------------------------------------------
-const { Session, STATE_VERSION } = require('./src/engine');
-
-// Stored state must never contain a line any character speaks. The session
-// store would otherwise become a second copy of the answer key, reachable by
-// anyone with read access to the KV.
-{
-  const probe = new Session().chooseOrder(['terry','ray','ruth']);
-  ['Why does the log exist?','What do you tell them when they call?','Who reads the log?']
-    .forEach(q => probe.ask(q));
-  probe.advanceWindow();
-  probe.ask('Do we send anything back to them?');
-  const stored = JSON.stringify(probe.toJSON());
-  ['PO box','been processed','Audit pull it','Nothing goes out from here']
-    .forEach(line => { if (stored.includes(line)) err(`answer text "${line}" reached stored state`); });
-  if (/"answer"\s*:/.test(stored)) err('stored transcript has an answer field');
-
-  // Round trip must be lossless for everything the sim depends on.
-  const back = Session.fromJSON(JSON.parse(stored));
-  if (back.transcript.length !== probe.transcript.length) err('transcript lost across a round trip');
-  if (back.askCounts.size !== probe.askCounts.size) err('askCounts lost — repeat escalation would reset');
-  if (back.posture.ruth !== probe.posture.ruth) err('posture lost across a round trip');
-
-  // A sealed window is the whole basis of the split-session format.
-  const sealed = new Session().chooseOrder(['terry','ray','ruth']);
-  sealed.ask('Why does the log exist?');
-  sealed.seal();
-  const resumed = Session.fromJSON(JSON.parse(JSON.stringify(sealed.toJSON())));
-  if (resumed.ask('Who reads the log?').error !== 'WINDOW_SEALED')
-    err('a sealed window reopened after a resume — the calendar stops constraining anything');
-}
-
-if (typeof STATE_VERSION !== 'number') err('STATE_VERSION must be a number');
 
 console.log(fail ? `\nGUARD FAILED (${fail})` : '\nGUARD PASSED — all invariants hold');
 process.exit(fail ? 1 : 0);

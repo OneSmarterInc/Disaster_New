@@ -1,11 +1,5 @@
-// Verifies launch tokens issued by the platform, and signs messages back.
-// The sim never mints a launch token and never queries the platform — it
-// checks a signature with a shared secret, which is the whole contract.
-//
-// Same shape as the other sims. The one addition is reportTranscript: this
-// simulation's debrief depends on a faculty member reading what was asked and
-// where doors closed, so the transcript is not optional the way a completion
-// summary is.
+// Verifies launch tokens issued by the platform. The sim never mints one and
+// never talks to the platform — it just checks a signature with a shared secret.
 const crypto = require('crypto');
 
 function verifyLaunch(token) {
@@ -21,6 +15,7 @@ function verifyLaunch(token) {
   return p;
 }
 
+// Signs a message back to the platform — same secret, opposite direction.
 function signBack(payload) {
   const secret = process.env.LAUNCH_SECRET;
   if (!secret) return null;
@@ -29,29 +24,12 @@ function signBack(payload) {
   return bodyPart + '.' + mac;
 }
 
-async function post(path, payload, label) {
-  const base = (process.env.PLATFORM_URL || '').replace(/\/$/, '');
-  if (!base) return;
-  const token = signBack(payload);
-  if (!token) return;
-  try {
-    const r = await fetch(base + path, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token, ...(payload.envelope ? { envelope: payload.envelope } : {}) }),
-      signal: AbortSignal.timeout(8000)
-    });
-    if (!r.ok) console.error(label + ' refused', r.status, await r.text().catch(() => ''));
-  } catch (e) {
-    console.error(label + ' failed', e.message);
-  }
-}
-
-// Tells the platform someone finished. Best effort: a failure here must never
-// reach the participant, who has already seen their report.
+// Tells the platform someone finished. Best effort: if it fails, the student's
+// run is unaffected and nobody sees an error — the debrief has already happened.
 async function reportCompletion({ launch, summary, metrics }) {
-  if (!launch || !launch.sub) return;
-  return post('/api/complete', {
+  const base = (process.env.PLATFORM_URL || '').replace(/\/$/, '');
+  if (!base || !launch || !launch.sub) return;
+  const token = signBack({
     sub: launch.sub,
     sim: launch.sim,
     course: launch.course || null,
@@ -60,27 +38,54 @@ async function reportCompletion({ launch, summary, metrics }) {
     metrics: metrics || null,
     iat: Date.now(),
     exp: Date.now() + 5 * 60000
-  }, 'completion');
+  });
+  if (!token) return;
+  try {
+    const r = await fetch(base + '/api/complete', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token }),
+      signal: AbortSignal.timeout(6000)
+    });
+    if (!r.ok) {
+      let why = '';
+      try { why = JSON.stringify(await r.json()); } catch (e) {}
+      console.error('completion refused', r.status, why);
+    } else {
+      console.log('completion reported for', launch.sub, 'on', launch.sim);
+    }
+  } catch (e) {
+    // Never let this spoil the debrief the student is waiting for.
+    console.error('completion report failed', e.message);
+  }
 }
 
-// Sends the instructor transcript. Separate endpoint and separate table on the
-// platform, because a completion is a capped summary by design and this is
-// several kilobytes of events. Awaited by the caller — a serverless function
-// can be frozen the moment it responds, and fire-and-forget here would lose
-// transcripts silently.
+// Sends the instructor transcript to its dedicated platform endpoint. Await this
+// before responding: a serverless function may freeze as soon as it returns.
 async function reportTranscript({ launch, envelope }) {
-  if (!launch || !launch.sub || !envelope) return;
-  return post('/api/transcript', {
-    sub: launch.sub,
-    sim: launch.sim,
-    course: launch.course || null,
-    envelope,
-    iat: Date.now(),
-    exp: Date.now() + 5 * 60000
-  }, 'transcript');
+  const base = (process.env.PLATFORM_URL || '').replace(/\/$/, '');
+  if (!base || !launch || !launch.sub || !envelope) return;
+  const token = signBack({ sub: launch.sub, sim: launch.sim, course: launch.course || null,
+    iat: Date.now(), exp: Date.now() + 5 * 60000 });
+  if (!token) return;
+  try {
+    const r = await fetch(base + '/api/transcript', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, envelope }), signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) console.error('transcript refused', r.status, await r.text().catch(() => ''));
+  } catch (e) { console.error('transcript report failed', e.message); }
 }
 
-// Tells the platform this simulation exists, once per cold start.
+// Tells the platform this simulation exists, once per cold start. The platform
+// creates a catalogue entry — unpublished, so nobody sees it until an
+// administrator decides — and thereafter only refreshes the technical facts,
+// leaving anything they have edited alone.
+//
+// Returns a promise. A serverless function can be frozen the moment it
+// responds, so anything fire-and-forget may never leave the machine — the
+// completion report had exactly this fault. Callers that can afford to wait
+// should await it; it happens once per cold start and costs one round trip.
 let announced = null;
 function announce(meta, selfUrl) {
   if (announced) return announced;
@@ -94,8 +99,12 @@ function announce(meta, selfUrl) {
     tagline: meta.tagline,
     description: meta.description,
     minutes: meta.minutes,
+    catalogueRevision: meta.catalogueRevision || null,
+    replaces: Array.isArray(meta.replaces) ? meta.replaces.slice(0, 5) : [],
     detail: meta.detail || null,
-    launchUrl: selfUrl || '',
+    // The platform appends the launch token to this address. A trailing slash
+    // creates a different route when the sim is mounted below /sim03.
+    launchUrl: String(selfUrl || '').replace(/\/+$/, ''),
     iat: Date.now(),
     exp: Date.now() + 5 * 60000
   });

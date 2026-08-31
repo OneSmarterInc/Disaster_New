@@ -15,8 +15,10 @@ function validate(submission) {
   const s = submission || {};
 
   const root = String(s.rootCause || '').trim();
-  if (root.length < MIN_JUSTIFICATION) {
+  if (!root) {
     errors.push({ field: 'rootCause', message: 'Root cause is required.' });
+  } else if (root.length < MIN_JUSTIFICATION) {
+    errors.push({ field: 'rootCause', message: `Root cause must be at least ${MIN_JUSTIFICATION} characters.` });
   }
 
   for (const row of ROWS) {
@@ -31,8 +33,11 @@ function validate(submission) {
         message: `${row.label}: "${entry.disposition}" is not a disposition.`
       });
     }
-    if (String(entry.justification || '').trim().length < MIN_JUSTIFICATION) {
+    const justification = String(entry.justification || '').trim();
+    if (!justification) {
       errors.push({ field: row.id, message: `${row.label}: justification is required.` });
+    } else if (justification.length < MIN_JUSTIFICATION) {
+      errors.push({ field: row.id, message: `${row.label}: justification must be at least ${MIN_JUSTIFICATION} characters.` });
     }
   }
 

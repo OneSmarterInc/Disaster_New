@@ -38,14 +38,13 @@ function resolveAnswer(character, posture, bucket, askCounts) {
   // variant index carries no bucket meaning.
   const n = askCounts.get(countKey) || 0;
   askCounts.set(countKey, n + 1);
-  const index = Math.min(n, variants.length - 1);
+  // Evidence-bearing buckets deliberately stop at their final escalation.
+  // Conversational fallbacks and greetings rotate so ordinary phrasing does
+  // not make a character sound like a stuck chatbot.
+  const rotates = key === 'UNMATCHED' || key === 'SOCIAL_OPENING';
+  const index = rotates ? n % variants.length : Math.min(n, variants.length - 1);
   return { text: variants[index], index, key };
 }
-
-// Bumped when the shape of a serialised session changes. Rehydrating state
-// written by an older shape is refused rather than attempted, because a
-// half-understood session is worse than an honest failure.
-const STATE_VERSION = 1;
 
 class Session {
   constructor() {
@@ -55,81 +54,6 @@ class Session {
     this.posture = { ruth: RUTH.posture.initial };
     this.askCounts = new Map();
     this.transcript = [];
-    // Windows closed for good. A break between class meetings seals whatever
-    // came before it, or the availability calendar stops constraining
-    // anything and a participant simply finishes at home.
-    this.sealed = [];
-  }
-
-  /**
-   * Plain JSON. Everything here is already serialisable except askCounts,
-   * which is a Map and needs unpacking.
-   *
-   * Note what is NOT stored: answer text. The transcript keeps answerKey and
-   * variant, and the text is resolved from the contracts at render time. A
-   * dump of the session store is not a dump of the answer key.
-   */
-  toJSON() {
-    return {
-      v: STATE_VERSION,
-      order: this.order,
-      windowIndex: this.windowIndex,
-      remaining: this.remaining,
-      posture: this.posture,
-      askCounts: [...this.askCounts],
-      sealed: this.sealed,
-      transcript: this.transcript.map(function (t) {
-        const { answer, ...rest } = t;   // dropped; resolvable from outputRef
-        return rest;
-      })
-    };
-  }
-
-  /** Rebuild a session from stored state. Throws rather than guessing. */
-  static fromJSON(state) {
-    if (!state || typeof state !== 'object') throw new Error('no state');
-    if (state.v !== STATE_VERSION) {
-      const e = new Error('state written by version ' + state.v + ', engine expects ' + STATE_VERSION);
-      e.code = 'STATE_VERSION_MISMATCH';
-      throw e;
-    }
-    const s = new Session();
-    s.order = state.order || null;
-    s.windowIndex = state.windowIndex || 0;
-    s.remaining = typeof state.remaining === 'number' ? state.remaining : WINDOW_SECONDS;
-    s.posture = state.posture || { ruth: RUTH.posture.initial };
-    s.askCounts = new Map(state.askCounts || []);
-    s.sealed = state.sealed || [];
-    s.transcript = (state.transcript || []).map(function (t) {
-      const character = SOURCES[t.sourceId];
-      const table = character.posture ? character.answers[t.postureAfter] : character.answers;
-      const variants = (table && (table.ANY || table[t.answerKey])) || [];
-      return { ...t, answer: variants[Math.min(t.variant, variants.length - 1)] || null };
-    });
-    return s;
-  }
-
-  /**
-   * Close the current window permanently. Called at a between-session break.
-   *
-   * The clock is spent by asking, not by the wall, so closing a browser
-   * costs nothing and a participant can think as long as they like between
-   * questions — thinking time is not the resource being taught. What a break
-   * must not allow is going back to a source already seen, and that is what
-   * sealing prevents.
-   */
-  seal() {
-    if (this.order && this.sealed.indexOf(this.windowIndex) === -1) {
-      this.sealed.push(this.windowIndex);
-    }
-    this.remaining = 0;
-    return this;
-  }
-
-  isSealed(windowIndex) {
-    return this.sealed.indexOf(
-      windowIndex === undefined ? this.windowIndex : windowIndex
-    ) !== -1;
   }
 
   chooseOrder(order) {
@@ -157,7 +81,6 @@ class Session {
     if (!this.order) throw new Error('no order chosen');
     const sourceId = this.currentSourceId;
     if (!sourceId) return { error: 'SESSION_OVER' };
-    if (this.isSealed()) return { error: 'WINDOW_SEALED', sourceId };
     if (this.remaining <= 0) return { error: 'WINDOW_CLOSED', sourceId };
 
     const character = SOURCES[sourceId];
@@ -235,4 +158,4 @@ class Session {
   }
 }
 
-module.exports = { Session, nextPosture, resolveAnswer, SOURCES, STATE_VERSION };
+module.exports = { Session, nextPosture, resolveAnswer, SOURCES };

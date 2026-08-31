@@ -19,6 +19,16 @@ const RAY = {
   role: 'Intake',
   posture: null,
   answers: {
+    OTHER_SOURCE_REQUEST: [
+      "This appointment is with me. Terry and Ruth have their own fixed interview slots; you can ask them when those open."
+    ],
+    SOCIAL_OPENING: [
+      "Morning. I've got a release to get downstairs, but ask what you need about intake.",
+      "Hello. I can speak to how claims arrive and how I send the batches on."
+    ],
+    ROLE_CLARIFICATION: [
+      "That's Ruth's step after Terry logs the batch. She checks the non-electronic claims before they go to adjudication."
+    ],
     GENERIC_DESCRIPTIVE: [
       "Mail comes in twice, eight and eleven-thirty. I sort it, pull the claims out from everything else, and it stacks on the table until the release. Faxes come in all day on the server. Some of those go out to the conversion people, some I run through here. Nine o'clock and two o'clock I take the batch down to Terry. That's the day."
     ],
@@ -51,7 +61,11 @@ const RAY = {
     AMBIGUOUS_PRESSURE: [
       "Slows me down? Not much. Heavy mail day you're later getting down there. That's about the size of it."
     ],
-    UNMATCHED: ["Couldn't tell you. That'd be Terry, or the review desk."]
+    UNMATCHED: [
+      "I can only really speak to intake — how claims arrive, how I sort them, and when I release the batches.",
+      "That isn't something I handle. If it happens after I take the batch downstairs, Terry or Ruth would know better.",
+      "I'm not sure from this end. Ask me about the mail, faxes, vendor files, clearinghouse claims, or release times."
+    ]
   }
 };
 
@@ -61,6 +75,16 @@ const TERRY = {
   role: 'Receipt log',
   posture: null,
   answers: {
+    OTHER_SOURCE_REQUEST: [
+      "This is your appointment with me. Ray and Ruth have separate fixed slots, so I can't bring them into this one."
+    ],
+    SOCIAL_OPENING: [
+      "Hello. I've got the receipt batches in front of me, so ask away.",
+      "Morning. I can help with the receipt log and the calls that come through this desk."
+    ],
+    ROLE_CLARIFICATION: [
+      "The review desk is Ruth Kessler's first-pass step. I send the logged batches across to her before adjudication."
+    ],
     GENERIC_DESCRIPTIVE: [
       "Ray brings the batch down twice a day and I split it into six for the day's work. Each one gets posted — date it came in, provider, patient name, the control number off the claim. Paper ones I open first and staple the envelope to the back, that's from before my time but we still do it. Then the batch goes across to the review desk. Eight hundred and fifty or so a day, most days. It fills the day pretty well."
     ],
@@ -97,7 +121,11 @@ const TERRY = {
     AMBIGUOUS_PRESSURE: [
       "Slows me down? Big mail day. Illegible ones. It's fairly steady work."
     ],
-    UNMATCHED: ["That'd be one for the review desk, I'd say."]
+    UNMATCHED: [
+      "I don't have that part of it. I can tell you about the receipt log, the batches, and the provider calls I answer.",
+      "Not from this desk, no. Once the batch leaves me, Ruth sees more of it than I do.",
+      "I'm not certain. If you mean the log or what happens when providers call, I can walk you through that."
+    ]
   }
 };
 
@@ -113,6 +141,16 @@ const RUTH = {
   },
   answers: {
     GUARDED: {
+      OTHER_SOURCE_REQUEST: [
+        "Ray isn't in this appointment. You can ask him in his scheduled slot; right now you're speaking with me."
+      ],
+      SOCIAL_OPENING: [
+        "Hello. I have a batch moving, but I can answer questions about first-pass review.",
+        "Morning. Ask what you need about the review step."
+      ],
+      ROLE_CLARIFICATION: [
+        "This is the review desk. I take first pass on every non-electronic claim before adjudication."
+      ],
       GENERIC_DESCRIPTIVE: [
         "I take first pass on everything that isn't electronic. The batch comes across from Terry and I go through it claim by claim before it goes to adjudication. I'm checking it's complete, that the fields are consistent, and that it isn't something we've already got. Then it moves on. That's six batches a day, about a hundred and forty in each."
       ],
@@ -132,9 +170,23 @@ const RUTH = {
       AMBIGUOUS_PRESSURE: [
         "Some claims take longer than others. That's the nature of it."
       ],
-      UNMATCHED: ["I couldn't say. That's not something I'd see from here."]
+      UNMATCHED: [
+        "I couldn't say. That's not something I'd see from here.",
+        "That sits outside first-pass review. Ask me about what reaches this desk, what I check, or where it goes next.",
+        "I don't have a reliable answer for that from this part of the process."
+      ]
     },
     OPEN: {
+      OTHER_SOURCE_REQUEST: [
+        "Ray isn't in this appointment. You can ask him in his scheduled slot; right now you're speaking with me."
+      ],
+      SOCIAL_OPENING: [
+        "Hello. I can answer questions about first-pass review while I work through this batch.",
+        "Morning. Go ahead — ask about what reaches this desk and what I check."
+      ],
+      ROLE_CLARIFICATION: [
+        "This is the review desk. I check the non-electronic claims before adjudication, including whether something may already have arrived another way."
+      ],
       EXCEPTION_HANDLING: [
         "The hard ones are the repeats. About one in seven of what I get is a claim I've already had, and finding the first one isn't a lookup, because the same claim doesn't look the same depending how it came in. If it came through the conversion vendor the tooth numbers drop out sometimes, or the date of service comes back wrong by a digit. So I've got the paper original saying one thing and the converted file saying another and they're the same claim. You learn which fields to trust from which path.\n\nAnd then there's the ones that look like repeats and aren't. Same patient, same date, same provider, two claims. That can be a duplicate or it can be two teeth. I had one — a girl who had two extractions the same morning, different sides. Anything matching on patient and date would have thrown the second one out and she'd have had a denial letter for something that actually happened.",
         "The electronic ones I hardly ever see twice, oddly. It's the paper and the faxes that come round again and again. I've never worked out why that would be — it's not as though those providers are different people."
@@ -148,7 +200,7 @@ const RUTH = {
         "Well — no, I suppose not, from us. I'd assumed the system did something. I've never had cause to check."
       ],
       VOLUME_TIMING: [
-        "Thirty seconds across the day. But that's six clean ones at ten or twelve seconds and then one that takes three minutes. The average doesn't describe anything I actually do."
+        "Eight hundred and fifty a day, across six batches. It averages thirty seconds a claim, but that's six clean ones at ten or twelve seconds and then one that takes three minutes. The average doesn't describe anything I actually do."
       ],
       DOWNSTREAM_CONSUMER: [
         "Adjudication. And if I've flagged it as a repeat it goes to the queue for that instead."
@@ -163,7 +215,11 @@ const RUTH = {
         "Twenty-three years. My manager keeps me because he has to, not because he thinks much of the work. I'm aware of that."
       ],
       AMBIGUOUS_PRESSURE: ["The repeats. Everything else moves."],
-      UNMATCHED: ["That's not something I'd see from here, but Ray might."]
+      UNMATCHED: [
+        "That's not something I'd see from here. Ray may know if it concerns intake.",
+        "I can't verify that from first-pass review. I can tell you what arrives here, what I check, and what leaves this desk.",
+        "I wouldn't want to guess. That part is outside what I can see from this desk."
+      ]
     },
     CLOSED: {
       // Every bucket resolves to this rotation. Reworded, never

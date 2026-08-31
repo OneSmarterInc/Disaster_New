@@ -2,6 +2,23 @@
 // them, not as the phrasing bank would like them written.
 
 module.exports = [
+  // --- OTHER_SOURCE_REQUEST -----------------------------------------
+  ['@Ray please answer', 'OTHER_SOURCE_REQUEST'],
+  ['Could I speak to Terry?', 'OTHER_SOURCE_REQUEST'],
+  ['Switch to Ruth', 'OTHER_SOURCE_REQUEST'],
+  ['is ray availble?', 'OTHER_SOURCE_REQUEST'],
+  ['Can Terry answer this?', 'OTHER_SOURCE_REQUEST'],
+
+  // --- SOCIAL_OPENING ------------------------------------------------
+  ['Hi', 'SOCIAL_OPENING'],
+  ["Hi, what's today's agenda?", 'SOCIAL_OPENING'],
+  ['Good morning, how are you?', 'SOCIAL_OPENING'],
+
+  // --- ROLE_CLARIFICATION -------------------------------------------
+  ['What is the review desk?', 'ROLE_CLARIFICATION'],
+  ['Who works at first-pass review?', 'ROLE_CLARIFICATION'],
+  ['What do you mean by the review desk?', 'ROLE_CLARIFICATION'],
+
   // --- GENERIC_DESCRIPTIVE (the expensive opener) -------------------
   ['So what do you do here?', 'GENERIC_DESCRIPTIVE'],
   ['Can you walk me through what you do?', 'GENERIC_DESCRIPTIVE'],
@@ -44,11 +61,14 @@ module.exports = [
   ['Do they get a confirmation of any kind?', 'SENDER_PERSPECTIVE'],
   ['Who handles status calls?', 'SENDER_PERSPECTIVE'],
   ['What do you tell them when they call?', 'SENDER_PERSPECTIVE'],
+  ['What do providers hear when they call for status?', 'SENDER_PERSPECTIVE'],
+  ['When providers call, what can you tell them?', 'SENDER_PERSPECTIVE'],
   ['How long is the gap between the first and second copy?', 'SENDER_PERSPECTIVE'],
 
   // --- COUNTERFACTUAL -----------------------------------------------
   ['What would happen if you stopped doing it?', 'COUNTERFACTUAL'],
   ["What happens when you're out sick?", 'COUNTERFACTUAL'],
+  ['What changes when you are unavailable?', 'COUNTERFACTUAL'],
   ['Could someone else pick this up?', 'COUNTERFACTUAL'],
   ['Who covers when you take leave?', 'COUNTERFACTUAL'],
   ['What would be missed if this went away?', 'COUNTERFACTUAL'],
