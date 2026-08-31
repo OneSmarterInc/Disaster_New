@@ -23,8 +23,8 @@ async function cmd(args) {
   return d.result;
 }
 
-// Sessions expire on their own so nothing accumulates. Two days is plenty for a class.
-const TTL = 60 * 60 * 48;
+// RapidSim+ may span multiple class meetings and devices. Keep resumable state for 30 days.
+const TTL = 60 * 60 * 24 * 30;
 
 const J = (v) => { try { return JSON.parse(v); } catch { return null; } };
 

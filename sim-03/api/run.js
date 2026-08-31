@@ -8,7 +8,8 @@ const { validate, review } = require('../src/report');
 const { ROWS, DISPOSITIONS } = require('../data/report');
 const { WINDOWS, AVAILABILITY, feasibleOrderings } = require('../data/calendar');
 const { serialize, hydrate } = require('../lib/session');
-const { reportCompletion } = require('../lib/launch');
+const { reportCompletion, reportTranscript } = require('../lib/launch');
+const { buildEnvelope } = require('../src/transcript');
 
 const key = (id) => `run03:${id}`;
 const id = () => crypto.randomBytes(12).toString('hex');
@@ -140,7 +141,13 @@ module.exports = async (req, res) => {
       await save(runId, s);
       const result = review(s.submission, s.transcript);
       const who = s.launch || req.launch;
-      if (who) await reportCompletion({ launch: who, summary: result.harmFired ? 'Recommendation caused harm' : 'Report completed', metrics: { harmFired: result.harmFired, evidenceHeld: result.evidence.held.length, loopAvailable: result.evidence.loopAvailable } });
+      if (who) {
+        const envelope = buildEnvelope(s, result, { sessionId: runId,
+          participant: { id: who.sub, displayName: who.name || null },
+          cohortId: who.course || null, completedAt: new Date().toISOString() });
+        await reportTranscript({ launch: who, envelope });
+        await reportCompletion({ launch: who, summary: result.harmFired ? 'Recommendation caused harm' : 'Report completed', metrics: { harmFired: result.harmFired, evidenceHeld: result.evidence.held.length, loopAvailable: result.evidence.loopAvailable } });
+      }
       return res.status(200).json({ review: result });
     }
 

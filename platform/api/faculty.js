@@ -86,7 +86,8 @@ module.exports = async (req, res) => {
           SELECT u.id AS student_id, u.name, u.email, e.paid, e.dropped,
                  (SELECT count(*) FROM launches l
                    WHERE l.user_id = u.id AND l.course_id = ${course.id} AND l.sim_id = ${simId}) AS starts,
-                 cp.completed_at, cp.duration_seconds, cp.summary, cp.metrics
+                 cp.completed_at, cp.duration_seconds, cp.summary, cp.metrics,
+                 tr.recorded_at AS transcript_recorded_at, tr.envelope AS transcript
           FROM enrolments e
           JOIN users u ON u.id = e.student_id
           LEFT JOIN LATERAL (
@@ -94,6 +95,11 @@ module.exports = async (req, res) => {
             WHERE c2.user_id = u.id AND c2.course_id = ${course.id} AND c2.sim_id = ${simId}
             ORDER BY c2.completed_at DESC LIMIT 1
           ) cp ON true
+          LEFT JOIN LATERAL (
+            SELECT recorded_at, envelope FROM transcripts t
+            WHERE t.user_id = u.id AND t.course_id = ${course.id} AND t.sim_id = ${simId}
+            ORDER BY t.recorded_at DESC LIMIT 1
+          ) tr ON true
           WHERE e.course_id = ${course.id}
           ORDER BY e.dropped, u.name`;
         const sim = (await s`SELECT id, title FROM sims WHERE id = ${simId}`)[0];

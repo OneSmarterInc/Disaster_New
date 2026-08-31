@@ -152,3 +152,33 @@ CREATE UNIQUE INDEX IF NOT EXISTS sims_number_idx ON sims(number) WHERE number I
 -- registers, because a new one should arrive with its own description rather
 -- than waiting for somebody to write one.
 ALTER TABLE sims ADD COLUMN IF NOT EXISTS detail JSONB;
+-- Instructor transcripts.
+--
+-- Separate from completions on purpose. A completion is a signed summary —
+-- twelve metrics, four hundred characters — and that cap is deliberate: the
+-- platform learns that someone finished and nothing about the scenario. A
+-- transcript is the opposite shape, a few dozen events a faculty member reads
+-- once during a debrief, so it gets its own table rather than stretching a
+-- column that was sized to refuse it.
+--
+-- The envelope is opaque here. The platform stores it, scopes it, and renders
+-- it using vocabulary the sim itself supplied. It still never interprets what
+-- any of it means, which is what keeps sims independent deployments.
+
+CREATE TABLE IF NOT EXISTS transcripts (
+  id           TEXT PRIMARY KEY,
+  user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sim_id       TEXT NOT NULL REFERENCES sims(id) ON DELETE CASCADE,
+  course_id    TEXT REFERENCES courses(id) ON DELETE SET NULL,
+  sim_version  TEXT,                        -- read against the wrong version, a transcript misleads
+  recorded_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  envelope     JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS transcripts_course_idx ON transcripts(course_id);
+CREATE INDEX IF NOT EXISTS transcripts_user_sim_idx ON transcripts(user_id, sim_id);
+
+-- Retention. A transcript holds what a student typed, which is the most
+-- identifying content the platform stores anywhere and the reason it is useful
+-- in a debrief. Nothing here expires automatically; deletion is an explicit
+-- act, either per course or by an admin, so that a policy decision is never
+-- made by a default nobody chose.

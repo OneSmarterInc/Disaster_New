@@ -473,6 +473,17 @@ function renderCourse() {
   wireCommon();
 }
 
+function renderTranscript(env, recordedAt) {
+  const events = Array.isArray(env.events) ? env.events : [];
+  const transitions = Array.isArray(env.transitions) ? env.transitions : [];
+  const reachability = Array.isArray(env.reachability) ? env.reachability : [];
+  return `<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:var(--ink)">Instructor transcript · ${events.length} questions</summary>
+    <div class="sub" style="margin:7px 0 10px">Recorded ${esc(when(recordedAt))}. Answers remain in the simulation; this view stores questions, classifications and state changes.</div>
+    ${events.length ? `<div class="metrics">${events.map(e => `<div style="display:block"><span>#${esc(e.ordinal)} · ${esc(e.actorLabel)} · ${esc(e.classificationLabel || e.classification)}</span><b style="display:block;margin-top:3px;white-space:normal">${esc(e.input)}</b><span>${esc(e.cost && e.cost.amount)} seconds · ${esc(e.cost && e.cost.remaining)} remaining</span></div>`).join('')}</div>` : '<div class="dim">No interview events were recorded.</div>'}
+    ${transitions.length ? `<div style="margin-top:10px"><b>State changes</b><div class="metrics">${transitions.map(t => `<div><span>${esc(t.kind)}</span><b>${esc(t.label)}</b></div>`).join('')}</div></div>` : ''}
+    ${reachability.length ? `<div style="margin-top:10px"><b>Evidence reached</b><div class="metrics">${reachability.map(x => `<div><span>${esc(x.actorLabel)}</span><b>${esc(x.label)} — ${x.held ? 'held' : esc(x.blockedBy || 'missed')}</b></div>`).join('')}</div></div>` : ''}</details>`;
+}
+
 /* ── who has played ─────────────────────────────────────────────────────── */
 function renderPlayed() {
   const { sim, course, rows } = F.progress;
@@ -518,13 +529,14 @@ function renderPlayed() {
                   : Number(r.starts) > 0 ? 'Started but has not reached the end yet.'
                   : !r.paid ? 'Waiting for you to give them access.'
                   : 'Has not opened it yet.'}</span>`}
+            ${r.transcript ? renderTranscript(r.transcript, r.transcript_recorded_at) : ''}
           </td>
         </tr>`;
       }).join('') : '<tr><td colspan="2" class="empty">Nobody enrolled yet.</td></tr>'}
       </tbody></table></div>
       <div class="foot"><span class="info">${done.length} of ${active.length} finished</span><span class="info">Page 1 of 1</span></div>
     </div>
-    <div class="hint" style="margin-top:12px">What comes back is whatever the simulation chose to report — a short summary, not a transcript. Students keep their own transcript; nothing they said is stored here.</div>`;
+    <div class="hint" style="margin-top:12px">Completion summaries appear for every simulation. Simulations that support instructor transcripts also show questions, classifications, timing, state changes and evidence reached.</div>`;
   document.getElementById('back').onclick = () => openCourse(course.id);
 }
 

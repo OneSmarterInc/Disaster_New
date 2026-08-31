@@ -60,6 +60,23 @@ async function reportCompletion({ launch, summary, metrics }) {
   }
 }
 
+// Sends the instructor transcript to its dedicated platform endpoint. Await this
+// before responding: a serverless function may freeze as soon as it returns.
+async function reportTranscript({ launch, envelope }) {
+  const base = (process.env.PLATFORM_URL || '').replace(/\/$/, '');
+  if (!base || !launch || !launch.sub || !envelope) return;
+  const token = signBack({ sub: launch.sub, sim: launch.sim, course: launch.course || null,
+    iat: Date.now(), exp: Date.now() + 5 * 60000 });
+  if (!token) return;
+  try {
+    const r = await fetch(base + '/api/transcript', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, envelope }), signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) console.error('transcript refused', r.status, await r.text().catch(() => ''));
+  } catch (e) { console.error('transcript report failed', e.message); }
+}
+
 // Tells the platform this simulation exists, once per cold start. The platform
 // creates a catalogue entry — unpublished, so nobody sees it until an
 // administrator decides — and thereafter only refreshes the technical facts,
@@ -104,4 +121,4 @@ function announce(meta, selfUrl) {
   return announced;
 }
 
-module.exports = { verifyLaunch, signBack, reportCompletion, announce };
+module.exports = { verifyLaunch, signBack, reportCompletion, reportTranscript, announce };
