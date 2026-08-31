@@ -10,4 +10,6 @@ assert(!html.includes("require('../data/contracts"), 'answer contracts must not 
 assert(!html.includes("require('../data/phrasings"), 'classification bank must not ship to participant');
 assert(html.includes("'x-launch-token'"), 'platform launch token must be forwarded');
 assert(html.includes("justification:fd.get"), 'each report row must submit its justification');
+assert(html.includes("startsWith('/sim03')"), 'Sim03 alias must preserve the API path prefix');
+assert(html.includes("startsWith('/simplus01')"), 'Sim+ alias must preserve the API path prefix');
 console.log('client static checks: PASS');
