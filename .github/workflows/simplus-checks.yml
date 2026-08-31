@@ -1,7 +1,7 @@
 name: RapidSim Plus checks
 on:
   push:
-    branches: [integrate-simplus-01]
+    branches: [main, integrate-simplus-01]
     paths:
       - 'sim-plus-01/**'
       - '.github/workflows/simplus-checks.yml'
