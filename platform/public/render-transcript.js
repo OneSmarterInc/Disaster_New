@@ -1,3 +1,4 @@
+(() => {
 'use strict';
 // Browser port of the generic Sim+ envelope renderer.
 
@@ -188,3 +189,5 @@ function renderPage(envelopes, resolve) {
 }
 
 window.FacultyTranscriptRenderer = { renderPage, renderSession };
+
+})();
