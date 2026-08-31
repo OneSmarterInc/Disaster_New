@@ -29,7 +29,7 @@ const ROWS = [
   {
     id: 'review',
     label: 'First-pass review and matching',
-    chartNote: 'Approx. 30 seconds per claim. 850 per day.'
+    chartNote: 'Participant-observed pace is carried from the completed process chart.'
   }
 ];
 
