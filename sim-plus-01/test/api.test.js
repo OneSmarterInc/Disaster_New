@@ -27,7 +27,7 @@ function t(name, fn) {
 function token(sub, role) {
   const body = Buffer.from(JSON.stringify({
     sub, name: 'Test Person', role: role || 'student',
-    sim: 'rapidsimplus-01', course: 'course-1',
+    sim: 'rapid-03-bench', course: 'course-1',
     iat: Date.now(), exp: Date.now() + 3600000
   })).toString('base64url');
   const mac = crypto.createHmac('sha256', process.env.LAUNCH_SECRET).update(body).digest('base64url');
