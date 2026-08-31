@@ -28,7 +28,8 @@ const launch=hash.get('lt')||sessionStorage.getItem('simplus_lt')||'';
 if(launch){sessionStorage.setItem('simplus_lt',launch);history.replaceState(null,'',location.pathname+location.search)}
 let runId=localStorage.getItem('simplus_run');
 if(!runId){runId=crypto.randomUUID();localStorage.setItem('simplus_run',runId)}
-const API=location.pathname.startsWith('/simplus01')?'/simplus01/api':'/api';
+const prefix=location.pathname.startsWith('/simplus01')?'/simplus01':location.pathname.startsWith('/sim03')?'/sim03':'';
+const API=prefix+'/api';
 let state=null,reportRows=null,startedAt=Date.now();
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function call(path,body){
