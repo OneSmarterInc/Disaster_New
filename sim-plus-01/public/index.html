@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Why Don’t They Have Any Patience? — RapidSims+</title>
+<style>
+:root{--paper:#f3f3ef;--card:#fff;--ink:#171914;--muted:#697064;--line:#d6d8d0;--accent:#b65f00;--ok:#2f7454;--bad:#9a312c}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 Georgia,serif}
+header{height:70px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 max(24px,calc((100vw - 1180px)/2));justify-content:space-between}
+.brand{font-weight:700}.brand i{color:var(--accent);font-weight:400}.mono,.eyebrow,button,label,.timer{font:12px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.11em;text-transform:uppercase}
+main{max-width:1180px;margin:auto;padding:38px 24px 80px}.eyebrow{color:var(--muted);margin-bottom:9px}h1{font-size:42px;line-height:1.05;margin:0 0 12px;font-weight:400}h2{font-size:25px;font-weight:400;margin:0 0 14px}.lede{max-width:760px;font-size:20px;color:#42483f}
+.card{background:var(--card);border:1px solid var(--line);padding:24px;margin:20px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.choice{cursor:pointer;text-align:left;background:#fff;border:1px solid var(--line);padding:20px}.choice:hover,.choice:focus{border-color:var(--accent)}button{border:1px solid var(--line);background:#fff;padding:12px 16px;cursor:pointer;color:var(--ink)}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button.danger{color:var(--bad)}button:disabled{opacity:.45;cursor:not-allowed}
+.topline{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}.timer{font-size:18px;color:var(--accent);white-space:nowrap}.bar{height:5px;background:#ddd;margin:14px 0 24px}.bar>i{display:block;height:100%;background:var(--ok)}
+.chat{max-height:430px;overflow:auto;border:1px solid var(--line);background:#fff;padding:20px}.turn{margin:0 0 22px}.turn .who{font:11px ui-monospace,monospace;text-transform:uppercase;color:var(--muted);letter-spacing:.1em}.turn .q{color:var(--muted);margin:5px 0}.turn .a{font-size:18px;margin-top:5px;white-space:pre-wrap}
+.ask{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:12px}textarea,input,select{width:100%;border:1px solid var(--line);background:#fff;padding:13px;font:16px Georgia,serif}textarea{min-height:90px;resize:vertical}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.report-row{display:grid;grid-template-columns:minmax(240px,1fr) 210px;gap:18px;align-items:center;padding:17px 0;border-bottom:1px solid var(--line)}.note{font-size:14px;color:var(--muted)}.error{border-left:3px solid var(--bad);padding:12px;color:var(--bad);background:#fff}.outcome{border-left:3px solid var(--accent);padding-left:16px;margin:20px 0}.hidden{display:none!important}
+@media(max-width:700px){.grid,.report-row{grid-template-columns:1fr}h1{font-size:34px}.topline{display:block}.timer{margin-top:10px}.ask{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="brand">Flexee <i>RapidSims+</i></div><div class="mono">Individual simulation</div></header>
+<main id="app"><div class="card">Loading your session…</div></main>
+<script>
+'use strict';
+const app=document.getElementById('app');
+const hash=new URLSearchParams(location.hash.slice(1));
+const launch=hash.get('lt')||sessionStorage.getItem('simplus_lt')||'';
+if(launch){sessionStorage.setItem('simplus_lt',launch);history.replaceState(null,'',location.pathname+location.search)}
+let runId=localStorage.getItem('simplus_run');
+if(!runId){runId=crypto.randomUUID();localStorage.setItem('simplus_run',runId)}
+const API=location.pathname.startsWith('/simplus01')?'/simplus01/api':'/api';
+let state=null,reportRows=null,startedAt=Date.now();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function call(path,body){
+ const headers={'content-type':'application/json','x-run-id':runId};
+ if(launch)headers['x-launch-token']=launch;
+ const r=await fetch(API+path,{method:'POST',headers,body:JSON.stringify({...body,runId})});
+ let data={};try{data=await r.json()}catch{}
+ if(!r.ok){const e=new Error(data.detail||data.error||'Request failed');e.data=data;throw e}
+ return data
+}
+function error(e){app.insertAdjacentHTML('afterbegin','<div class="error">'+esc(e.message)+'</div>')}
+function render(){
+ if(!state)return;
+ if(state.state==='choosing')return choose();
+ if(['open','closed','sealed'].includes(state.state))return interview();
+ if(state.state==='finished')return report();
+}
+function choose(){
+ app.innerHTML='<div class="eyebrow">The assignment</div><h1>Document the front end before it is rebuilt.</h1><p class="lede">You have three fixed appointments. Each lasts fifteen minutes and there are no second visits. Choose a legal sequence, then decide what each minute is worth.</p><div class="card"><h2>Select your appointment order</h2><div class="grid">'+state.orders.map((o,i)=>'<button class="choice" data-order="'+i+'"><span class="eyebrow">Available route '+(i+1)+'</span><br>'+o.people.map((p,n)=>(n+1)+'. '+esc(p.name)+' — '+esc(p.role)).join('<br>')+'</button>').join('')+'</div></div>';
+ app.querySelectorAll('[data-order]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{state=await call('/session',{action:'choose',order:state.orders[+b.dataset.order].ids});render()}catch(e){error(e);b.disabled=false}})
+}
+function interview(){
+ const pct=Math.max(0,Math.min(100,(state.remaining/state.budget)*100));
+ const exchanges=state.exchanges||[];
+ const sealed=state.state==='sealed',closed=state.state==='closed';
+ app.innerHTML='<div class="eyebrow">Appointment '+esc(state.window.index)+' of '+esc(state.window.of)+' · '+esc(state.window.label)+'</div><div class="topline"><div><h1>'+esc(state.source.name)+'</h1><p class="lede">'+esc(state.source.role)+'</p></div><div class="timer">'+Math.floor(state.remaining/60)+':'+String(state.remaining%60).padStart(2,'0')+' remaining</div></div><div class="bar"><i style="width:'+pct+'%"></i></div>'+
+ '<div class="chat">'+(exchanges.length?exchanges.map(x=>'<div class="turn"><div class="who">You</div><div class="q">'+esc(x.question)+'</div><div class="who">'+esc(state.source.name)+'</div><div class="a">'+esc(x.answer)+'</div></div>').join(''):'<div class="note">The appointment has begun. Ask what you need to understand the work.</div>')+'</div>'+
+ (!closed&&!sealed?'<div class="ask"><textarea id="question" maxlength="400" placeholder="Ask one clear question…"></textarea><button class="primary" id="ask">Ask</button></div>':'')+
+ '<div class="actions">'+(!closed&&!sealed?'<button id="leave">End appointment early</button><button id="break">End today’s meeting</button>':'')+
+ (closed?'<button class="primary" id="next">Continue to next appointment</button>':'')+
+ (sealed?'<span class="note">This appointment is sealed. Return during the next class meeting to continue.</span>':'')+'</div>';
+ const ask=document.getElementById('ask');if(ask)ask.onclick=async()=>{const q=document.getElementById('question').value.trim();if(!q)return;ask.disabled=true;try{state=await call('/ask',{question:q});render();app.querySelector('.chat').scrollTop=999999}catch(e){error(e);ask.disabled=false}};
+ const leave=document.getElementById('leave');if(leave)leave.onclick=async()=>{if(confirm('End this appointment? Unused time cannot be recovered.')){state=await call('/session',{action:'leave'});render()}};
+ const br=document.getElementById('break');if(br)br.onclick=async()=>{if(confirm('Seal this appointment and end today’s meeting?')){state=await call('/session',{action:'break'});render()}};
+ const next=document.getElementById('next');if(next)next.onclick=async()=>{state=await call('/session',{action:'next'});render()};
+}
+async function report(){
+ if(!reportRows){try{const f=await call('/report',{action:'form'});reportRows=f.rows}catch(e){return error(e)}}
+ app.innerHTML='<div class="eyebrow">Configuration report</div><h1>Your findings become the build instructions.</h1><p class="lede">Choose one disposition for every row. If the evidence is incomplete, say so. Your root-cause note is required and will be read by the instructor.</p><form class="card" id="form">'+reportRows.map(r=>'<div class="report-row"><div><h2>'+esc(r.label)+'</h2><div class="note">'+esc(r.chartNote)+'</div></div><select required name="'+esc(r.id)+'"><option value="">Select disposition…</option><option value="automate">Automate</option><option value="keep">Keep</option><option value="eliminate">Eliminate</option><option value="cannot_assess">Cannot assess</option></select></div>').join('')+'<label for="root">Root cause</label><textarea id="root" required placeholder="What is driving the problem, and what evidence supports your conclusion?"></textarea><div class="actions"><button class="primary" type="submit">File report</button></div></form>';
+ document.getElementById('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;btn.disabled=true;const fd=new FormData(e.target),submission={rows:{},rootCause:document.getElementById('root').value.trim()};reportRows.forEach(r=>submission.rows[r.id]=fd.get(r.id));try{const result=await call('/report',{submission,observationSeconds:Math.round((Date.now()-startedAt)/1000)});outcomes(result)}catch(err){error(err);btn.disabled=false}};
+}
+function outcomes(result){
+ app.innerHTML='<div class="eyebrow">Configuration returned</div><h1>The report has consequences.</h1><p class="lede">'+(result.harmFired?'One decision removed judgment the process depended on.':'Your decisions did not trigger the central harm.')+'</p><div class="card">'+result.consequences.map(c=>'<div class="outcome"><div class="eyebrow">'+esc(c.label)+' · '+esc(c.disposition)+'</div><h2>'+esc(c.configured)+'</h2><p>'+esc(c.consequence)+'</p></div>').join('')+'</div><p class="note">Your completion and instructor transcript have been sent to the faculty view.</p>';
+}
+(async()=>{try{state=await call('/session',{action:'state'});render()}catch(e){app.innerHTML='<div class="error">'+esc(e.message)+'</div><p>If you launched from a course, return there and open the simulation again.</p>'}})();
+</script>
+</body></html>
