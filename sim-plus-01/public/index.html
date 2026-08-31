@@ -7,55 +7,11 @@
   <script>
     window.SIM_BASE = (location.pathname.match(/^\/(?:rapidsims\d+|simplus\d+|sim\d+)/) || [''])[0];
     document.write('<link rel="stylesheet" href="' + window.SIM_BASE + '/app.css">');
+    document.write('<link rel="stylesheet" href="' + window.SIM_BASE + '/flow.css">');
   </script>
-  <style>
-    .observation-entry input {
-      background: #0e1524;
-      color: #e8e4da;
-      border: 1px solid #8a6427;
-      caret-color: #f0a63c;
-    }
-    .observation-entry input:focus {
-      border-color: #f0a63c;
-      outline: 2px solid #f0a63c;
-      outline-offset: 2px;
-    }
-  </style>
 </head>
 <body>
   <div id="app"><div class="boot">Opening the simulation…</div></div>
-  <script>
-    (async function () {
-      const loadClient = () => {
-        const s = document.createElement('script');
-        s.src = window.SIM_BASE + '/client.js';
-        document.body.appendChild(s);
-      };
-      try {
-        const params = location.search + location.hash;
-        const m = params.match(/[?#&](?:lt|launch)=([^&]+)/);
-        const launch = m ? decodeURIComponent(m[1]) : '';
-        if (launch) {
-          const response = await fetch(window.SIM_BASE + '/api/run', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', 'x-launch-token': launch },
-            body: JSON.stringify({ action: 'resume' })
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.runId) sessionStorage.setItem('rapidsim03.run', data.runId);
-            if (data.state && data.state.observationSeconds != null) {
-              sessionStorage.setItem('rapidsim03.observation', String(data.state.observationSeconds));
-              sessionStorage.setItem('rapidsim03.phase', data.state.finishedInterviews ? 'report' : 'interview');
-              sessionStorage.removeItem('rapidsim03.briefStep');
-            }
-          }
-        }
-      } catch (_) {
-        // A failed resume probe must never block a fresh launch.
-      }
-      loadClient();
-    })();
-  </script>
+  <script>document.write('<script src="' + window.SIM_BASE + '/client.js"><\/script>');</script>
 </body>
 </html>
