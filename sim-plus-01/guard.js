@@ -1,10 +1,14 @@
-// Build guard. Two invariants that, if broken, break the sim silently.
+// Build guard. Invariants that, if broken, break the sim silently.
 //
 // 1. Every bucket named in the fact contracts must exist in the bank,
 //    and every bucket in the bank must be one the contracts script.
 //    A bucket with no scripted answer returns nothing at runtime.
 // 2. Ordering invariants. The bank is order-sensitive and a well-meaning
 //    alphabetical sort would close Ruth on innocent questions.
+// 3. Simulation identity invariants. Runtime and transcript metadata must
+//    agree, and this sim must not claim an id already owned by a sibling sim.
+const fs = require('fs');
+const path = require('path');
 const bank = require('./data/phrasings');
 
 const CONTRACT_BUCKETS = [
@@ -38,6 +42,36 @@ const generic = bank.find(e => e.bucket === 'GENERIC_DESCRIPTIVE');
 for (const e of bank) {
   if (e.bucket !== 'GENERIC_DESCRIPTIVE' && e.cost >= generic.cost)
     err(`${e.bucket} costs ${e.cost}s, not less than GENERIC_DESCRIPTIVE (${generic.cost}s)`);
+}
+
+// --- identity invariants -----------------------------------------------
+const { META } = require('./lib/meta');
+const { SIM_ID } = require('./data/simmeta');
+if (META.id !== SIM_ID)
+  err(`identity mismatch: lib/meta.js uses "${META.id}" but data/simmeta.js uses "${SIM_ID}"`);
+
+// Scan sibling simulation packages instead of maintaining a hand-written list.
+// We read metadata source as text so another sim's build/runtime code is never
+// executed merely to validate this package.
+const repoRoot = path.resolve(__dirname, '..');
+const thisDir = path.basename(__dirname);
+const siblingIds = [];
+const metadataCandidates = ['lib/meta.js', 'data/simmeta.js', 'api/meta.js'];
+for (const entry of fs.readdirSync(repoRoot, { withFileTypes: true })) {
+  if (!entry.isDirectory() || entry.name === thisDir || !/^sim(?:-|$)/.test(entry.name)) continue;
+  for (const rel of metadataCandidates) {
+    const file = path.join(repoRoot, entry.name, rel);
+    if (!fs.existsSync(file)) continue;
+    const source = fs.readFileSync(file, 'utf8');
+    const matches = [
+      ...source.matchAll(/\bid\s*:\s*['"]([^'"]+)['"]/g),
+      ...source.matchAll(/\bSIM_ID\s*=\s*['"]([^'"]+)['"]/g)
+    ];
+    for (const m of matches) siblingIds.push({ id: m[1], file: `${entry.name}/${rel}` });
+  }
+}
+for (const owner of siblingIds) {
+  if (owner.id === META.id) err(`simulation id "${META.id}" is already owned by ${owner.file}`);
 }
 
 // --- report invariants -------------------------------------------------
