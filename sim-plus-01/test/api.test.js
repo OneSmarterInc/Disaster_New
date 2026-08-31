@@ -13,8 +13,9 @@ store.putRaw = async (key, value) => { memory.set(key, value); return value; };
 const run = require('../api/run');
 const { classify } = require('../src/classifier');
 
-async function call(action, extra = {}) {
+async function call(action, extra = {}, launch = null) {
   const req = { method: 'POST', headers: {}, body: { action, ...extra } };
+  if (launch) req.launch = launch;
   let status = 200, payload;
   const res = { status(n) { status = n; return this; }, json(v) { payload = v; return this; }, end() { return this; } };
   await run(req, res);
@@ -33,9 +34,18 @@ async function call(action, extra = {}) {
     }
   }
 
-  r = await call('start', { order: ['terry', 'ray', 'ruth'] });
+  const launch = { sub: 'participant-1', name: 'Split Session Tester', course: 'course-1', role: 'student' };
+  r = await call('start', { order: ['terry', 'ray', 'ruth'], observationSeconds: 30 }, launch);
   assert.equal(r.status, 200);
   const runId = r.payload.runId;
+  assert.equal(r.payload.state.source.id, 'terry');
+  assert.equal(r.payload.state.observationSeconds, 30);
+
+  // Simulate Thursday on another browser/device: no runId is supplied.
+  r = await call('resume', {}, launch);
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.runId, runId);
+  assert.equal(r.payload.state.observationSeconds, 30);
   assert.equal(r.payload.state.source.id, 'terry');
 
   r = await call('ask', { runId, question: 'Why does the log exist?' });
@@ -47,6 +57,7 @@ async function call(action, extra = {}) {
   await call('advance', { runId });
   r = await call('advance', { runId });
   assert.equal(r.payload.state.finishedInterviews, true);
+  assert.equal(r.payload.state.observationSeconds, 30);
 
   const rows = {};
   for (const row of ['intake', 'log', 'vendor', 'review']) rows[row] = { disposition: row === 'vendor' ? 'cannot_assess' : 'keep', justification: 'This is supported by interview evidence.' };
