@@ -19,16 +19,10 @@ assert.match(js, /id="j-\$\{r\.id\}"[^>]*minlength="15"/);
 assert.match(js, /meaningful characters/);
 assert.match(js, /form\.requestSubmit\(\)/);
 
-// Severity 1: generic starters only, shown only before the first question.
-for (const q of [
-  "What happens when something doesn't go the way it should?",
-  'Who receives this after you?',
-  'What would happen if this stopped?',
-  'Why is it done this way?',
-  'What does the person on the other end see?'
-]) assert.match(js, new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+// Severity 1: generic starters come from the server brief and appear only before the first question.
 assert.match(js, /state\.conversation\.length===0\?brief\.starters:\[\]/);
 assert.match(js, /data-starter/);
+assert.match(js, /input\.value=starters\[Number\(btn\.dataset\.starter\)\]/, 'clicking a starter must populate rather than submit');
 assert.doesNotMatch(js, /Do providers receive confirmation that a claim arrived/i);
 assert.doesNotMatch(js, /receipt log stopped/i);
 assert.doesNotMatch(js, /Suggestions update as you ask/);
