@@ -38,6 +38,9 @@ class Session {
     this.askCounts = new Map();
     this.transcript = [];
     this.observationSeconds = null;
+    this.completedChart = null;
+    this.submission = null;
+    this.launch = null;
   }
 
   chooseOrder(order) {
