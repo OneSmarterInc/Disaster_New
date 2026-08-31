@@ -12,9 +12,19 @@ const { reportCompletion, reportTranscript } = require('../lib/launch');
 const { buildEnvelope } = require('../src/transcript');
 
 const key = (id) => `run03:${id}`;
+const participantKey = (sub) => `run03:participant:${sub}`;
 const id = () => crypto.randomBytes(12).toString('hex');
 const load = async (runId) => { const raw = await store.getRaw(key(runId)); return raw ? hydrate(raw) : null; };
 const save = (runId, session) => store.putRaw(key(runId), serialize(session));
+
+async function resolveRunId(req, requested) {
+  const explicit = String(requested || '').trim();
+  if (explicit) return explicit;
+  const sub = req.launch && req.launch.sub;
+  if (!sub) return '';
+  const pointer = await store.getRaw(participantKey(sub));
+  return pointer && pointer.runId ? String(pointer.runId) : '';
+}
 
 function publicState(s) {
   const sourceId = s.currentSourceId;
@@ -87,33 +97,9 @@ module.exports = async (req, res) => {
         name: v.name,
         role: v.role,
         suggestions: {
-          ray: [
-            'How many claims arrive through each channel?',
-            'What happens to claims that arrive after the final release?',
-            'Do providers receive confirmation that a claim arrived?',
-            'How do you decide which faxes go to the vendor?',
-            'What systems do you use for vendor faxes?',
-            'What happens when an intake item is illegible?',
-            'Who receives the batches after you release them?'
-          ],
-          terry: [
-            'Why was the receipt log created?',
-            'Who uses the receipt log now?',
-            'What do providers hear when they call for status?',
-            'How many claims do you log each day?',
-            'What information do you enter in the receipt log?',
-            'What happens when a control number is missing?',
-            'What would happen if the receipt log stopped?'
-          ],
-          ruth: [
-            'What happens when a claim looks like a duplicate?',
-            'What changes when you are unavailable?',
-            'What do providers hear after submitting a claim?',
-            'How many claims reach first-pass review each day?',
-            'What systems or tools do you use during review?',
-            'Where does a claim go after first-pass review?',
-            'What makes one claim take longer than another?'
-          ]
+          ray: ['How many claims arrive through each channel?','What happens to claims that arrive after the final release?','Do providers receive confirmation that a claim arrived?','How do you decide which faxes go to the vendor?','What systems do you use for vendor faxes?','What happens when an intake item is illegible?','Who receives the batches after you release them?'],
+          terry: ['Why was the receipt log created?','Who uses the receipt log now?','What do providers hear when they call for status?','How many claims do you log each day?','What information do you enter in the receipt log?','What happens when a control number is missing?','What would happen if the receipt log stopped?'],
+          ruth: ['What happens when a claim looks like a duplicate?','What changes when you are unavailable?','What do providers hear after submitting a claim?','How many claims reach first-pass review each day?','What systems or tools do you use during review?','Where does a claim go after first-pass review?','What makes one claim take longer than another?']
         }[k]
       }])),
       rows: ROWS,
@@ -125,16 +111,19 @@ module.exports = async (req, res) => {
       const s = new Session().chooseOrder(b.order || []);
       const observed = Number(b.observationSeconds);
       s.observationSeconds = Number.isFinite(observed) && observed > 0 ? observed : null;
+      if (!s.observationSeconds) return res.status(400).json({ error: 'observation_required', message: 'Record the observed seconds per claim before starting interviews.' });
       s.launch = req.launch || null;
       await save(runId, s);
+      if (req.launch && req.launch.sub) await store.putRaw(participantKey(req.launch.sub), { runId });
       return res.status(200).json({ runId, state: publicState(s) });
     }
 
-    const runId = String(b.runId || '');
+    const runId = await resolveRunId(req, b.runId);
+    if (!runId) return res.status(404).json({ error: 'no_such_run' });
     const s = await load(runId);
     if (!s) return res.status(404).json({ error: 'no_such_run' });
 
-    if (b.action === 'resume') return res.status(200).json({ state: publicState(s), submitted: !!s.submission });
+    if (b.action === 'resume') return res.status(200).json({ runId, state: publicState(s), submitted: !!s.submission });
 
     if (b.action === 'ask') {
       const question = String(b.question || '').trim();
@@ -159,9 +148,6 @@ module.exports = async (req, res) => {
       s.submission = b.submission;
       await save(runId, s);
       const result = review(s.submission, s.transcript);
-      // The current verified launch wins over a context saved on an older resumed run.
-      // Otherwise a student can finish successfully while the result is attributed
-      // to the old/null course and disappears from the instructor's course view.
       const who = req.launch || s.launch;
       if (who) {
         const envelope = buildEnvelope(s, result, { sessionId: runId,
@@ -182,7 +168,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'unknown_action' });
   } catch (e) {
     if (/ordering|order already/.test(e.message)) return res.status(400).json({ error: 'invalid_order', message: e.message });
-    console.error('sim03', e);
+    console.error('rapidsims01', e);
     return res.status(500).json({ error: e.code === 'NO_STORE' ? 'no_store' : 'server_error', message: e.message });
   }
 };
