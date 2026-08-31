@@ -1,0 +1,14 @@
+test
+tools
+*.md
+harness.html
+harness.template.html
+interview.template.html
+interview-preview.html
+opening-preview.html
+observation-preview.html
+build-harness.py
+playtest.js
+demo-report.js
+demo-transcript.js
+envelope-sample.json
