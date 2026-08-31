@@ -59,7 +59,7 @@ t('envelope carries the declared fields', () => {
   });
   ['simId', 'simVersion', 'path', 'phases', 'events', 'transitions', 'reachability', 'outcome']
     .forEach((k) => assert.ok(env[k] !== undefined, `missing ${k}`));
-  assert.strictEqual(env.simId, 'rapidsimplus-01');
+  assert.strictEqual(env.simId, 'rapid-03-bench');
   assert.ok(env.simVersion, 'simVersion must never be empty');
 });
 
