@@ -46,6 +46,16 @@ t('a blank root cause is refused', () => {
   assert.strictEqual(validate(form(ALL_KEEP, '')).ok, false);
 });
 
+t('a short vendor justification names the length requirement', () => {
+  const f = form(ALL_KEEP);
+  f.rows.vendor.justification = 'too short';
+  const v = validate(f);
+  assert.strictEqual(v.ok, false);
+  const error = v.errors.find((e) => e.field === 'vendor');
+  assert.ok(error);
+  assert.match(error.message, /Fax conversion vendor: justification must be at least 15 characters/);
+});
+
 t('an invented disposition is refused', () => {
   const f = form(ALL_KEEP);
   f.rows.review.disposition = 'outsource';

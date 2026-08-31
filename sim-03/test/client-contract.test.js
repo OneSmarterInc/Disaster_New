@@ -11,6 +11,9 @@ assert.match(html, /simplus\\d\+/, 'Sim+ alias must retain its path prefix for a
 assert.ok(html.includes("window.SIM_BASE + '/client.js"));
 assert.match(js, /id="question"/);
 assert.match(js, /id="root"/);
+assert.match(js, /id="root"[^>]*minlength="15"/);
+assert.match(js, /id="j-\$\{r\.id\}"[^>]*minlength="15"/);
+assert.match(js, /meaningful characters/);
 assert.match(js, /form\.requestSubmit\(\)/);
 assert.match(js, /partial chart/i);
 assert.match(js, /Observation window/i);
