@@ -1,4 +1,5 @@
 const { sql, id, joinCode } = require('../lib/db.js');
+const { ensureTranscripts } = require('../lib/transcripts.js');
 const A = require('../lib/auth.js');
 
 function body(req) {
