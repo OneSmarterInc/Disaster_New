@@ -42,4 +42,15 @@ assert.match(js, /Reshuffle members/, 'Interview panel must expose legal-order r
 assert.match(js, /pendingOrder/);
 assert.match(css, /\.claim-sheet/);
 assert.match(css, /\.appointment-plan/);
+assert.match(js, /Opening.*of 5/, 'brief must expose five opening screens');
+assert.match(js, /field-notes/, 'opening must include the field-notes artifact');
+assert.match(js, /id="observation-seconds"/, 'participant must record an observation estimate');
+assert.doesNotMatch(js, /routine claims move at approximately thirty seconds/i, 'observation must not reveal the answer');
+assert.match(js, /interviewLedger/, 'interviews must show time consumption');
+assert.match(js, /renderAppointmentClosed/, 'ending an appointment must show a transition screen');
+assert.match(js, /Your interview windows/, 'debrief must summarize interview windows');
+assert.match(js, /id="run-again"/, 'debrief must allow a fresh run');
+assert.match(css, /\.field-notes/);
+assert.match(css, /\.time-ledger/);
+assert.match(css, /\.window-summary/);
 console.log('client contract: passed');

@@ -11,6 +11,7 @@ function serialize(session) {
     askCounts: [...session.askCounts],
     transcript: session.transcript,
     submission: session.submission || null,
+    observationSeconds: session.observationSeconds ?? null,
     launch: session.launch || null
   };
 }
@@ -24,6 +25,7 @@ function hydrate(raw) {
   s.askCounts = new Map(raw.askCounts || []);
   s.transcript = raw.transcript || [];
   s.submission = raw.submission || null;
+  s.observationSeconds = raw.observationSeconds ?? null;
   s.launch = raw.launch || null;
   return s;
 }

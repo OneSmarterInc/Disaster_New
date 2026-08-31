@@ -18,14 +18,32 @@ const save = (runId, session) => store.putRaw(key(runId), serialize(session));
 
 function publicState(s) {
   const sourceId = s.currentSourceId;
+  const windowHistory = WINDOWS.map((w, index) => {
+    const sourceKey = s.order && s.order[index];
+    const turns = s.transcript.filter((t) => t.window === w.id);
+    const secondsUsed = turns.reduce((sum, t) => sum + t.spent, 0);
+    const isCurrent = index === s.windowIndex;
+    return {
+      window: w.id,
+      sourceId: sourceKey || null,
+      sourceName: sourceKey ? SOURCES[sourceKey].name : null,
+      questions: turns.length,
+      secondsUsed,
+      secondsUnused: isCurrent ? s.remaining : Math.max(0, 900 - secondsUsed),
+      complete: index < s.windowIndex || sourceId === null,
+      turns: isCurrent ? turns.map((t) => ({ spent: t.spent, remaining: t.remaining })) : []
+    };
+  });
   return {
     order: s.order,
     windowIndex: s.windowIndex,
     windowsTotal: WINDOWS.length,
     remaining: s.remaining,
     finishedInterviews: sourceId === null,
+    observationSeconds: s.observationSeconds ?? null,
+    windowHistory,
     source: sourceId ? { id: sourceId, name: SOURCES[sourceId].name, role: SOURCES[sourceId].role } : null,
-    conversation: sourceId ? s.transcript.filter(t => t.sourceId === sourceId).map(t => ({ question: t.question, answer: t.answer })) : []
+    conversation: sourceId ? s.transcript.filter(t => t.sourceId === sourceId).map(t => ({ question: t.question, answer: t.answer, spent: t.spent, remaining: t.remaining })) : []
   };
 }
 
@@ -60,8 +78,7 @@ module.exports = async (req, res) => {
       ],
       observation: {
         heading: 'First-pass review desk',
-        instruction: 'Watch a batch move through first-pass review. Record the observed per-claim timing on your working chart.',
-        finding: 'Across the observed batch, routine claims move at approximately thirty seconds per claim.'
+        instruction: 'Watch a batch move through first-pass review. Record the observed per-claim timing on your working chart.'
       },
       windows: WINDOWS,
       availability: AVAILABILITY,
@@ -106,6 +123,8 @@ module.exports = async (req, res) => {
     if (b.action === 'start') {
       const runId = id();
       const s = new Session().chooseOrder(b.order || []);
+      const observed = Number(b.observationSeconds);
+      s.observationSeconds = Number.isFinite(observed) && observed > 0 ? observed : null;
       s.launch = req.launch || null;
       await save(runId, s);
       return res.status(200).json({ runId, state: publicState(s) });
@@ -146,6 +165,7 @@ module.exports = async (req, res) => {
       const who = req.launch || s.launch;
       if (who) {
         const envelope = buildEnvelope(s, result, { sessionId: runId,
+          observationSeconds: s.observationSeconds,
           participant: { id: who.sub, displayName: who.name || null },
           cohortId: who.course || null, completedAt: new Date().toISOString() });
         await reportTranscript({ launch: who, envelope });
