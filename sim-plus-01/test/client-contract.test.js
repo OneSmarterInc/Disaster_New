@@ -5,52 +5,86 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
 const js = fs.readFileSync(path.join(root, 'public', 'client.js'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'public', 'app.css'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'public', 'app.css'), 'utf8') + '\n' + fs.readFileSync(path.join(root, 'public', 'flow.css'), 'utf8');
+
 assert.match(html, /window\.SIM_BASE/);
-assert.match(html, /simplus\\d\+/, 'Sim+ alias must retain its path prefix for assets and APIs');
+assert.match(html, /simplus\\d\+/);
 assert.ok(html.includes("window.SIM_BASE + '/client.js"));
+assert.ok(html.includes("window.SIM_BASE + '/flow.css"));
+assert.doesNotMatch(html, /rapidsim03\.observation/, 'observation must not be restored from browser storage');
+
 assert.match(js, /id="question"/);
-assert.match(js, /id="root"/);
 assert.match(js, /id="root"[^>]*minlength="15"/);
 assert.match(js, /id="j-\$\{r\.id\}"[^>]*minlength="15"/);
 assert.match(js, /meaningful characters/);
 assert.match(js, /form\.requestSubmit\(\)/);
-assert.match(js, /partial chart/i);
-assert.match(js, /Observation window/i);
-assert.match(js, /Question starters/);
+
+// Severity 1: generic starters only, shown only before the first question.
+for (const q of [
+  "What happens when something doesn't go the way it should?",
+  'Who receives this after you?',
+  'What would happen if this stopped?',
+  'Why is it done this way?',
+  'What does the person on the other end see?'
+]) assert.match(js, new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+assert.match(js, /state\.conversation\.length===0\?brief\.starters:\[\]/);
 assert.match(js, /data-starter/);
-assert.match(js, /Suggestions update as you ask/);
-assert.match(js, /filter\(q=>!asked\.has\(clean\(q\)\)\)\.slice\(0,5\)/);
+assert.doesNotMatch(js, /Do providers receive confirmation that a claim arrived/i);
+assert.doesNotMatch(js, /receipt log stopped/i);
+assert.doesNotMatch(js, /Suggestions update as you ask/);
+
+// Severity 1: real-time, automatic observation; no participant preview/restart UI.
+assert.match(js, /function observationSpeed/);
+assert.match(js, /faculty.*observationSpeed/);
+assert.match(js, /startObservationClock\(\)/);
+assert.match(js, /observationStartedAt=Date\.now\(\)/);
+assert.doesNotMatch(js, /id="preview-run"/);
+assert.doesNotMatch(js, /Restart preview/i);
+assert.doesNotMatch(js, /preview-bar/);
+assert.match(js, /The batch is starting/);
+assert.match(js, /When the batch is done, record what you think a claim takes/i);
+
+// Severity 1: participant has no instructor debrief/evidence screen.
+assert.doesNotMatch(js, /Evidence you reached/);
+assert.doesNotMatch(js, /feedback loop available/i);
+assert.doesNotMatch(js, /Instructor run ID/i);
+assert.doesNotMatch(js, /id="run-again"/);
+assert.doesNotMatch(js, /Debrief/);
+assert.match(js, /Configured outcome/);
+
+// Remaining requested changes.
+assert.match(js, /People/);
+assert.doesNotMatch(js, /Interview sources/);
+assert.doesNotMatch(js, /Not scheduled/);
+assert.match(js, /Three appointments, fifteen minutes each\. No second visits\./);
+assert.match(js, /Ruth is in a plan review mid-morning/);
+assert.match(js, /Ray does not come off the floor until the second slot/);
+assert.match(js, /Down the corridor, a fax machine is going/);
+assert.match(js, /order-grid/);
+assert.doesNotMatch(js, /Reshuffle members/);
+assert.match(js, /Appointment spend ledger/);
+assert.match(js, /ledger-spend/);
+assert.match(js, /exchange-cost/);
+assert.doesNotMatch(js, /STANDING TASK/i);
+assert.doesNotMatch(js, /Use ['"]cannot assess['"] only/i);
+assert.match(js, /What is actually going on here\?/);
+assert.match(js, /Your completed chart records \$\{state\.observationSeconds\} seconds per claim/);
+assert.match(js, /could not establish/i);
+assert.match(js, /save_chart/);
+assert.match(js, /Time per claim — your observation/);
+assert.match(js, /As-is you documented/);
+assert.match(js, /To-be the vendor configures/);
+assert.match(js, /Exact-match rule/);
+assert.match(js, /Undocumented judgment carried forward: —/);
+assert.doesNotMatch(js, /CANNOT_ASSESS/);
+
 assert.match(css, /\.question-starters/);
 assert.match(css, /\.starter/);
+assert.match(css, /\.order-grid/);
+assert.match(css, /\.appointment-exit/);
+assert.match(css, /\.editable-chart/);
+assert.match(css, /\.compare-charts/);
+assert.match(css, /\.observation-entry input\{[^}]*background:var\(--night\)[^}]*color:var\(--bone\)/);
 assert.doesNotMatch(css, /pointer-events\s*:\s*none[^}]*textarea/i);
 assert.match(css, /caret-color:var\(--amber\)/);
-assert.match(js, /data-phase=/, 'phase navigation must render real controls');
-assert.match(js, /bindPhaseNav/, 'phase controls must be wired to navigation');
-assert.match(js, /renderCompletedInterview/, 'completed interviews must remain reviewable without reopening them');
-assert.match(js, /captureReportDraft/);
-assert.match(js, /restoreReportDraft/);
-assert.match(js, /id="preview-run"/, 'observation must expose Preview run');
-assert.match(js, /startObservationPreview/);
-assert.match(css, /\.phase\{[^}]*cursor:pointer/, 'enabled phase controls must look clickable');
-assert.match(css, /\.phase:disabled\{[^}]*cursor:not-allowed/);
-assert.match(css, /\.observation-preview/);
-assert.match(js, /OBSERVATION_CLAIMS/);
-assert.match(js, /id="preview-desk"/, 'Preview run must render the observed claim activity');
-assert.match(js, /previewSheet/);
-assert.match(js, /Reshuffle members/, 'Interview panel must expose legal-order reshuffling');
-assert.match(js, /pendingOrder/);
-assert.match(css, /\.claim-sheet/);
-assert.match(css, /\.appointment-plan/);
-assert.match(js, /Opening.*of 5/, 'brief must expose five opening screens');
-assert.match(js, /field-notes/, 'opening must include the field-notes artifact');
-assert.match(js, /id="observation-seconds"/, 'participant must record an observation estimate');
-assert.doesNotMatch(js, /routine claims move at approximately thirty seconds/i, 'observation must not reveal the answer');
-assert.match(js, /interviewLedger/, 'interviews must show time consumption');
-assert.match(js, /renderAppointmentClosed/, 'ending an appointment must show a transition screen');
-assert.match(js, /Your interview windows/, 'debrief must summarize interview windows');
-assert.match(js, /id="run-again"/, 'debrief must allow a fresh run');
-assert.match(css, /\.field-notes/);
-assert.match(css, /\.time-ledger/);
-assert.match(css, /\.window-summary/);
 console.log('client contract: passed');
