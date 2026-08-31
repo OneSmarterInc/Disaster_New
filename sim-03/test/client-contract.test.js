@@ -7,6 +7,7 @@ const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
 const js = fs.readFileSync(path.join(root, 'public', 'client.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'public', 'app.css'), 'utf8');
 assert.match(html, /window\.SIM_BASE/);
+assert.match(html, /simplus\\d\+/, 'Sim+ alias must retain its path prefix for assets and APIs');
 assert.ok(html.includes("window.SIM_BASE + '/client.js"));
 assert.match(js, /id="question"/);
 assert.match(js, /id="root"/);
