@@ -8,7 +8,7 @@
 // five live here so the platform never has to know anything about
 // claims administration.
 
-const SIM_ID = 'rapidsimplus-01';
+const SIM_ID = 'rapid-03-bench';
 
 /** Phase labels. The platform groups the timeline by these. */
 function phaseLabel(phaseId, path) {
