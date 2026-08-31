@@ -50,6 +50,18 @@
       "destination": "https://flexee-rapid-sim-02.vercel.app/:path*"
     },
     {
+      "source": "/simplus01",
+      "destination": "https://flexee-rapid-sim-plus-01.vercel.app/"
+    },
+    {
+      "source": "/simplus01/",
+      "destination": "https://flexee-rapid-sim-plus-01.vercel.app/"
+    },
+    {
+      "source": "/simplus01/:path*",
+      "destination": "https://flexee-rapid-sim-plus-01.vercel.app/:path*"
+    },
+    {
       "source": "/sim03",
       "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/"
     },
@@ -83,6 +95,15 @@
     },
     {
       "source": "/sim03/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/simplus01/(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",
