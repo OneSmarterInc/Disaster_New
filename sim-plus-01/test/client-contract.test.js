@@ -5,13 +5,13 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
 const js = fs.readFileSync(path.join(root, 'public', 'client.js'), 'utf8');
-const tweaks = fs.readFileSync(path.join(root, 'public', 'participant-tweaks.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'public', 'app.css'), 'utf8') + '\n' + fs.readFileSync(path.join(root, 'public', 'flow.css'), 'utf8');
+const launch = fs.readFileSync(path.join(root, 'lib', 'launch.js'), 'utf8');
 
 assert.match(html, /window\.SIM_BASE/);
 assert.match(html, /simplus\\d\+/);
 assert.ok(html.includes("window.SIM_BASE + '/client.js"));
-assert.ok(html.includes("window.SIM_BASE + '/participant-tweaks.js"));
+assert.doesNotMatch(html, /participant-tweaks\.js/, 'participant UI must live in the main client, not an observer shim');
 assert.ok(html.includes("window.SIM_BASE + '/flow.css"));
 assert.doesNotMatch(html, /rapidsim03\.observation/, 'observation must not be restored from browser storage');
 
@@ -21,22 +21,21 @@ assert.match(js, /id="j-\$\{r\.id\}"[^>]*minlength="15"/);
 assert.match(js, /meaningful characters/);
 assert.match(js, /form\.requestSubmit\(\)/);
 
-// Generic starters remain participant-safe and the UI layer keeps them available throughout each appointment.
+// Generic starters remain participant-safe and stay visible throughout each appointment.
+assert.match(js, /starters=brief\.starters\|\|\[\]/);
 assert.match(js, /data-starter/);
 assert.match(js, /input\.value=starters\[Number\(btn\.dataset\.starter\)\]/, 'clicking a starter must populate rather than submit');
+assert.doesNotMatch(js, /state\.conversation\.length===0\?brief\.starters:\[\]/);
 assert.doesNotMatch(js, /Do providers receive confirmation that a claim arrived/i);
 assert.doesNotMatch(js, /receipt log stopped/i);
 assert.doesNotMatch(js, /Suggestions update as you ask/);
-assert.match(tweaks, /const STARTERS=\[/);
-assert.match(tweaks, /Who receives this after you\?/);
-assert.match(tweaks, /ensureStarters\(\)/);
-assert.match(tweaks, /composer\.appendChild\(row\)/);
-assert.match(tweaks, /placeInterviewExit\(\)/);
-assert.match(tweaks, /composer\.appendChild\(exit\)/);
+assert.match(js, /composer=`[^`]*appointment-exit/s, 'End interview must be rendered directly in the composer');
 
-// Severity 1: real-time, automatic observation; no participant preview/restart UI.
-assert.match(js, /function observationSpeed/);
-assert.match(js, /faculty.*observationSpeed/);
+// Observation is 1x for participants. Speed controls exist only in explicit faculty/testing mode.
+assert.match(js, /function isFaculty\(\)\{return urlParam\('faculty'\)==='1'\}/);
+assert.match(js, /speedControls=faculty\?/);
+assert.match(js, /if\(faculty\)document\.querySelectorAll\('\[data-observation-speed\]'\)/);
+assert.match(js, /if\(!isFaculty\(\)\|\|!\[1,10,20,50\]\.includes\(next\)\)return/);
 assert.match(js, /startObservationClock\(\)/);
 assert.match(js, /observationStartedAt=Date\.now\(\)/);
 assert.doesNotMatch(js, /id="preview-run"/);
@@ -45,7 +44,7 @@ assert.doesNotMatch(js, /preview-bar/);
 assert.match(js, /The batch is starting/);
 assert.match(js, /When the batch is done, record what you think a claim takes/i);
 
-// Severity 1: participant has no instructor debrief/evidence screen.
+// Participant has no instructor debrief/evidence screen.
 assert.doesNotMatch(js, /Evidence you reached/);
 assert.doesNotMatch(js, /feedback loop available/i);
 assert.doesNotMatch(js, /Instructor run ID/i);
@@ -78,6 +77,12 @@ assert.match(js, /To-be the vendor configures/);
 assert.match(js, /Exact-match rule/);
 assert.match(js, /Undocumented judgment carried forward: —/);
 assert.doesNotMatch(js, /CANNOT_ASSESS/);
+
+// Catalogue registration is best-effort and retryable rather than a production error source.
+assert.match(launch, /announced = null;/);
+assert.match(launch, /announce deferred; platform registration timed out/);
+assert.match(launch, /console\.warn\('announce deferred/);
+assert.doesNotMatch(launch, /console\.error\('announce failed/);
 
 assert.match(css, /\.question-starters/);
 assert.match(css, /\.starter/);
