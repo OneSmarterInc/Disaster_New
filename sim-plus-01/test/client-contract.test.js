@@ -5,11 +5,13 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
 const js = fs.readFileSync(path.join(root, 'public', 'client.js'), 'utf8');
+const tweaks = fs.readFileSync(path.join(root, 'public', 'participant-tweaks.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'public', 'app.css'), 'utf8') + '\n' + fs.readFileSync(path.join(root, 'public', 'flow.css'), 'utf8');
 
 assert.match(html, /window\.SIM_BASE/);
 assert.match(html, /simplus\\d\+/);
 assert.ok(html.includes("window.SIM_BASE + '/client.js"));
+assert.ok(html.includes("window.SIM_BASE + '/participant-tweaks.js"));
 assert.ok(html.includes("window.SIM_BASE + '/flow.css"));
 assert.doesNotMatch(html, /rapidsim03\.observation/, 'observation must not be restored from browser storage');
 
@@ -19,13 +21,18 @@ assert.match(js, /id="j-\$\{r\.id\}"[^>]*minlength="15"/);
 assert.match(js, /meaningful characters/);
 assert.match(js, /form\.requestSubmit\(\)/);
 
-// Severity 1: generic starters come from the server brief and appear only before the first question.
-assert.match(js, /state\.conversation\.length===0\?brief\.starters:\[\]/);
+// Generic starters remain participant-safe and the UI layer keeps them available throughout each appointment.
 assert.match(js, /data-starter/);
 assert.match(js, /input\.value=starters\[Number\(btn\.dataset\.starter\)\]/, 'clicking a starter must populate rather than submit');
 assert.doesNotMatch(js, /Do providers receive confirmation that a claim arrived/i);
 assert.doesNotMatch(js, /receipt log stopped/i);
 assert.doesNotMatch(js, /Suggestions update as you ask/);
+assert.match(tweaks, /const STARTERS=\[/);
+assert.match(tweaks, /Who receives this after you\?/);
+assert.match(tweaks, /ensureStarters\(\)/);
+assert.match(tweaks, /composer\.appendChild\(row\)/);
+assert.match(tweaks, /placeInterviewExit\(\)/);
+assert.match(tweaks, /composer\.appendChild\(exit\)/);
 
 // Severity 1: real-time, automatic observation; no participant preview/restart UI.
 assert.match(js, /function observationSpeed/);
@@ -76,6 +83,7 @@ assert.match(css, /\.question-starters/);
 assert.match(css, /\.starter/);
 assert.match(css, /\.order-grid/);
 assert.match(css, /\.appointment-exit/);
+assert.match(css, /\.composer-in>\.appointment-exit/);
 assert.match(css, /\.editable-chart/);
 assert.match(css, /\.compare-charts/);
 assert.match(css, /\.observation-entry input\{[^}]*background:var\(--night\)[^}]*color:var\(--bone\)/);
