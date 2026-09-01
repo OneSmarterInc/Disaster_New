@@ -29,7 +29,12 @@ assert.doesNotMatch(js, /state\.conversation\.length===0\?brief\.starters:\[\]/)
 assert.doesNotMatch(js, /Do providers receive confirmation that a claim arrived/i);
 assert.doesNotMatch(js, /receipt log stopped/i);
 assert.doesNotMatch(js, /Suggestions update as you ask/);
-assert.match(js, /composer=`[^`]*appointment-exit/s, 'End interview must be rendered directly in the composer');
+const interviewStart = js.indexOf('function renderInterview()');
+const composerStart = js.indexOf('composer=`<div class="composer">', interviewStart);
+const exitInComposer = js.indexOf('<div class="appointment-exit">', composerStart);
+const renderCall = js.indexOf(';shell(2,head,content,composer)', composerStart);
+assert.ok(interviewStart >= 0 && composerStart > interviewStart && exitInComposer > composerStart && exitInComposer < renderCall,
+  'End interview must be rendered directly in the composer');
 
 // Observation is 1x for participants. Speed controls exist only in explicit faculty/testing mode.
 assert.match(js, /function isFaculty\(\)\{return urlParam\('faculty'\)==='1'\}/);
