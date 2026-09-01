@@ -82,10 +82,10 @@ async function reportTranscript({ launch, envelope }) {
 // administrator decides — and thereafter only refreshes the technical facts,
 // leaving anything they have edited alone.
 //
-// Returns a promise. A serverless function can be frozen the moment it
-// responds, so anything fire-and-forget may never leave the machine — the
-// completion report had exactly this fault. Callers that can afford to wait
-// should await it; it happens once per cold start and costs one round trip.
+// Registration is best-effort and must never become a participant-facing
+// failure. If the platform is temporarily slow or unavailable, clear the
+// cold-start latch so the next request can retry rather than pinning a rejected
+// promise for the lifetime of the function instance.
 let announced = null;
 function announce(meta, selfUrl) {
   if (announced) return announced;
@@ -102,8 +102,6 @@ function announce(meta, selfUrl) {
     catalogueRevision: meta.catalogueRevision || null,
     replaces: Array.isArray(meta.replaces) ? meta.replaces.slice(0, 5) : [],
     detail: meta.detail || null,
-    // The platform appends the launch token to this address. A trailing slash
-    // creates a different route when the sim is mounted below /sim03.
     launchUrl: String(selfUrl || '').replace(/\/+$/, ''),
     iat: Date.now(),
     exp: Date.now() + 5 * 60000
@@ -115,9 +113,18 @@ function announce(meta, selfUrl) {
     body: JSON.stringify({ token }),
     signal: AbortSignal.timeout(6000)
   }).then(async (r) => {
-    if (r.ok) console.log('announced', meta.id, 'to', base);
-    else console.error('announce refused', r.status, await r.text().catch(() => ''));
-  }).catch(e => console.error('announce failed', e.message));
+    if (r.ok) {
+      console.log('announced', meta.id, 'to', base);
+      return;
+    }
+    announced = null;
+    console.warn('announce deferred; platform refused registration', r.status);
+  }).catch((e) => {
+    announced = null;
+    const timedOut = /timeout|aborted/i.test(String(e && e.message));
+    if (timedOut) console.warn('announce deferred; platform registration timed out');
+    else console.warn('announce deferred; platform registration failed', e && e.message);
+  });
   return announced;
 }
 
