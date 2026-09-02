@@ -48,17 +48,18 @@
    simulation-detail layout used by the faculty console. The selectors are
    intentionally scoped to the catalogue's Flexee header and #app container. */
 .flexee-site-header ~ .wrap#app{padding-bottom:48px}
+.flexee-site-header ~ .wrap#app .hero .eyebrow,
+.flexee-site-header ~ .wrap#app .hero h1{display:none}
 .flexee-site-header ~ .wrap#app .hero{
-  padding:28px 0 20px;
-  margin-bottom:18px;
+  padding:20px 0 16px;
+  margin-bottom:16px;
 }
-.flexee-site-header ~ .wrap#app .hero h1{margin:4px 0 10px}
 .flexee-site-header ~ .wrap#app .hero p{
   line-height:1.5;
   margin-bottom:5px;
 }
 .flexee-site-header ~ .wrap#app .section-head{
-  margin:28px 0 12px;
+  margin:24px 0 12px;
   padding-bottom:9px;
 }
 .flexee-site-header ~ .wrap#app .section-head:first-of-type{margin-top:0}
@@ -71,11 +72,11 @@
 
   .flexee-site-header ~ .wrap#app{padding-bottom:36px}
   .flexee-site-header ~ .wrap#app .hero{
-    padding:22px 0 16px;
-    margin-bottom:14px;
+    padding:16px 0 13px;
+    margin-bottom:12px;
   }
   .flexee-site-header ~ .wrap#app .section-head{
-    margin:22px 0 10px;
+    margin:18px 0 10px;
     padding-bottom:8px;
   }
   .flexee-site-header ~ .wrap#app .section-head:first-of-type{margin-top:0}
