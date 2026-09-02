@@ -44,9 +44,39 @@
 .box .line b{font-weight:500;text-align:right}
 .box p{font-size:14px;color:var(--ink2);margin-bottom:12px;line-height:1.55}
 
+/* Keep the public RapidSims catalogue compact without changing the shared
+   simulation-detail layout used by the faculty console. The selectors are
+   intentionally scoped to the catalogue's Flexee header and #app container. */
+.flexee-site-header ~ .wrap#app{padding-bottom:48px}
+.flexee-site-header ~ .wrap#app .hero{
+  padding:28px 0 20px;
+  margin-bottom:18px;
+}
+.flexee-site-header ~ .wrap#app .hero h1{margin:4px 0 10px}
+.flexee-site-header ~ .wrap#app .hero p{
+  line-height:1.5;
+  margin-bottom:5px;
+}
+.flexee-site-header ~ .wrap#app .section-head{
+  margin:28px 0 12px;
+  padding-bottom:9px;
+}
+.flexee-site-header ~ .wrap#app .section-head:first-of-type{margin-top:0}
+
 @media (max-width:880px){
   .two{grid-template-columns:1fr;gap:28px}
   .side{position:static}
   .sim-head h1{font-size:32px}
   .sim-head .tag{font-size:17px}
+
+  .flexee-site-header ~ .wrap#app{padding-bottom:36px}
+  .flexee-site-header ~ .wrap#app .hero{
+    padding:22px 0 16px;
+    margin-bottom:14px;
+  }
+  .flexee-site-header ~ .wrap#app .section-head{
+    margin:22px 0 10px;
+    padding-bottom:8px;
+  }
+  .flexee-site-header ~ .wrap#app .section-head:first-of-type{margin-top:0}
 }
