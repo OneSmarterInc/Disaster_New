@@ -10,7 +10,7 @@
 // at this from inside their own console already has access.
 (function () {
   const esc = (s) => String(s == null ? '' : s)
-    .replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    .replace(/[&<>\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));
 
   function simDetailHTML(s, opts) {
     const o = opts || {};
@@ -85,4 +85,55 @@
   }
 
   window.simDetailHTML = simDetailHTML;
+})();
+
+// The public catalogue is rendered only after its API request completes. Native
+// hash navigation therefore runs before #rapidsimPlus exists, and the catalogue's
+// render function then resets the page to the top. Wait for the dynamic section
+// and scroll after that render has finished, leaving enough room for the sticky
+// Flexee header.
+(function setupRapidSimsPlusHashNavigation() {
+  const targetHash = '#rapidsimPlus';
+  let observer = null;
+
+  function scrollToTarget() {
+    if (window.location.hash !== targetHash) return false;
+
+    const target = document.getElementById('rapidsimPlus');
+    if (!target) return false;
+
+    const header = document.querySelector('.flexee-site-header');
+    const headerHeight = header ? header.getBoundingClientRect().height : 0;
+    const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 18;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+    return true;
+  }
+
+  function tryAfterRender() {
+    window.requestAnimationFrame(() => {
+      if (scrollToTarget() && observer) {
+        observer.disconnect();
+        observer = null;
+      }
+    });
+  }
+
+  function start() {
+    if (window.location.hash !== targetHash) {
+      window.addEventListener('hashchange', tryAfterRender);
+      return;
+    }
+
+    if (scrollToTarget()) return;
+
+    observer = new MutationObserver(tryAfterRender);
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('hashchange', tryAfterRender);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
 })();
