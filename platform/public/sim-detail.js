@@ -10,7 +10,7 @@
 // at this from inside their own console already has access.
 (function () {
   const esc = (s) => String(s == null ? '' : s)
-    .replace(/[&<>\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));
+    .replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   function simDetailHTML(s, opts) {
     const o = opts || {};
