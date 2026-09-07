@@ -48,7 +48,7 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .notice{border-left:2px solid var(--amber);padding:11px 14px;background:rgba(240,166,60,.05);color:#CBC8C0;margin:18px 0}.error{border-left-color:var(--red);color:#E3B9C2}
 .hidden{display:none!important}
 @media(max-width:760px){.page{width:min(100% - 26px,980px);padding-top:34px}h2{font-size:31px}.alloc-wrap{grid-template-columns:1fr}.budget{position:static}.events,.buyers,.summary{grid-template-columns:1fr}.running{grid-template-columns:repeat(2,1fr)}header{padding:11px 14px}.pills{order:3;width:100%}.joinbox .row{grid-template-columns:1fr}}
-@media print{header,.actions,.team{display:none}.page{width:100%;padding:0}body{background:white;color:black}.card,.outcome,.run-cell{background:white;border-color:#aaa;color:black}}
+@media print{header,.actions,.team{display:none!important}.page{width:100%!important;padding:0!important}body{background:#fff!important;background-image:none!important;color:#000!important}.page,.page *{color:#000!important}.card,.outcome,.run-cell,.mini div{background:#fff!important;border-color:#999!important;color:#000!important}.eyebrow,.hint,.run-cell .k,.mini span{color:#222!important}.card,.outcome{break-inside:avoid}.summary{break-inside:avoid}}
 </style>
 </head>
 <body>
@@ -73,7 +73,7 @@ let C=null;
 const S={
   step:0, strategicView:'', year1:null, year2:null,
   year1Outcome:null, year2Outcome:null, allOutcomes:null,
-  reflection1:'',reflection2:'',finished:false,
+  reflection1:'',reflection2:'',finished:false,year2Event:0,
   sessionCode:INITIAL_SESSION,participantId:localStorage.getItem('m03-pid')||'',
   session:null,me:null,mates:[],canSubmit:true,teamRun:null,
   poll:null,error:''
@@ -214,7 +214,6 @@ function renderBrief(){
 function renderPosition(){
   shell(`<div class="eyebrow">Your position</div><h2>You run technology at Midland.</h2><p class="lede">${esc(C.position)}</p>
   <div class="rule"></div><div class="card"><h3>The five lines</h3><p><b>Run</b> keeps the operation functioning now. <b>Uptime</b>, <b>Capacity</b>, <b>Connect</b> and <b>Features</b> are the architecture choices competing for what remains.</p></div>
-  <div class="card" style="margin-top:10px"><h3>The wall</h3><p>Run cannot go below $3M. Each of the other four lines cannot exceed $3M in a year. Your total must be exactly $9M.</p></div>
   ${nav()}`);wireNav(next);
 }
 function renderView(){
@@ -240,7 +239,7 @@ function renderAllocation(year){
   <div class="alloc-wrap"><div class="allocs">${C.lines.map(l=>allocRow(l,a,year)).join('')}</div>
   <aside class="budget"><div class="n">${left}</div><div class="lab">$M remaining</div><div class="total">Allocated: <b>$${used}M</b> of $9M<br>Submit unlocks only at exactly $9M.</div></aside></div>
   ${!S.canSubmit&&S.session?.mode==='team'?`<div class="locked">Read-only team view. ${S.teamRun?.[key]?'The captain has committed this allocation.':'Waiting for the captain to commit.'}</div>`:''}
-  ${nav({nextLabel:left===0?(S.canSubmit?`Commit Year ${year}`:'Continue with team allocation'):'Allocate all $9M',disabled:blocked()||left!==0||(!S.canSubmit&&!S.teamRun?.[key])})}`);
+  ${nav({backOk:year===1,nextLabel:left===0?(S.canSubmit?`Commit Year ${year}`:'Continue with team allocation'):'Allocate all $9M',disabled:blocked()||left!==0||(!S.canSubmit&&!S.teamRun?.[key])})}`);
   document.querySelectorAll('.step').forEach(b=>b.onclick=()=>changeAlloc(key,b.dataset.line,Number(b.dataset.delta)));
   wireNav(async()=>{
     const v=validateClient(S[key]);if(v)return alert(v);
@@ -255,7 +254,7 @@ function renderAllocation(year){
 function allocRow(l,a,key){
   const n=a[l.id],min=l.id==='run'?3:0,max=l.id==='run'?9:3;
   const readOnly=!S.canSubmit&&S.session?.mode==='team';
-  return `<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${l.id==='run'?'minimum 3 · no upper cap':'maximum 3 per year'}</div></div><div class="stepper">
+  return `<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${l.id==='run'?'<span title="Run must stay at $3M or more to keep current operations functioning." aria-label="Why Run cannot go lower">ⓘ</span>':''}</div></div><div class="stepper">
     <button class="step" data-line="${l.id}" data-delta="-1" ${readOnly||n<=min?'disabled':''}>−</button>
     <div class="amount">${n}<small> M</small></div>
     <button class="step" data-line="${l.id}" data-delta="1" ${readOnly||n>=max?'disabled':''}>+</button></div></div>`;
@@ -281,18 +280,23 @@ function renderYear1Outcome(){
   const o=S.year1Outcome;
   shell(`<div class="eyebrow">Year 1 outcome</div><h2>The first consequence arrives.</h2>
   ${runningHTML(S.year1,'Year 1 portfolio')}
-  ${o?`<div class="outcome"><div class="band">${esc(o.band)}</div><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Outcome not loaded. Return to Year 1 and recommit.',true)}
-  ${nav()}`);wireNav(next);
+  ${o?`<div class="outcome"><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Outcome not loaded. Return to Year 1 and recommit.',true)}
+  ${nav({backOk:false})}`);wireNav(next,false);
 }
 function renderYear2Events(){
   const o=S.year2Outcome;
   const cum=S.year1&&S.year2?runningTotals(S.year1,S.year2):null;
+  const first=o?`<div class="outcome"><h3>${esc(o.heat.title)}</h3><p>${esc(o.heat.narrative)}</p></div>`:'';
+  const second=o?`<div class="outcome"><h3>${esc(o.competitor.title)}</h3><p>${esc(o.competitor.narrative)}</p></div>`:'';
   shell(`<div class="eyebrow">Year 2 outcomes</div><h2>Two events resolve in sequence.</h2>${cum?runningHTML(cum,'Cumulative portfolio'):''}
-  ${o?`<div class="events"><div class="outcome"><div class="band">${esc(o.heat.band)}</div><h3>${esc(o.heat.title)}</h3><p>${esc(o.heat.narrative)}</p></div>
-  <div class="outcome"><div class="band">${esc(o.competitor.band)}</div><h3>${esc(o.competitor.title)}</h3><p>${esc(o.competitor.narrative)}</p></div></div>`:notice('Outcome not loaded. Return to Year 2 and recommit.',true)}
-  ${nav({nextLabel:'Go to Year 3'})}`);wireNav(async()=>{
+  ${o?`<div class="events" style="grid-template-columns:1fr">${first}${S.year2Event>=1?second:''}</div>`:notice('Outcome not loaded. Return to Year 2 and recommit.',true)}
+  ${S.year2Event<1
+    ? nav({backOk:false,nextLabel:'Continue to the second event'})
+    : nav({backOk:false,nextLabel:'Go to Year 3'})}`);
+  if(S.year2Event<1){wireNav(()=>{S.year2Event=1;render()},false);return}
+  wireNav(async()=>{
     try{const d=await request('/api/outcome',{stage:'all',year1:S.year1,year2:S.year2,sessionCode:S.sessionCode,participantId:S.participantId});S.allOutcomes=d.outcome;next()}catch(e){alert(e.message)}
-  });
+  },false);
 }
 function renderYear3(){
   const o=S.allOutcomes?.year3;
@@ -300,9 +304,9 @@ function renderYear3(){
   shell(`<div class="eyebrow">Year 3 · no allocation</div><h2>You do not get another move.</h2>
   <p class="lede">The CEO wants AI failure prediction. The architecture you funded is now the architecture you have.</p>
   ${cum?runningHTML(cum,'Cumulative portfolio'):''}
-  ${o?`<div class="outcome"><div class="band">${esc(o.band)}</div><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Year 3 outcome is unavailable.',true)}
+  ${o?`<div class="outcome"><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Year 3 outcome is unavailable.',true)}
   ${o?.band==='unresolved_calibration'?notice('This is a known authored-calibration gap, not a random failure. The instructor view flags the run.') : ''}
-  ${nav({nextLabel:'See the three buyers'})}`);wireNav(next);
+  ${nav({backOk:false,nextLabel:'See the three buyers'})}`);wireNav(next,false);
 }
 function renderBuyers(){
   const cum=S.allOutcomes?.year3?.cumulative||runningTotals(S.year1,S.year2);
@@ -312,17 +316,26 @@ function renderBuyers(){
   <div class="buyer"><h3>Buyer 2</h3><div class="value">Valuation pending authored rule</div><p>No value is invented in the application. This content must be authored before publication.</p></div>
   <div class="buyer"><h3>Buyer 3</h3><div class="value">Valuation pending authored rule</div><p>The instructor can still debrief the portfolio; this screen remains visibly incomplete until the valuation rules are supplied.</p></div></div>
   ${notice('No winner is declared. The missing valuation content is deliberately not fabricated.')}
-  ${nav()}`);wireNav(next);
+  ${nav({backOk:false})}`);wireNav(next,false);
 }
 function renderClose(){
+  if(S.finished){
+    shell(`<div class="eyebrow">Your summary</div><h2>What you chose, and what you would change.</h2>
+    <div class="summary"><div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
+    <div class="card"><h3>Your Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div></div>
+    <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(S.reflection1||'—')}</p></div>
+    <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[1])}</h3><p style="white-space:pre-wrap">${esc(S.reflection2||'—')}</p></div>
+    ${notice('Run complete. This summary is ready to screenshot or print to PDF.')}
+    <div class="actions"><button class="btn pri" id="printBtn">Print / save PDF</button></div>`);
+    document.getElementById('printBtn').onclick=()=>window.print();
+    return;
+  }
   shell(`<div class="eyebrow">Close</div><h2>Return to what you believed before the consequences.</h2>
   <div class="summary"><div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
   <div class="card"><h3>Your Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div></div>
   <div class="field"><label>${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(S.reflection1)}</textarea></div>
   <div class="field"><label>${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea></div>
-  ${S.finished?notice('Run complete. You can print or screenshot this summary.'):''}
-  <div class="actions"><button class="btn" id="backBtn">Back</button><button class="btn pri" id="finishBtn" ${S.finished?'disabled':''}>${S.finished?'Completed':'Complete run'}</button><button class="btn" onclick="window.print()">Print / save</button></div>`);
-  document.getElementById('backBtn').onclick=back;
+  <div class="actions"><button class="btn pri" id="finishBtn">Complete run</button></div>`);
   document.getElementById('finishBtn').onclick=finish;
 }
 function miniAlloc(a){return `<div class="mini">${C.lines.map(l=>`<div><b>${a[l.id]}</b><span>${esc(l.label)}</span></div>`).join('')}</div>`}
