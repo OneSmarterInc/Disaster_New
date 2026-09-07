@@ -74,7 +74,7 @@ function acting(btn, working) {
   return (msg, kind) => { btn.disabled = false; btn.textContent = was; if (msg) flash(btn, msg, kind); };
 }
 
-const PER_PAGE = 25;
+const PER_PAGE = 10;
 function paged(key, rows) {
   const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const p = Math.min(Math.max(1, D.page[key] || 1), pages);
@@ -430,6 +430,7 @@ function catTab() {
   const rapid = matching.filter(si => (Number(si.minutes) || 0) < 60);
   const rapidPlus = matching.filter(si => (Number(si.minutes) || 0) >= 60);
   const list = rapid.concat(rapidPlus);
+  const P = paged('cat', list);
   return `
     ${toolbar('cat','Search simulations',['All','Published','Draft'],
       `<button class="btn" id="chk">Check all</button>
@@ -461,10 +462,12 @@ function catTab() {
       <div style="margin-top:10px"><button class="btn sm" id="chkdone">Done</button></div>
     </div></div>` : ''}
     <div class="panel">
-    ${list.length ? list.map((si, index) => {
+    ${P.rows.length ? P.rows.map((si, index) => {
       const revs = (D.grants || []).filter(g => g.sim_id === si.id);
       const plus = (Number(si.minutes) || 0) >= 60;
-      const beginsLine = index === 0 || (index === rapid.length && rapidPlus.length);
+      const prev = index > 0 ? P.rows[index - 1] : null;
+      const prevPlus = prev ? (Number(prev.minutes) || 0) >= 60 : null;
+      const beginsLine = index === 0 || prevPlus !== plus;
       const lineHead = beginsLine ? `<div class="section" style="padding:14px 18px;margin:0;border-top:${index ? '1px solid var(--line)' : '0'}">
         <span>${plus ? 'RapidSims+' : 'RapidSims'} <span class="count">${plus ? rapidPlus.length : rapid.length}</span></span>
         <span class="sub">${plus ? 'Longer investigations' : 'Twenty-minute decisions'}</span>
@@ -564,6 +567,7 @@ function catTab() {
         </div>
       </div>`;
     }).join('') : `<div class="empty">${all.length ? 'Nothing matches that.' : 'Nothing yet. A simulation appears here the first time its deployment is used.'}</div>`}
+      ${foot('cat', P, 'simulation')}
     </div>
 
     <div class="section" style="margin:22px 0 0">
@@ -839,14 +843,16 @@ function renderDetail() {
     </div>
 
     ${courses.length ? `
-      ${students.filter(s => !s.dropped).length > 6 ? `<div class="toolbar">
+      ${students.filter(s => !s.dropped).length ? `<div class="toolbar admin-detail-toolbar">
         <div class="search"><input data-q="det" type="text" placeholder="Search this facilitator's students" value="${esc(D.q.det||'')}"></div>
       </div>` : ''}
       ${courses.map(c => {
         const sims = courseSims.filter(cs => cs.course_id === c.id);
-        const inCourse = students.filter(s => s.course_id === c.id && !s.dropped)
+        const matchingStudents = students.filter(s => s.course_id === c.id && !s.dropped)
           .filter(s => !q || [s.name, s.email].join(' ').toLowerCase().includes(q));
-        return `<div class="cbox">
+        const coursePage = paged('det_' + c.id, matchingStudents);
+        const inCourse = coursePage.rows;
+        return `<div class="cbox admin-detail-course">
           <div class="chead">
             <div><b>${esc(c.title)}</b><div class="sub">${esc(c.term||'no term')} · join code ${esc(c.join_code)}</div></div>
             <div class="meta">${sims.length ? esc(sims.map(x => x.title).join(', ')) : '<span class="dim">no simulations yet</span>'}</div>
@@ -858,7 +864,7 @@ function renderDetail() {
               <td data-l="Access">${dot(s.paid?'ok':'warn', s.paid?'released':'waiting')}</td>
               <td data-l="Note" class="meta">${s.paid_note ? esc(s.paid_note) : '<span class="dim">—</span>'}</td>
               <td data-l="Played" class="num">${s.launches}</td>
-            </tr>`).join('')}</tbody></table></div>`
+            </tr>`).join('')}</tbody></table></div>${foot('det_' + c.id, coursePage, 'student')}`
             : `<div class="empty">${q ? 'Nobody in this course matches that.' : 'Nobody enrolled yet.'}</div>`}
         </div>`;
       }).join('')}`
@@ -946,7 +952,9 @@ function wireCommon() {
   wireHelp();
   app.querySelectorAll('[data-q]').forEach(i => i.oninput = () => {
     const k = i.dataset.q;
-    D.q[k] = i.value; D.page[k] = 1; render();
+    D.q[k] = i.value; D.page[k] = 1;
+    if (k === 'det') Object.keys(D.page).filter(x => x.startsWith('det_')).forEach(x => { D.page[x] = 1; });
+    render();
     const again = app.querySelector(`[data-q="${k}"]`);
     if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
   });

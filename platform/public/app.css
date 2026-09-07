@@ -465,3 +465,15 @@ body.sheet-open{overflow:hidden}
   .faculty-run-activity{margin-top:2px}
   .faculty-pager{width:100%;justify-content:flex-end;margin-left:0;flex-wrap:wrap}
 }
+
+
+/* admin/student console polish — same Flexee theme */
+.admin-detail-toolbar{margin-bottom:12px}
+.admin-detail-course{margin-bottom:14px}
+.admin-detail-course .chead{background:var(--sunk);padding:14px 16px}
+.admin-detail-course .chead b{font-size:16px;font-weight:500}
+.admin-detail-course .foot{border-top:1px solid var(--line)}
+body.console .panel > .foot:last-child{border-bottom:0}
+@media(max-width:820px){
+  .admin-detail-course .chead{align-items:flex-start}
+}
