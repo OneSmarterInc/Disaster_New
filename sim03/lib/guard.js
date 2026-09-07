@@ -31,8 +31,19 @@ function checkAccess(req, res) {
     req.launch = p;
     return true;
   }
+
+  // Midland is intentionally closed to anonymous direct traffic. If the
+  // standalone code has not been configured yet, fail closed rather than
+  // accidentally treating the deployment as public. Platform launches remain
+  // unaffected because their signed token is checked above.
   const required = process.env.ACCESS_CODE;
-  if (!required) return true;
+  if (!required) {
+    res.status(503).json({
+      error: 'access_code_not_configured',
+      message: 'Standalone access is not configured. Launch this simulation from RapidSims or ask the administrator.'
+    });
+    return false;
+  }
   if (req.headers['x-access-code'] !== required) {
     res.status(401).json({ error: 'access_code_required' });
     return false;
