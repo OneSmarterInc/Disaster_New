@@ -140,7 +140,14 @@ module.exports = async (req, res) => {
         const roster = await s`
           SELECT e.id AS enrolment_id, e.paid, e.paid_at, e.paid_note, e.dropped, e.created_at,
                  u.id AS student_id, u.name, u.email, u.last_seen_at,
-                 (SELECT count(*) FROM launches l WHERE l.user_id = u.id AND l.course_id = e.course_id) AS launches
+                 (SELECT count(DISTINCT l.sim_id) FROM launches l
+                   WHERE l.user_id = u.id AND l.course_id = e.course_id AND l.as_role = 'student') AS started,
+                 (SELECT count(DISTINCT c2.sim_id) FROM completions c2
+                   WHERE c2.user_id = u.id
+                     AND (c2.course_id = e.course_id OR (c2.course_id IS NULL AND EXISTS (
+                       SELECT 1 FROM launches l2 WHERE l2.user_id = u.id AND l2.course_id = e.course_id
+                         AND l2.sim_id = c2.sim_id AND l2.as_role = 'student'
+                     )))) AS finished
           FROM enrolments e JOIN users u ON u.id = e.student_id
           WHERE e.course_id = ${course.id}
           ORDER BY e.dropped, u.name`;
@@ -148,6 +155,57 @@ module.exports = async (req, res) => {
         return res.status(200).json({
           course, sims, roster, catalogue,
           enrolUrl: `${baseUrl(req)}/join.html?c=${course.join_code}`
+        });
+      }
+
+      // Student-centric progress across every simulation in one course. This is
+      // intentionally lazy-loaded from the roster so a large class does not pull every
+      // completion/transcript until the faculty member asks to see one student.
+      case 'student_results': {
+        await ensureTranscripts(s);
+        const course = await ownCourse(s, me.id, String(b.courseId || ''));
+        if (!course) return res.status(404).json({ error: 'no_such_course' });
+        const studentId = String(b.studentId || '');
+        const enrol = (await s`
+          SELECT e.*, u.name, u.email FROM enrolments e
+          JOIN users u ON u.id = e.student_id
+          WHERE e.course_id = ${course.id} AND e.student_id = ${studentId}`)[0];
+        if (!enrol) return res.status(404).json({ error: 'no_such_student' });
+
+        const rows = await s`
+          SELECT si.id AS sim_id, si.number, si.title, si.minutes,
+                 (SELECT count(*) FROM launches l
+                   WHERE l.user_id = ${studentId} AND l.course_id = ${course.id}
+                     AND l.sim_id = si.id AND l.as_role = 'student') AS starts,
+                 (SELECT count(*) FROM completions c3
+                   WHERE c3.user_id = ${studentId} AND c3.sim_id = si.id
+                     AND (c3.course_id = ${course.id} OR (c3.course_id IS NULL AND EXISTS (
+                       SELECT 1 FROM launches l3 WHERE l3.user_id = ${studentId}
+                         AND l3.course_id = ${course.id} AND l3.sim_id = si.id AND l3.as_role = 'student'
+                     )))) AS completions,
+                 cp.completed_at, cp.duration_seconds, cp.summary, cp.metrics,
+                 tr.recorded_at AS transcript_recorded_at, tr.envelope AS transcript
+          FROM course_sims cs
+          JOIN sims si ON si.id = cs.sim_id
+          LEFT JOIN LATERAL (
+            SELECT * FROM completions c2
+            WHERE c2.user_id = ${studentId} AND c2.sim_id = si.id
+              AND (c2.course_id = ${course.id} OR c2.course_id IS NULL)
+            ORDER BY (c2.course_id = ${course.id}) DESC, c2.completed_at DESC LIMIT 1
+          ) cp ON true
+          LEFT JOIN LATERAL (
+            SELECT recorded_at, envelope FROM transcripts t
+            WHERE t.user_id = ${studentId} AND t.sim_id = si.id
+              AND (t.course_id = ${course.id} OR t.course_id IS NULL)
+            ORDER BY (t.course_id = ${course.id}) DESC, t.recorded_at DESC LIMIT 1
+          ) tr ON true
+          WHERE cs.course_id = ${course.id}
+          ORDER BY si.number NULLS LAST, cs.added_at`;
+
+        return res.status(200).json({
+          course: { id: course.id, title: course.title },
+          student: { id: enrol.student_id, name: enrol.name, email: enrol.email, dropped: enrol.dropped },
+          rows
         });
       }
 
