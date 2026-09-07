@@ -14,6 +14,8 @@ assert(facultyApi.includes('count(DISTINCT c2.sim_id)'), 'student-wise finished 
 assert(facultyApi.includes('cp.summary, cp.metrics'), 'student results do not include completion summary/metrics');
 assert(facultyApi.includes('tr.envelope AS transcript'), 'student results do not include available transcripts');
 assert(facultyApi.includes("AND l.as_role = 'student'"), 'faculty/preview launches can leak into student counts');
+assert(facultyHtml.split('async function openStudentResults(').length - 1 === 1, 'openStudentResults must be defined exactly once');
+assert(facultyApi.includes("c2.course_id IS NULL AND EXISTS"), 'legacy null-course completions are not tied to a real course launch');
 
 for (const marker of [
   '<th class="num">Started</th>',

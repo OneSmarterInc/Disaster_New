@@ -95,13 +95,19 @@ module.exports = async (req, res) => {
           LEFT JOIN LATERAL (
             SELECT * FROM completions c2
             WHERE c2.user_id = u.id AND c2.sim_id = ${simId}
-              AND (c2.course_id = ${course.id} OR c2.course_id IS NULL)
+              AND (c2.course_id = ${course.id} OR (c2.course_id IS NULL AND EXISTS (
+                SELECT 1 FROM launches lx WHERE lx.user_id = u.id AND lx.course_id = ${course.id}
+                  AND lx.sim_id = ${simId} AND lx.as_role = 'student'
+              )))
             ORDER BY (c2.course_id = ${course.id}) DESC, c2.completed_at DESC LIMIT 1
           ) cp ON true
           LEFT JOIN LATERAL (
             SELECT recorded_at, envelope FROM transcripts t
             WHERE t.user_id = u.id AND t.sim_id = ${simId}
-              AND (t.course_id = ${course.id} OR t.course_id IS NULL)
+              AND (t.course_id = ${course.id} OR (t.course_id IS NULL AND EXISTS (
+                SELECT 1 FROM launches lxt WHERE lxt.user_id = u.id AND lxt.course_id = ${course.id}
+                  AND lxt.sim_id = ${simId} AND lxt.as_role = 'student'
+              )))
             ORDER BY (t.course_id = ${course.id}) DESC, t.recorded_at DESC LIMIT 1
           ) tr ON true
           WHERE e.course_id = ${course.id}
@@ -190,13 +196,19 @@ module.exports = async (req, res) => {
           LEFT JOIN LATERAL (
             SELECT * FROM completions c2
             WHERE c2.user_id = ${studentId} AND c2.sim_id = si.id
-              AND (c2.course_id = ${course.id} OR c2.course_id IS NULL)
+              AND (c2.course_id = ${course.id} OR (c2.course_id IS NULL AND EXISTS (
+                SELECT 1 FROM launches l4 WHERE l4.user_id = ${studentId} AND l4.course_id = ${course.id}
+                  AND l4.sim_id = si.id AND l4.as_role = 'student'
+              )))
             ORDER BY (c2.course_id = ${course.id}) DESC, c2.completed_at DESC LIMIT 1
           ) cp ON true
           LEFT JOIN LATERAL (
             SELECT recorded_at, envelope FROM transcripts t
             WHERE t.user_id = ${studentId} AND t.sim_id = si.id
-              AND (t.course_id = ${course.id} OR t.course_id IS NULL)
+              AND (t.course_id = ${course.id} OR (t.course_id IS NULL AND EXISTS (
+                SELECT 1 FROM launches l5 WHERE l5.user_id = ${studentId} AND l5.course_id = ${course.id}
+                  AND l5.sim_id = si.id AND l5.as_role = 'student'
+              )))
             ORDER BY (t.course_id = ${course.id}) DESC, t.recorded_at DESC LIMIT 1
           ) tr ON true
           WHERE cs.course_id = ${course.id}
