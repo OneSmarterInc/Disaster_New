@@ -39,7 +39,9 @@ assert.equal(S.evaluateYear3(weak3a, weak3b).band, 'weak');
 
 const gapA = valid({ run: 3, uptime: 1, capacity: 0, connect: 3, features: 2 });
 const gapB = valid({ run: 3, uptime: 1, capacity: 1, connect: 2, features: 2 });
-assert.equal(S.evaluateYear3(gapA, gapB).band, 'unresolved_calibration');
+const gap3 = S.evaluateYear3(gapA, gapB);
+assert.equal(gap3.band, 'pilot');
+assert.equal(gap3.calibrationGap, true);
 
 // Retuning must keep values between thresholds in the intended middle band.
 const raisedYear1 = { ...S.DEFAULT_THRESHOLDS, year1ConnectStrong: 3 };

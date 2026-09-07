@@ -88,6 +88,7 @@ function publicRun(run) {
     reflection2: run.reflection2 || '',
     outcomes: run.outcomes || null,
     done: !!run.done,
+    finishedBy: run.finishedBy || {},
     updatedAt: run.updatedAt || null
   };
 }
@@ -181,24 +182,53 @@ module.exports = async (req, res) => {
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
         if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
-        if (sess.state !== 'lobby') {
-          return res.status(409).json({ error: 'session_already_started', message: 'Team assignments lock when the session starts.' });
-        }
 
         const participants = await store.getParticipants(code);
+        const previousCaptains = {};
+        for (const p of Object.values(participants)) if (p && p.groupId && p.isCaptain) previousCaptains[p.groupId] = p.id;
         const rawAssign = b.assign && typeof b.assign === 'object' ? b.assign : {};
         for (const p of Object.values(participants)) {
           if (!p || !Object.prototype.hasOwnProperty.call(rawAssign, p.id)) continue;
-          const gid = String(rawAssign[p.id] || '').trim().slice(0, 40);
-          p.groupId = gid || null;
+          const label = String(rawAssign[p.id] || '').trim().slice(0, 40);
+          if (label.startsWith('team:')) {
+            const target = Object.values(participants).find(x => x && x.groupId === label);
+            p.groupId = label;
+            p.teamLabel = target ? (target.teamLabel || label.slice(5)) : label.slice(5);
+          } else if (label === '__solo__' || !label) {
+            p.groupId = `solo:${p.id}`;
+            p.teamLabel = p.name;
+          } else {
+            const norm = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+            p.groupId = norm ? `team:${norm}` : `solo:${p.id}`;
+            p.teamLabel = label || p.name;
+          }
         }
-        const caps = captainMap(participants, b.captains || {});
+        const caps = captainMap(participants, { ...previousCaptains, ...(b.captains || {}) });
         for (const p of Object.values(participants)) {
           if (!p) continue;
           p.isCaptain = !!(p.groupId && caps[p.groupId] === p.id);
           await store.setParticipant(code, p.id, p);
         }
         return res.status(200).json({ ok: true, captains: caps });
+      }
+
+      case 'set_captain': {
+        const who = whoIsFaculty(req, b);
+        if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
+        const sess = await store.getSession(code);
+        if (!sess) return res.status(404).json({ error: 'no_such_session' });
+        if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
+        if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
+        const participants = await store.getParticipants(code);
+        const pid = String(b.participantId || '');
+        const chosen = participants[pid];
+        if (!chosen || !chosen.groupId) return res.status(404).json({ error: 'no_such_participant' });
+        for (const p of Object.values(participants)) {
+          if (!p || p.groupId !== chosen.groupId) continue;
+          p.isCaptain = p.id === pid;
+          await store.setParticipant(code, p.id, p);
+        }
+        return res.status(200).json({ ok: true, groupId: chosen.groupId, captainId: pid });
       }
 
       case 'control': {
@@ -209,17 +239,6 @@ module.exports = async (req, res) => {
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
 
         if (b.set === 'start') {
-          if (sess.mode === 'team') {
-            const participants = await store.getParticipants(code);
-            const unassigned = Object.values(participants).filter(p => p && !p.groupId);
-            if (unassigned.length) {
-              return res.status(409).json({
-                error: 'unassigned_participants',
-                count: unassigned.length,
-                message: 'Every participant must be assigned to a team before starting.'
-              });
-            }
-          }
           sess.state = 'running';
           sess.startedAt = Date.now();
         }
@@ -237,20 +256,37 @@ module.exports = async (req, res) => {
 
         const name = String(b.name || '').slice(0, 60).trim();
         if (!name) return res.status(400).json({ error: 'name_required' });
-        const id = String(b.participantId || '') || newId();
         const all = await store.getParticipants(code);
-        const existing = all[id];
-        if (sess.mode === 'team' && sess.state !== 'lobby' && !existing) {
-          return res.status(409).json({
-            error: 'team_session_already_started',
-            message: 'Team assignments are locked because this session has already started.'
-          });
+        const key = x => String(x || '').trim().toLowerCase();
+        const lt = req.headers['x-launch-token'] || b.launchToken;
+        const launched = lt ? verifyLaunch(String(lt)) : null;
+        let id = launched && launched.sub ? `platform:${launched.sub}` : String(b.participantId || '').trim();
+        if (!id || !all[id]) {
+          const match = Object.values(all).find(p => p && key(p.name) === key(name));
+          id = match ? match.id : (id || newId());
         }
+        const existing = all[id];
+
+        let groupId = existing ? existing.groupId : null;
+        let teamLabel = existing ? (existing.teamLabel || existing.name) : '';
+        if (sess.mode === 'individual') {
+          groupId = `individual:${id}`;
+          teamLabel = name;
+        } else if (!groupId) {
+          const asked = String(b.teamName || '').trim().slice(0, 40);
+          const norm = key(asked).replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+          groupId = norm ? `team:${norm}` : `solo:${id}`;
+          teamLabel = asked || name;
+        }
+
+        const members = Object.values(all).filter(p => p && p.groupId === groupId);
         const participant = {
           id,
           name,
-          groupId: existing ? existing.groupId : (sess.mode === 'individual' ? `individual:${id}` : null),
-          isCaptain: existing ? !!existing.isCaptain : sess.mode === 'individual',
+          groupId,
+          teamLabel,
+          isCaptain: existing ? !!existing.isCaptain
+            : (sess.mode === 'individual' || !members.some(m => m.isCaptain)),
           joinedAt: existing ? existing.joinedAt : Date.now()
         };
         await store.addParticipant(code, id, participant);
@@ -273,12 +309,19 @@ module.exports = async (req, res) => {
         }
         const runs = await store.getRuns(code);
         const rid = runIdFor(sess, me);
+        const rawRun = rid ? runs[rid] : null;
+        const run = publicRun(rawRun);
+        if (run && rawRun && rawRun.reflections && rawRun.reflections[pid]) {
+          run.reflection1 = rawRun.reflections[pid].reflection1 || '';
+          run.reflection2 = rawRun.reflections[pid].reflection2 || '';
+        }
+        if (run && sess.mode === 'team') run.done = !!(rawRun && rawRun.finishedBy && rawRun.finishedBy[pid]);
         return res.status(200).json({
           session: publicSession(sess),
           me,
           mates,
           canSubmit: sess.mode === 'individual' || !!me.isCaptain,
-          run: publicRun(rid ? runs[rid] : null)
+          run
         });
       }
 
@@ -293,12 +336,17 @@ module.exports = async (req, res) => {
         const me = participants[pid];
         if (!me) return res.status(403).json({ error: 'not_joined' });
         if (sess.mode === 'team' && !me.groupId) return res.status(409).json({ error: 'team_not_assigned' });
-        if (sess.mode === 'team' && !me.isCaptain) return res.status(403).json({ error: 'captain_only' });
+        const wantsSharedDecision = b.strategicView !== undefined || b.year1 !== undefined || b.year2 !== undefined;
+        if (sess.mode === 'team' && wantsSharedDecision && !me.isCaptain) {
+          return res.status(403).json({ error: 'captain_only' });
+        }
 
         const rid = runIdFor(sess, me);
         const runs = await store.getRuns(code);
         const current = runs[rid] || { runId: rid, phase: 0, done: false, createdAt: Date.now() };
-        if (current.done) return res.status(409).json({ error: 'run_already_completed' });
+        if (current.done && (wantsSharedDecision || sess.mode === 'individual')) {
+          return res.status(409).json({ error: 'run_already_completed' });
+        }
 
         const next = { ...current };
         if (b.strategicView !== undefined) {
@@ -327,17 +375,37 @@ module.exports = async (req, res) => {
           next.year2 = current.year2 || v.allocation;
           next.phase = Math.max(next.phase || 0, 2);
         }
-        if (b.reflection1 !== undefined) next.reflection1 = String(b.reflection1 || '').slice(0, 1500);
-        if (b.reflection2 !== undefined) next.reflection2 = String(b.reflection2 || '').slice(0, 1500);
+        if (b.reflection1 !== undefined || b.reflection2 !== undefined) {
+          const map = { ...(current.reflections || {}) };
+          const mine = map[pid] || {};
+          map[pid] = {
+            participantId: pid,
+            name: me.name,
+            reflection1: b.reflection1 !== undefined ? String(b.reflection1 || '').slice(0, 1500) : (mine.reflection1 || ''),
+            reflection2: b.reflection2 !== undefined ? String(b.reflection2 || '').slice(0, 1500) : (mine.reflection2 || ''),
+            at: Date.now()
+          };
+          next.reflections = map;
+          if (sess.mode === 'individual' || me.isCaptain) {
+            next.reflection1 = map[pid].reflection1;
+            next.reflection2 = map[pid].reflection2;
+          }
+        }
 
         if (next.year1 && next.year2) {
           next.outcomes = S.evaluateAll(next.year1, next.year2, sess.thresholds);
         }
         if (b.done) {
           if (!next.year1 || !next.year2) return res.status(409).json({ error: 'allocations_incomplete' });
-          next.done = true;
+          if (sess.mode === 'team') {
+            next.finishedBy = { ...(current.finishedBy || {}), [pid]: Date.now() };
+            const members = Object.values(participants).filter(p => p && p.groupId === rid);
+            next.done = members.length > 0 && members.every(m => next.finishedBy[m.id]);
+          } else {
+            next.done = true;
+          }
           next.phase = 3;
-          next.completedAt = Date.now();
+          if (next.done) next.completedAt = Date.now();
         }
         next.updatedAt = Date.now();
         await store.setRun(code, rid, next);

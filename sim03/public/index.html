@@ -74,7 +74,7 @@ let C=null;
 const S={
   step:0, strategicView:'', year1:null, year2:null,
   year1Outcome:null, year2Outcome:null, allOutcomes:null,
-  reflection1:'',reflection2:'',finished:false,year2Event:0,
+  reflection1:'',reflection2:'',finished:false,year2Event:0,viewCommitted:false,
   sessionCode:INITIAL_SESSION,participantId:localStorage.getItem('m03-pid')||'',
   session:null,me:null,mates:[],canSubmit:true,teamRun:null,
   poll:null,error:''
@@ -115,19 +115,24 @@ async function sessionApi(payload){
 }
 
 function shell(content){
-  const pills=STEPS.map((x,i)=>`<span class="pill ${i===S.step?'on':i<S.step?'done':''}">${i+1}. ${x}</span>`).join('');
+  const visibleSteps=STEPS.map((x,i)=>({x,i})).filter(o=>C?.buyers?.authored!==false||o.i!==8);
+  const pills=visibleSteps.map((o,j)=>`<span class="pill ${o.i===S.step?'on':o.i<S.step?'done':''}">${j+1}. ${o.x}</span>`).join('');
   app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">20 MIN</div></header><main class="page">${teamBanner()}${content}</main>`;
 }
 function teamBanner(){
   if(!S.session)return '';
   const mode=S.session.mode==='team'?'Team':'Individual';
-  const mate=S.session.mode==='team'&&S.mates.length?` · ${S.mates.map(x=>esc(x.name)+(x.isCaptain?' (captain)':'')).join(', ')}`:'';
-  const control=S.session.mode==='team'&&!S.canSubmit?'Your team captain commits. Your screen follows the submitted team state.':'You can commit this run.';
-  return `<div class="team"><b>${mode} session ${esc(S.session.code)}</b>${mate}<br>${esc(control)}</div>`;
+  if(S.session.mode!=='team')return `<div class="team"><b>${mode} session ${esc(S.session.code)}</b><br>You can commit this run.</div>`;
+  const teamName=esc(S.me?.teamLabel||'Your team');
+  const roster=S.mates.length?S.mates.map(x=>esc(x.name)+(x.isCaptain?' (captain)':'')).join(' · '):'Waiting for teammates';
+  const commit=S.teamRun?.year1?`Year 1 committed${S.teamRun.updatedAt?' · '+new Date(S.teamRun.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}`:'Year 1 not committed yet';
+  const control=S.canSubmit?'You are the captain and commit the shared allocation.':'Your captain commits the shared allocation.';
+  return `<div class="team"><b>${teamName} · session ${esc(S.session.code)}</b><br>${roster}<br>${esc(commit)} · ${esc(control)}</div>`;
 }
 function notice(msg,bad=false){return `<div class="notice ${bad?'error':''}">${esc(msg)}</div>`}
-function next(){S.step=Math.min(9,S.step+1);render()}
-function back(){S.step=Math.max(0,S.step-1);render()}
+function next(){let n=Math.min(9,S.step+1);if(n===8&&C?.buyers?.authored===false)n=9;S.step=n;render()}
+function back(){let n=Math.max(0,S.step-1);if(n===8&&C?.buyers?.authored===false)n=7;S.step=n;render()}
+function safeToRerender(){const el=document.activeElement;return !el||!['INPUT','TEXTAREA','SELECT'].includes(el.tagName)}
 
 async function init(){
   try{C=await request('/api/config',null,'GET')}
@@ -155,14 +160,16 @@ function renderJoin(){
   ${S.error?notice(S.error,true):''}
   <div class="field"><label>Name</label><input id="joinName" autocomplete="name" placeholder="Your name"></div>
   <div class="field"><label>Session code</label><input id="joinCode" class="mono" maxlength="5" value="${esc(S.sessionCode)}" placeholder="ABCDE"></div>
+  <div class="field"><label>Team name <span class="hint">(team sessions only)</span></label><input id="teamName" maxlength="40" placeholder="Agree a short name with your table"></div>
   <div class="actions"><button class="btn pri" id="joinBtn">Join session</button></div></section>`);
   document.getElementById('joinBtn').onclick=joinSession;
 }
 async function joinSession(){
   const name=document.getElementById('joinName').value.trim();
   const code=document.getElementById('joinCode').value.trim().toUpperCase();
+  const teamName=document.getElementById('teamName')?.value.trim()||'';
   try{
-    const d=await sessionApi({action:'join',code,name,participantId:S.participantId||undefined});
+    const d=await sessionApi({action:'join',code,name,teamName,participantId:S.participantId||undefined});
     S.sessionCode=code;S.participantId=d.participantId;S.session=d.session;S.me=d.me;
     localStorage.setItem('m03-pid',S.participantId);S.error='';
     await pollSession(true);startPolling();render();
@@ -177,14 +184,14 @@ async function pollSession(redraw){
   const changed=JSON.stringify([S.session,S.me,S.mates,S.canSubmit,S.teamRun])!==JSON.stringify([d.session,d.me,d.mates,d.canSubmit,d.run]);
   S.session=d.session;S.me=d.me;S.mates=d.mates||[];S.canSubmit=!!d.canSubmit;S.teamRun=d.run||null;
   if(S.teamRun){
-    if(S.teamRun.strategicView)S.strategicView=S.teamRun.strategicView;
+    if(S.teamRun.strategicView){S.strategicView=S.teamRun.strategicView;S.viewCommitted=true}
     if(S.teamRun.year1)S.year1=S.teamRun.year1;
     if(S.teamRun.year2)S.year2=S.teamRun.year2;
     if(S.teamRun.reflection1)S.reflection1=S.teamRun.reflection1;
     if(S.teamRun.reflection2)S.reflection2=S.teamRun.reflection2;
     if(S.teamRun.outcomes)S.allOutcomes=S.teamRun.outcomes;
   }
-  if(redraw||changed)render();
+  if(redraw||(changed&&safeToRerender()))render();
 }
 function sessionGate(){
   if(!S.session)return '';
@@ -197,7 +204,8 @@ function blocked(){return !!(S.session&&(S.session.state!=='running'||S.session.
 
 async function saveRun(patch){
   if(!S.session)return {ok:true};
-  if(!S.canSubmit)throw new Error('Your team captain commits this choice.');
+  const shared=patch.strategicView!==undefined||patch.year1!==undefined||patch.year2!==undefined;
+  if(!S.canSubmit&&shared)throw new Error('Your team captain commits this choice.');
   return sessionApi({action:'submit',code:S.sessionCode,participantId:S.participantId,...patch});
 }
 function nav({backOk=true,nextLabel='Continue',onNext,disabled=false}={}){
@@ -229,7 +237,8 @@ function renderBrief(){
   <div class="cold">${C.coldOpen.map(x=>`<div class="line">${esc(x)}</div>`).join('')}</div>
   <p class="lede">There is no score, rank, grade or hidden correct allocation. You will find out what happened, not how you "did."</p>
   <p class="hint" style="margin-top:12px">This sim assumes you have read the briefing packet your instructor posted before class.</p>
-  ${sessionGate()}${nav({backOk:false,disabled:blocked()})}`);
+  ${sessionGate()}<div class="actions"><button class="btn" id="joinSessionEntry">Join a facilitated session</button></div>${nav({backOk:false,disabled:blocked()})}`);
+  document.getElementById('joinSessionEntry').onclick=()=>{S.error='';renderJoin()};
   wireNav(next,false);
 }
 function renderPosition(){
@@ -238,14 +247,16 @@ function renderPosition(){
   ${nav()}`);wireNav(next);
 }
 function renderView(){
+  const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome);
   shell(`<div class="eyebrow">Commit a view</div><h2>What should this company become?</h2><p class="lede">Write one sentence before you see the first allocation outcome.</p>
-  <div class="field"><label>Your sentence</label><textarea id="viewText" maxlength="500" placeholder="${esc(C.viewPrompt)}">${esc(S.strategicView)}</textarea><div class="hint">${esc(C.viewDisclosure)}</div></div>
-  ${nav({nextLabel:S.canSubmit?'Commit view':'Waiting for captain',disabled:blocked()||(!S.canSubmit&&!S.teamRun?.strategicView)})}`);
+  <div class="field"><label>Your sentence</label><textarea id="viewText" maxlength="500" placeholder="${esc(C.viewPrompt)}" ${committed?'readonly':''}>${esc(S.strategicView)}</textarea><div class="hint">${committed?'This opening view is already committed.':esc(C.viewDisclosure)}</div></div>
+  ${nav({nextLabel:committed?'Continue':(S.canSubmit?'Commit view':'Waiting for captain'),disabled:blocked()||(!S.canSubmit&&!S.teamRun?.strategicView)})}`);
   wireNav(async()=>{
+    if(committed)return next();
     const v=document.getElementById('viewText').value.trim();
     if(!v)return document.getElementById('viewText').focus();
     S.strategicView=v;
-    try{if(S.canSubmit)await saveRun({strategicView:v});next()}catch(e){alert(e.message)}
+    try{if(S.canSubmit)await saveRun({strategicView:v});S.viewCommitted=true;next()}catch(e){alert(e.message)}
   });
 }
 function defaultAlloc(){return {run:3,uptime:0,capacity:0,connect:0,features:0}}
@@ -275,7 +286,7 @@ function renderAllocation(year){
 function allocRow(l,a,key){
   const n=a[l.id],min=l.id==='run'?3:0,max=l.id==='run'?9:3;
   const readOnly=!S.canSubmit&&S.session?.mode==='team';
-  return `<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${l.id==='run'?'<span title="Run must stay at $3M or more to keep current operations functioning." aria-label="Why Run cannot go lower">ⓘ</span>':''}</div></div><div class="stepper">
+  return `<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${l.id==='run'&&n<=min?'Run floor: $3M keeps current operations functioning.':''}</div></div><div class="stepper">
     <button class="step" data-line="${l.id}" data-delta="-1" ${readOnly||n<=min?'disabled':''}>−</button>
     <div class="amount">${n}<small> M</small></div>
     <button class="step" data-line="${l.id}" data-delta="1" ${readOnly||n>=max?'disabled':''}>+</button></div></div>`;
@@ -326,19 +337,9 @@ function renderYear3(){
   <p class="lede">The CEO wants AI failure prediction. The architecture you funded is now the architecture you have.</p>
   ${cum?runningHTML(cum,'Cumulative portfolio'):''}
   ${o?`<div class="outcome"><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Year 3 outcome is unavailable.',true)}
-  ${o?.band==='unresolved_calibration'?notice('This is a known authored-calibration gap, not a random failure. The instructor view flags the run.') : ''}
-  ${nav({backOk:false,nextLabel:'See the three buyers'})}`);wireNav(next,false);
+  ${nav({backOk:false,nextLabel:C.buyers?.authored===false?'Continue to close':'See the three buyers'})}`);wireNav(next,false);
 }
-function renderBuyers(){
-  const cum=S.allOutcomes?.year3?.cumulative||runningTotals(S.year1,S.year2);
-  shell(`<div class="eyebrow">The three buyers</div><h2>The portfolio does not change. The valuation does.</h2>
-  ${runningHTML(cum,'Same cumulative portfolio')}
-  <div class="buyers"><div class="buyer"><h3>Buyer 1</h3><div class="value">Valuation pending authored rule</div><p>The build specification calls for three buyer valuations but does not define this buyer's rule or copy.</p></div>
-  <div class="buyer"><h3>Buyer 2</h3><div class="value">Valuation pending authored rule</div><p>No value is invented in the application. This content must be authored before publication.</p></div>
-  <div class="buyer"><h3>Buyer 3</h3><div class="value">Valuation pending authored rule</div><p>The instructor can still debrief the portfolio; this screen remains visibly incomplete until the valuation rules are supplied.</p></div></div>
-  ${notice('No winner is declared. The missing valuation content is deliberately not fabricated.')}
-  ${nav({backOk:false})}`);wireNav(next,false);
-}
+function renderBuyers(){S.step=9;return renderClose()}
 function renderClose(){
   if(S.finished){
     shell(`<div class="eyebrow">Your summary</div><h2>What you chose, and what you would change.</h2>
@@ -363,7 +364,7 @@ function miniAlloc(a){return `<div class="mini">${C.lines.map(l=>`<div><b>${a[l.
 async function finish(){
   S.reflection1=document.getElementById('r1').value.trim();S.reflection2=document.getElementById('r2').value.trim();
   try{
-    if(S.session&&S.canSubmit)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true});
+    if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true});
     await request('/api/finish',{year1:S.year1,year2:S.year2,strategicView:S.strategicView,reflection1:S.reflection1,reflection2:S.reflection2,sessionCode:S.sessionCode,participantId:S.participantId});
     S.finished=true;render();
   }catch(e){alert(e.message)}

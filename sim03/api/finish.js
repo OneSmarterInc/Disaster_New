@@ -22,7 +22,7 @@ async function sessionRun(b) {
   if (!run || !run.year1 || !run.year2) {
     const e = new Error('allocations_incomplete'); e.status = 409; throw e;
   }
-  return { sess, run };
+  return { sess, run, participants, me, rid, code, pid };
 }
 
 function allocationLabel(a) {
@@ -42,12 +42,26 @@ module.exports = async (req, res) => {
       y1 = sr.run.year1;
       y2 = sr.run.year2;
       outcomes = sr.run.outcomes || S.evaluateAll(y1, y2, sr.sess.thresholds);
+      const reflection1 = String(b.reflection1 || '').slice(0, 1500);
+      const reflection2 = String(b.reflection2 || '').slice(0, 1500);
+      const reflections = { ...(sr.run.reflections || {}) };
+      reflections[sr.pid] = { participantId: sr.pid, name: sr.me.name, reflection1, reflection2, at: Date.now() };
+      const finishedBy = { ...(sr.run.finishedBy || {}), [sr.pid]: Date.now() };
+      const members = Object.values(sr.participants).filter(p => p && p.groupId === sr.rid);
+      const allDone = sr.sess.mode === 'individual' || (members.length > 0 && members.every(m => finishedBy[m.id]));
+      const updated = { ...sr.run, reflections, finishedBy, done: allDone, phase: 3, updatedAt: Date.now() };
+      if (allDone) updated.completedAt = Date.now();
+      if (sr.sess.mode === 'individual' || sr.me.isCaptain) {
+        updated.reflection1 = reflection1;
+        updated.reflection2 = reflection2;
+      }
+      await store.setRun(sr.code, sr.rid, updated);
       summary = {
         strategicView: sr.run.strategicView || '',
         year1: y1,
         year2: y2,
-        reflection1: sr.run.reflection1 || '',
-        reflection2: sr.run.reflection2 || '',
+        reflection1,
+        reflection2,
         year3Band: outcomes.year3.band
       };
     } else {
