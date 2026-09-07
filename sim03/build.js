@@ -95,7 +95,7 @@ if (!index.includes("location.assign(BASE+'/launch.html')")) {
 }
 
 for (const marker of [
-  'Join a facilitated session', 'Team name <span', 'function safeToRerender()',
+  'Join a facilitated session', 'Team name <span', 'function safeToRerender()', 'Team allocation is read-only for non-captains',
   "if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true})",
   "C.buyers?.authored===false", "const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome)"
 ]) if (!index.includes(marker)) refuse('team/conformance student marker missing: ' + marker);
