@@ -74,7 +74,7 @@ let C=null;
 const S={
   step:0, strategicView:'', year1:null, year2:null,
   year1Outcome:null, year2Outcome:null, allOutcomes:null,
-  reflection1:'',reflection2:'',finished:false,year2Event:0,
+  reflection1:'',reflection2:'',finished:false,year2Event:0,viewCommitted:false,
   sessionCode:INITIAL_SESSION,participantId:localStorage.getItem('m03-pid')||'',
   session:null,me:null,mates:[],canSubmit:true,teamRun:null,
   poll:null,error:''
@@ -184,7 +184,7 @@ async function pollSession(redraw){
   const changed=JSON.stringify([S.session,S.me,S.mates,S.canSubmit,S.teamRun])!==JSON.stringify([d.session,d.me,d.mates,d.canSubmit,d.run]);
   S.session=d.session;S.me=d.me;S.mates=d.mates||[];S.canSubmit=!!d.canSubmit;S.teamRun=d.run||null;
   if(S.teamRun){
-    if(S.teamRun.strategicView)S.strategicView=S.teamRun.strategicView;
+    if(S.teamRun.strategicView){S.strategicView=S.teamRun.strategicView;S.viewCommitted=true}
     if(S.teamRun.year1)S.year1=S.teamRun.year1;
     if(S.teamRun.year2)S.year2=S.teamRun.year2;
     if(S.teamRun.reflection1)S.reflection1=S.teamRun.reflection1;
@@ -247,7 +247,7 @@ function renderPosition(){
   ${nav()}`);wireNav(next);
 }
 function renderView(){
-  const committed=!!(S.teamRun?.strategicView||S.year1Outcome||S.year1);
+  const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome);
   shell(`<div class="eyebrow">Commit a view</div><h2>What should this company become?</h2><p class="lede">Write one sentence before you see the first allocation outcome.</p>
   <div class="field"><label>Your sentence</label><textarea id="viewText" maxlength="500" placeholder="${esc(C.viewPrompt)}" ${committed?'readonly':''}>${esc(S.strategicView)}</textarea><div class="hint">${committed?'This opening view is already committed.':esc(C.viewDisclosure)}</div></div>
   ${nav({nextLabel:committed?'Continue':(S.canSubmit?'Commit view':'Waiting for captain'),disabled:blocked()||(!S.canSubmit&&!S.teamRun?.strategicView)})}`);
@@ -255,7 +255,7 @@ function renderView(){
     if(committed)return next();
     const v=document.getElementById('viewText').value.trim();
     if(!v)return document.getElementById('viewText').focus();
-    S.strategicView=v;
+    S.strategicView=v;S.viewCommitted=true;
     try{if(S.canSubmit)await saveRun({strategicView:v});next()}catch(e){alert(e.message)}
   });
 }

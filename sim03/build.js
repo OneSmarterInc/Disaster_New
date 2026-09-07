@@ -98,7 +98,7 @@ if (!index.includes("location.assign(BASE+'/launch.html')")) {
 for (const marker of [
   'Join a facilitated session', 'Team name <span', 'function safeToRerender()',
   "if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true})",
-  "C.buyers?.authored===false", "const committed=!!(S.teamRun?.strategicView||S.year1Outcome||S.year1)"
+  "C.buyers?.authored===false", "const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome)"
 ]) if (!index.includes(marker)) refuse('team/conformance student marker missing: ' + marker);
 for (const marker of ['Resume session code','Students self-select teams at join',"action:'set_captain'",'function startPresent()','dotcount','the annual cap is the wall'])
   if (!instructor.includes(marker)) refuse('team/projector instructor marker missing: ' + marker);
