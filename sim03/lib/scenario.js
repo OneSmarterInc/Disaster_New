@@ -53,21 +53,10 @@ const LABELS = {
   features: 'Features'
 };
 
-// Stored with a facilitated session and editable from the faculty console while
-// that session is still in the lobby. The names are kept stable because the
-// instructor UI already stores them with a session.
-const DEFAULT_THRESHOLDS = Object.freeze({
-  year1ConnectStrong: 2,
-  heatUptimeStrong: 3,
-  heatUptimeMiddle: 2, // lower edge of the middle band
-  competitorConnectStrong: 4,
-  competitorConnectPilotMin: 2,
-  competitorConnectPilotMax: 3,
-  year3ConnectStrong: 5,
-  year3CapacityStrong: 2,
-  year3ConnectPilotMin: 3,
-  year3ConnectPilotMax: 4
-});
+// First-draft calibration lives in data rather than engine code. Facilitated
+// sessions copy these defaults and may edit their own copy while still in the
+// lobby, so thresholds can change between sections without a deploy.
+const DEFAULT_THRESHOLDS = Object.freeze(require('../config/thresholds.json'));
 
 const COPY = Object.freeze({
   year1: {
