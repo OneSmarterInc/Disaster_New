@@ -255,8 +255,8 @@ function renderView(){
     if(committed)return next();
     const v=document.getElementById('viewText').value.trim();
     if(!v)return document.getElementById('viewText').focus();
-    S.strategicView=v;S.viewCommitted=true;
-    try{if(S.canSubmit)await saveRun({strategicView:v});next()}catch(e){alert(e.message)}
+    S.strategicView=v;
+    try{if(S.canSubmit)await saveRun({strategicView:v});S.viewCommitted=true;next()}catch(e){alert(e.message)}
   });
 }
 function defaultAlloc(){return {run:3,uptime:0,capacity:0,connect:0,features:0}}

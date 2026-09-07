@@ -184,15 +184,26 @@ module.exports = async (req, res) => {
         if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
 
         const participants = await store.getParticipants(code);
+        const previousCaptains = {};
+        for (const p of Object.values(participants)) if (p && p.groupId && p.isCaptain) previousCaptains[p.groupId] = p.id;
         const rawAssign = b.assign && typeof b.assign === 'object' ? b.assign : {};
         for (const p of Object.values(participants)) {
           if (!p || !Object.prototype.hasOwnProperty.call(rawAssign, p.id)) continue;
           const label = String(rawAssign[p.id] || '').trim().slice(0, 40);
-          const norm = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
-          p.groupId = norm ? `team:${norm}` : `solo:${p.id}`;
-          p.teamLabel = label || p.name;
+          if (label.startsWith('team:')) {
+            const target = Object.values(participants).find(x => x && x.groupId === label);
+            p.groupId = label;
+            p.teamLabel = target ? (target.teamLabel || label.slice(5)) : label.slice(5);
+          } else if (label === '__solo__' || !label) {
+            p.groupId = `solo:${p.id}`;
+            p.teamLabel = p.name;
+          } else {
+            const norm = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+            p.groupId = norm ? `team:${norm}` : `solo:${p.id}`;
+            p.teamLabel = label || p.name;
+          }
         }
-        const caps = captainMap(participants, b.captains || {});
+        const caps = captainMap(participants, { ...previousCaptains, ...(b.captains || {}) });
         for (const p of Object.values(participants)) {
           if (!p) continue;
           p.isCaptain = !!(p.groupId && caps[p.groupId] === p.id);
@@ -249,8 +260,7 @@ module.exports = async (req, res) => {
         const key = x => String(x || '').trim().toLowerCase();
         const lt = req.headers['x-launch-token'] || b.launchToken;
         const launched = lt ? verifyLaunch(String(lt)) : null;
-        let id = String(b.participantId || '').trim();
-        if (!id && launched && launched.sub) id = `platform:${launched.sub}`;
+        let id = launched && launched.sub ? `platform:${launched.sub}` : String(b.participantId || '').trim();
         if (!id || !all[id]) {
           const match = Object.values(all).find(p => p && key(p.name) === key(name));
           id = match ? match.id : (id || newId());
