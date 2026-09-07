@@ -9,8 +9,11 @@ const facultyApi = fs.readFileSync(path.join(root, 'api', 'faculty.js'), 'utf8')
 const facultyHtml = fs.readFileSync(path.join(root, 'public', 'faculty.html'), 'utf8');
 
 assert(facultyApi.includes("case 'student_results':"), 'student_results faculty endpoint is missing');
-assert(facultyApi.includes('count(DISTINCT l.sim_id)'), 'student-wise started count is not distinct by simulation');
-assert(facultyApi.includes('count(DISTINCT c2.sim_id)'), 'student-wise finished count is not distinct by simulation');
+assert(!facultyApi.includes('count(DISTINCT l.sim_id)'), 'student-wise starts still collapse repeated runs by simulation');
+assert(!facultyApi.includes('count(DISTINCT c2.sim_id)'), 'student-wise finishes still collapse repeated runs by simulation');
+assert(facultyApi.includes('AS started_runs'), 'per-simulation run-start count is missing');
+assert(facultyApi.includes('AS finished_runs'), 'per-simulation run-finish count is missing');
+assert(facultyApi.includes('AS completion_history'), 'student result history does not preserve repeated completions');
 assert(facultyApi.includes('cp.summary, cp.metrics'), 'student results do not include completion summary/metrics');
 assert(facultyApi.includes('tr.envelope AS transcript'), 'student results do not include available transcripts');
 assert(facultyApi.includes("AND l.as_role = 'student'"), 'faculty/preview launches can leak into student counts');
@@ -23,7 +26,10 @@ for (const marker of [
   'data-student-results=',
   'function renderStudentResults()',
   "action:'student_results'",
-  'Latest result from each simulation',
+  'Latest result from each simulation · every completed run is retained',
+  'Runs started',
+  'Runs finished',
+  'All ${h.length} completed runs',
   'What came back'
 ]) {
   assert(facultyHtml.includes(marker), `faculty UI missing marker: ${marker}`);
