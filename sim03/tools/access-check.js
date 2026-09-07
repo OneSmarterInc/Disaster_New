@@ -24,12 +24,25 @@ function invoke(headers = {}) {
     SIM_URL: process.env.SIM_URL
   };
   try {
-    process.env.ACCESS_CODE = 'midland-test-code';
     process.env.LAUNCH_SECRET = 'midland-test-secret';
     delete process.env.PLATFORM_URL;
     delete process.env.SIM_URL;
+    delete process.env.ACCESS_CODE;
 
     let r = await invoke();
+    assert.equal(r.statusCode, 503, 'direct access must fail closed when ACCESS_CODE is not configured');
+    assert.equal(r.payload.error, 'access_code_not_configured');
+
+    const tokenWithoutCode = signBack({
+      sub: 'usr_student', sim: 'rapid-03-midland', role: 'student',
+      iat: Date.now(), exp: Date.now() + 60000
+    });
+    r = await invoke({ 'x-launch-token': tokenWithoutCode });
+    assert.equal(r.statusCode, 200, 'platform launch token must work even before standalone ACCESS_CODE is configured');
+
+    process.env.ACCESS_CODE = 'midland-test-code';
+
+    r = await invoke();
     assert.equal(r.statusCode, 401, 'direct config access without code must be refused');
     assert.equal(r.payload.error, 'access_code_required');
 
