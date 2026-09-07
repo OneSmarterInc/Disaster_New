@@ -26,9 +26,14 @@ function whoIsFaculty(req, b) {
       return { name: p.name || 'Facilitator' };
     }
   }
+
+  // Fail closed. An empty standalone faculty roster is not authorization.
+  // Platform-launched faculty use the signed launch token above; direct
+  // standalone faculty access requires an explicitly configured code.
   const roster = facultyRoster();
-  if (!roster.length) return { name: 'Facilitator' };
+  if (!roster.length) return null;
   const given = String((b && b.facultyCode) || req.headers['x-faculty-code'] || '').trim();
+  if (!given) return null;
   const hit = roster.find(r => r.code === given);
   return hit ? { name: hit.name } : null;
 }
@@ -106,11 +111,13 @@ module.exports = async (req, res) => {
     switch (action) {
       case 'create': {
         const who = whoIsFaculty(req, b);
-        if (!who) return res.status(401).json({ error: 'faculty_code_required' });
+        if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
         const mode = String(b.mode || '');
         if (!['individual', 'team'].includes(mode)) {
           return res.status(400).json({ error: 'play_mode_required' });
         }
+        const thresholdCheck = S.validateThresholds(b.thresholds);
+        if (!thresholdCheck.ok) return res.status(400).json(thresholdCheck);
         const c = newCode();
         const sess = {
           code: c,
@@ -119,7 +126,7 @@ module.exports = async (req, res) => {
           mode,
           state: 'lobby',
           paused: false,
-          thresholds: S.sanitizeThresholds(b.thresholds),
+          thresholds: thresholdCheck.thresholds,
           createdAt: Date.now()
         };
         await store.putSession(c, sess);
@@ -128,7 +135,7 @@ module.exports = async (req, res) => {
 
       case 'faculty_state': {
         const who = whoIsFaculty(req, b);
-        if (!who) return res.status(401).json({ error: 'faculty_code_required' });
+        if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
         const sess = await store.getSession(code);
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) {
@@ -149,21 +156,23 @@ module.exports = async (req, res) => {
 
       case 'calibrate': {
         const who = whoIsFaculty(req, b);
-        if (!who) return res.status(401).json({ error: 'faculty_code_required' });
+        if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
         const sess = await store.getSession(code);
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
         if (sess.state !== 'lobby') {
           return res.status(409).json({ error: 'session_already_started', message: 'Calibration is locked once the session starts.' });
         }
-        sess.thresholds = S.sanitizeThresholds(b.thresholds);
+        const thresholdCheck = S.validateThresholds(b.thresholds);
+        if (!thresholdCheck.ok) return res.status(400).json(thresholdCheck);
+        sess.thresholds = thresholdCheck.thresholds;
         await store.putSession(code, sess);
         return res.status(200).json({ session: sess });
       }
 
       case 'group': {
         const who = whoIsFaculty(req, b);
-        if (!who) return res.status(401).json({ error: 'faculty_code_required' });
+        if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
         const sess = await store.getSession(code);
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
@@ -190,7 +199,7 @@ module.exports = async (req, res) => {
 
       case 'control': {
         const who = whoIsFaculty(req, b);
-        if (!who) return res.status(401).json({ error: 'faculty_code_required' });
+        if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
         const sess = await store.getSession(code);
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
