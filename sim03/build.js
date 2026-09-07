@@ -72,8 +72,14 @@ for (const [name, source] of [['student', index], ['instructor', instructor]]) {
 if (!launcher.includes("location.pathname.match(/^\\/sim-?\\d+/)")) {
   refuse('launch router is missing the simulation path-prefix detector');
 }
-for (const marker of ['Access code','x-access-code',"sessionStorage.setItem('m03-access'",'/api/config']) {
+for (const marker of ['Access code','x-access-code',"sessionStorage.setItem('m03-access'","sessionStorage.removeItem('m03-access')",'/api/config']) {
   if (!launcher.includes(marker)) refuse('standalone access-code gate missing marker: ' + marker);
+}
+if (launcher.includes('if(remembered)verify()')) {
+  refuse('access gate auto-submits remembered codes and can create a refresh loop');
+}
+if (launcher.includes('#code=')) {
+  refuse('standalone access code must stay in sessionStorage rather than the URL fragment');
 }
 if (!configApi.includes('checkAccess(req, res)')) {
   refuse('public config bootstrap is not protected by the shared access guard');
