@@ -208,13 +208,15 @@ function evaluateYear3(y1, y2, thresholds) {
   }
 
   // The authored build spec has no row for Connect >= strong with Capacity below
-  // the strong capacity requirement. Keep this explicit until content is authored.
+  // the strong capacity requirement. Students must never see development
+  // scaffolding, so use the nearest authored non-success narrative while
+  // retaining a separate calibrationGap flag for the instructor console.
   return {
-    band: 'unresolved_calibration',
+    band: 'pilot',
+    calibrationGap: true,
+    internalBand: 'unresolved_calibration',
     title: 'The CEO wants AI failure prediction',
-    narrative:
-      'This portfolio reaches a combination the authored calibration does not yet define. ' +
-      'The instructor view flags it for resolution rather than inventing an outcome.',
+    narrative: COPY.year3.pilot,
     cumulative: c
   };
 }

@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
   return res.status(200).json({
     sim: S.META.id,
     build: BUILD,
-    accessCode: process.env.ACCESS_CODE ? 'configured' : 'not set (open)',
+    accessCode: process.env.ACCESS_CODE ? 'configured' : 'not set (standalone access closed)',
     sessions: store.configured() ? 'configured' : 'MISSING',
     launchSecret: secret ? 'configured' : 'MISSING',
     launchSecretFingerprint: holdsTheSecret(req) ? fingerprint(secret) : 'hidden',

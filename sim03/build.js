@@ -94,6 +94,17 @@ if (!index.includes("location.assign(BASE+'/launch.html')")) {
   refuse('student access button does not target the explicit launch gate');
 }
 
+
+for (const marker of [
+  'Join a facilitated session', 'Team name <span', 'function safeToRerender()',
+  "if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true})",
+  "C.buyers?.authored===false", "const committed=!!(S.teamRun?.strategicView||S.year1Outcome||S.year1)"
+]) if (!index.includes(marker)) refuse('team/conformance student marker missing: ' + marker);
+for (const marker of ['Resume session code','Students self-select teams at join',"action:'set_captain'",'function startPresent()','dotcount','the annual cap is the wall'])
+  if (!instructor.includes(marker)) refuse('team/projector instructor marker missing: ' + marker);
+if (index.includes('Valuation pending authored rule')) refuse('unauthored buyer placeholder reached the student bundle');
+if (index.includes('authored calibration does not yet define')) refuse('Year 3 calibration scaffolding reached the student bundle');
+
 function checkScripts(name, source) {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
   if (!scripts.length) throw new Error(`${name}: no inline script found`);
@@ -111,5 +122,6 @@ execFileSync(process.execPath, [path.join(__dirname, 'tools', 'check.js')], { st
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-auth-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-commit-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'access-check.js')], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-flow-check.js')], { stdio: 'inherit' });
 
 console.log('RapidSim 03 build guards passed.');
