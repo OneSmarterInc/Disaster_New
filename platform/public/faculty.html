@@ -31,7 +31,7 @@ const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 const F = {
-  view:'home', tab:'crs', data:null, simsOverview:null, course:null, progress:null,
+  view:'home', tab:'crs', data:null, simsOverview:null, course:null, progress:null, studentResults:null,
   me:null, err:null, q:{}, filter:{}, sel:new Set(),
   newCourse:false, editCourse:false, addSim:false, help:null, looking:null
 };
@@ -98,12 +98,18 @@ async function openProgress(courseId, simId) {
   catch (e) { F.err = e.message; }
   render();
 }
+async function openStudentResults(courseId, studentId) {
+  try { F.studentResults = await api('/api/faculty', { action:'student_results', courseId, studentId }); F.view = 'student-results'; F.err = null; }
+  catch (e) { F.err = e.message; }
+  render();
+}
 
 function render() {
   if (!F.data) { app.innerHTML = F.err
     ? `<div class="crumb" style="margin-top:34px">Teaching</div><div class="head"><div><h1>Something went wrong</h1><p class="hint">${esc(F.err)}</p></div></div>`
     : '<div class="empty" style="margin-top:40px">Loading…</div>'; return; }
   if (F.view === 'played' && F.progress) return renderPlayed();
+  if (F.view === 'student-results' && F.studentResults) return renderStudentResults();
   if (F.view === 'course' && F.course) return renderCourse();
   renderHome();
 }
@@ -361,8 +367,8 @@ function renderCourse() {
     </div>
 
     <div class="panel"><div class="tablewrap"><table>
-      <thead><tr><th style="width:30px"></th><th style="width:28%">Student</th><th style="width:1%">Access</th><th>Note</th>
-        <th class="num">Joined</th><th class="num">Played</th><th class="act"></th></tr></thead>
+      <thead><tr><th style="width:30px"></th><th style="width:26%">Student</th><th style="width:1%">Access</th><th>Note</th>
+        <th class="num">Joined</th><th class="num">Started</th><th class="num">Finished</th><th class="act"></th></tr></thead>
       <tbody>
       ${shown.length ? shown.map(r => `<tr style="${r.dropped?'opacity:.5':''}">
         <td data-l="" style="width:1%">${r.dropped ? '' : `<input type="checkbox" data-en="${esc(r.enrolment_id)}" ${F.sel.has(r.enrolment_id)?'checked':''}>`}</td>
@@ -370,14 +376,16 @@ function renderCourse() {
         <td data-l="Access">${r.dropped ? dot('off','removed') : dot(r.paid?'ok':'warn', r.paid?'released':'waiting')}</td>
         <td data-l="Note" class="meta">${r.paid_note ? esc(r.paid_note) : '<span class="dim">—</span>'}</td>
         <td data-l="Joined" class="num">${when(r.created_at)}</td>
-        <td data-l="Played" class="num">${r.launches || 0}</td>
+        <td data-l="Started" class="num">${r.started || 0}</td>
+        <td data-l="Finished" class="num">${r.finished || 0}</td>
         <td data-l="" class="act">
+          <button class="btn sm" data-student-results="${esc(r.student_id)}">Results</button>
           ${r.dropped ? `<button class="btn sm" data-drop="${esc(r.enrolment_id)}" data-now="1">Put back</button>`
             : `${r.paid ? `<button class="btn sm" data-revoke="${esc(r.enrolment_id)}">Take access</button>`
                         : `<button class="btn sm" data-give="${esc(r.enrolment_id)}">Give access</button>`}
                <button class="btn sm" data-drop="${esc(r.enrolment_id)}" data-now="0">Remove</button>`}
         </td>
-      </tr>`).join('') : `<tr><td colspan="7" class="empty">${roster.length ? 'Nobody matches that.' : 'Nobody has joined yet. Share the link above.'}</td></tr>`}
+      </tr>`).join('') : `<tr><td colspan="8" class="empty">${roster.length ? 'Nobody matches that.' : 'Nobody has joined yet. Share the link above.'}</td></tr>`}
       </tbody></table></div>
       <div class="foot">
         <span class="info">${active.length} enrolled · ${active.filter(r=>r.paid).length} released</span>
@@ -427,6 +435,7 @@ function renderCourse() {
     flash(document.getElementById('ecopy'), 'Copied');
   };
   app.querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProgress(course.id, b.dataset.prog));
+  app.querySelectorAll('[data-student-results]').forEach(b => b.onclick = () => openStudentResults(course.id, b.dataset.studentResults));
   app.querySelectorAll('[data-seats]').forEach(b => b.onclick = async () => {
     const v = prompt('How many students do you expect for this simulation?\n\nA forecast, not a limit — nobody is turned away if more enrol.', b.dataset.cur || '');
     if (v === null) return;
@@ -493,6 +502,50 @@ function renderTranscript(env, recordedAt) {
     ${events.length ? `<div class="metrics">${events.map(e => `<div style="display:block"><span>#${esc(e.ordinal)} · ${esc(e.actorLabel)} · ${esc(e.classificationLabel || e.classification)}</span><b style="display:block;margin-top:3px;white-space:normal">${esc(e.input)}</b><span>${esc(e.cost && e.cost.amount)} seconds · ${esc(e.cost && e.cost.remaining)} remaining</span></div>`).join('')}</div>` : '<div class="dim">No interview events were recorded.</div>'}
     ${transitions.length ? `<div style="margin-top:10px"><b>State changes</b><div class="metrics">${transitions.map(t => `<div><span>${esc(t.kind)}</span><b>${esc(t.label)}</b></div>`).join('')}</div></div>` : ''}
     ${reachability.length ? `<div style="margin-top:10px"><b>Evidence reached</b><div class="metrics">${reachability.map(x => `<div><span>${esc(x.actorLabel)}</span><b>${esc(x.label)} — ${x.held ? 'held' : esc(x.blockedBy || 'missed')}</b></div>`).join('')}</div></div>` : ''}</details>`;
+}
+
+/* ── one student's progress/results across the course ───────────────────── */
+function renderStudentResults() {
+  const { course, student, rows } = F.studentResults;
+  const started = rows.filter(r => Number(r.starts) > 0).length;
+  const finished = rows.filter(r => r.completed_at).length;
+  const mins = s => s ? Math.round(s/60) + ' min' : '—';
+  app.innerHTML = `
+    <div class="crumb"><a id="backCourse">← ${esc(course.title)}</a></div>
+    <div class="head"><div><h1>${esc(student.name)}</h1><div class="sub" style="font-size:12px;margin-top:5px">${esc(student.email)}</div></div></div>
+    <div class="strip">
+      <div class="cell"><div class="n">${rows.length}</div><div class="l">Simulations</div></div>
+      <div class="cell"><div class="n">${started}</div><div class="l">Started</div></div>
+      <div class="cell"><div class="n">${finished}</div><div class="l">Finished</div></div>
+    </div>
+    <div class="section"><span>Results</span><span style="font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink3)">Latest result from each simulation</span></div>
+    <div class="panel"><div class="tablewrap"><table>
+      <thead><tr><th style="width:27%">Simulation</th><th style="width:13%">Status</th><th>What came back</th></tr></thead>
+      <tbody>${rows.length ? rows.map(r => {
+        const m = r.metrics || {};
+        const status = r.completed_at ? dot('ok','finished') : Number(r.starts) > 0 ? dot('warn','started') : dot('off','not started');
+        let summary = '';
+        if (r.summary) {
+          const raw = String(r.summary);
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') summary = `<details style="margin-top:10px"><summary>Simulation summary</summary><pre style="white-space:pre-wrap;font:12px/1.5 var(--mono);margin-top:8px">${esc(JSON.stringify(parsed,null,2))}</pre></details>`;
+            else summary = `<div class="sub" style="margin-top:8px;white-space:pre-wrap">${esc(raw)}</div>`;
+          } catch { summary = `<div class="sub" style="margin-top:8px;white-space:pre-wrap">${esc(raw)}</div>`; }
+        }
+        return `<tr>
+          <td data-l="Simulation" style="vertical-align:top"><div class="nm">${esc(simLabel(r))}</div><div class="sub">${Number(r.starts)||0} launch${Number(r.starts)===1?'':'es'}${Number(r.completions)>1?' · '+r.completions+' completions':''}</div></td>
+          <td data-l="Status" style="vertical-align:top">${status}${r.completed_at?`<div class="sub" style="margin-top:5px">${when(r.completed_at)} · ${mins(r.duration_seconds)}</div>`:''}</td>
+          <td data-l="What came back" style="vertical-align:top">
+            ${Object.keys(m).length ? `<div class="metrics">${Object.entries(m).map(([k,v]) => `<div><span>${esc(k)}</span><b>${esc(typeof v==='object'?JSON.stringify(v):v)}</b></div>`).join('')}</div>` : ''}
+            ${summary}
+            ${r.transcript ? renderTranscript(r.transcript, r.transcript_recorded_at) : ''}
+            ${!Object.keys(m).length && !r.summary && !r.transcript ? `<span class="dim" style="font-size:13.5px">${r.completed_at ? 'Finished, but this simulation reported no result detail.' : Number(r.starts)>0 ? 'Started but has not reached the end yet.' : 'Not started.'}</span>` : ''}
+          </td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="3" class="empty">No simulations are attached to this course.</td></tr>'}</tbody>
+    </table></div></div>`;
+  document.getElementById('backCourse').onclick = () => openCourse(course.id);
 }
 
 /* ── who has played ─────────────────────────────────────────────────────── */
