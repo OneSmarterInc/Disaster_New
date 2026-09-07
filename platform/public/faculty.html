@@ -103,6 +103,11 @@ async function openStudentResults(courseId, studentId) {
   catch (e) { F.err = e.message; }
   render();
 }
+async function openStudentResults(courseId, studentId) {
+  try { F.studentResults = await api('/api/faculty', { action:'student_results', courseId, studentId }); F.view = 'student-results'; F.err = null; }
+  catch (e) { F.err = e.message; }
+  render();
+}
 
 function render() {
   if (!F.data) { app.innerHTML = F.err
