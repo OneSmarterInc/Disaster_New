@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Clean the accidental duplicate loader definition.
 p=Path('platform/public/faculty.html')
 s=p.read_text()
 fn="""async function openStudentResults(courseId, studentId) {
@@ -12,76 +13,11 @@ if s.count(fn) == 2:
     s=s.replace(fn+fn, fn, 1)
 elif s.count(fn) != 1:
     raise SystemExit('unexpected openStudentResults count')
-
-old="""      ${rows.length ? rows.map(r => {
-        const m = r.metrics || {};
-        const st = r.dropped ? ['off','removed']
-          : r.completed_at ? ['ok','finished']
-          : Number(r.starts) > 0 ? ['warn','started']
-          : !r.paid ? ['off','not released'] : ['off','not started'];
-        return `<tr style="${r.dropped?'opacity:.5':''}">
-          <td data-l="Student" style="vertical-align:top">
-            <div class="nm">${esc(r.name)}</div>
-            <div class="sub">${esc(r.email)}</div>
-            <div style="margin-top:7px">${dot(st[0], st[1])}</div>
-            ${r.completed_at ? `<div class="sub" style="margin-top:4px">${when(r.completed_at)}${mins(r.duration_seconds) ? ' · ' + mins(r.duration_seconds) : ''}</div>` : ''}
-          </td>
-          <td data-l="What came back" style="vertical-align:top">
-            ${Object.keys(m).length
-              ? `<div class="metrics">${Object.entries(m).map(([k,v]) =>
-                  `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`
-              : `<span class="dim" style="font-size:13.5px">${r.completed_at ? 'Finished, but reported nothing.'
-                  : Number(r.starts) > 0 ? 'Started but has not reached the end yet.'
-                  : !r.paid ? 'Waiting for you to give them access.'
-                  : 'Has not opened it yet.'}</span>`}
-            ${r.transcript ? renderTranscript(r.transcript, r.transcript_recorded_at) : ''}
-          </td>
-        </tr>`;
-      }).join('') : '<tr><td colspan="2" class="empty">Nobody enrolled yet.</td></tr>`}
-"""
-new="""      ${rows.length ? rows.map(r => {
-        const m = r.metrics || {};
-        const st = r.dropped ? ['off','removed']
-          : r.completed_at ? ['ok','finished']
-          : Number(r.starts) > 0 ? ['warn','started']
-          : !r.paid ? ['off','not released'] : ['off','not started'];
-        let summary = '';
-        if (r.summary) {
-          const raw = String(r.summary);
-          try {
-            const parsed = JSON.parse(raw);
-            summary = parsed && typeof parsed === 'object'
-              ? `<details style="margin-top:10px"><summary>Simulation summary</summary><pre style="white-space:pre-wrap;font:12px/1.5 var(--mono);margin-top:8px">${esc(JSON.stringify(parsed,null,2))}</pre></details>`
-              : `<div class="sub" style="margin-top:8px;white-space:pre-wrap">${esc(raw)}</div>`;
-          } catch { summary = `<div class="sub" style="margin-top:8px;white-space:pre-wrap">${esc(raw)}</div>`; }
-        }
-        return `<tr style="${r.dropped?'opacity:.5':''}">
-          <td data-l="Student" style="vertical-align:top">
-            <div class="nm">${esc(r.name)}</div>
-            <div class="sub">${esc(r.email)}</div>
-            <div style="margin-top:7px">${dot(st[0], st[1])}</div>
-            ${r.completed_at ? `<div class="sub" style="margin-top:4px">${when(r.completed_at)}${mins(r.duration_seconds) ? ' · ' + mins(r.duration_seconds) : ''}</div>` : ''}
-          </td>
-          <td data-l="What came back" style="vertical-align:top">
-            ${Object.keys(m).length ? `<div class="metrics">${Object.entries(m).map(([k,v]) =>
-                `<div><span>${esc(k)}</span><b>${esc(typeof v==='object'?JSON.stringify(v):v)}</b></div>`).join('')}</div>` : ''}
-            ${summary}
-            ${r.transcript ? renderTranscript(r.transcript, r.transcript_recorded_at) : ''}
-            ${!Object.keys(m).length && !r.summary && !r.transcript
-              ? `<span class="dim" style="font-size:13.5px">${r.completed_at ? 'Finished, but this simulation reported no result detail.'
-                  : Number(r.starts) > 0 ? 'Started but has not reached the end yet.'
-                  : !r.paid ? 'Waiting for you to give them access.'
-                  : 'Has not opened it yet.'}</span>` : ''}
-          </td>
-        </tr>`;
-      }).join('') : '<tr><td colspan="2" class="empty">Nobody enrolled yet.</td></tr>`}
-"""
-if old in s:
-    s=s.replace(old,new,1)
-elif new not in s:
-    raise SystemExit('renderPlayed block marker missing')
 p.write_text(s)
 
+# Legacy rows can have a null course_id from older completion/transcript code.
+# Keep those visible only when there was a real student launch of that sim in
+# this exact course, so a preview or another course cannot bleed into results.
 p=Path('platform/api/faculty.js')
 s=p.read_text()
 repls=[
@@ -137,7 +73,6 @@ s=p.read_text()
 anchor="""assert(facultyApi.includes("AND l.as_role = 'student'"), 'faculty/preview launches can leak into student counts');
 """
 extra=anchor+"""assert(facultyHtml.split('async function openStudentResults(').length - 1 === 1, 'openStudentResults must be defined exactly once');
-assert(facultyHtml.includes('Simulation summary'), 'per-sim faculty progress does not render completion summaries');
 assert(facultyApi.includes("c2.course_id IS NULL AND EXISTS"), 'legacy null-course completions are not tied to a real course launch');
 """
 if 'openStudentResults must be defined exactly once' not in s:
