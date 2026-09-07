@@ -8,8 +8,8 @@ const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
 const vercel = JSON.parse(read('platform/vercel.json'));
 const rewrites = Object.fromEntries((vercel.rewrites || []).map(r => [r.source, r.destination]));
-assert.equal(rewrites['/sim03'], 'https://sim-03-midland.vercel.app/');
-assert.equal(rewrites['/sim03/'], 'https://sim-03-midland.vercel.app/');
+assert.equal(rewrites['/sim03'], 'https://sim-03-midland.vercel.app/launch.html');
+assert.equal(rewrites['/sim03/'], 'https://sim-03-midland.vercel.app/launch.html');
 assert.equal(rewrites['/sim03/:path*'], 'https://sim-03-midland.vercel.app/:path*');
 assert((vercel.headers || []).some(h => h.source === '/sim03/(.*)'), 'Sim03 proxy headers are missing');
 
