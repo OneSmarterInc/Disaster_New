@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RapidSim 03 — Midland Equipment</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root{
+  --night:#0E1524;--panel:#161E2E;--panel2:#1D2637;--raise:#232D40;
+  --line:#2B3548;--line2:#3A4659;--bone:#E8E4DA;--dim:#8C95A8;--dimmer:#616B7E;
+  --amber:#F0A63C;--amber2:#FFB94E;--green:#75A98C;--red:#CE7C8D;--blue:#6FA8D6;
+  --serif:'Newsreader',Georgia,serif;--mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--night);color:var(--bone)}
+body{font-family:var(--serif);font-size:16px;line-height:1.55;background-image:radial-gradient(1200px 650px at 70% -10%,rgba(240,166,60,.06),transparent 60%)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.mono{font-family:var(--mono)}
+#app{min-height:100vh;display:flex;flex-direction:column}
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid var(--line);background:rgba(14,21,36,.94);backdrop-filter:blur(8px)}
+.brand{margin-right:auto}.brand h1{font-size:17px;font-weight:500}.brand .sub{font:10.5px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin-top:2px}
+.pills{display:flex;gap:5px;flex-wrap:wrap}.pill{font:10px var(--mono);letter-spacing:.09em;text-transform:uppercase;padding:5px 9px;border:1px solid var(--line);color:var(--dimmer)}.pill.on{color:var(--amber);border-color:#8A6427;background:rgba(240,166,60,.07)}.pill.done{color:var(--dim);border-color:var(--line2)}
+.timer{font:600 21px var(--mono);color:var(--amber)}
+.page{width:min(980px,calc(100% - 36px));margin:0 auto;padding:54px 0 74px}
+.eyebrow{font:10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin-bottom:9px}
+h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-bottom:16px}
+.lede{font-size:19px;line-height:1.65;color:#D0CDC5;max-width:760px}
+.copy{font-size:17px;color:#C9C6BE;line-height:1.7;max-width:780px}.copy p{margin-bottom:14px}
+.rule{height:1px;background:var(--line);margin:29px 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line2);padding:11px 16px;font:11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);transition:.12s}.btn:hover{border-color:var(--bone);color:var(--bone)}.btn.pri{background:var(--amber);border-color:var(--amber);color:#1A1206;font-weight:600}.btn.pri:hover{background:var(--amber2);border-color:var(--amber2)}.btn:disabled{opacity:.35;cursor:not-allowed}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px}
+.card{border:1px solid var(--line);background:var(--panel);padding:19px 20px}.card h3{font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer);margin-bottom:9px}.card p{color:#C8C5BD}
+.cold{display:grid;gap:10px;margin:24px 0}.cold .line{border-left:2px solid var(--line2);padding:11px 16px;font-size:18px;color:#D1CEC6}.cold .line:last-child{border-left-color:var(--amber)}
+.field{margin-top:22px}.field label{display:block;font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.field textarea,.field input{width:100%;background:var(--panel);border:1px solid var(--line2);padding:13px 14px;font-size:17px}.field textarea{min-height:110px;resize:vertical}.hint{font-size:13px;color:var(--dimmer);margin-top:7px}
+.alloc-wrap{display:grid;grid-template-columns:1fr 245px;gap:22px;margin-top:25px}
+.allocs{display:grid;gap:8px}.alloc{border:1px solid var(--line);background:var(--panel);display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 14px 14px 17px;gap:14px}.alloc h3{font-size:20px;font-weight:400}.alloc .constraint{font:10px var(--mono);color:var(--dimmer);margin-top:3px;letter-spacing:.04em}.stepper{display:flex;align-items:center;gap:9px}.step{width:37px;height:37px;border:1px solid var(--line2);font:20px var(--mono);color:var(--dim)}.step:hover:not(:disabled){border-color:var(--amber);color:var(--amber)}.amount{min-width:62px;text-align:center;font:600 20px var(--mono);color:var(--bone)}.amount small{font-size:10px;color:var(--dimmer);font-weight:400}
+.budget{position:sticky;top:90px;border:1px solid #8A6427;background:rgba(240,166,60,.06);padding:20px}.budget .n{font:600 48px var(--mono);color:var(--amber);line-height:1}.budget .lab{font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);margin-top:7px}.budget .total{margin-top:20px;padding-top:14px;border-top:1px solid #6D5228;font-size:14px;color:#C9C6BE}
+.running{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:20px 0}.run-cell{border:1px solid var(--line);background:var(--panel);padding:12px;text-align:center}.run-cell .v{font:600 22px var(--mono);color:var(--amber)}.run-cell .k{font:9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-top:4px}
+.outcome{border:1px solid var(--line2);background:var(--panel);padding:25px;margin-top:22px}.outcome .band{font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--amber);margin-bottom:7px}.outcome h3{font-size:27px;font-weight:400;margin-bottom:9px}.outcome p{font-size:18px;color:#D0CDC5;line-height:1.65}.events{display:grid;grid-template-columns:1fr 1fr;gap:12px}.events .outcome{margin-top:12px}
+.locked{border:1px dashed var(--line2);padding:14px 16px;color:var(--dim);margin-top:18px}
+.team{border:1px solid var(--blue);background:rgba(111,168,214,.06);padding:12px 14px;margin:0 0 20px;font-size:14px;color:#C8D8E8}.team b{color:#A8CBE7;font-weight:500}
+.buyers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:21px}.buyer{border:1px solid var(--line);background:var(--panel);padding:18px}.buyer h3{font-size:21px;font-weight:400}.buyer .value{font:10px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin-top:12px}.buyer p{font-size:14px;color:var(--dim);margin-top:7px}
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}.summary .card{min-height:150px}.mini{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:12px}.mini div{border:1px solid var(--line);padding:8px 5px;text-align:center}.mini b{display:block;font:600 17px var(--mono);color:var(--amber)}.mini span{font:8px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--dimmer)}
+.joinbox{max-width:560px}.joinbox .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.joinbox input{text-transform:none}
+.notice{border-left:2px solid var(--amber);padding:11px 14px;background:rgba(240,166,60,.05);color:#CBC8C0;margin:18px 0}.error{border-left-color:var(--red);color:#E3B9C2}
+.hidden{display:none!important}
+@media(max-width:760px){.page{width:min(100% - 26px,980px);padding-top:34px}h2{font-size:31px}.alloc-wrap{grid-template-columns:1fr}.budget{position:static}.events,.buyers,.summary{grid-template-columns:1fr}.running{grid-template-columns:repeat(2,1fr)}header{padding:11px 14px}.pills{order:3;width:100%}.joinbox .row{grid-template-columns:1fr}}
+@media print{header,.actions,.team{display:none}.page{width:100%;padding:0}body{background:white;color:black}.card,.outcome,.run-cell{background:white;border-color:#aaa;color:black}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const app=document.getElementById('app');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
+
+let ACCESS_CODE=(function(){const m=(location.hash+location.search).match(/code=([^&]+)/);return m?decodeURIComponent(m[1]):null})();
+let LAUNCH_TOKEN=(function(){const m=(location.hash+location.search).match(/lt=([^&]+)/);return m?decodeURIComponent(m[1]):null})();
+let LAUNCH=null;
+if(LAUNCH_TOKEN){try{LAUNCH=JSON.parse(atob(LAUNCH_TOKEN.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')))}catch{}}
+const initialParams=new URLSearchParams(location.search);
+const INITIAL_SESSION=(initialParams.get('session')||'').toUpperCase();
+if(LAUNCH_TOKEN||ACCESS_CODE){
+  const keep=new URLSearchParams(location.search);keep.delete('lt');keep.delete('code');
+  history.replaceState(null,'',location.pathname+(keep.toString()?'?'+keep.toString():''));
+}
+
+let C=null;
+const S={
+  step:0, strategicView:'', year1:null, year2:null,
+  year1Outcome:null, year2Outcome:null, allOutcomes:null,
+  reflection1:'',reflection2:'',finished:false,
+  sessionCode:INITIAL_SESSION,participantId:localStorage.getItem('m03-pid')||'',
+  session:null,me:null,mates:[],canSubmit:true,teamRun:null,
+  poll:null,error:''
+};
+const STEPS=['Brief','Position','View','Year 1','Outcome','Year 2','Events','Year 3','Buyers','Close'];
+
+async function request(path,payload,method='POST'){
+  const headers={'Content-Type':'application/json'};
+  if(LAUNCH_TOKEN)headers['x-launch-token']=LAUNCH_TOKEN;
+  else if(ACCESS_CODE)headers['x-access-code']=ACCESS_CODE;
+  const opt={method,headers};
+  if(method!=='GET')opt.body=JSON.stringify(payload||{});
+  const r=await fetch(BASE+path,opt);
+  let d={};try{d=await r.json()}catch{}
+  if(!r.ok){const e=new Error(d.message||d.error||`Server error ${r.status}`);e.code=d.error;throw e}
+  return d;
+}
+async function sessionApi(payload){
+  const headers={'Content-Type':'application/json'};
+  if(LAUNCH_TOKEN)headers['x-launch-token']=LAUNCH_TOKEN;
+  const r=await fetch(BASE+'/api/session',{method:'POST',headers,body:JSON.stringify(payload)});
+  let d={};try{d=await r.json()}catch{}
+  if(!r.ok){const e=new Error(d.message||d.error||`Server error ${r.status}`);e.code=d.error;throw e}
+  return d;
+}
+
+function shell(content){
+  const pills=STEPS.map((x,i)=>`<span class="pill ${i===S.step?'on':i<S.step?'done':''}">${i+1}. ${x}</span>`).join('');
+  app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">20 MIN</div></header><main class="page">${teamBanner()}${content}</main>`;
+}
+function teamBanner(){
+  if(!S.session)return '';
+  const mode=S.session.mode==='team'?'Team':'Individual';
+  const mate=S.session.mode==='team'&&S.mates.length?` · ${S.mates.map(x=>esc(x.name)+(x.isCaptain?' (captain)':'')).join(', ')}`:'';
+  const control=S.session.mode==='team'&&!S.canSubmit?'Your team captain commits. Your screen follows the submitted team state.':'You can commit this run.';
+  return `<div class="team"><b>${mode} session ${esc(S.session.code)}</b>${mate}<br>${esc(control)}</div>`;
+}
+function notice(msg,bad=false){return `<div class="notice ${bad?'error':''}">${esc(msg)}</div>`}
+function next(){S.step=Math.min(9,S.step+1);render()}
+function back(){S.step=Math.max(0,S.step-1);render()}
+
+async function init(){
+  try{C=await request('/api/config',null,'GET')}
+  catch(e){
+    app.innerHTML=`<main class="page">${notice(e.message,true)}<div class="actions"><button class="btn pri" onclick="location.reload()">Try again</button></div></main>`;
+    return;
+  }
+  if(INITIAL_SESSION&&!S.participantId){renderJoin();return}
+  if(INITIAL_SESSION&&S.participantId){
+    try{await pollSession(true)}
+    catch{S.participantId='';localStorage.removeItem('m03-pid');renderJoin();return}
+  }
+  render();
+  if(S.sessionCode&&S.participantId)startPolling();
+}
+
+function renderJoin(){
+  shell(`<section class="joinbox"><div class="eyebrow">Facilitated session</div><h2>Join Midland Equipment</h2><p class="lede">Enter your name and the session code shown by your instructor.</p>
+  ${S.error?notice(S.error,true):''}
+  <div class="field"><label>Name</label><input id="joinName" autocomplete="name" placeholder="Your name"></div>
+  <div class="field"><label>Session code</label><input id="joinCode" class="mono" maxlength="5" value="${esc(S.sessionCode)}" placeholder="ABCDE"></div>
+  <div class="actions"><button class="btn pri" id="joinBtn">Join session</button></div></section>`);
+  document.getElementById('joinBtn').onclick=joinSession;
+}
+async function joinSession(){
+  const name=document.getElementById('joinName').value.trim();
+  const code=document.getElementById('joinCode').value.trim().toUpperCase();
+  try{
+    const d=await sessionApi({action:'join',code,name,participantId:S.participantId||undefined});
+    S.sessionCode=code;S.participantId=d.participantId;S.session=d.session;S.me=d.me;
+    localStorage.setItem('m03-pid',S.participantId);S.error='';
+    await pollSession(true);startPolling();render();
+  }catch(e){S.error=e.message;renderJoin()}
+}
+function startPolling(){
+  clearInterval(S.poll);S.poll=setInterval(()=>pollSession(false).catch(()=>{}),2000);
+}
+async function pollSession(redraw){
+  if(!S.sessionCode||!S.participantId)return;
+  const d=await sessionApi({action:'state',code:S.sessionCode,participantId:S.participantId});
+  const changed=JSON.stringify([S.session,S.me,S.mates,S.canSubmit,S.teamRun])!==JSON.stringify([d.session,d.me,d.mates,d.canSubmit,d.run]);
+  S.session=d.session;S.me=d.me;S.mates=d.mates||[];S.canSubmit=!!d.canSubmit;S.teamRun=d.run||null;
+  if(S.teamRun){
+    if(S.teamRun.strategicView)S.strategicView=S.teamRun.strategicView;
+    if(S.teamRun.year1)S.year1=S.teamRun.year1;
+    if(S.teamRun.year2)S.year2=S.teamRun.year2;
+    if(S.teamRun.reflection1)S.reflection1=S.teamRun.reflection1;
+    if(S.teamRun.reflection2)S.reflection2=S.teamRun.reflection2;
+    if(S.teamRun.outcomes)S.allOutcomes=S.teamRun.outcomes;
+  }
+  if(redraw||changed)render();
+}
+function sessionGate(){
+  if(!S.session)return '';
+  if(S.session.state==='lobby')return notice('The instructor has not started this session yet.');
+  if(S.session.paused)return notice('The instructor has paused the session.');
+  if(S.session.state==='closed')return notice('This session is closed.',true);
+  return '';
+}
+function blocked(){return !!(S.session&&(S.session.state!=='running'||S.session.paused))}
+
+async function saveRun(patch){
+  if(!S.session)return {ok:true};
+  if(!S.canSubmit)throw new Error('Your team captain commits this choice.');
+  return sessionApi({action:'submit',code:S.sessionCode,participantId:S.participantId,...patch});
+}
+function nav({backOk=true,nextLabel='Continue',onNext,disabled=false}={}){
+  return `<div class="actions">${backOk?'<button class="btn" id="backBtn">Back</button>':''}<button class="btn pri" id="nextBtn" ${disabled?'disabled':''}>${esc(nextLabel)}</button></div>`;
+}
+function wireNav(onNext,backOk=true){
+  if(backOk&&document.getElementById('backBtn'))document.getElementById('backBtn').onclick=back;
+  document.getElementById('nextBtn').onclick=onNext||next;
+}
+
+function render(){
+  if(!C)return;
+  switch(S.step){
+    case 0:return renderBrief();
+    case 1:return renderPosition();
+    case 2:return renderView();
+    case 3:return renderAllocation(1);
+    case 4:return renderYear1Outcome();
+    case 5:return renderAllocation(2);
+    case 6:return renderYear2Events();
+    case 7:return renderYear3();
+    case 8:return renderBuyers();
+    default:return renderClose();
+  }
+}
+
+function renderBrief(){
+  shell(`<div class="eyebrow">Cold open</div><h2>Some decisions arrive years before their evidence.</h2>
+  <div class="cold">${C.coldOpen.map(x=>`<div class="line">${esc(x)}</div>`).join('')}</div>
+  <p class="lede">There is no score, rank, grade or hidden correct allocation. You will find out what happened, not how you "did."</p>
+  ${sessionGate()}${nav({backOk:false,disabled:blocked()})}`);
+  wireNav(next,false);
+}
+function renderPosition(){
+  shell(`<div class="eyebrow">Your position</div><h2>You run technology at Midland.</h2><p class="lede">${esc(C.position)}</p>
+  <div class="rule"></div><div class="card"><h3>The five lines</h3><p><b>Run</b> keeps the operation functioning now. <b>Uptime</b>, <b>Capacity</b>, <b>Connect</b> and <b>Features</b> are the architecture choices competing for what remains.</p></div>
+  <div class="card" style="margin-top:10px"><h3>The wall</h3><p>Run cannot go below $3M. Each of the other four lines cannot exceed $3M in a year. Your total must be exactly $9M.</p></div>
+  ${nav()}`);wireNav(next);
+}
+function renderView(){
+  shell(`<div class="eyebrow">Commit a view</div><h2>What should this company become?</h2><p class="lede">Write one sentence before you see the first allocation outcome.</p>
+  <div class="field"><label>Your sentence</label><textarea id="viewText" maxlength="500" placeholder="${esc(C.viewPrompt)}">${esc(S.strategicView)}</textarea><div class="hint">${esc(C.viewDisclosure)}</div></div>
+  ${nav({nextLabel:S.canSubmit?'Commit view':'Waiting for captain',disabled:blocked()||(!S.canSubmit&&!S.teamRun?.strategicView)})}`);
+  wireNav(async()=>{
+    const v=document.getElementById('viewText').value.trim();
+    if(!v)return document.getElementById('viewText').focus();
+    S.strategicView=v;
+    try{if(S.canSubmit)await saveRun({strategicView:v});next()}catch(e){alert(e.message)}
+  });
+}
+function defaultAlloc(){return {run:3,uptime:0,capacity:0,connect:0,features:0}}
+function renderAllocation(year){
+  const key=year===1?'year1':'year2';
+  if(!S[key])S[key]=defaultAlloc();
+  const a=S[key],used=Object.values(a).reduce((x,y)=>x+y,0),left=9-used;
+  const running=year===2&&S.year1?runningTotals(S.year1,a):null;
+  shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${year===1?'Nine million. Five lines.':'You get one more allocation.'}</h2>
+  <p class="lede">${year===1?'The physical constraint is the point: taking a million for one line means it does not exist somewhere else.':'Your Year 1 choices stay with you. Allocate the second $9M with the running totals visible.'}</p>
+  ${running?runningHTML(running,'Running totals, including this draft'):''}
+  <div class="alloc-wrap"><div class="allocs">${C.lines.map(l=>allocRow(l,a,year)).join('')}</div>
+  <aside class="budget"><div class="n">${left}</div><div class="lab">$M remaining</div><div class="total">Allocated: <b>$${used}M</b> of $9M<br>Submit unlocks only at exactly $9M.</div></aside></div>
+  ${!S.canSubmit&&S.session?.mode==='team'?`<div class="locked">Read-only team view. ${S.teamRun?.[key]?'The captain has committed this allocation.':'Waiting for the captain to commit.'}</div>`:''}
+  ${nav({nextLabel:left===0?(S.canSubmit?`Commit Year ${year}`:'Continue with team allocation'):'Allocate all $9M',disabled:blocked()||left!==0||(!S.canSubmit&&!S.teamRun?.[key])})}`);
+  document.querySelectorAll('.step').forEach(b=>b.onclick=()=>changeAlloc(key,b.dataset.line,Number(b.dataset.delta)));
+  wireNav(async()=>{
+    const v=validateClient(S[key]);if(v)return alert(v);
+    try{
+      if(S.canSubmit)await saveRun({[key]:S[key]});
+      if(year===1){const d=await request('/api/outcome',{stage:'year1',year1:S.year1,sessionCode:S.sessionCode,participantId:S.participantId});S.year1Outcome=d.outcome}
+      else {const d=await request('/api/outcome',{stage:'year2',year1:S.year1,year2:S.year2,sessionCode:S.sessionCode,participantId:S.participantId});S.year2Outcome=d.outcome}
+      next();
+    }catch(e){alert(e.message)}
+  });
+}
+function allocRow(l,a,key){
+  const n=a[l.id],min=l.id==='run'?3:0,max=l.id==='run'?9:3;
+  const readOnly=!S.canSubmit&&S.session?.mode==='team';
+  return `<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${l.id==='run'?'minimum 3 · no upper cap':'maximum 3 per year'}</div></div><div class="stepper">
+    <button class="step" data-line="${l.id}" data-delta="-1" ${readOnly||n<=min?'disabled':''}>−</button>
+    <div class="amount">${n}<small> M</small></div>
+    <button class="step" data-line="${l.id}" data-delta="1" ${readOnly||n>=max?'disabled':''}>+</button></div></div>`;
+}
+function changeAlloc(key,line,delta){
+  const a=S[key],min=line==='run'?3:0,max=line==='run'?9:3,nextv=a[line]+delta;
+  if(nextv<min||nextv>max)return;
+  const used=Object.values(a).reduce((x,y)=>x+y,0);
+  if(delta>0&&used>=9)return;
+  a[line]=nextv;render();
+}
+function validateClient(a){
+  const total=Object.values(a).reduce((x,y)=>x+y,0);
+  if(total!==9)return 'The allocation must equal exactly $9M.';
+  if(a.run<3)return 'Run cannot be below $3M.';
+  if(['uptime','capacity','connect','features'].some(k=>a[k]>3))return 'Uptime, Capacity, Connect and Features cannot exceed $3M in a year.';
+  return '';
+}
+function runningTotals(a,b){const o={};C.lines.forEach(l=>o[l.id]=(a[l.id]||0)+(b[l.id]||0));return o}
+function runningHTML(o,label){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="running">${C.lines.map(l=>`<div class="run-cell"><div class="v">${o[l.id]}</div><div class="k">${esc(l.label)}</div></div>`).join('')}</div>`}
+
+function renderYear1Outcome(){
+  const o=S.year1Outcome;
+  shell(`<div class="eyebrow">Year 1 outcome</div><h2>The first consequence arrives.</h2>
+  ${runningHTML(S.year1,'Year 1 portfolio')}
+  ${o?`<div class="outcome"><div class="band">${esc(o.band)}</div><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Outcome not loaded. Return to Year 1 and recommit.',true)}
+  ${nav()}`);wireNav(next);
+}
+function renderYear2Events(){
+  const o=S.year2Outcome;
+  const cum=S.year1&&S.year2?runningTotals(S.year1,S.year2):null;
+  shell(`<div class="eyebrow">Year 2 outcomes</div><h2>Two events resolve in sequence.</h2>${cum?runningHTML(cum,'Cumulative portfolio'):''}
+  ${o?`<div class="events"><div class="outcome"><div class="band">${esc(o.heat.band)}</div><h3>${esc(o.heat.title)}</h3><p>${esc(o.heat.narrative)}</p></div>
+  <div class="outcome"><div class="band">${esc(o.competitor.band)}</div><h3>${esc(o.competitor.title)}</h3><p>${esc(o.competitor.narrative)}</p></div></div>`:notice('Outcome not loaded. Return to Year 2 and recommit.',true)}
+  ${nav({nextLabel:'Go to Year 3'})}`);wireNav(async()=>{
+    try{const d=await request('/api/outcome',{stage:'all',year1:S.year1,year2:S.year2,sessionCode:S.sessionCode,participantId:S.participantId});S.allOutcomes=d.outcome;next()}catch(e){alert(e.message)}
+  });
+}
+function renderYear3(){
+  const o=S.allOutcomes?.year3;
+  const cum=o?.cumulative||(S.year1&&S.year2?runningTotals(S.year1,S.year2):null);
+  shell(`<div class="eyebrow">Year 3 · no allocation</div><h2>You do not get another move.</h2>
+  <p class="lede">The CEO wants AI failure prediction. The architecture you funded is now the architecture you have.</p>
+  ${cum?runningHTML(cum,'Cumulative portfolio'):''}
+  ${o?`<div class="outcome"><div class="band">${esc(o.band)}</div><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Year 3 outcome is unavailable.',true)}
+  ${o?.band==='unresolved_calibration'?notice('This is a known authored-calibration gap, not a random failure. The instructor view flags the run.') : ''}
+  ${nav({nextLabel:'See the three buyers'})}`);wireNav(next);
+}
+function renderBuyers(){
+  const cum=S.allOutcomes?.year3?.cumulative||runningTotals(S.year1,S.year2);
+  shell(`<div class="eyebrow">The three buyers</div><h2>The portfolio does not change. The valuation does.</h2>
+  ${runningHTML(cum,'Same cumulative portfolio')}
+  <div class="buyers"><div class="buyer"><h3>Buyer 1</h3><div class="value">Valuation pending authored rule</div><p>The build specification calls for three buyer valuations but does not define this buyer's rule or copy.</p></div>
+  <div class="buyer"><h3>Buyer 2</h3><div class="value">Valuation pending authored rule</div><p>No value is invented in the application. This content must be authored before publication.</p></div>
+  <div class="buyer"><h3>Buyer 3</h3><div class="value">Valuation pending authored rule</div><p>The instructor can still debrief the portfolio; this screen remains visibly incomplete until the valuation rules are supplied.</p></div></div>
+  ${notice('No winner is declared. The missing valuation content is deliberately not fabricated.')}
+  ${nav()}`);wireNav(next);
+}
+function renderClose(){
+  shell(`<div class="eyebrow">Close</div><h2>Return to what you believed before the consequences.</h2>
+  <div class="summary"><div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
+  <div class="card"><h3>Your Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div></div>
+  <div class="field"><label>${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(S.reflection1)}</textarea></div>
+  <div class="field"><label>${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea></div>
+  ${S.finished?notice('Run complete. You can print or screenshot this summary.'):''}
+  <div class="actions"><button class="btn" id="backBtn">Back</button><button class="btn pri" id="finishBtn" ${S.finished?'disabled':''}>${S.finished?'Completed':'Complete run'}</button><button class="btn" onclick="window.print()">Print / save</button></div>`);
+  document.getElementById('backBtn').onclick=back;
+  document.getElementById('finishBtn').onclick=finish;
+}
+function miniAlloc(a){return `<div class="mini">${C.lines.map(l=>`<div><b>${a[l.id]}</b><span>${esc(l.label)}</span></div>`).join('')}</div>`}
+async function finish(){
+  S.reflection1=document.getElementById('r1').value.trim();S.reflection2=document.getElementById('r2').value.trim();
+  try{
+    if(S.session&&S.canSubmit)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true});
+    await request('/api/finish',{year1:S.year1,year2:S.year2,strategicView:S.strategicView,reflection1:S.reflection1,reflection2:S.reflection2,sessionCode:S.sessionCode,participantId:S.participantId});
+    S.finished=true;render();
+  }catch(e){alert(e.message)}
+}
+
+init();
+</script>
+</body>
+</html>
