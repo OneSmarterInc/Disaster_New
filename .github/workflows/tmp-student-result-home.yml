@@ -1,0 +1,54 @@
+name: tmp-student-result-home
+on:
+  push:
+    branches: ['ui/student-dashboard-result-home']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/student-dashboard-result-home
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply approved student dashboard and result view
+        run: python .github/scripts/student_result_polish.py
+      - name: Run platform and Sim03 checks
+        run: |
+          cd platform
+          node tools/student-views-check.js
+          node tools/check-sim03-integration.js
+          node tools/sim03-lifecycle-check.js
+          cd ../sim03
+          node build.js
+      - name: Parse browser JavaScript
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          for (const f of ['platform/public/student.html','sim03/public/index.html']) {
+            const s=fs.readFileSync(f,'utf8');
+            const scripts=[...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]);
+            if(!scripts.length) throw new Error('No inline scripts in '+f);
+            scripts.forEach((x,i)=>new vm.Script(x,{filename:f+'#'+i}));
+          }
+          const student=fs.readFileSync('platform/public/student.html','utf8');
+          if(!student.includes('My courses and simulations')) throw new Error('approved student heading missing');
+          if(!student.includes('View result')) throw new Error('student View result missing');
+          if(!student.includes('renderStudentResult')) throw new Error('student result view missing');
+          const sim=fs.readFileSync('sim03/public/index.html','utf8');
+          if(!sim.includes('Back to student home')) throw new Error('Sim03 return-home action missing');
+          const finish=fs.readFileSync('sim03/api/finish.js','utf8');
+          if(!finish.includes('summary.result')) throw new Error('public completion result missing');
+          console.log('Student dashboard/result and Sim03 return-home checks passed.');
+          NODE
+      - name: Commit final files
+        run: |
+          git config user.name "OneSmarterInc Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add platform/public/student.html sim03/public/index.html sim03/api/finish.js sim03/api/config.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Use course-first student dashboard and add result view"
+          git push origin HEAD:ui/student-dashboard-result-home
