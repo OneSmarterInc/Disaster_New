@@ -29,3 +29,7 @@ No existing `sim`, `sim-02`, `simplus01`, or platform runtime file is changed by
 ## Platform integration
 
 The production platform proxies `/sim03`, `/sim03/`, and `/sim03/:path*` to `https://sim-03-midland.vercel.app`. Keep `LAUNCH_SECRET` identical on both deployments. Sim03 self-registers as `rapid-03-midland`; registration is unpublished until an administrator explicitly publishes it. Before publication, confirm the catalogue metadata says `individual or team`, `briefing packet before class`, and `not marked`, and run one faculty launch plus one student completion through `https://rapidsims.flexee.org/sim03`.
+
+## Standalone access code
+
+Set `ACCESS_CODE` on the Sim03 Vercel project for Production. Direct visitors to `https://rapidsims.flexee.org/sim03` are shown an access-code gate and the code is validated server-side before scenario copy loads. Faculty and students launched by the RapidSims platform use signed `LAUNCH_SECRET` tokens and do not need the standalone access code. Do not hard-code the code in Git.
