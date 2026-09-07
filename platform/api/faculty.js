@@ -66,7 +66,15 @@ module.exports = async (req, res) => {
                  count(DISTINCT e.student_id) FILTER (WHERE e.dropped = false) AS enrolled,
                  count(DISTINCT e.student_id) FILTER (WHERE e.dropped = false AND e.paid = true) AS released,
                  count(DISTINCT l.user_id) FILTER (WHERE l.as_role = 'student') AS started,
-                 count(DISTINCT cp.user_id) AS finished
+                 count(DISTINCT cp.user_id) FILTER (WHERE EXISTS (
+                   SELECT 1 FROM enrolments ec WHERE ec.course_id = c.id
+                     AND ec.student_id = cp.user_id AND ec.dropped = false
+                 )) AS finished,
+                 count(DISTINCT l.id) FILTER (WHERE l.as_role = 'student') AS started_runs,
+                 count(DISTINCT cp.id) FILTER (WHERE EXISTS (
+                   SELECT 1 FROM enrolments er WHERE er.course_id = c.id
+                     AND er.student_id = cp.user_id AND er.dropped = false
+                 )) AS finished_runs
           FROM course_sims cs
           JOIN courses c ON c.id = cs.course_id AND c.faculty_id = ${me.id} AND c.archived = false
           JOIN sims si ON si.id = cs.sim_id
@@ -87,7 +95,14 @@ module.exports = async (req, res) => {
         const rows = await s`
           SELECT u.id AS student_id, u.name, u.email, e.paid, e.dropped,
                  (SELECT count(*) FROM launches l
-                   WHERE l.user_id = u.id AND l.course_id = ${course.id} AND l.sim_id = ${simId}) AS starts,
+                   WHERE l.user_id = u.id AND l.course_id = ${course.id} AND l.sim_id = ${simId}
+                     AND l.as_role = 'student') AS starts,
+                 (SELECT count(*) FROM completions c3
+                   WHERE c3.user_id = u.id AND c3.sim_id = ${simId}
+                     AND (c3.course_id = ${course.id} OR (c3.course_id IS NULL AND EXISTS (
+                       SELECT 1 FROM launches lx3 WHERE lx3.user_id = u.id AND lx3.course_id = ${course.id}
+                         AND lx3.sim_id = ${simId} AND lx3.as_role = 'student'
+                     )))) AS completions,
                  cp.completed_at, cp.duration_seconds, cp.summary, cp.metrics,
                  tr.recorded_at AS transcript_recorded_at, tr.envelope AS transcript
           FROM enrolments e
@@ -140,15 +155,23 @@ module.exports = async (req, res) => {
             (SELECT count(DISTINCT l.user_id) FROM launches l
               WHERE l.course_id = ${course.id} AND l.sim_id = cs.sim_id AND l.as_role = 'student') AS started,
             (SELECT count(DISTINCT c2.user_id) FROM completions c2
-              WHERE c2.course_id = ${course.id} AND c2.sim_id = cs.sim_id) AS finished
+              WHERE c2.course_id = ${course.id} AND c2.sim_id = cs.sim_id
+                AND EXISTS (SELECT 1 FROM enrolments e2 WHERE e2.course_id = ${course.id}
+                  AND e2.student_id = c2.user_id AND e2.dropped = false)) AS finished,
+            (SELECT count(*) FROM launches l
+              WHERE l.course_id = ${course.id} AND l.sim_id = cs.sim_id AND l.as_role = 'student') AS started_runs,
+            (SELECT count(*) FROM completions c2
+              WHERE c2.course_id = ${course.id} AND c2.sim_id = cs.sim_id
+                AND EXISTS (SELECT 1 FROM enrolments e2 WHERE e2.course_id = ${course.id}
+                  AND e2.student_id = c2.user_id AND e2.dropped = false)) AS finished_runs
           FROM course_sims cs JOIN sims si ON si.id = cs.sim_id
           WHERE cs.course_id = ${course.id} ORDER BY cs.added_at`;
         const roster = await s`
           SELECT e.id AS enrolment_id, e.paid, e.paid_at, e.paid_note, e.dropped, e.created_at,
                  u.id AS student_id, u.name, u.email, u.last_seen_at,
-                 (SELECT count(DISTINCT l.sim_id) FROM launches l
+                 (SELECT count(*) FROM launches l
                    WHERE l.user_id = u.id AND l.course_id = e.course_id AND l.as_role = 'student') AS started,
-                 (SELECT count(DISTINCT c2.sim_id) FROM completions c2
+                 (SELECT count(*) FROM completions c2
                    WHERE c2.user_id = u.id
                      AND (c2.course_id = e.course_id OR (c2.course_id IS NULL AND EXISTS (
                        SELECT 1 FROM launches l2 WHERE l2.user_id = u.id AND l2.course_id = e.course_id
@@ -190,6 +213,16 @@ module.exports = async (req, res) => {
                          AND l3.course_id = ${course.id} AND l3.sim_id = si.id AND l3.as_role = 'student'
                      )))) AS completions,
                  cp.completed_at, cp.duration_seconds, cp.summary, cp.metrics,
+                 (SELECT COALESCE(json_agg(json_build_object(
+                    'id', c4.id, 'completed_at', c4.completed_at,
+                    'duration_seconds', c4.duration_seconds, 'summary', c4.summary, 'metrics', c4.metrics
+                  ) ORDER BY c4.completed_at DESC), '[]'::json)
+                  FROM completions c4
+                  WHERE c4.user_id = ${studentId} AND c4.sim_id = si.id
+                    AND (c4.course_id = ${course.id} OR (c4.course_id IS NULL AND EXISTS (
+                      SELECT 1 FROM launches l6 WHERE l6.user_id = ${studentId}
+                        AND l6.course_id = ${course.id} AND l6.sim_id = si.id AND l6.as_role = 'student'
+                    )))) AS completion_history,
                  tr.recorded_at AS transcript_recorded_at, tr.envelope AS transcript
           FROM course_sims cs
           JOIN sims si ON si.id = cs.sim_id

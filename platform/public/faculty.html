@@ -119,7 +119,7 @@ function renderHome() {
   const { courses } = F.data;
   const students = courses.reduce((n,c) => n + Number(c.enrolled||0), 0);
   const released = courses.reduce((n,c) => n + Number(c.paid||0), 0);
-  const finished = (F.simsOverview||[]).reduce((n,x) => n + Number(x.finished||0), 0);
+  const finished = (F.simsOverview||[]).reduce((n,x) => n + Number(x.finished_runs||0), 0);
   app.innerHTML = `
     ${F.me && F.me.role === 'admin' ? `<div class="note" style="margin-top:16px">
       You are signed in as an administrator, so this shows only courses <b>you</b> run — probably none.
@@ -326,7 +326,8 @@ function renderCourse() {
           <div class="no">${x.number ? String(x.number).padStart(2,'0') : '··'}</div>
           <div class="body">
             <div class="t">${esc(x.title)}${eye(x.sim_id)}</div>
-            <div class="sub" style="margin-top:5px"><b style="color:var(--ink)">${x.finished||0}</b> finished · <b style="color:var(--ink)">${x.started||0}</b> started${x.expected_seats ? ' · ' + x.expected_seats + ' expected' : ''}</div>
+            <div class="sub" style="margin-top:5px"><b style="color:var(--ink)">${x.finished||0}</b> student${Number(x.finished)===1?'':'s'} finished · <b style="color:var(--ink)">${x.started||0}</b> student${Number(x.started)===1?'':'s'} started${x.expected_seats ? ' · ' + x.expected_seats + ' expected' : ''}</div>
+            <div class="sub" style="margin-top:4px"><b style="color:var(--ink)">${x.finished_runs||0}</b> run${Number(x.finished_runs)===1?'':'s'} finished · <b style="color:var(--ink)">${x.started_runs||0}</b> run${Number(x.started_runs)===1?'':'s'} started</div>
             <div style="height:3px;background:var(--line);margin-top:8px;max-width:260px"><i style="display:block;height:3px;background:var(--green);width:${pct}%"></i></div>
           </div>
           <div class="side">
@@ -368,7 +369,7 @@ function renderCourse() {
 
     <div class="panel"><div class="tablewrap"><table>
       <thead><tr><th style="width:30px"></th><th style="width:26%">Student</th><th style="width:1%">Access</th><th>Note</th>
-        <th class="num">Joined</th><th class="num">Started</th><th class="num">Finished</th><th class="act"></th></tr></thead>
+        <th class="num">Joined</th><th class="num">Runs started</th><th class="num">Runs finished</th><th class="act"></th></tr></thead>
       <tbody>
       ${shown.length ? shown.map(r => `<tr style="${r.dropped?'opacity:.5':''}">
         <td data-l="" style="width:1%">${r.dropped ? '' : `<input type="checkbox" data-en="${esc(r.enrolment_id)}" ${F.sel.has(r.enrolment_id)?'checked':''}>`}</td>
@@ -376,8 +377,8 @@ function renderCourse() {
         <td data-l="Access">${r.dropped ? dot('off','removed') : dot(r.paid?'ok':'warn', r.paid?'released':'waiting')}</td>
         <td data-l="Note" class="meta">${r.paid_note ? esc(r.paid_note) : '<span class="dim">—</span>'}</td>
         <td data-l="Joined" class="num">${when(r.created_at)}</td>
-        <td data-l="Started" class="num">${r.started || 0}</td>
-        <td data-l="Finished" class="num">${r.finished || 0}</td>
+        <td data-l="Runs started" class="num">${r.started || 0}</td>
+        <td data-l="Runs finished" class="num">${r.finished || 0}</td>
         <td data-l="" class="act">
           <button class="btn sm" data-student-results="${esc(r.student_id)}">Results</button>
           ${r.dropped ? `<button class="btn sm" data-drop="${esc(r.enrolment_id)}" data-now="1">Put back</button>`
@@ -505,25 +506,39 @@ function renderTranscript(env, recordedAt) {
 }
 
 /* ── one student's progress/results across the course ───────────────────── */
+function completionHistory(r) {
+  const h = Array.isArray(r.completion_history) ? r.completion_history : [];
+  if (h.length <= 1) return '';
+  const cards = h.map((x,i) => {
+    const m = x.metrics && typeof x.metrics === 'object' ? x.metrics : {};
+    let sum = '';
+    if (x.summary) {
+      try { const p = JSON.parse(x.summary); sum = p && typeof p === 'object' ? `<pre style="white-space:pre-wrap;font:12px/1.5 var(--mono);margin-top:7px">${esc(JSON.stringify(p,null,2))}</pre>` : `<div class="sub" style="margin-top:7px;white-space:pre-wrap">${esc(x.summary)}</div>`; }
+      catch { sum = `<div class="sub" style="margin-top:7px;white-space:pre-wrap">${esc(x.summary)}</div>`; }
+    }
+    return `<div style="border-top:1px solid var(--line);padding:10px 0"><div class="sub"><b>Run ${h.length-i}</b> · ${esc(new Date(x.completed_at).toLocaleString())}${x.duration_seconds?' · '+Math.round(x.duration_seconds/60)+' min':''}</div>${Object.keys(m).length?`<div class="metrics" style="margin-top:7px">${Object.entries(m).map(([k,v])=>`<div><span>${esc(k)}</span><b>${esc(typeof v==='object'?JSON.stringify(v):v)}</b></div>`).join('')}</div>`:''}${sum}</div>`;
+  }).join('');
+  return `<details style="margin-top:12px"><summary>All ${h.length} completed runs</summary>${cards}</details>`;
+}
 function renderStudentResults() {
   const { course, student, rows } = F.studentResults;
-  const started = rows.filter(r => Number(r.starts) > 0).length;
-  const finished = rows.filter(r => r.completed_at).length;
+  const started = rows.reduce((n,r) => n + Number(r.starts||0), 0);
+  const finished = rows.reduce((n,r) => n + Number(r.completions||0), 0);
   const mins = s => s ? Math.round(s/60) + ' min' : '—';
   app.innerHTML = `
     <div class="crumb"><a id="backCourse">← ${esc(course.title)}</a></div>
     <div class="head"><div><h1>${esc(student.name)}</h1><div class="sub" style="font-size:12px;margin-top:5px">${esc(student.email)}</div></div></div>
     <div class="strip">
       <div class="cell"><div class="n">${rows.length}</div><div class="l">Simulations</div></div>
-      <div class="cell"><div class="n">${started}</div><div class="l">Started</div></div>
-      <div class="cell"><div class="n">${finished}</div><div class="l">Finished</div></div>
+      <div class="cell"><div class="n">${started}</div><div class="l">Runs started</div></div>
+      <div class="cell"><div class="n">${finished}</div><div class="l">Runs finished</div></div>
     </div>
-    <div class="section"><span>Results</span><span style="font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink3)">Latest result from each simulation</span></div>
+    <div class="section"><span>Results</span><span style="font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink3)">Latest result from each simulation · every completed run is retained</span></div>
     <div class="panel"><div class="tablewrap"><table>
       <thead><tr><th style="width:27%">Simulation</th><th style="width:13%">Status</th><th>What came back</th></tr></thead>
       <tbody>${rows.length ? rows.map(r => {
         const m = r.metrics || {};
-        const status = r.completed_at ? dot('ok','finished') : Number(r.starts) > 0 ? dot('warn','started') : dot('off','not started');
+        const status = r.completed_at ? dot('ok', Number(r.completions)>1 ? `finished ×${r.completions}` : 'finished') : Number(r.starts) > 0 ? dot('warn','started') : dot('off','not started');
         let summary = '';
         if (r.summary) {
           const raw = String(r.summary);
@@ -534,11 +549,12 @@ function renderStudentResults() {
           } catch { summary = `<div class="sub" style="margin-top:8px;white-space:pre-wrap">${esc(raw)}</div>`; }
         }
         return `<tr>
-          <td data-l="Simulation" style="vertical-align:top"><div class="nm">${esc(simLabel(r))}</div><div class="sub">${Number(r.starts)||0} launch${Number(r.starts)===1?'':'es'}${Number(r.completions)>1?' · '+r.completions+' completions':''}</div></td>
+          <td data-l="Simulation" style="vertical-align:top"><div class="nm">${esc(simLabel(r))}</div><div class="sub">${Number(r.starts)||0} launch${Number(r.starts)===1?'':'es'} · ${Number(r.completions)||0} completion${Number(r.completions)===1?'':'s'}</div></td>
           <td data-l="Status" style="vertical-align:top">${status}${r.completed_at?`<div class="sub" style="margin-top:5px">${when(r.completed_at)} · ${mins(r.duration_seconds)}</div>`:''}</td>
           <td data-l="What came back" style="vertical-align:top">
             ${Object.keys(m).length ? `<div class="metrics">${Object.entries(m).map(([k,v]) => `<div><span>${esc(k)}</span><b>${esc(typeof v==='object'?JSON.stringify(v):v)}</b></div>`).join('')}</div>` : ''}
             ${summary}
+            ${completionHistory(r)}
             ${r.transcript ? renderTranscript(r.transcript, r.transcript_recorded_at) : ''}
             ${!Object.keys(m).length && !r.summary && !r.transcript ? `<span class="dim" style="font-size:13.5px">${r.completed_at ? 'Finished, but this simulation reported no result detail.' : Number(r.starts)>0 ? 'Started but has not reached the end yet.' : 'Not started.'}</span>` : ''}
           </td>
@@ -554,6 +570,8 @@ function renderPlayed() {
   const active = rows.filter(r => !r.dropped);
   const done = active.filter(r => r.completed_at);
   const started = active.filter(r => Number(r.starts) > 0 && !r.completed_at);
+  const runStarts = active.reduce((n,r) => n + Number(r.starts||0), 0);
+  const runFinishes = active.reduce((n,r) => n + Number(r.completions||0), 0);
   const mins = s => s ? Math.round(s/60) + ' min' : '—';
   app.innerHTML = `
     <div class="crumb"><a id="back">← ${esc(course.title)}</a></div>
@@ -562,9 +580,11 @@ function renderPlayed() {
       <div class="sub" style="font-size:12px;margin-top:5px">${esc(course.title)}</div>
     </div></div>
     <div class="strip" style="border-top:1px solid var(--line);margin-bottom:22px">
-      <div class="cell"><div class="n">${done.length}</div><div class="l">Finished</div></div>
-      <div class="cell"><div class="n">${started.length}</div><div class="l">Started, not finished</div></div>
+      <div class="cell"><div class="n">${done.length}</div><div class="l">Students finished</div></div>
+      <div class="cell"><div class="n">${started.length}</div><div class="l">Students in progress</div></div>
       <div class="cell"><div class="n">${active.length - done.length - started.length}</div><div class="l">Not started</div></div>
+      <div class="cell"><div class="n">${runStarts}</div><div class="l">Run starts</div></div>
+      <div class="cell"><div class="n">${runFinishes}</div><div class="l">Runs finished</div></div>
     </div>
     <div class="panel"><div class="tablewrap"><table>
       <thead><tr>
@@ -582,6 +602,7 @@ function renderPlayed() {
           <td data-l="Student" style="vertical-align:top">
             <div class="nm">${esc(r.name)}</div>
             <div class="sub">${esc(r.email)}</div>
+            <div class="sub" style="margin-top:4px">${Number(r.starts)||0} run start${Number(r.starts)===1?'':'s'} · ${Number(r.completions)||0} finish${Number(r.completions)===1?'':'es'}</div>
             <div style="margin-top:7px">${dot(st[0], st[1])}</div>
             ${r.completed_at ? `<div class="sub" style="margin-top:4px">${when(r.completed_at)}${mins(r.duration_seconds) ? ' · ' + mins(r.duration_seconds) : ''}</div>` : ''}
           </td>
