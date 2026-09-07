@@ -45,6 +45,7 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .buyers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:21px}.buyer{border:1px solid var(--line);background:var(--panel);padding:18px}.buyer h3{font-size:21px;font-weight:400}.buyer .value{font:10px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin-top:12px}.buyer p{font-size:14px;color:var(--dim);margin-top:7px}
 .summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}.summary .card{min-height:150px}.mini{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:12px}.mini div{border:1px solid var(--line);padding:8px 5px;text-align:center}.mini b{display:block;font:600 17px var(--mono);color:var(--amber)}.mini span{font:8px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--dimmer)}
 .briefing{margin:20px 0;border:1px solid var(--line2);background:var(--panel)}.briefing>summary{cursor:pointer;padding:13px 16px;font:11px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--amber);list-style:none}.briefing>summary::-webkit-details-marker{display:none}.briefing>summary:after{content:'+';float:right;color:var(--dim)}.briefing[open]>summary:after{content:'−'}.briefing-body{padding:0 16px 18px;border-top:1px solid var(--line)}.briefing-body>p{margin-top:14px;color:#C9C6BE}.exhibit{margin-top:18px;padding-top:15px;border-top:1px solid var(--line)}.exhibit h3{font:500 15px var(--serif);color:var(--bone);margin-bottom:8px}.exhibit p{color:#C3C0B8;margin:7px 0}.exhibit table{width:100%;border-collapse:collapse;margin-top:9px;font-size:13px}.exhibit th,.exhibit td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}.exhibit th{font:9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer)}.result-section{margin-top:26px}.result-section>.eyebrow{margin-bottom:10px}.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.result-grid .outcome{margin-top:0}.result-grid .card{min-height:0}@media(max-width:760px){.result-grid{grid-template-columns:1fr}}
+.result-hero{border:1px solid #8A6427;background:rgba(240,166,60,.07);padding:22px 24px;margin:20px 0 28px}.result-hero h3{font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.result-hero p{font-size:21px;line-height:1.55;color:var(--bone)}.timeline{display:grid;gap:12px}.timeline-year{display:grid;grid-template-columns:90px 1fr;gap:14px;align-items:start}.timeline-label{font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--amber);padding-top:18px}.timeline-body{display:grid;gap:10px}.timeline-body .outcome{margin-top:0}@media(max-width:760px){.timeline-year{grid-template-columns:1fr}.timeline-label{padding-top:0}}
 .joinbox{max-width:560px}.joinbox .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.joinbox input{text-transform:none}
 .notice{border-left:2px solid var(--amber);padding:11px 14px;background:rgba(240,166,60,.05);color:#CBC8C0;margin:18px 0}.error{border-left-color:var(--red);color:#E3B9C2}
 .hidden{display:none!important}
@@ -379,29 +380,35 @@ function renderClose(){
     const y2o=S.allOutcomes?.year2||S.year2Outcome||null;
     const y3o=S.allOutcomes?.year3||null;
     const cum=y3o?.cumulative||(S.year1&&S.year2?runningTotals(S.year1,S.year2):null);
-    shell(`<div class="eyebrow">Full results</div><h2>Your complete Midland decision record.</h2>
-    <p class="lede">Your choices and every consequence you reached are collected here. Nothing is scored or ranked.</p>
-    <div class="result-section"><div class="eyebrow">What you chose</div>
-      <div class="result-grid">
-        <div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
-        <div class="card"><h3>Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div>
-        <div class="card"><h3>Year 2 allocation</h3>${S.year2?miniAlloc(S.year2):'<p>—</p>'}</div>
-        <div class="card"><h3>Cumulative portfolio</h3>${cum?miniAlloc(cum):'<p>—</p>'}</div>
+    const overall=overallOutcomeText();
+    shell(`<div class="eyebrow">Your outcome</div><h2>What your architecture made possible.</h2>
+    <p class="lede">This is not a score or grade. It is the chain of consequences produced by the portfolio you committed.</p>
+    ${overall?`<div class="result-hero"><h3>Overall result</h3><p>${esc(overall)}</p></div>`:''}
+    <div class="result-section"><div class="eyebrow">Three-year consequence timeline</div>
+      <div class="timeline">
+        <div class="timeline-year"><div class="timeline-label">Year 1</div><div class="timeline-body">${y1o?`<div class="outcome"><h3>${esc(y1o.title)}</h3><p>${esc(y1o.narrative)}</p></div>`:'<div class="card"><p>Outcome unavailable.</p></div>'}</div></div>
+        <div class="timeline-year"><div class="timeline-label">Year 2</div><div class="timeline-body">
+          ${y2o?.heat?`<div class="outcome"><h3>${esc(y2o.heat.title)}</h3><p>${esc(y2o.heat.narrative)}</p></div>`:''}
+          ${y2o?.competitor?`<div class="outcome"><h3>${esc(y2o.competitor.title)}</h3><p>${esc(y2o.competitor.narrative)}</p></div>`:''}
+        </div></div>
+        <div class="timeline-year"><div class="timeline-label">Year 3</div><div class="timeline-body">${y3o?`<div class="outcome"><h3>${esc(y3o.title)}</h3><p>${esc(y3o.narrative)}</p></div>`:'<div class="card"><p>Outcome unavailable.</p></div>'}</div></div>
       </div>
     </div>
-    <div class="result-section"><div class="eyebrow">What happened</div>
-      ${y1o?`<div class="outcome"><h3>${esc(y1o.title)}</h3><p>${esc(y1o.narrative)}</p></div>`:''}
-      <div class="result-grid" style="margin-top:12px">
-        ${y2o?.heat?`<div class="outcome"><h3>${esc(y2o.heat.title)}</h3><p>${esc(y2o.heat.narrative)}</p></div>`:''}
-        ${y2o?.competitor?`<div class="outcome"><h3>${esc(y2o.competitor.title)}</h3><p>${esc(y2o.competitor.narrative)}</p></div>`:''}
+    <div class="result-section"><div class="eyebrow">The portfolio that produced this</div>
+      <div class="result-grid">
+        <div class="card"><h3>Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div>
+        <div class="card"><h3>Year 2 allocation</h3>${S.year2?miniAlloc(S.year2):'<p>—</p>'}</div>
+        <div class="card" style="grid-column:1/-1"><h3>Cumulative portfolio</h3>${cum?miniAlloc(cum):'<p>—</p>'}</div>
       </div>
-      ${y3o?`<div class="outcome"><h3>${esc(y3o.title)}</h3><p>${esc(y3o.narrative)}</p></div>`:''}
+    </div>
+    <div class="result-section"><div class="eyebrow">Your original view</div>
+      <div class="card"><p>${esc(S.strategicView||'—')}</p></div>
     </div>
     <div class="result-section"><div class="eyebrow">Your reflections</div>
       <div class="card"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(S.reflection1||'—')}</p></div>
       <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[1])}</h3><p style="white-space:pre-wrap">${esc(S.reflection2||'—')}</p></div>
     </div>
-    ${notice('Run complete. These full results are ready to screenshot or print to PDF.')}
+    ${notice('Run complete. The full outcome, portfolio and reflections are ready to screenshot or print to PDF.')}
     <div class="actions"><button class="btn pri" id="printBtn">Print / save PDF</button></div>`);
     document.getElementById('printBtn').onclick=()=>window.print();
     return;
@@ -415,6 +422,33 @@ function renderClose(){
   document.getElementById('finishBtn').onclick=finish;
 }
 function miniAlloc(a){return `<div class="mini">${C.lines.map(l=>`<div><b>${a[l.id]}</b><span>${esc(l.label)}</span></div>`).join('')}</div>`}
+function overallOutcomeText(){
+  const y1=(S.allOutcomes?.year1||S.year1Outcome)?.band;
+  const heat=(S.allOutcomes?.year2||S.year2Outcome)?.heat?.band;
+  const competitor=(S.allOutcomes?.year2||S.year2Outcome)?.competitor?.band;
+  const y3=S.allOutcomes?.year3?.band;
+  const a={
+    strong:'Customer reporting became a real capability early.',
+    middle:'Customer reporting became possible, but slowly and with manual work.',
+    weak:'The first customer request exposed a reporting gap.'
+  }[y1]||'';
+  const b={
+    strong:'Operational resilience held when the heat wave tested the company.',
+    middle:'The heat wave strained operations but did not fully break them.',
+    weak:'The heat wave exposed a serious resilience weakness.'
+  }[heat]||'';
+  const c={
+    strong:'Midland could answer the competitor from a position of strength.',
+    middle:'Midland could only mount a limited pilot response to the competitor.',
+    weak:'Midland could not respond quickly to the competitor’s new service model.'
+  }[competitor]||'';
+  const d={
+    strong:'By Year 3, the architecture supported predictive service as something Midland could actually sell.',
+    pilot:'By Year 3, predictive service was promising, but still only a pilot.',
+    weak:'By Year 3, the architecture still lacked the usable data foundation for predictive service.'
+  }[y3]||'';
+  return [a,b,c,d].filter(Boolean).join(' ');
+}
 async function finish(){
   S.reflection1=document.getElementById('r1').value.trim();S.reflection2=document.getElementById('r2').value.trim();
   try{
