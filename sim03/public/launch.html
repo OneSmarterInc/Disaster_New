@@ -32,11 +32,11 @@ else{
       const r=await fetch(BASE+'/api/config',{headers:code?{'x-access-code':code}:{}});
       if(!r.ok){let d={};try{d=await r.json()}catch{};throw new Error(d.message||(d.error==='access_code_required'?'That access code is not valid.':'Unable to open the simulation.'))}
       sessionStorage.setItem('m03-access',code);
-      location.replace(BASE+'/index.html'+(q?'?'+q:'')+(code?'#code='+encodeURIComponent(code):''));
+      location.replace(BASE+'/index.html'+(q?'?'+q:''));
     }catch(e){err.textContent=e.message;button.disabled=false;input.focus()}
   }
   button.onclick=verify;input.addEventListener('keydown',e=>{if(e.key==='Enter')verify()});
-  if(remembered)verify();else input.focus();
+  input.focus();
 }
 </script>
 </body>
