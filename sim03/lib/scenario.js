@@ -35,11 +35,22 @@ const META = {
       'Run the same fixed-budget problem your students will see. Nothing is scored and no allocation is labelled correct.',
     sessionShape:
       'About twenty minutes to play. The debrief is designed for the rest of the class hour.',
+    catalogueFacts: [
+      { label: 'played', value: 'individual or team' },
+      { label: 'preparation', value: 'briefing packet before class' },
+      { label: 'assessment', value: 'not marked' }
+    ],
+    atAGlance: [
+      { label: 'Decisions', value: 'Two annual allocations' },
+      { label: 'Quantitative', value: 'Five-line $9M budget' },
+      { label: 'Played', value: 'Individual or team' },
+      { label: 'Session', value: 'About an hour' }
+    ],
     cast: [],
     beats: [
-      { label: 'Year 1', text: 'Commit a technology portfolio before the first consequence appears.' },
-      { label: 'Year 2', text: 'Allocate again with Year 1 totals still visible, then face two events.' },
-      { label: 'Year 3', text: 'No more allocation. The accumulated architecture now answers for you.' }
+      { at: 'Year 1', what: 'Commit a technology portfolio before the first consequence appears.' },
+      { at: 'Year 2', what: 'Allocate again with Year 1 totals still visible, then face two events.' },
+      { at: 'Year 3', what: 'No more allocation. The accumulated architecture now answers for you.' }
     ]
   }
 };

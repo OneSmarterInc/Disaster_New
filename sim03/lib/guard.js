@@ -1,12 +1,16 @@
 const { verifyLaunch, announce } = require('./launch.js');
 const S = require('./scenario.js');
 
+function canonicalUrl(req) {
+  if (process.env.SIM_URL) return String(process.env.SIM_URL).replace(/\/+$/, '');
+  if (process.env.PLATFORM_URL) return String(process.env.PLATFORM_URL).replace(/\/+$/, '') + '/sim03';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  return host ? `${proto}://${host}` : '';
+}
+
 function announceOnce(req) {
-  try {
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    const proto = req.headers['x-forwarded-proto'] || 'https';
-    announce(S.META, process.env.SIM_URL || (host ? `${proto}://${host}` : ''));
-  } catch {}
+  try { announce(S.META, canonicalUrl(req)); } catch {}
 }
 
 function checkAccess(req, res) {
@@ -44,4 +48,4 @@ function body(req) {
   return b || {};
 }
 
-module.exports = { checkAccess, body, announceOnce };
+module.exports = { checkAccess, body, announceOnce, canonicalUrl };

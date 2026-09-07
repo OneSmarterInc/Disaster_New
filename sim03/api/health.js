@@ -4,6 +4,7 @@ const path = require('path');
 const { announce } = require('../lib/launch.js');
 const store = require('../lib/store.js');
 const S = require('../lib/scenario.js');
+const { canonicalUrl } = require('../lib/guard.js');
 
 const BUILD = (() => {
   const sha = process.env.VERCEL_GIT_COMMIT_SHA;
@@ -28,8 +29,7 @@ function holdsTheSecret(req) {
 
 module.exports = async (req, res) => {
   try {
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    await announce(S.META, process.env.SIM_URL || (host ? `https://${host}` : ''));
+    await announce(S.META, canonicalUrl(req));
   } catch {}
 
   const secret = process.env.LAUNCH_SECRET;
@@ -42,10 +42,7 @@ module.exports = async (req, res) => {
     launchSecret: secret ? 'configured' : 'MISSING',
     launchSecretFingerprint: holdsTheSecret(req) ? fingerprint(secret) : 'hidden',
     platformUrl: process.env.PLATFORM_URL || 'MISSING (registration/completions disabled)',
-    registersAs: process.env.SIM_URL
-      || ((req.headers['x-forwarded-host'] || req.headers.host)
-        ? `https://${req.headers['x-forwarded-host'] || req.headers.host} (SIM_URL not set)`
-        : 'MISSING'),
+    registersAs: canonicalUrl(req) || 'MISSING',
     catalogueRevision: S.META.catalogueRevision,
     replaces: S.META.replaces,
     features: [

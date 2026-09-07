@@ -6,7 +6,7 @@ Set these environment variables before first traffic reaches the deployment:
 
 - `LAUNCH_SECRET` — exactly the same value as the RapidSims platform.
 - `PLATFORM_URL` — the production RapidSims platform base URL.
-- `SIM_URL` — the canonical public URL for this sim. Use the stable production URL, not a Vercel preview URL.
+- `SIM_URL` — recommended: `https://rapidsims.flexee.org/sim03`. If omitted, `PLATFORM_URL` is used to derive that canonical route.
 - KV/Upstash REST URL and token for facilitated sessions.
 - `FACULTY_CODES` — required if anyone will open the instructor surface directly instead of arriving with a signed faculty launch token. Format: `Name:code,Other Name:code`. The API fails closed when neither a valid faculty launch token nor a matching configured faculty code is present.
 - Optional `ACCESS_CODE` for standalone student access.
@@ -24,3 +24,8 @@ Then:
 7. Test one individual session and one team session end-to-end before catalogue publication.
 
 No existing `sim`, `sim-02`, `simplus01`, or platform runtime file is changed by this work.
+
+
+## Platform integration
+
+The production platform proxies `/sim03`, `/sim03/`, and `/sim03/:path*` to `https://sim-03-midland.vercel.app`. Keep `LAUNCH_SECRET` identical on both deployments. Sim03 self-registers as `rapid-03-midland`; registration is unpublished until an administrator explicitly publishes it. Before publication, confirm the catalogue metadata says `individual or team`, `briefing packet before class`, and `not marked`, and run one faculty launch plus one student completion through `https://rapidsims.flexee.org/sim03`.

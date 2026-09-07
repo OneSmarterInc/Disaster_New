@@ -59,6 +59,8 @@ function effective(detail) {
   }
   out.cast = Array.isArray(d.cast) ? d.cast : [];
   out.beats = Array.isArray(d.beats) ? d.beats : [];
+  out.catalogueFacts = Array.isArray(d.catalogueFacts) ? d.catalogueFacts : [];
+  out.atAGlance = Array.isArray(d.atAGlance) ? d.atAGlance : [];
   out._edited = d._edited || [];
   return out;
 }

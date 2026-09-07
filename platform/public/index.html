@@ -399,6 +399,19 @@ function classify(sim) {
   return (Number(sim.minutes) || 0) >= 60 ? 'rapidsim-plus' : 'rapidsim';
 }
 
+function catalogueFactsHTML(s) {
+  const d = s.detail || {};
+  const custom = Array.isArray(d.catalogueFacts)
+    ? d.catalogueFacts.filter(x => x && x.value).slice(0, 6)
+    : [];
+  if (!custom.length) {
+    return '<span>played <b>individually</b></span>' +
+           '<span><b>no</b> preparation</span>' +
+           '<span><b>not</b> marked</span>';
+  }
+  return custom.map(x => `<span>${x.label ? esc(x.label) + ' ' : ''}<b>${esc(x.value)}</b></span>`).join('');
+}
+
 function cardHTML(s) {
   return `<div class="card" data-open="${esc(s.id)}">
     <div class="body">
@@ -407,9 +420,7 @@ function cardHTML(s) {
       ${s.description ? `<p>${esc(s.description)}</p>` : ''}
       <div class="facts">
         ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
-        <span>played <b>individually</b></span>
-        <span><b>no</b> preparation</span>
-        <span><b>not</b> marked</span>
+        ${catalogueFactsHTML(s)}
       </div>
       ${s.detail && s.detail.teaches ? `<div class="teaches"><span>Teaches</span>${esc(s.detail.teaches)}</div>` : ''}
     </div>
