@@ -61,10 +61,25 @@ module.exports = async (req, res) => {
       metrics = trimmed;
     }
 
+    // Some simulations return a structured summary. String(object) used to turn
+    // that into "[object Object]", which meant faculty could see a completion but
+    // not the student's actual reflection. Store structured summaries as JSON
+    // text while keeping plain-string summaries backward compatible.
+    let summary = null;
+    if (payload.summary !== undefined && payload.summary !== null) {
+      try {
+        summary = typeof payload.summary === 'object'
+          ? JSON.stringify(payload.summary)
+          : String(payload.summary);
+      } catch {
+        summary = String(payload.summary);
+      }
+      summary = summary.slice(0, 6000);
+    }
+
     await s`INSERT INTO completions (id, user_id, sim_id, course_id, duration_seconds, summary, metrics)
             VALUES (${id('cmp')}, ${payload.sub}, ${payload.sim}, ${courseId},
-                    ${dur}, ${payload.summary ? String(payload.summary).slice(0, 400) : null},
-                    ${metrics ? JSON.stringify(metrics) : null})`;
+                    ${dur}, ${summary}, ${metrics ? JSON.stringify(metrics) : null})`;
 
     return res.status(200).json({ ok: true });
   } catch (e) {
