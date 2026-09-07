@@ -33,8 +33,32 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;
 const F = {
   view:'home', tab:'crs', data:null, simsOverview:null, course:null, progress:null, studentResults:null,
   me:null, err:null, q:{}, filter:{}, sel:new Set(),
+  page:{crs:1,sim:1,ros:1,studentResults:1,played:1},
   newCourse:false, editCourse:false, addSim:false, help:null, looking:null
 };
+
+const PAGE_SIZE = 10;
+function paginate(rows, key) {
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const page = Math.min(Math.max(1, Number(F.page[key] || 1)), pages);
+  F.page[key] = page;
+  const start = (page - 1) * PAGE_SIZE;
+  return { rows: rows.slice(start, start + PAGE_SIZE), page, pages, total: rows.length };
+}
+function pagerControls(key, page, pages) {
+  return `<span class="faculty-pager">
+    <button class="btn sm" data-page-key="${esc(key)}" data-page="${page-1}" ${page<=1?'disabled':''}>Previous</button>
+    <span class="info">Page ${page} of ${pages}</span>
+    <button class="btn sm" data-page-key="${esc(key)}" data-page="${page+1}" ${page>=pages?'disabled':''}>Next</button>
+  </span>`;
+}
+function wirePager() {
+  app.querySelectorAll('[data-page-key]').forEach(b => b.onclick = () => {
+    const key = b.dataset.pageKey;
+    F.page[key] = Number(b.dataset.page || 1);
+    render();
+  });
+}
 
 async function api(path, payload) {
   const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -89,17 +113,17 @@ async function loadHome() {
   F.view = 'home'; F.course = null; F.sel.clear(); render();
 }
 async function openCourse(id) {
-  try { F.course = await api('/api/faculty', { action:'course_detail', courseId:id }); F.view = 'course'; F.sel.clear(); F.err = null; }
+  try { F.course = await api('/api/faculty', { action:'course_detail', courseId:id }); F.view = 'course'; F.sel.clear(); F.page.ros = 1; F.err = null; }
   catch (e) { F.err = e.message; }
   render();
 }
 async function openProgress(courseId, simId) {
-  try { F.progress = await api('/api/faculty', { action:'sim_progress', courseId, simId }); F.view = 'played'; F.err = null; }
+  try { F.progress = await api('/api/faculty', { action:'sim_progress', courseId, simId }); F.view = 'played'; F.page.played = 1; F.err = null; }
   catch (e) { F.err = e.message; }
   render();
 }
 async function openStudentResults(courseId, studentId) {
-  try { F.studentResults = await api('/api/faculty', { action:'student_results', courseId, studentId }); F.view = 'student-results'; F.err = null; }
+  try { F.studentResults = await api('/api/faculty', { action:'student_results', courseId, studentId }); F.view = 'student-results'; F.page.studentResults = 1; F.err = null; }
   catch (e) { F.err = e.message; }
   render();
 }
@@ -145,7 +169,9 @@ function renderHome() {
 }
 
 function coursesTab() {
-  const rows = F.data.courses.filter(c => matches('crs', [c.title, c.term, c.join_code]));
+  const matching = F.data.courses.filter(c => matches('crs', [c.title, c.term, c.join_code]));
+  const pg = paginate(matching, 'crs');
+  const rows = pg.rows;
   return `
     <div class="toolbar">
       <div class="search"><input data-q="crs" type="text" placeholder="Search your courses" value="${esc(F.q.crs||'')}"></div>
@@ -170,7 +196,7 @@ function coursesTab() {
         <td data-l="" class="act"><button class="btn pri sm" data-open="${esc(c.id)}">Open</button></td>
       </tr>`).join('') : `<tr><td colspan="5" class="empty">${F.data.courses.length ? 'Nothing matches that.' : 'No courses yet. Create one, then add a simulation to it.'}</td></tr>`}
       </tbody></table></div>
-      <div class="foot"><span class="info">${rows.length} course${rows.length===1?'':'s'}</span><span class="info">Page 1 of 1</span></div>
+      <div class="foot"><span class="info">${pg.total} course${pg.total===1?'':'s'}</span>${pagerControls('crs', pg.page, pg.pages)}</div>
     </div>`;
 }
 function wireCourses() {
@@ -211,7 +237,9 @@ function simsTab() {
     .filter(x => matches('sim', [x.title, x.tagline, String(x.number||'')]));
   const rapid = matching.filter(x => (Number(x.minutes) || 0) < 60);
   const rapidPlus = matching.filter(x => (Number(x.minutes) || 0) >= 60);
-  const shown = rapid.concat(rapidPlus);
+  const allShown = rapid.concat(rapidPlus);
+  const pg = paginate(allShown, 'sim');
+  const shown = pg.rows;
   return `
     <div class="toolbar">
       <div class="search"><input data-q="sim" type="text" placeholder="Search simulations" value="${esc(F.q.sim||'')}"></div>
@@ -235,7 +263,9 @@ function simsTab() {
       : shown.length ? shown.map((x, index) => {
         const p = prevOf(x.id), live = p && daysLeft(p.expires_at) > 0;
         const plus = (Number(x.minutes) || 0) >= 60;
-        const beginsLine = index === 0 || (index === rapid.length && rapidPlus.length);
+        const prev = index > 0 ? shown[index-1] : null;
+        const prevPlus = prev ? (Number(prev.minutes) || 0) >= 60 : null;
+        const beginsLine = index === 0 || prevPlus !== plus;
         const lineHead = beginsLine ? `<tr><td colspan="5" style="background:var(--sunk);padding:13px 16px;border-top:${index ? '1px solid var(--line2)' : '0'}">
           <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
             <b>${plus ? 'RapidSims+' : 'RapidSims'}</b>
@@ -256,7 +286,7 @@ function simsTab() {
         </tr>`;
       }).join('') : `<tr><td colspan="5" class="empty">Nothing available to you yet. Simulations appear once they are published, or when an administrator gives you early access to review one.</td></tr>`}
       </tbody></table></div>
-      <div class="foot"><span class="info">${shown.length} simulation${shown.length===1?'':'s'}</span><span class="info">Page 1 of 1</span></div>
+      <div class="foot"><span class="info">${pg.total} simulation${pg.total===1?'':'s'}</span>${pagerControls('sim', pg.page, pg.pages)}</div>
     </div>`;
 }
 function wireSims() {
@@ -275,8 +305,12 @@ function renderCourse() {
   const active = roster.filter(r => !r.dropped);
   const waiting = active.filter(r => !r.paid);
   const q = (F.q.ros||'').toLowerCase().trim();
-  const shown = roster.filter(r => !q || [r.name, r.email].join(' ').toLowerCase().includes(q));
+  const filteredRoster = roster.filter(r => !q || [r.name, r.email].join(' ').toLowerCase().includes(q));
+  const rosterPg = paginate(filteredRoster, 'ros');
+  const shown = rosterPg.rows;
   const notAdded = catalogue.filter(si => !sims.find(x => x.sim_id === si.id));
+  const runStarts = sims.reduce((n,x) => n + Number(x.started_runs || 0), 0);
+  const runFinishes = sims.reduce((n,x) => n + Number(x.finished_runs || 0), 0);
 
   app.innerHTML = `
     <div class="crumb"><a id="back">← Your courses</a></div>
@@ -290,6 +324,12 @@ function renderCourse() {
         <button class="btn sm" id="ca">Archive</button>
         <button class="btn sm danger" id="cd">Delete</button>
       </div>
+    </div>
+    <div class="faculty-course-summary" aria-label="Course activity summary">
+      <div class="faculty-summary-cell"><div class="faculty-summary-n">${active.length}</div><div class="faculty-summary-l">Enrolled</div></div>
+      <div class="faculty-summary-cell"><div class="faculty-summary-n">${active.filter(r=>r.paid).length}</div><div class="faculty-summary-l">Released</div></div>
+      <div class="faculty-summary-cell"><div class="faculty-summary-n">${runStarts}</div><div class="faculty-summary-l">Run starts</div></div>
+      <div class="faculty-summary-cell"><div class="faculty-summary-n">${runFinishes}</div><div class="faculty-summary-l">Runs finished</div></div>
     </div>
     ${F.editCourse ? `<div class="panel" style="padding:15px 16px;margin-bottom:14px">
       <div class="field">
@@ -321,20 +361,25 @@ function renderCourse() {
 
     <div class="panel" style="margin-bottom:26px">
       ${sims.length ? sims.map(x => {
-        const pct = Number(x.started) ? Math.round(Number(x.finished)/Number(x.started)*100) : 0;
-        return `<div class="sim">
+        const runPct = Number(x.started_runs) ? Math.min(100, Math.round(Number(x.finished_runs)/Number(x.started_runs)*100)) : 0;
+        return `<div class="sim faculty-sim-card">
           <div class="no">${x.number ? String(x.number).padStart(2,'0') : '··'}</div>
           <div class="body">
-            <div class="t">${esc(x.title)}${eye(x.sim_id)}</div>
-            <div class="sub" style="margin-top:5px"><b style="color:var(--ink)">${x.finished||0}</b> student${Number(x.finished)===1?'':'s'} finished · <b style="color:var(--ink)">${x.started||0}</b> student${Number(x.started)===1?'':'s'} started${x.expected_seats ? ' · ' + x.expected_seats + ' expected' : ''}</div>
-            <div class="sub" style="margin-top:4px"><b style="color:var(--ink)">${x.finished_runs||0}</b> run${Number(x.finished_runs)===1?'':'s'} finished · <b style="color:var(--ink)">${x.started_runs||0}</b> run${Number(x.started_runs)===1?'':'s'} started</div>
-            <div style="height:3px;background:var(--line);margin-top:8px;max-width:260px"><i style="display:block;height:3px;background:var(--green);width:${pct}%"></i></div>
+            <div class="faculty-sim-title-row"><div class="t">${esc(x.title)}${eye(x.sim_id)}</div></div>
+            <div class="faculty-sim-kpis">
+              <div class="faculty-sim-kpi"><b>${x.started||0}</b><span>Students started</span></div>
+              <div class="faculty-sim-kpi"><b>${x.finished||0}</b><span>Students finished</span></div>
+              <div class="faculty-sim-kpi"><b>${x.started_runs||0}</b><span>Run starts</span></div>
+              <div class="faculty-sim-kpi"><b>${x.finished_runs||0}</b><span>Runs finished</span></div>
+              ${x.expected_seats ? `<div class="faculty-sim-kpi"><b>${x.expected_seats}</b><span>Expected</span></div>` : ''}
+            </div>
+            <div class="faculty-run-progress" title="${x.finished_runs||0} of ${x.started_runs||0} started runs completed"><i style="width:${runPct}%"></i></div>
           </div>
-          <div class="side">
-            <div>
+          <div class="side faculty-sim-side">
+            <div class="faculty-sim-actions">
               <a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session">Run a session</a>
               <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Play it yourself</a>
-              <button class="btn sm" data-prog="${esc(x.sim_id)}">Who has played</button>
+              <button class="btn sm faculty-result-btn" data-prog="${esc(x.sim_id)}">Who has played</button>
               <button class="btn sm" data-seats="${esc(x.sim_id)}" data-cur="${x.expected_seats||''}">Expected number</button>
               <button class="btn sm danger" data-rmsim="${esc(x.sim_id)}">Remove</button>
             </div>
@@ -355,21 +400,21 @@ function renderCourse() {
       <li>The note is for you: it appears beside them so a term later you can see why they were released.</li>
       <li><b>Take access away</b> stops them starting anything new; it does not undo a run already played.</li>
     </ol>`)}
-    <div class="note">
-      <b>Students join this course with one link.</b> Send it however you normally reach them — it covers every simulation in the course, so they never join twice.
+    <div class="note faculty-share">
+      <div class="faculty-share-copy"><b>Students join this course with one link.</b> Send it once; it covers every simulation in the course. <span class="faculty-join-code">${esc(course.join_code)}</span></div>
       <div class="copyrow"><input id="eurl" readonly value="${esc(enrolUrl)}"><button class="btn" id="ecopy">Copy</button></div>
     </div>
 
-    <div class="toolbar">
+    <div class="toolbar faculty-roster-toolbar">
       <div class="search"><input data-q="ros" type="text" placeholder="Search this course's students" value="${esc(F.q.ros||'')}"></div>
-      <input id="p_note" placeholder="note, e.g. dept PO 4471" style="width:210px;border:1px solid var(--line2);padding:8px 10px;font-size:14px;background:var(--card)">
+      <input id="p_note" class="faculty-note-input" placeholder="note, e.g. dept PO 4471">
       <button class="btn" id="p_sel" ${F.sel.size?'':'disabled'}>Give access to ${F.sel.size||''} selected</button>
       <button class="btn pri" id="p_all" ${waiting.length?'':'disabled'}>${waiting.length?`Give access to all ${waiting.length}`:'Nobody waiting'}</button>
     </div>
 
     <div class="panel"><div class="tablewrap"><table>
       <thead><tr><th style="width:30px"></th><th style="width:26%">Student</th><th style="width:1%">Access</th><th>Note</th>
-        <th class="num">Joined</th><th class="num">Runs started</th><th class="num">Runs finished</th><th class="act"></th></tr></thead>
+        <th class="num">Joined</th><th>Run activity</th><th class="act"></th></tr></thead>
       <tbody>
       ${shown.length ? shown.map(r => `<tr style="${r.dropped?'opacity:.5':''}">
         <td data-l="" style="width:1%">${r.dropped ? '' : `<input type="checkbox" data-en="${esc(r.enrolment_id)}" ${F.sel.has(r.enrolment_id)?'checked':''}>`}</td>
@@ -377,20 +422,19 @@ function renderCourse() {
         <td data-l="Access">${r.dropped ? dot('off','removed') : dot(r.paid?'ok':'warn', r.paid?'released':'waiting')}</td>
         <td data-l="Note" class="meta">${r.paid_note ? esc(r.paid_note) : '<span class="dim">—</span>'}</td>
         <td data-l="Joined" class="num">${when(r.created_at)}</td>
-        <td data-l="Runs started" class="num">${r.started || 0}</td>
-        <td data-l="Runs finished" class="num">${r.finished || 0}</td>
+        <td data-l="Run activity"><div class="faculty-run-activity"><div><b>${r.started || 0}</b><span>Started</span></div><div><b>${r.finished || 0}</b><span>Finished</span></div></div></td>
         <td data-l="" class="act">
-          <button class="btn sm" data-student-results="${esc(r.student_id)}">Results</button>
+          <button class="btn sm faculty-result-btn" data-student-results="${esc(r.student_id)}">Results</button>
           ${r.dropped ? `<button class="btn sm" data-drop="${esc(r.enrolment_id)}" data-now="1">Put back</button>`
             : `${r.paid ? `<button class="btn sm" data-revoke="${esc(r.enrolment_id)}">Take access</button>`
                         : `<button class="btn sm" data-give="${esc(r.enrolment_id)}">Give access</button>`}
                <button class="btn sm" data-drop="${esc(r.enrolment_id)}" data-now="0">Remove</button>`}
         </td>
-      </tr>`).join('') : `<tr><td colspan="8" class="empty">${roster.length ? 'Nobody matches that.' : 'Nobody has joined yet. Share the link above.'}</td></tr>`}
+      </tr>`).join('') : `<tr><td colspan="7" class="empty">${roster.length ? 'Nobody matches that.' : 'Nobody has joined yet. Share the link above.'}</td></tr>`}
       </tbody></table></div>
       <div class="foot">
-        <span class="info">${active.length} enrolled · ${active.filter(r=>r.paid).length} released</span>
-        <span class="info">Page 1 of 1</span>
+        <span class="info">${rosterPg.total} shown · ${active.length} enrolled · ${active.filter(r=>r.paid).length} released</span>
+        ${pagerControls('ros', rosterPg.page, rosterPg.pages)}
       </div>
     </div>
     ${F.err ? `<div class="hint" style="color:var(--rose)">${esc(F.err)}</div>` : ''}`;
@@ -524,6 +568,9 @@ function renderStudentResults() {
   const { course, student, rows } = F.studentResults;
   const started = rows.reduce((n,r) => n + Number(r.starts||0), 0);
   const finished = rows.reduce((n,r) => n + Number(r.completions||0), 0);
+  const filtered = rows.filter(r => matches('studentResults', [simLabel(r), r.completed_at ? 'finished' : Number(r.starts)>0 ? 'started' : 'not started']));
+  const pg = paginate(filtered, 'studentResults');
+  const shown = pg.rows;
   const mins = s => s ? Math.round(s/60) + ' min' : '—';
   app.innerHTML = `
     <div class="crumb"><a id="backCourse">← ${esc(course.title)}</a></div>
@@ -534,9 +581,10 @@ function renderStudentResults() {
       <div class="cell"><div class="n">${finished}</div><div class="l">Runs finished</div></div>
     </div>
     <div class="section"><span>Results</span><span style="font-family:var(--serif);text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink3)">Latest result from each simulation · every completed run is retained</span></div>
+    <div class="toolbar faculty-internal-toolbar"><div class="search"><input data-q="studentResults" type="text" placeholder="Filter simulations or status" value="${esc(F.q.studentResults||'')}"></div></div>
     <div class="panel"><div class="tablewrap"><table>
       <thead><tr><th style="width:27%">Simulation</th><th style="width:13%">Status</th><th>What came back</th></tr></thead>
-      <tbody>${rows.length ? rows.map(r => {
+      <tbody>${shown.length ? shown.map(r => {
         const m = r.metrics || {};
         const status = r.completed_at ? dot('ok', Number(r.completions)>1 ? `finished ×${r.completions}` : 'finished') : Number(r.starts) > 0 ? dot('warn','started') : dot('off','not started');
         let summary = '';
@@ -559,9 +607,10 @@ function renderStudentResults() {
             ${!Object.keys(m).length && !r.summary && !r.transcript ? `<span class="dim" style="font-size:13.5px">${r.completed_at ? 'Finished, but this simulation reported no result detail.' : Number(r.starts)>0 ? 'Started but has not reached the end yet.' : 'Not started.'}</span>` : ''}
           </td>
         </tr>`;
-      }).join('') : '<tr><td colspan="3" class="empty">No simulations are attached to this course.</td></tr>'}</tbody>
-    </table></div></div>`;
+      }).join('') : `<tr><td colspan="3" class="empty">${rows.length ? 'Nothing matches that filter.' : 'No simulations are attached to this course.'}</td></tr>`}</tbody>
+    </table></div><div class="foot"><span class="info">${pg.total} simulation${pg.total===1?'':'s'} shown</span>${pagerControls('studentResults', pg.page, pg.pages)}</div></div>`;
   document.getElementById('backCourse').onclick = () => openCourse(course.id);
+  wireCommon();
 }
 
 /* ── who has played ─────────────────────────────────────────────────────── */
@@ -572,6 +621,9 @@ function renderPlayed() {
   const started = active.filter(r => Number(r.starts) > 0 && !r.completed_at);
   const runStarts = active.reduce((n,r) => n + Number(r.starts||0), 0);
   const runFinishes = active.reduce((n,r) => n + Number(r.completions||0), 0);
+  const filtered = rows.filter(r => matches('played', [r.name, r.email, r.completed_at ? 'finished' : Number(r.starts)>0 ? 'started' : !r.paid ? 'not released' : 'not started']));
+  const pg = paginate(filtered, 'played');
+  const shown = pg.rows;
   const mins = s => s ? Math.round(s/60) + ' min' : '—';
   app.innerHTML = `
     <div class="crumb"><a id="back">← ${esc(course.title)}</a></div>
@@ -586,13 +638,14 @@ function renderPlayed() {
       <div class="cell"><div class="n">${runStarts}</div><div class="l">Run starts</div></div>
       <div class="cell"><div class="n">${runFinishes}</div><div class="l">Runs finished</div></div>
     </div>
+    <div class="toolbar faculty-internal-toolbar"><div class="search"><input data-q="played" type="text" placeholder="Filter students or status" value="${esc(F.q.played||'')}"></div></div>
     <div class="panel"><div class="tablewrap"><table>
       <thead><tr>
         <th style="width:30%">Student</th>
         <th>What came back</th>
       </tr></thead>
       <tbody>
-      ${rows.length ? rows.map(r => {
+      ${shown.length ? shown.map(r => {
         const m = r.metrics || {};
         const st = r.dropped ? ['off','removed']
           : r.completed_at ? ['ok','finished']
@@ -617,12 +670,13 @@ function renderPlayed() {
             ${r.transcript ? renderTranscript(r.transcript, r.transcript_recorded_at) : ''}
           </td>
         </tr>`;
-      }).join('') : '<tr><td colspan="2" class="empty">Nobody enrolled yet.</td></tr>'}
+      }).join('') : `<tr><td colspan="2" class="empty">${rows.length ? 'Nothing matches that filter.' : 'Nobody enrolled yet.'}</td></tr>`}
       </tbody></table></div>
-      <div class="foot"><span class="info">${done.length} of ${active.length} finished</span><span class="info">Page 1 of 1</span></div>
+      <div class="foot"><span class="info">${pg.total} shown · ${done.length} of ${active.length} students finished</span>${pagerControls('played', pg.page, pg.pages)}</div>
     </div>
     <div class="hint" style="margin-top:12px">Completion summaries appear for every simulation. Simulations that support instructor transcripts also show questions, classifications, timing, state changes and evidence reached.</div>`;
   document.getElementById('back').onclick = () => openCourse(course.id);
+  wireCommon();
 }
 
 // Opened over whatever the facilitator was doing, so closing it puts them back
@@ -674,12 +728,13 @@ function wireCommon() {
   wireHelp();
   wireLook();
   app.querySelectorAll('[data-q]').forEach(i => i.oninput = () => {
-    const k = i.dataset.q; F.q[k] = i.value; render();
+    const k = i.dataset.q; F.q[k] = i.value; F.page[k] = 1; render();
     const again = app.querySelector(`[data-q="${k}"]`);
     if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
   });
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => {
-    const [k,v] = b.dataset.f.split(':'); F.filter[k] = v; render(); });
+    const [k,v] = b.dataset.f.split(':'); F.filter[k] = v; F.page[k] = 1; render(); });
+  wirePager();
 }
 
 (async () => {
