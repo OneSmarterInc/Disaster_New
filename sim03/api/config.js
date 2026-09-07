@@ -12,5 +12,5 @@ module.exports = async (req, res) => {
   // and faculty launched from RapidSims never have to type the standalone code.
   if (!checkAccess(req, res)) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
-  return res.status(200).json(S.publicConfig());
+  return res.status(200).json({ ...S.publicConfig(), platformUrl: process.env.PLATFORM_URL || 'https://rapidsims.flexee.org' });
 };
