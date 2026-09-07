@@ -1,0 +1,85 @@
+const assert = require('assert');
+const store = require('../lib/store.js');
+const handler = require('../api/session.js');
+
+const originalEnv = {
+  FACULTY_CODES: process.env.FACULTY_CODES,
+  FACULTY_CODE: process.env.FACULTY_CODE,
+  LAUNCH_SECRET: process.env.LAUNCH_SECRET
+};
+const originalStore = {
+  configured: store.configured,
+  putSession: store.putSession,
+  getSession: store.getSession,
+  getParticipants: store.getParticipants,
+  getRuns: store.getRuns,
+  setParticipant: store.setParticipant,
+  addParticipant: store.addParticipant,
+  setRun: store.setRun
+};
+
+const sessions = new Map();
+const participants = new Map();
+const runs = new Map();
+
+store.configured = () => true;
+store.putSession = async (code, value) => { sessions.set(code, { ...value }); return value; };
+store.getSession = async (code) => sessions.get(code) || null;
+store.getParticipants = async (code) => participants.get(code) || {};
+store.getRuns = async (code) => runs.get(code) || {};
+store.setParticipant = async () => {};
+store.addParticipant = async () => {};
+store.setRun = async () => {};
+
+async function invoke(body, headers = {}) {
+  const req = { method: 'POST', headers, body };
+  const res = {
+    statusCode: 200,
+    payload: null,
+    status(n) { this.statusCode = n; return this; },
+    json(payload) { this.payload = payload; return payload; },
+    end() { return null; }
+  };
+  await handler(req, res);
+  return { status: res.statusCode, body: res.payload };
+}
+
+(async () => {
+  try {
+    delete process.env.FACULTY_CODES;
+    delete process.env.FACULTY_CODE;
+    delete process.env.LAUNCH_SECRET;
+
+    let r = await invoke({ action: 'create', name: 'Audit', mode: 'individual' });
+    assert.equal(r.status, 401, 'anonymous create must fail closed when no roster is configured');
+    assert.equal(r.body.error, 'faculty_authorization_required');
+
+    process.env.FACULTY_CODES = 'Instructor:faculty-secret';
+
+    r = await invoke({ action: 'create', name: 'Audit', mode: 'individual', facultyCode: 'wrong' });
+    assert.equal(r.status, 401, 'wrong standalone faculty code must be refused');
+
+    r = await invoke({ action: 'create', name: 'Audit', mode: 'individual', facultyCode: 'faculty-secret' });
+    assert.equal(r.status, 200, 'configured standalone faculty code should work');
+    const code = r.body.session.code;
+
+    r = await invoke({ action: 'faculty_state', code });
+    assert.equal(r.status, 401, 'knowing the projected session code must not expose instructor state');
+
+    r = await invoke({ action: 'control', code, set: 'close' });
+    assert.equal(r.status, 401, 'knowing the projected session code must not allow session control');
+
+    r = await invoke({ action: 'calibrate', code, thresholds: {} });
+    assert.equal(r.status, 401, 'knowing the projected session code must not allow calibration');
+
+    console.log('RapidSim 03 faculty authorization checks passed.');
+  } finally {
+    for (const [k, v] of Object.entries(originalEnv)) {
+      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
+    Object.assign(store, originalStore);
+  }
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

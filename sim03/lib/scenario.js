@@ -54,11 +54,12 @@ const LABELS = {
 };
 
 // Stored with a facilitated session and editable from the faculty console while
-// that session is still in the lobby.
+// that session is still in the lobby. The names are kept stable because the
+// instructor UI already stores them with a session.
 const DEFAULT_THRESHOLDS = Object.freeze({
   year1ConnectStrong: 2,
   heatUptimeStrong: 3,
-  heatUptimeMiddle: 2,
+  heatUptimeMiddle: 2, // lower edge of the middle band
   competitorConnectStrong: 4,
   competitorConnectPilotMin: 2,
   competitorConnectPilotMax: 3,
@@ -124,11 +125,39 @@ function sanitizeThresholds(input) {
   if (!input || typeof input !== 'object') return d;
   for (const k of Object.keys(d)) {
     const n = integer(input[k]);
-    // Annual values cap at three; cumulative thresholds cap at six. Zero is
-    // allowed so a faculty member can paper-test boundary behavior.
     if (n !== null && n >= 0 && n <= 6) d[k] = n;
   }
   return d;
+}
+
+// Faculty may retune between sections, but a saved calibration must still tile
+// the authored bands without silently turning an in-between value into "weak".
+function validateThresholds(input) {
+  const t = sanitizeThresholds(input);
+  const errors = [];
+
+  if (t.year1ConnectStrong < 1 || t.year1ConnectStrong > 3) {
+    errors.push('Year 1 strong Connect must be between 1 and 3.');
+  }
+  if (t.heatUptimeMiddle >= t.heatUptimeStrong) {
+    errors.push('Heat-wave middle must start below the strong threshold.');
+  }
+  if (t.competitorConnectPilotMin > t.competitorConnectPilotMax) {
+    errors.push('Competitor pilot minimum cannot exceed its maximum.');
+  }
+  if (t.competitorConnectPilotMax !== t.competitorConnectStrong - 1) {
+    errors.push('Competitor pilot maximum must sit immediately below the strong threshold.');
+  }
+  if (t.year3ConnectPilotMin > t.year3ConnectPilotMax) {
+    errors.push('Year 3 pilot minimum cannot exceed its maximum.');
+  }
+  if (t.year3ConnectPilotMax !== t.year3ConnectStrong - 1) {
+    errors.push('Year 3 pilot maximum must sit immediately below the strong Connect threshold.');
+  }
+
+  return errors.length
+    ? { ok: false, error: 'invalid_thresholds', errors, thresholds: t }
+    : { ok: true, thresholds: t };
 }
 
 function evaluateYear1(y1, thresholds) {
@@ -137,7 +166,7 @@ function evaluateYear1(y1, thresholds) {
   if (c >= t.year1ConnectStrong) {
     return { band: 'strong', title: 'The school district asks for a performance report', narrative: COPY.year1.strong };
   }
-  if (c === 1) {
+  if (c > 0) {
     return { band: 'middle', title: 'The school district asks for a performance report', narrative: COPY.year1.middle };
   }
   return { band: 'weak', title: 'The school district asks for a performance report', narrative: COPY.year1.weak };
@@ -148,7 +177,7 @@ function evaluateYear2(y1, y2, thresholds) {
   const c = cumulative(y1, y2);
   let heat;
   if (c.uptime >= t.heatUptimeStrong) heat = { band: 'strong', narrative: COPY.heat.strong };
-  else if (c.uptime === t.heatUptimeMiddle) heat = { band: 'middle', narrative: COPY.heat.middle };
+  else if (c.uptime >= t.heatUptimeMiddle) heat = { band: 'middle', narrative: COPY.heat.middle };
   else heat = { band: 'weak', narrative: COPY.heat.weak };
 
   let competitor;
@@ -174,12 +203,12 @@ function evaluateYear3(y1, y2, thresholds) {
   if (c.connect >= t.year3ConnectPilotMin && c.connect <= t.year3ConnectPilotMax) {
     return { band: 'pilot', title: 'The CEO wants AI failure prediction', narrative: COPY.year3.pilot, cumulative: c };
   }
-  if (c.connect <= 2) {
+  if (c.connect < t.year3ConnectPilotMin) {
     return { band: 'weak', title: 'The CEO wants AI failure prediction', narrative: COPY.year3.weak, cumulative: c };
   }
 
-  // The authored build spec has no row for Connect >= 5 with Capacity < 2.
-  // Do not silently invent a consequence. The faculty view flags this band.
+  // The authored build spec has no row for Connect >= strong with Capacity below
+  // the strong capacity requirement. Keep this explicit until content is authored.
   return {
     band: 'unresolved_calibration',
     title: 'The CEO wants AI failure prediction',
@@ -235,7 +264,7 @@ function publicConfig() {
 }
 
 module.exports = {
-  META, LINES, LABELS, DEFAULT_THRESHOLDS, sanitizeThresholds,
+  META, LINES, LABELS, DEFAULT_THRESHOLDS, sanitizeThresholds, validateThresholds,
   validateAllocation, cumulative, evaluateYear1, evaluateYear2, evaluateYear3,
   evaluateAll, publicConfig
 };

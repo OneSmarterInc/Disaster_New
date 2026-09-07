@@ -1,18 +1,80 @@
 #!/usr/bin/env node
-// RapidSim 03 ships a prebuilt, dependency-free client. This build step is a
-// production guard: it refuses to deploy if deterministic rules leak into the
-// browser, path-prefixing is broken, client JavaScript does not parse, or the
-// scenario contract tests fail.
+// RapidSim 03 ships a prebuilt, dependency-free client. This build step applies
+// a few presentation-only conformance rewrites, then refuses to deploy if
+// deterministic rules leak into the browser, path-prefixing is broken, client
+// JavaScript does not parse, or the scenario/session contract tests fail.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { execFileSync } = require('child_process');
 const S = require('./lib/scenario.js');
 
-const read = (name) => fs.readFileSync(path.join(__dirname, 'public', name), 'utf8');
-const index = read('index.html');
-const instructor = read('instructor.html');
+const file = (name) => path.join(__dirname, 'public', name);
+const read = (name) => fs.readFileSync(file(name), 'utf8');
+
+function replaceRequired(source, from, to, label) {
+  if (!source.includes(from)) {
+    // Idempotent local builds are fine: after the first build the replacement
+    // is already present and the old form is gone.
+    if (source.includes(to)) return source;
+    throw new Error(`student/instructor conformance rewrite missing: ${label}`);
+  }
+  return source.replace(from, to);
+}
+
+let index = read('index.html');
+let instructor = read('instructor.html');
 const launcher = read('launch.html');
+
+// Section 4: the cap is learned by hitting the wall, not by a paragraph that
+// explains it in advance. Keep only a hover explanation for the Run floor.
+index = replaceRequired(
+  index,
+  '  <div class="card" style="margin-top:10px"><h3>The wall</h3><p>Run cannot go below $3M. Each of the other four lines cannot exceed $3M in a year. Your total must be exactly $9M.</p></div>\n',
+  '',
+  'remove The wall card'
+);
+index = replaceRequired(
+  index,
+  "${l.id==='run'?'minimum 3 · no upper cap':'maximum 3 per year'}",
+  "${l.id==='run'?'<span title=\"Run must stay at $3M or more to keep current operations functioning.\" aria-label=\"Why Run cannot go lower\">ⓘ</span>':''}",
+  'replace static allocator constraint labels'
+);
+
+// Section 6: students get consequences, not grade-like band labels. Bands stay
+// in the instructor data and analytics.
+index = replaceRequired(
+  index,
+  '<div class="outcome"><div class="band">${esc(o.band)}</div><h3>',
+  '<div class="outcome"><h3>',
+  'hide Year 1/Year 3 raw band label'
+);
+// The same literal appears twice (Year 1 and Year 3), so remove a second copy if present.
+index = index.replace('<div class="outcome"><div class="band">${esc(o.band)}</div><h3>', '<div class="outcome"><h3>');
+index = replaceRequired(
+  index,
+  '<div class="events"><div class="outcome"><div class="band">${esc(o.heat.band)}</div><h3>',
+  '<div class="events"><div class="outcome"><h3>',
+  'hide heat-wave raw band label'
+);
+index = replaceRequired(
+  index,
+  '<div class="outcome"><div class="band">${esc(o.competitor.band)}</div><h3>',
+  '<div class="outcome"><h3>',
+  'hide competitor raw band label'
+);
+
+// Retuning semantics: this field is the lower edge of the middle heat band,
+// not an exact-equality value.
+instructor = replaceRequired(
+  instructor,
+  "heatUptimeMiddle:'Heat wave middle ='",
+  "heatUptimeMiddle:'Heat wave middle starts at ≥'",
+  'clarify heat middle calibration label'
+);
+
+fs.writeFileSync(file('index.html'), index);
+fs.writeFileSync(file('instructor.html'), instructor);
 
 const leaked = Object.keys(S.DEFAULT_THRESHOLDS).filter(k => index.includes(k));
 if (leaked.length) {
@@ -27,6 +89,16 @@ for (const narrative of [
 ]) {
   if (index.includes(narrative)) {
     console.error('REFUSING: future outcome copy reached the student bundle:', narrative);
+    process.exit(1);
+  }
+}
+if (index.includes('<h3>The wall</h3>')) {
+  console.error('REFUSING: student bundle explains the allocation wall before the debrief');
+  process.exit(1);
+}
+for (const marker of ['${esc(o.band)}', '${esc(o.heat.band)}', '${esc(o.competitor.band)}']) {
+  if (index.includes(marker)) {
+    console.error('REFUSING: grade-like outcome band label reached the student UI:', marker);
     process.exit(1);
   }
 }
@@ -65,4 +137,5 @@ try {
 }
 
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'check.js')], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-auth-check.js')], { stdio: 'inherit' });
 console.log('RapidSim 03 build guards passed.');

@@ -41,6 +41,20 @@ const gapA = valid({ run: 3, uptime: 1, capacity: 0, connect: 3, features: 2 });
 const gapB = valid({ run: 3, uptime: 1, capacity: 1, connect: 2, features: 2 });
 assert.equal(S.evaluateYear3(gapA, gapB).band, 'unresolved_calibration');
 
+// Retuning must keep values between thresholds in the intended middle band.
+const raisedYear1 = { ...S.DEFAULT_THRESHOLDS, year1ConnectStrong: 3 };
+assert.equal(S.evaluateYear1(y1Strong, raisedYear1).band, 'middle');
+
+const heatA = valid({ run: 3, uptime: 2, capacity: 1, connect: 1, features: 2 });
+const heatB = valid({ run: 3, uptime: 1, capacity: 1, connect: 1, features: 3 });
+const raisedHeat = { ...S.DEFAULT_THRESHOLDS, heatUptimeStrong: 4, heatUptimeMiddle: 2 };
+assert.equal(S.evaluateYear2(heatA, heatB, raisedHeat).heat.band, 'middle');
+
+assert.equal(S.validateThresholds(S.DEFAULT_THRESHOLDS).ok, true);
+assert.equal(S.validateThresholds({ ...S.DEFAULT_THRESHOLDS, heatUptimeStrong: 2, heatUptimeMiddle: 2 }).ok, false);
+assert.equal(S.validateThresholds({ ...S.DEFAULT_THRESHOLDS, competitorConnectStrong: 5, competitorConnectPilotMax: 3 }).ok, false);
+assert.equal(S.validateThresholds({ ...S.DEFAULT_THRESHOLDS, year3ConnectStrong: 6, year3ConnectPilotMax: 4 }).ok, false);
+
 const publicText = JSON.stringify(S.publicConfig());
 for (const key of Object.keys(S.DEFAULT_THRESHOLDS)) {
   assert.equal(publicText.includes(key), false, `public config leaked threshold key ${key}`);
