@@ -242,6 +242,63 @@ function publicConfig() {
     annualBudget: 9,
     runMinimum: 3,
     lineMaximum: 3,
+    briefing: {
+      title: 'Midland Equipment — Briefing & exhibits',
+      note: 'Reference copy of the pre-class packet. It is collapsed by default so the simulation does not reteach the briefing.',
+      company: [
+        'Midland sells and services commercial HVAC systems — the large rooftop units that heat and cool schools, hospitals, and office buildings. The company operates in Ohio, Indiana, and Michigan, and has roughly 4,000 of its units installed in customers’ buildings. Revenue comes from two places: selling equipment, and a service department that bills by the visit. Sixty-two field technicians drive to those buildings all day, every day.',
+        'The company is 41 years old, profitable, and nobody thinks it is in trouble.'
+      ],
+      exhibits: [
+        {
+          title: 'Exhibit 1 — Where the revenue comes from',
+          columns: ['', 'Revenue', 'Gross margin', 'Gross profit'],
+          rows: [
+            ['Equipment sales', '$187M (78%)', '9%', '$16.8M'],
+            ['Service', '$53M (22%)', '34%', '$18.0M']
+          ],
+          note: 'Read those last two numbers again before you move on.'
+        },
+        {
+          title: 'Exhibit 2 — Where last year’s technology money went',
+          body: ['The technology budget is $9 million a year and has not changed in four years.'],
+          columns: ['Line', 'Last year'],
+          rows: [
+            ['Keeping current systems running (the 14-year-old ERP, help desk, licenses)', '$6.1M'],
+            ['Backup and redundancy', '$0.7M'],
+            ['Extra capacity', '$0.4M'],
+            ['Getting data back from units in the field', '$0.2M'],
+            ['New features and visible projects', '$1.6M']
+          ]
+        },
+        {
+          title: 'Exhibit 3 — The service department last year',
+          columns: ['', ''],
+          rows: [
+            ['Service visits', '14,000'],
+            ['Visits where the technician found nothing wrong', '19%'],
+            ['Repeat visits to the same unit within 30 days', '11%'],
+            ['Average cost of sending a truck', '$290']
+          ],
+          note: 'That is roughly 4,200 trips that arguably should not have happened, at something close to $1.2 million.'
+        },
+        {
+          title: 'Exhibit 4 — System outages, last three years',
+          body: ['Eleven unplanned outages, 214 total hours down. Sixty-one percent of those hours fell between June and August. The dispatch system is what technicians use to know where to go.']
+        },
+        {
+          title: 'Exhibit 5 — Customers lost last year',
+          body: ['Two accounts, worth $2.1 million a year in service revenue between them. Both gave the same reason on the way out, and it was not price. It was how long they waited for someone to show up.']
+        },
+        {
+          title: 'Exhibit 6 — What the machines already know',
+          body: [
+            'Every unit Midland has installed since 2016 — about 3,100 of the 4,000 in the field — has a controller that records run hours, temperatures, and fault codes. The data exists today. The only way anyone at Midland can see it is for a technician to drive out and plug a laptop into the unit.',
+            'Trade press, March: Carrolton Systems has been piloting a flat-rate coverage program for commercial customers in Georgia and Tennessee.'
+          ]
+        }
+      ]
+    },
     coldOpen: [
       'Midland Equipment is a mid-sized HVAC company.',
       'You are about to take responsibility for the technology choices that shape what it can become.',

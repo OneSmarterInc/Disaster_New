@@ -44,6 +44,7 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .team{border:1px solid var(--blue);background:rgba(111,168,214,.06);padding:12px 14px;margin:0 0 20px;font-size:14px;color:#C8D8E8}.team b{color:#A8CBE7;font-weight:500}
 .buyers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:21px}.buyer{border:1px solid var(--line);background:var(--panel);padding:18px}.buyer h3{font-size:21px;font-weight:400}.buyer .value{font:10px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin-top:12px}.buyer p{font-size:14px;color:var(--dim);margin-top:7px}
 .summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}.summary .card{min-height:150px}.mini{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:12px}.mini div{border:1px solid var(--line);padding:8px 5px;text-align:center}.mini b{display:block;font:600 17px var(--mono);color:var(--amber)}.mini span{font:8px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--dimmer)}
+.briefing{margin:20px 0;border:1px solid var(--line2);background:var(--panel)}.briefing>summary{cursor:pointer;padding:13px 16px;font:11px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--amber);list-style:none}.briefing>summary::-webkit-details-marker{display:none}.briefing>summary:after{content:'+';float:right;color:var(--dim)}.briefing[open]>summary:after{content:'−'}.briefing-body{padding:0 16px 18px;border-top:1px solid var(--line)}.briefing-body>p{margin-top:14px;color:#C9C6BE}.exhibit{margin-top:18px;padding-top:15px;border-top:1px solid var(--line)}.exhibit h3{font:500 15px var(--serif);color:var(--bone);margin-bottom:8px}.exhibit p{color:#C3C0B8;margin:7px 0}.exhibit table{width:100%;border-collapse:collapse;margin-top:9px;font-size:13px}.exhibit th,.exhibit td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}.exhibit th{font:9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer)}.result-section{margin-top:26px}.result-section>.eyebrow{margin-bottom:10px}.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.result-grid .outcome{margin-top:0}.result-grid .card{min-height:0}@media(max-width:760px){.result-grid{grid-template-columns:1fr}}
 .joinbox{max-width:560px}.joinbox .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.joinbox input{text-transform:none}
 .notice{border-left:2px solid var(--amber);padding:11px 14px;background:rgba(240,166,60,.05);color:#CBC8C0;margin:18px 0}.error{border-left-color:var(--red);color:#E3B9C2}
 .hidden{display:none!important}
@@ -260,6 +261,15 @@ function renderView(){
   });
 }
 function defaultAlloc(){return {run:3,uptime:0,capacity:0,connect:0,features:0}}
+function briefingPanel(){
+  const b=C?.briefing;if(!b)return '';
+  const exhibits=(b.exhibits||[]).map(ex=>{
+    const body=(ex.body||[]).map(x=>`<p>${esc(x)}</p>`).join('');
+    const table=ex.rows?.length?`<table><thead>${ex.columns?.length?`<tr>${ex.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>`:''}</thead><tbody>${ex.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`:'';
+    return `<section class="exhibit"><h3>${esc(ex.title)}</h3>${body}${table}${ex.note?`<p><em>${esc(ex.note)}</em></p>`:''}</section>`;
+  }).join('');
+  return `<details class="briefing"><summary>Briefing & exhibits</summary><div class="briefing-body"><p class="hint">${esc(b.note||'Reference copy of the pre-class briefing.')}</p>${(b.company||[]).map(x=>`<p>${esc(x)}</p>`).join('')}${exhibits}</div></details>`;
+}
 function renderAllocation(year){
   const key=year===1?'year1':'year2';
   const teamReadOnly=!S.canSubmit&&S.session?.mode==='team';
@@ -270,6 +280,7 @@ function renderAllocation(year){
     const running=year===2&&S.year1&&committed?runningTotals(S.year1,committed):null;
     shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${year===1?'Nine million. Five lines.':'You get one more allocation.'}</h2>
     <p class="lede">${year===1?'The physical constraint is the point: taking a million for one line means it does not exist somewhere else.':'Your Year 1 choices stay with you. The second allocation is shared by your team.'}</p>
+    ${briefingPanel()}
     ${committed?runningHTML(committed,`Team Year ${year} allocation`):notice(`Waiting for ${captain} to commit Year ${year}.`)}
     ${running?runningHTML(running,'Cumulative team portfolio'):''}
     <div class="locked">Team allocation is read-only for non-captains. ${committed?`Committed by ${esc(captain)}.`:`${esc(captain)} is choosing the shared allocation.`}</div>
@@ -289,6 +300,7 @@ function renderAllocation(year){
   const running=year===2&&S.year1?runningTotals(S.year1,a):null;
   shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${year===1?'Nine million. Five lines.':'You get one more allocation.'}</h2>
   <p class="lede">${year===1?'The physical constraint is the point: taking a million for one line means it does not exist somewhere else.':'Your Year 1 choices stay with you. Allocate the second $9M with the running totals visible.'}</p>
+  ${briefingPanel()}
   ${running?runningHTML(running,'Running totals, including this draft'):''}
   <div class="alloc-wrap"><div class="allocs">${C.lines.map(l=>allocRow(l,a,year)).join('')}</div>
   <aside class="budget"><div class="n">${left}</div><div class="lab">$M remaining</div><div class="total">Allocated: <b>$${used}M</b> of $9M<br>Submit unlocks only at exactly $9M.</div></aside></div>
@@ -363,12 +375,33 @@ function renderYear3(){
 function renderBuyers(){S.step=9;return renderClose()}
 function renderClose(){
   if(S.finished){
-    shell(`<div class="eyebrow">Your summary</div><h2>What you chose, and what you would change.</h2>
-    <div class="summary"><div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
-    <div class="card"><h3>Your Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div></div>
-    <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(S.reflection1||'—')}</p></div>
-    <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[1])}</h3><p style="white-space:pre-wrap">${esc(S.reflection2||'—')}</p></div>
-    ${notice('Run complete. This summary is ready to screenshot or print to PDF.')}
+    const y1o=S.allOutcomes?.year1||S.year1Outcome||null;
+    const y2o=S.allOutcomes?.year2||S.year2Outcome||null;
+    const y3o=S.allOutcomes?.year3||null;
+    const cum=y3o?.cumulative||(S.year1&&S.year2?runningTotals(S.year1,S.year2):null);
+    shell(`<div class="eyebrow">Full results</div><h2>Your complete Midland decision record.</h2>
+    <p class="lede">Your choices and every consequence you reached are collected here. Nothing is scored or ranked.</p>
+    <div class="result-section"><div class="eyebrow">What you chose</div>
+      <div class="result-grid">
+        <div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
+        <div class="card"><h3>Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div>
+        <div class="card"><h3>Year 2 allocation</h3>${S.year2?miniAlloc(S.year2):'<p>—</p>'}</div>
+        <div class="card"><h3>Cumulative portfolio</h3>${cum?miniAlloc(cum):'<p>—</p>'}</div>
+      </div>
+    </div>
+    <div class="result-section"><div class="eyebrow">What happened</div>
+      ${y1o?`<div class="outcome"><h3>${esc(y1o.title)}</h3><p>${esc(y1o.narrative)}</p></div>`:''}
+      <div class="result-grid" style="margin-top:12px">
+        ${y2o?.heat?`<div class="outcome"><h3>${esc(y2o.heat.title)}</h3><p>${esc(y2o.heat.narrative)}</p></div>`:''}
+        ${y2o?.competitor?`<div class="outcome"><h3>${esc(y2o.competitor.title)}</h3><p>${esc(y2o.competitor.narrative)}</p></div>`:''}
+      </div>
+      ${y3o?`<div class="outcome"><h3>${esc(y3o.title)}</h3><p>${esc(y3o.narrative)}</p></div>`:''}
+    </div>
+    <div class="result-section"><div class="eyebrow">Your reflections</div>
+      <div class="card"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(S.reflection1||'—')}</p></div>
+      <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[1])}</h3><p style="white-space:pre-wrap">${esc(S.reflection2||'—')}</p></div>
+    </div>
+    ${notice('Run complete. These full results are ready to screenshot or print to PDF.')}
     <div class="actions"><button class="btn pri" id="printBtn">Print / save PDF</button></div>`);
     document.getElementById('printBtn').onclick=()=>window.print();
     return;

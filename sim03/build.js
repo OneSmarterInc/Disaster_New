@@ -41,7 +41,7 @@ for (const marker of ['${esc(o.band)}', '${esc(o.heat.band)}', '${esc(o.competit
 
 for (const marker of [
   'Continue to the second event',
-  'Your summary',
+  'Full results',
   'Print / save PDF',
   'nav({backOk:false})',
   'backOk:year===1',
@@ -103,6 +103,10 @@ for (const marker of ['Resume session code','Students self-select teams at join'
   if (!instructor.includes(marker)) refuse('team/projector instructor marker missing: ' + marker);
 if (index.includes('Valuation pending authored rule')) refuse('unauthored buyer placeholder reached the student bundle');
 if (index.includes('authored calibration does not yet define')) refuse('Year 3 calibration scaffolding reached the student bundle');
+for (const marker of ['Briefing & exhibits','Full results','Year 2 allocation','Cumulative portfolio','What happened'])
+  if (!index.includes(marker)) refuse('briefing/full-results marker missing: ' + marker);
+for (const marker of ['Exhibit 1 — Where the revenue comes from','Exhibit 6 — What the machines already know'])
+  if (!S.publicConfig().briefing?.exhibits?.some(x => x.title === marker)) refuse('briefing data missing: ' + marker);
 
 function checkScripts(name, source) {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
