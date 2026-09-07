@@ -16,8 +16,6 @@ const read = (name) => fs.readFileSync(file(name), 'utf8');
 
 function replaceRequired(source, from, to, label) {
   if (!source.includes(from)) {
-    // Idempotent local builds are fine: after the first build the replacement
-    // is already present and the old form is gone.
     if (source.includes(to)) return source;
     throw new Error(`student/instructor conformance rewrite missing: ${label}`);
   }
@@ -25,7 +23,7 @@ function replaceRequired(source, from, to, label) {
 }
 
 function replaceFunction(source, name, fn) {
-  const marker = `function ${name}(){`;
+  const marker = `function ${name}(`;
   const start = source.indexOf(marker);
   if (start < 0) throw new Error(`student conformance rewrite missing function: ${name}`);
   const next = source.indexOf('\nfunction ', start + marker.length);
@@ -37,8 +35,6 @@ let index = read('index.html');
 let instructor = read('instructor.html');
 const launcher = read('launch.html');
 
-// Section 4: the cap is learned by hitting the wall, not by a paragraph that
-// explains it in advance. Keep only a hover explanation for the Run floor.
 index = replaceRequired(
   index,
   '  <div class="card" style="margin-top:10px"><h3>The wall</h3><p>Run cannot go below $3M. Each of the other four lines cannot exceed $3M in a year. Your total must be exactly $9M.</p></div>\n',
@@ -52,8 +48,6 @@ index = replaceRequired(
   'replace static allocator constraint labels'
 );
 
-// Section 6: students get consequences, not grade-like band labels. Bands stay
-// in the instructor data and analytics.
 index = replaceRequired(
   index,
   '<div class="outcome"><div class="band">${esc(o.band)}</div><h3>',
@@ -74,9 +68,6 @@ index = replaceRequired(
   'hide competitor raw band label'
 );
 
-// Section 3: once Year 1 is committed, the flow becomes one-way. The student
-// can review earlier material only before the first allocation produces a
-// consequence. Year 2's two events are shown sequentially, not simultaneously.
 index = replaceRequired(
   index,
   "reflection1:'',reflection2:'',finished:false,",
@@ -93,9 +84,6 @@ for (const name of ['renderYear1Outcome','renderYear2Events','renderYear3','rend
   index = replaceFunction(index, name, clientOverrides[name]);
 }
 
-// The final screen becomes a static summary after completion. Printing form
-// controls is inconsistent across browsers, so the PDF is produced from normal
-// text on a white, black-text print surface.
 index = replaceRequired(
   index,
   '@media print{header,.actions,.team{display:none}.page{width:100%;padding:0}body{background:white;color:black}.card,.outcome,.run-cell{background:white;border-color:#aaa;color:black}}',
@@ -103,16 +91,12 @@ index = replaceRequired(
   'make printed summary high-contrast'
 );
 
-// Retuning semantics: this field is the lower edge of the middle heat band,
-// not an exact-equality value.
 instructor = replaceRequired(
   instructor,
   "heatUptimeMiddle:'Heat wave middle ='",
   "heatUptimeMiddle:'Heat wave middle starts at ≥'",
   'clarify heat middle calibration label'
 );
-// Section 7 asks for projector legibility and no dense tables. Show opening
-// sentences alongside a compact visual allocation card instead of JSON in a table.
 instructor = replaceFunction(instructor, 'sentences', instructorOverrides.sentences);
 
 fs.writeFileSync(file('index.html'), index);
@@ -155,7 +139,6 @@ if (!instructor.includes('Anonymous run ${i+1}')) {
   process.exit(1);
 }
 
-// When proxied by rapidsims.flexee.org, browser calls must preserve /sim03.
 for (const [name, source] of [['student', index], ['instructor', instructor]]) {
   if (/fetch\s*\(\s*['"]\/api\//.test(source)) {
     console.error(`REFUSING: ${name} client contains an unprefixed /api fetch`);
@@ -171,8 +154,6 @@ if (!launcher.includes("location.pathname.match(/^\\/sim-?\\d+/)")) {
   process.exit(1);
 }
 
-// Compile every inline browser script. This catches malformed templates and
-// escaping errors before Vercel can put them in front of a class.
 function checkScripts(name, source) {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
   if (!scripts.length) throw new Error(`${name}: no inline script found`);
