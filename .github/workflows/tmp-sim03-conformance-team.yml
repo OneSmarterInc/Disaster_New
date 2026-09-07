@@ -14,18 +14,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Apply conformance/team hardening
-        run: |
-          python .github/scripts/sim03_conformance_team.py
-          python .github/scripts/sim03_conformance_followup.py
+      - name: Apply final polish
+        run: python .github/scripts/sim03_final_polish.py
       - name: Run Sim03 guards
         working-directory: sim03
         run: node build.js
-      - name: Commit hardened source
+      - name: Commit polished source
         run: |
           git config user.name "OneSmarterInc Bot"
           git config user.email "actions@users.noreply.github.com"
           git add sim03
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Harden Sim03 team play and conformance"
+          git commit -m "Finish Sim03 team workflow polish"
           git push origin HEAD:fix/sim03-conformance-team
