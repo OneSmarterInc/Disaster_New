@@ -41,3 +41,8 @@ tables — when Stripe arrives it becomes another thing that sets the same flag.
 Foundation only: schema, database access, password hashing, login sessions and
 the launch token. The API layer and the admin, faculty and student interfaces
 are not built yet.
+
+
+## Adding a new RapidSim deployment
+
+Each simulation remains an independent Vercel project and self-registers with the platform using the shared `LAUNCH_SECRET`. The platform owns the public catalogue, course assignment, launch tokens, and completion records. RapidSim 03 (Midland Equipment) uses the canonical route `/sim03`, proxied to `https://sim-03-midland.vercel.app`. Registration remains unpublished by default; publish from the admin console only after authored content and classroom calibration are approved.

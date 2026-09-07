@@ -79,6 +79,18 @@
     {
       "source": "/simplus01/:path*",
       "destination": "https://flexee-rapid-sim-03-vercel.vercel.app/:path*"
+    },
+    {
+      "source": "/sim03",
+      "destination": "https://sim-03-midland.vercel.app/"
+    },
+    {
+      "source": "/sim03/",
+      "destination": "https://sim-03-midland.vercel.app/"
+    },
+    {
+      "source": "/sim03/:path*",
+      "destination": "https://sim-03-midland.vercel.app/:path*"
     }
   ],
   "headers": [
@@ -115,6 +127,19 @@
     },
     {
       "source": "/simplus01/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/sim03/(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",

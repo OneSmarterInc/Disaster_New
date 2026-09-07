@@ -16,6 +16,21 @@
     const o = opts || {};
     const d = s.detail || {};
     const num = s.number ? String(s.number).padStart(2, '0') : null;
+    const customFacts = Array.isArray(d.catalogueFacts)
+      ? d.catalogueFacts.filter(x => x && x.value).slice(0, 6)
+      : [];
+    const factsHTML = customFacts.length
+      ? customFacts.map(x => `<span>${x.label ? esc(x.label) + ' ' : ''}<b>${esc(x.value)}</b></span>`).join('')
+      : '<span>played <b>individually</b></span><span><b>no</b> preparation</span><span><b>not</b> marked</span>';
+    const customGlance = Array.isArray(d.atAGlance)
+      ? d.atAGlance.filter(x => x && x.label && x.value).slice(0, 8)
+      : [];
+    const glanceHTML = customGlance.length
+      ? customGlance.map(x => `<div class="line"><span>${esc(x.label)}</span><b>${esc(x.value)}</b></div>`).join('')
+      : '<div class="line"><span>Decisions</span><b>Three</b></div>' +
+        '<div class="line"><span>Quantitative</span><b>None</b></div>' +
+        '<div class="line"><span>Played</span><b>Individually</b></div>' +
+        '<div class="line"><span>Session</span><b>About an hour</b></div>';
 
     return `
     <div class="sim-head">
@@ -24,9 +39,7 @@
       ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
       <div class="facts">
         ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
-        <span>played <b>individually</b></span>
-        <span><b>no</b> preparation</span>
-        <span><b>not</b> marked</span>
+        ${factsHTML}
         <span>runs <b>standalone</b></span>
       </div>
     </div>
@@ -60,10 +73,7 @@
           ${d.seat ? `<div class="line"><span>You are</span><b>${esc(d.seat)}</b></div>` : ''}
           ${d.world ? `<div class="line"><span>Setting</span><b>${esc(d.world)}</b></div>` : ''}
           ${d.clock ? `<div class="line"><span>Spans</span><b>${esc(d.clock)}</b></div>` : ''}
-          <div class="line"><span>Decisions</span><b>Three</b></div>
-          <div class="line"><span>Quantitative</span><b>None</b></div>
-          <div class="line"><span>Played</span><b>Individually</b></div>
-          <div class="line"><span>Session</span><b>About an hour</b></div>
+          ${glanceHTML}
         </div>
 
         ${d.teaches ? `<div class="box"><h4>Teaches</h4><p style="margin:0">${esc(d.teaches)}</p></div>` : ''}
