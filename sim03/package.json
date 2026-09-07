@@ -5,7 +5,7 @@
   "description": "Flexee RapidSim 03 — Midland Equipment",
   "scripts": {
     "build": "node build.js",
-    "test": "node tools/check.js && node tools/session-auth-check.js"
+    "test": "node tools/check.js && node tools/session-auth-check.js && node tools/session-commit-check.js"
   },
   "engines": {
     "node": ">=20"
