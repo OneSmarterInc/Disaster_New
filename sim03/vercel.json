@@ -3,6 +3,12 @@
   "git": {
     "deploymentEnabled": false
   },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/launch.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -12,6 +18,12 @@
     },
     {
       "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/launch.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, max-age=0, must-revalidate" }
       ]
