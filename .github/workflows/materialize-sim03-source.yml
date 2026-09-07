@@ -15,12 +15,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/sim03-materialize-source
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Materialize current production build into source HTML
-        working-directory: sim03
-        run: npm run build
       - name: Patch final source details
         shell: python
         run: |
@@ -43,6 +37,8 @@ jobs:
           """
           marker = "const STEPS=['Brief','Position','View','Year 1','Outcome','Year 2','Events','Year 3','Buyers','Close'];\n\n"
           if 'function friendlyError(code,status)' not in s:
+            if marker not in s:
+              raise SystemExit('Could not find STEPS marker')
             s = s.replace(marker, marker + helper + '\n')
 
           old = "if(!r.ok){const e=new Error(d.message||d.error||`Server error ${r.status}`);e.code=d.error;throw e}"
@@ -57,14 +53,14 @@ jobs:
             s = s.replace(old_brief, new_brief)
 
           p.write_text(s)
-      - name: Commit generated source HTML
+      - name: Commit source HTML
         run: |
           git config user.name "OneSmarterInc Bot"
           git config user.email "actions@users.noreply.github.com"
           git add sim03/public/index.html sim03/public/instructor.html
           if git diff --cached --quiet; then
-            echo "No materialization changes needed"
+            echo "No source changes needed"
             exit 0
           fi
-          git commit -m "Materialize sim03 production HTML source"
+          git commit -m "Finalize sim03 HTML source"
           git push origin HEAD:fix/sim03-materialize-source
