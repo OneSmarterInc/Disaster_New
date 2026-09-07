@@ -94,7 +94,6 @@ if (!index.includes("location.assign(BASE+'/launch.html')")) {
   refuse('student access button does not target the explicit launch gate');
 }
 
-
 for (const marker of [
   'Join a facilitated session', 'Team name <span', 'function safeToRerender()',
   "if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true})",
@@ -123,5 +122,6 @@ execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-auth-chec
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-commit-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'access-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-flow-check.js')], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-handler-check.js')], { stdio: 'inherit' });
 
 console.log('RapidSim 03 build guards passed.');
