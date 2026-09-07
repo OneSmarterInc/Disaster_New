@@ -25,6 +25,20 @@ async function sessionRun(b) {
   return { sess, run, participants, me, rid, code, pid };
 }
 
+
+function overallOutcomeText(outcomes) {
+  const y1 = outcomes && outcomes.year1 && outcomes.year1.band;
+  const heat = outcomes && outcomes.year2 && outcomes.year2.heat && outcomes.year2.heat.band;
+  const competitor = outcomes && outcomes.year2 && outcomes.year2.competitor && outcomes.year2.competitor.band;
+  const y3 = outcomes && outcomes.year3 && outcomes.year3.band;
+  const a = { strong:'Customer reporting became a real capability early.', middle:'Customer reporting became possible, but slowly and with manual work.', weak:'The first customer request exposed a reporting gap.' }[y1] || '';
+  const b = { strong:'Operational resilience held when the heat wave tested the company.', middle:'The heat wave strained operations but did not fully break them.', weak:'The heat wave exposed a serious resilience weakness.' }[heat] || '';
+  const c = { strong:'Midland could answer the competitor from a position of strength.', middle:'Midland could only mount a limited pilot response to the competitor.', weak:'Midland could not respond quickly to the competitor’s new service model.' }[competitor] || '';
+  const d = { strong:'By Year 3, the architecture supported predictive service as something Midland could actually sell.', pilot:'By Year 3, predictive service was promising, but still only a pilot.', weak:'By Year 3, the architecture still lacked the usable data foundation for predictive service.' }[y3] || '';
+  return [a,b,c,d].filter(Boolean).join(' ');
+}
+function publicOutcome(o) { return o ? { title:o.title, narrative:o.narrative, band:o.band } : null; }
+
 function allocationLabel(a) {
   return `Run ${a.run} · Uptime ${a.uptime} · Capacity ${a.capacity} · Connect ${a.connect} · Features ${a.features}`;
 }
@@ -83,6 +97,14 @@ module.exports = async (req, res) => {
   } catch (e) {
     return res.status(e.status || 500).json({ error: e.message || 'server_error' });
   }
+
+  summary.result = {
+    overall: overallOutcomeText(outcomes),
+    year1: publicOutcome(outcomes.year1),
+    year2: { heat: publicOutcome(outcomes.year2 && outcomes.year2.heat), competitor: publicOutcome(outcomes.year2 && outcomes.year2.competitor) },
+    year3: publicOutcome(outcomes.year3),
+    cumulative: outcomes.year3 && outcomes.year3.cumulative ? outcomes.year3.cumulative : null
+  };
 
   // These are intentionally decision/debrief summaries rather than hidden
   // thresholds. The platform faculty progress page renders metrics directly,
