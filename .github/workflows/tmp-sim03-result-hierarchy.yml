@@ -15,7 +15,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Apply outcome-first results patch
-        run: python .github/scripts/sim03_result_hierarchy.py
+        run: |
+          python .github/scripts/sim03_result_hierarchy.py
+          python .github/scripts/sim03_result_hierarchy_followup.py
       - name: Run Sim03 guards
         working-directory: sim03
         run: node build.js
