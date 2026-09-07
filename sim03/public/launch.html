@@ -33,7 +33,7 @@ else{
       if(!r.ok){let d={};try{d=await r.json()}catch{};throw new Error(d.message||(d.error==='access_code_required'?'That access code is not valid.':'Unable to open the simulation.'))}
       sessionStorage.setItem('m03-access',code);
       location.replace(BASE+'/index.html'+(q?'?'+q:''));
-    }catch(e){err.textContent=e.message;button.disabled=false;input.focus()}
+    }catch(e){sessionStorage.removeItem('m03-access');err.textContent=e.message;button.disabled=false;input.focus()}
   }
   button.onclick=verify;input.addEventListener('keydown',e=>{if(e.key==='Enter')verify()});
   input.focus();
