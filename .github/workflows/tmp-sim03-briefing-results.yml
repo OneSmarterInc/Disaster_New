@@ -15,7 +15,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Apply briefing and results patch
-        run: python .github/scripts/sim03_briefing_results.py
+        run: |
+          python .github/scripts/sim03_briefing_results.py
+          python .github/scripts/sim03_briefing_results_followup.py
       - name: Run Sim03 guards
         working-directory: sim03
         run: node build.js
