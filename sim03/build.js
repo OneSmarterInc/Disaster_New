@@ -2,7 +2,7 @@
 // RapidSim 03 ships committed source HTML. This build step is assertion-only:
 // it never rewrites source files. It refuses deployment if student-facing
 // ambiguity leaks, path-prefixing breaks, browser JavaScript does not parse,
-// or scenario/session contracts fail.
+// access gating regresses, or scenario/session contracts fail.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -13,6 +13,7 @@ const read = (name) => fs.readFileSync(path.join(__dirname, 'public', name), 'ut
 const index = read('index.html');
 const instructor = read('instructor.html');
 const launcher = read('launch.html');
+const configApi = fs.readFileSync(path.join(__dirname, 'api', 'config.js'), 'utf8');
 
 function refuse(message) {
   console.error('REFUSING:', message);
@@ -45,7 +46,8 @@ for (const marker of [
   'nav({backOk:false})',
   'backOk:year===1',
   'function friendlyError(code,status)',
-  'briefing packet your instructor posted before class'
+  'briefing packet your instructor posted before class',
+  "sessionStorage.getItem('m03-access')"
 ]) {
   if (!index.includes(marker)) refuse('required student conformance marker missing: ' + marker);
 }
@@ -70,6 +72,12 @@ for (const [name, source] of [['student', index], ['instructor', instructor]]) {
 if (!launcher.includes("location.pathname.match(/^\\/sim-?\\d+/)")) {
   refuse('launch router is missing the simulation path-prefix detector');
 }
+for (const marker of ['Access code','x-access-code',"sessionStorage.setItem('m03-access'",'/api/config']) {
+  if (!launcher.includes(marker)) refuse('standalone access-code gate missing marker: ' + marker);
+}
+if (!configApi.includes('checkAccess(req, res)')) {
+  refuse('public config bootstrap is not protected by the shared access guard');
+}
 
 function checkScripts(name, source) {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
@@ -87,5 +95,6 @@ try {
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-auth-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-commit-check.js')], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'access-check.js')], { stdio: 'inherit' });
 
 console.log('RapidSim 03 build guards passed.');
