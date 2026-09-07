@@ -1,0 +1,34 @@
+name: materialize-sim03-source
+
+on:
+  push:
+    branches:
+      - 'fix/sim03-materialize-source'
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sim03-materialize-source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Materialize current production build into source HTML
+        working-directory: sim03
+        run: npm run build
+      - name: Commit generated source HTML
+        run: |
+          git config user.name "OneSmarterInc Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add sim03/public/index.html sim03/public/instructor.html
+          if git diff --cached --quiet; then
+            echo "No materialization changes needed"
+            exit 0
+          fi
+          git commit -m "Materialize sim03 production HTML source"
+          git push origin HEAD:fix/sim03-materialize-source
