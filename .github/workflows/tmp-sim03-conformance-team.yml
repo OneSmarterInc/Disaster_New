@@ -15,7 +15,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Apply conformance/team hardening
-        run: python .github/scripts/sim03_conformance_team.py
+        run: |
+          python .github/scripts/sim03_conformance_team.py
+          python .github/scripts/sim03_conformance_followup.py
       - name: Run Sim03 guards
         working-directory: sim03
         run: node build.js
