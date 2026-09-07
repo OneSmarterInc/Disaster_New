@@ -9,6 +9,7 @@ const vm = require('vm');
 const { execFileSync } = require('child_process');
 const S = require('./lib/scenario.js');
 const clientOverrides = require('./tools/client-overrides.js');
+const instructorOverrides = require('./tools/instructor-overrides.js');
 
 const file = (name) => path.join(__dirname, 'public', name);
 const read = (name) => fs.readFileSync(file(name), 'utf8');
@@ -73,14 +74,20 @@ index = replaceRequired(
   'hide competitor raw band label'
 );
 
-// Section 3: once a position/allocation has produced a consequence, the student
-// cannot navigate back and rewrite history. Year 2's two events are also shown
-// sequentially rather than simultaneously.
+// Section 3: once Year 1 is committed, the flow becomes one-way. The student
+// can review earlier material only before the first allocation produces a
+// consequence. Year 2's two events are shown sequentially, not simultaneously.
 index = replaceRequired(
   index,
   "reflection1:'',reflection2:'',finished:false,",
   "reflection1:'',reflection2:'',finished:false,year2Event:0,",
   'add Year 2 sequential-event state'
+);
+index = replaceRequired(
+  index,
+  '${nav({nextLabel:left===0?',
+  '${nav({backOk:year===1,nextLabel:left===0?',
+  'remove Back from Year 2 allocation after Year 1 commitment'
 );
 for (const name of ['renderYear1Outcome','renderYear2Events','renderYear3','renderBuyers','renderClose']) {
   index = replaceFunction(index, name, clientOverrides[name]);
@@ -104,6 +111,9 @@ instructor = replaceRequired(
   "heatUptimeMiddle:'Heat wave middle starts at ≥'",
   'clarify heat middle calibration label'
 );
+// Section 7 asks for projector legibility and no dense tables. Show opening
+// sentences alongside a compact visual allocation card instead of JSON in a table.
+instructor = replaceFunction(instructor, 'sentences', instructorOverrides.sentences);
 
 fs.writeFileSync(file('index.html'), index);
 fs.writeFileSync(file('instructor.html'), instructor);
@@ -134,11 +144,15 @@ for (const marker of ['${esc(o.band)}', '${esc(o.heat.band)}', '${esc(o.competit
     process.exit(1);
   }
 }
-for (const marker of ['Continue to the second event','Your summary','Print / save PDF','nav({backOk:false})']) {
+for (const marker of ['Continue to the second event','Your summary','Print / save PDF','nav({backOk:false})','backOk:year===1']) {
   if (!index.includes(marker)) {
     console.error('REFUSING: linear-flow/print conformance marker missing:', marker);
     process.exit(1);
   }
+}
+if (!instructor.includes('Anonymous run ${i+1}')) {
+  console.error('REFUSING: projector-friendly opening sentence cards are missing');
+  process.exit(1);
 }
 
 // When proxied by rapidsims.flexee.org, browser calls must preserve /sim03.
