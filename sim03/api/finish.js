@@ -25,6 +25,10 @@ async function sessionRun(b) {
   return { sess, run };
 }
 
+function allocationLabel(a) {
+  return `Run ${a.run} · Uptime ${a.uptime} · Capacity ${a.capacity} · Connect ${a.connect} · Features ${a.features}`;
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -66,7 +70,15 @@ module.exports = async (req, res) => {
     return res.status(e.status || 500).json({ error: e.message || 'server_error' });
   }
 
+  // These are intentionally decision/debrief summaries rather than hidden
+  // thresholds. The platform faculty progress page renders metrics directly,
+  // so the facilitator can see what the student chose and reflected on after a
+  // platform-launched run without opening a separate Sim03 datastore.
   const metrics = {
+    openingView: summary.strategicView,
+    year1Allocation: allocationLabel(y1),
+    reflection1: summary.reflection1,
+    reflection2: summary.reflection2,
     year1Connect: y1.connect,
     cumulativeConnect: outcomes.year3.cumulative.connect,
     cumulativeUptime: outcomes.year3.cumulative.uptime,

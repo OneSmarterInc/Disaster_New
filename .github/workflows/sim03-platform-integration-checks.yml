@@ -27,3 +27,5 @@ jobs:
           node-version: '20'
       - name: Verify Sim03 platform contract
         run: node platform/tools/check-sim03-integration.js
+      - name: Verify full Sim03 platform lifecycle
+        run: node platform/tools/sim03-lifecycle-check.js
