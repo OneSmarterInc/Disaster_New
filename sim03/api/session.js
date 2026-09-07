@@ -92,6 +92,10 @@ function publicRun(run) {
   };
 }
 
+function sameAllocation(a, b) {
+  return !!a && !!b && S.LINES.every(k => Number(a[k]) === Number(b[k]));
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -294,19 +298,33 @@ module.exports = async (req, res) => {
         const rid = runIdFor(sess, me);
         const runs = await store.getRuns(code);
         const current = runs[rid] || { runId: rid, phase: 0, done: false, createdAt: Date.now() };
+        if (current.done) return res.status(409).json({ error: 'run_already_completed' });
 
         const next = { ...current };
-        if (b.strategicView !== undefined) next.strategicView = String(b.strategicView || '').slice(0, 500);
+        if (b.strategicView !== undefined) {
+          const proposed = String(b.strategicView || '').slice(0, 500);
+          if (current.strategicView && current.strategicView !== proposed) {
+            return res.status(409).json({ error: 'strategic_view_locked' });
+          }
+          next.strategicView = current.strategicView || proposed;
+        }
         if (b.year1 !== undefined) {
           const v = S.validateAllocation(b.year1);
           if (!v.ok) return res.status(400).json(v);
-          next.year1 = v.allocation;
+          if (current.year1 && !sameAllocation(current.year1, v.allocation)) {
+            return res.status(409).json({ error: 'year1_locked' });
+          }
+          next.year1 = current.year1 || v.allocation;
           next.phase = Math.max(next.phase || 0, 1);
         }
         if (b.year2 !== undefined) {
+          if (!next.year1) return res.status(409).json({ error: 'year1_required' });
           const v = S.validateAllocation(b.year2);
           if (!v.ok) return res.status(400).json(v);
-          next.year2 = v.allocation;
+          if (current.year2 && !sameAllocation(current.year2, v.allocation)) {
+            return res.status(409).json({ error: 'year2_locked' });
+          }
+          next.year2 = current.year2 || v.allocation;
           next.phase = Math.max(next.phase || 0, 2);
         }
         if (b.reflection1 !== undefined) next.reflection1 = String(b.reflection1 || '').slice(0, 1500);
