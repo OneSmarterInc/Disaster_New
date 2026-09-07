@@ -90,6 +90,9 @@ if (index.includes("location.replace(BASE+'/')")) {
 if (!index.includes('Enter access code')) {
   refuse('student access failure does not offer a stable manual return to the gate');
 }
+if (!index.includes("location.assign(BASE+'/launch.html')")) {
+  refuse('student access button does not target the explicit launch gate');
+}
 
 function checkScripts(name, source) {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
