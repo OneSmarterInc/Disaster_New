@@ -23,6 +23,24 @@
   .result .row2{display:flex;justify-content:space-between;gap:14px;padding:3px 0;font-size:13.5px}
   .result .row2 span:first-child{color:var(--ink3)}
   .before{border-left:2px solid var(--line2);padding:0 0 0 14px;margin:16px 0 0;font-size:13.5px;color:var(--ink2);line-height:1.6}
+  .student-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);background:var(--card);margin:0 0 22px}
+  .student-summary .cell{padding:14px 16px;border-right:1px solid var(--line)}
+  .student-summary .cell:last-child{border-right:none}
+  .student-summary .n{font:600 19px var(--mono);line-height:1}
+  .student-summary .l{font:9px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);margin-top:6px}
+  .student-tools{display:flex;gap:9px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
+  .student-tools .search{flex:1;min-width:220px}
+  .student-filter{display:flex;border:1px solid var(--line2);background:var(--card)}
+  .student-filter button{font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:8px 11px;color:var(--ink3);border-right:1px solid var(--line);background:transparent}
+  .student-filter button:last-child{border-right:0}
+  .student-filter button.on{background:var(--ink);color:var(--card)}
+  .student-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0 24px;font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+  .student-pager .nav{display:flex;gap:6px;align-items:center}
+  .student-course{margin-bottom:30px}
+  @media(max-width:640px){
+    .student-summary{grid-template-columns:1fr 1fr}.student-summary .cell:nth-child(2){border-right:0}.student-summary .cell:nth-child(-n+2){border-bottom:1px solid var(--line)}
+    .student-tools{align-items:stretch}.student-filter{width:100%}.student-filter button{flex:1}
+  }
 </style>
 </head>
 <body>
@@ -58,6 +76,41 @@ document.getElementById('out').onclick = async () => { await api('/api/auth', { 
 
 let LAST = '';
 let FAILED = 0;
+const SV = { q:'', filter:'All', page:1 };
+const STUDENT_PAGE_SIZE = 8;
+
+function applyStudentView() {
+  const cards = [...app.querySelectorAll('[data-student-card]')];
+  if (!cards.length) return;
+  const q = SV.q.trim().toLowerCase();
+  const matching = cards.filter(card => {
+    const status = card.dataset.status || '';
+    const statusOk = SV.filter === 'All' || (SV.filter === 'Finished' ? status === 'Finished' : status !== 'Finished');
+    return statusOk && (!q || (card.dataset.search || '').includes(q));
+  });
+  const pages = Math.max(1, Math.ceil(matching.length / STUDENT_PAGE_SIZE));
+  SV.page = Math.min(Math.max(1, SV.page), pages);
+  const visible = new Set(matching.slice((SV.page-1)*STUDENT_PAGE_SIZE, SV.page*STUDENT_PAGE_SIZE));
+  cards.forEach(card => { card.style.display = visible.has(card) ? '' : 'none'; });
+  app.querySelectorAll('.student-course').forEach(course => {
+    const own = [...course.querySelectorAll('[data-student-card]')];
+    course.style.display = !own.length || own.some(card => visible.has(card)) ? '' : 'none';
+  });
+  const empty = document.getElementById('studentEmpty');
+  if (empty) empty.style.display = matching.length ? 'none' : '';
+  app.querySelectorAll('[data-student-filter]').forEach(b => b.classList.toggle('on', b.dataset.studentFilter === SV.filter));
+  const pager = document.getElementById('studentPager');
+  if (pager) pager.innerHTML = `<span>${matching.length} simulation${matching.length===1?'':'s'}</span><span class="nav"><button class="btn sm" id="sprev" ${SV.page<=1?'disabled':''}>Previous</button><span>Page ${SV.page} of ${pages}</span><button class="btn sm" id="snext" ${SV.page>=pages?'disabled':''}>Next</button></span>`;
+  const prev = document.getElementById('sprev'), next = document.getElementById('snext');
+  if (prev) prev.onclick = () => { SV.page--; applyStudentView(); };
+  if (next) next.onclick = () => { SV.page++; applyStudentView(); };
+}
+function wireStudentView() {
+  const search = document.getElementById('studentSearch');
+  if (search) { search.value = SV.q; search.oninput = () => { SV.q = search.value; SV.page = 1; applyStudentView(); }; }
+  app.querySelectorAll('[data-student-filter]').forEach(b => b.onclick = () => { SV.filter = b.dataset.studentFilter; SV.page = 1; applyStudentView(); });
+  applyStudentView();
+}
 async function draw() {
   let d;
   try { d = await api('/api/student', { action:'overview' }); FAILED = 0; }
@@ -82,11 +135,26 @@ async function draw() {
   LAST = print;
 
   const { courses, sims } = d;
+  const finishedCount = sims.filter(x => x.completed_at).length;
+  const inProgressCount = sims.filter(x => !x.completed_at && Number(x.played) > 0).length;
 
-  app.innerHTML = courses.length ? courses.map(c => {
+  app.innerHTML = courses.length ? `
+    <div class="student-summary">
+      <div class="cell"><div class="n">${courses.length}</div><div class="l">Courses</div></div>
+      <div class="cell"><div class="n">${sims.length}</div><div class="l">Simulations</div></div>
+      <div class="cell"><div class="n">${finishedCount}</div><div class="l">Finished</div></div>
+      <div class="cell"><div class="n">${inProgressCount}</div><div class="l">In progress</div></div>
+    </div>
+    <div class="student-tools">
+      <div class="search"><input id="studentSearch" type="text" placeholder="Search courses or simulations" value="${esc(SV.q)}"></div>
+      <div class="student-filter">${['All','To do','Finished'].map(x => `<button data-student-filter="${x}" class="${SV.filter===x?'on':''}">${x}</button>`).join('')}</div>
+    </div>
+    <div id="studentEmpty" class="panel" style="display:none;margin-bottom:18px"><div class="empty">Nothing matches that search or filter.</div></div>
+    <div id="studentCourseList">
+    ${courses.map(c => {
     const mine = sims.filter(x => x.course_id === c.id);
     return `
-      <div style="margin-bottom:30px">
+      <div class="student-course">
         <div class="crumb" style="margin:0 0 4px">${esc(c.term || '')}</div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap">
           <h1 style="font-size:26px;font-weight:400;letter-spacing:-.02em">${esc(c.title)}</h1>
@@ -103,7 +171,9 @@ async function draw() {
         ${mine.length ? mine.map(x => {
           const done = !!x.completed_at;
           const m = x.metrics || {};
-          return `<div class="simcard">
+          const status = done ? 'Finished' : Number(x.played) > 0 ? 'In progress' : 'To do';
+          const searchText = [c.title, c.term, c.faculty_name, x.title, x.description, x.tagline, status].filter(Boolean).join(' ').toLowerCase();
+          return `<div class="simcard" data-student-card data-status="${esc(status)}" data-search="${esc(searchText)}">
             <div class="body">
               <div class="no">${x.number ? 'RapidSim ' + String(x.number).padStart(2,'0') : 'Simulation'}</div>
               <h3>${esc(x.title)}</h3>
@@ -134,7 +204,9 @@ async function draw() {
         }).join('') : `<div class="panel"><div class="empty">${esc(c.faculty_name)} has not added any simulations to this course yet.</div></div>`}
         </div>
       </div>`;
-  }).join('') + `
+  }).join('')}
+    </div>
+    <div id="studentPager" class="student-pager"></div>
     <div class="before">
       <b>Before you start.</b> Twenty minutes, no pause, so pick your moment. Use a laptop or tablet, not a phone.
       Download the transcript at the end — nothing is kept once you close the tab.
@@ -151,6 +223,8 @@ async function draw() {
         <div id="err" class="hint" style="color:var(--rose);margin-bottom:0"></div>
       </div>
     </div>`;
+
+  if (courses.length) wireStudentView();
 
   const j = document.getElementById('join');
   if (j) j.onclick = async () => {
