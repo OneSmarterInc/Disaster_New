@@ -1,0 +1,29 @@
+name: tmp-sim03-release-polish
+on:
+  push:
+    branches: ['fix/sim03-conformance-team']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sim03-conformance-team
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply release polish
+        run: python .github/scripts/sim03_release_polish.py
+      - name: Run Sim03 guards
+        working-directory: sim03
+        run: node build.js
+      - name: Commit release polish
+        run: |
+          git config user.name "OneSmarterInc Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add sim03
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Polish Sim03 team release behavior"
+          git push origin HEAD:fix/sim03-conformance-team
