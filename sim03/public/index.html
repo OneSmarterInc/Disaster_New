@@ -132,7 +132,12 @@ function back(){S.step=Math.max(0,S.step-1);render()}
 async function init(){
   try{C=await request('/api/config',null,'GET')}
   catch(e){
-    if(e.code==='access_code_required'&&!LAUNCH_TOKEN){sessionStorage.removeItem('m03-access');location.replace(BASE+'/');return}
+    if(e.code==='access_code_required'&&!LAUNCH_TOKEN){
+      sessionStorage.removeItem('m03-access');
+      app.innerHTML=`<main class="page">${notice('An access code is required to open Midland Equipment.',true)}<div class="actions"><button class="btn pri" id="accessBtn">Enter access code</button></div></main>`;
+      document.getElementById('accessBtn').onclick=()=>location.assign(BASE+'/');
+      return;
+    }
     app.innerHTML=`<main class="page">${notice(e.message,true)}<div class="actions"><button class="btn pri" onclick="location.reload()">Try again</button></div></main>`;
     return;
   }

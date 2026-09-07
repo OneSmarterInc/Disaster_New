@@ -82,11 +82,11 @@
     },
     {
       "source": "/sim03",
-      "destination": "https://sim-03-midland.vercel.app/"
+      "destination": "https://sim-03-midland.vercel.app/launch.html"
     },
     {
       "source": "/sim03/",
-      "destination": "https://sim-03-midland.vercel.app/"
+      "destination": "https://sim-03-midland.vercel.app/launch.html"
     },
     {
       "source": "/sim03/:path*",

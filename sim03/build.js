@@ -84,6 +84,12 @@ if (launcher.includes('#code=')) {
 if (!configApi.includes('checkAccess(req, res)')) {
   refuse('public config bootstrap is not protected by the shared access guard');
 }
+if (index.includes("location.replace(BASE+'/')")) {
+  refuse('student access failure automatically redirects to the gate and can loop');
+}
+if (!index.includes('Enter access code')) {
+  refuse('student access failure does not offer a stable manual return to the gate');
+}
 
 function checkScripts(name, source) {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
