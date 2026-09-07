@@ -1,0 +1,47 @@
+name: tmp-admin-student-polish
+on:
+  push:
+    branches: ['ui/admin-student-polish']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/admin-student-polish
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply admin and student polish
+        run: python .github/scripts/admin_student_polish.py
+      - name: Run platform checks
+        working-directory: platform
+        run: |
+          node tools/admin-views-check.js
+          node tools/student-views-check.js
+          node tools/responsive-check.js
+          node tools/table-check.js
+          node tools/check-sim03-integration.js
+          node tools/sim03-lifecycle-check.js
+      - name: Parse browser JavaScript
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          for (const file of ['platform/public/admin.html','platform/public/student.html']) {
+            const s=fs.readFileSync(file,'utf8');
+            const scripts=[...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]);
+            if(!scripts.length) throw new Error('No inline scripts in '+file);
+            scripts.forEach((x,i)=>new vm.Script(x,{filename:file+':script-'+i}));
+          }
+          console.log('Admin and student browser JavaScript parses.');
+          NODE
+      - name: Commit polished pages
+        run: |
+          git config user.name "OneSmarterInc Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add platform/public/admin.html platform/public/student.html platform/public/app.css
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Polish admin and student views with filters and pagination"
+          git push origin HEAD:ui/admin-student-polish
