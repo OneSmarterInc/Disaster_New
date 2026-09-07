@@ -4,6 +4,6 @@ const raw=location.hash+location.search,match=raw.match(/lt=([^&]+)/);let launch
 if(token){try{launch=JSON.parse(atob(token.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')))}catch{launch=null}}
 const faculty=launch&&(launch.role==='faculty'||launch.role==='faculty_preview')&&launch.mode==='session';
 const params=new URLSearchParams(location.search);params.delete('lt');const q=params.toString();
-const target=faculty?'/faculty.html':'/index.html';
+const target=faculty?'/instructor.html':'/index.html';
 location.replace(BASE+target+(q?'?'+q:'')+(token?'#lt='+encodeURIComponent(token):(location.hash||'')));
 </script></body></html>
