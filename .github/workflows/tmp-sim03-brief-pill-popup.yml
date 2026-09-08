@@ -1,0 +1,54 @@
+name: tmp-sim03-brief-pill-popup
+on:
+  push:
+    branches: [fix/sim03-brief-pill-popup]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sim03-brief-pill-popup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply clickable Brief pill
+        run: python .github/scripts/sim03_brief_pill_popup.py
+      - name: Run Sim03 tests
+        run: npm --prefix sim03 test
+      - name: Build Sim03
+        run: npm --prefix sim03 run build
+      - name: Run platform integration check
+        run: node platform/tools/check-sim03-integration.js
+      - name: Parse browser JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          text=Path('sim03/public/index.html').read_text()
+          scripts=re.findall(r'<script>([\s\S]*?)</script>', text)
+          assert scripts
+          for i,s in enumerate(scripts):
+              p=Path(tempfile.gettempdir())/f'sim03-brief-pill-{i}.js'
+              p.write_text(s)
+              subprocess.run(['node','--check',str(p)],check=True)
+          PY
+      - name: Assert Brief opens modal only
+        run: |
+          grep -q 'data-open-briefing' sim03/public/index.html
+          grep -q 'Open briefing packet' sim03/public/index.html
+          grep -q "document.querySelectorAll('\[data-open-briefing\]')" sim03/public/index.html
+          ! grep -q 'S.step=0' sim03/public/index.html
+      - name: Commit change
+        run: |
+          git config user.name 'OneSmarterInc Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add sim03/public/index.html sim03/build.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Make Sim03 Brief pill reopen the packet'
+          git push origin HEAD:fix/sim03-brief-pill-popup
