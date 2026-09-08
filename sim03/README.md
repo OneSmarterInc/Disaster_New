@@ -40,6 +40,10 @@ console while the session is still in the lobby. The chosen calibration is store
 with that session, so thresholds can be changed between class sections without a
 deploy.
 
+For the first classroom section, keep the Year 3 strong Connect threshold at **5**.
+If a later section intentionally lowers it to **4**, Year 3 pilot maximum must also
+move from **4** to **3** before the calibration can be saved.
+
 ## Authored Year 3 and buyer content
 
 The formerly open Year 3 calibration case is now authored as `data_no_room` when
@@ -47,6 +51,23 @@ Connect reaches the strong threshold but Capacity does not. The buyer stage is a
 authored: Carrolton Systems, Ridge Hollow Partners and Corven Building Systems each
 return a deterministic `high`, `qualified` or `low` interest verdict without a
 dollar valuation, total, ranking or winner.
+
+## Classroom readiness
+
+Before a class uses this sim, run one real facilitated **Team** session with two or
+three devices. Exercise the platform launch, Upstash-backed session state, captain
+commit behavior, pause/resume, completion reporting, student result return and the
+instructor console together. The production health endpoint confirms that the
+configuration is present; this rehearsal confirms that the whole path actually works.
+
+Post the briefing packet about a week before class. The app gives students a reference
+copy, but the teaching design still assumes they arrive having read it.
+
+For a run that clears every event, do not say the team necessarily "shipped nothing."
+The stronger debrief is that almost all discretionary investment had to go into
+connectivity, resilience and capacity; at most $2M could have gone into visible
+Features. The architecture worked, but much of what made it work was difficult for
+the CEO to see until the later consequences arrived.
 
 ## Endpoints
 
