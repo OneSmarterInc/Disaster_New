@@ -37,11 +37,32 @@ const weak3a = valid({ run: 3, uptime: 2, capacity: 1, connect: 1, features: 2 }
 const weak3b = valid({ run: 3, uptime: 2, capacity: 1, connect: 1, features: 2 });
 assert.equal(S.evaluateYear3(weak3a, weak3b).band, 'weak');
 
-const gapA = valid({ run: 3, uptime: 1, capacity: 0, connect: 3, features: 2 });
-const gapB = valid({ run: 3, uptime: 1, capacity: 1, connect: 2, features: 2 });
-const gap3 = S.evaluateYear3(gapA, gapB);
-assert.equal(gap3.band, 'pilot');
-assert.equal(gap3.calibrationGap, true);
+const dataNoRoomA = valid({ run: 3, uptime: 3, capacity: 0, connect: 3, features: 0 });
+const dataNoRoomB = valid({ run: 3, uptime: 0, capacity: 0, connect: 3, features: 3 });
+const dataNoRoom3 = S.evaluateYear3(dataNoRoomA, dataNoRoomB);
+assert.equal(dataNoRoom3.band, 'data_no_room');
+assert.equal(dataNoRoom3.calibrationGap, undefined);
+assert.equal(dataNoRoom3.internalBand, undefined);
+assert.ok(dataNoRoom3.narrative.includes('three years of fault history and nowhere to put it'));
+
+const buyerCarrolton = S.evaluateBuyers(dataNoRoomA, dataNoRoomB);
+assert.equal(buyerCarrolton.carrolton.interest, 'qualified');
+assert.equal(buyerCarrolton.corven.interest, 'high');
+assert.equal(buyerCarrolton.ridge_hollow.interest, 'qualified');
+
+const ridgeHighA = valid({ run: 3, uptime: 2, capacity: 1, connect: 2, features: 1 });
+const ridgeHighB = valid({ run: 3, uptime: 2, capacity: 1, connect: 2, features: 1 });
+assert.equal(S.evaluateBuyers(ridgeHighA, ridgeHighB).ridge_hollow.interest, 'high');
+
+const ridgeLowA = valid({ run: 6, uptime: 0, capacity: 0, connect: 0, features: 3 });
+const ridgeLowB = valid({ run: 6, uptime: 0, capacity: 0, connect: 0, features: 3 });
+const ridgeLow = S.evaluateBuyers(ridgeLowA, ridgeLowB);
+assert.equal(ridgeLow.ridge_hollow.interest, 'low');
+assert.equal(ridgeLow.corven.interest, 'low');
+
+const corvenQualifiedA = valid({ run: 3, uptime: 2, capacity: 1, connect: 2, features: 1 });
+const corvenQualifiedB = valid({ run: 3, uptime: 2, capacity: 1, connect: 1, features: 2 });
+assert.equal(S.evaluateBuyers(corvenQualifiedA, corvenQualifiedB).corven.interest, 'qualified');
 
 // Retuning must keep values between thresholds in the intended middle band.
 const raisedYear1 = { ...S.DEFAULT_THRESHOLDS, year1ConnectStrong: 3 };
