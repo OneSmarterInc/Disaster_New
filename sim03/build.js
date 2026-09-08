@@ -47,6 +47,9 @@ for (const marker of [
   'backOk:year===1',
   'function friendlyError(code,status)',
   'briefing packet your instructor posted before class',
+  'data-open-briefing',
+  'Open briefing packet',
+  "document.querySelectorAll('[data-open-briefing]')",
   "sessionStorage.getItem('m03-access')"
 ]) {
   if (!index.includes(marker)) refuse('required student conformance marker missing: ' + marker);
