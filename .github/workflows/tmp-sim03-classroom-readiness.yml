@@ -1,0 +1,49 @@
+name: tmp-sim03-classroom-readiness
+on:
+  push:
+    branches: [ui/sim03-classroom-readiness]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/sim03-classroom-readiness
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply readiness patch
+        run: python .github/scripts/sim03_classroom_readiness_patch.py
+      - name: Run Sim03 tests
+        run: npm --prefix sim03 test
+      - name: Build Sim03
+        run: npm --prefix sim03 run build
+      - name: Run platform integration check
+        run: node platform/tools/check-sim03-integration.js
+      - name: Parse instructor browser JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          text=Path('sim03/public/instructor.html').read_text()
+          scripts=re.findall(r'<script>([\s\S]*?)</script>', text)
+          assert scripts
+          for i,s in enumerate(scripts):
+              p=Path(tempfile.gettempdir())/f'sim03-readiness-{i}.js'
+              p.write_text(s)
+              subprocess.run(['node','--check',str(p)],check=True)
+          PY
+      - name: Assert no behavior files changed
+        run: |
+          git diff -- sim03/config/thresholds.json sim03/lib/scenario.js sim03/api sim03/public/index.html
+          test -z "$(git diff --name-only -- sim03/config/thresholds.json sim03/lib/scenario.js sim03/api sim03/public/index.html)"
+      - name: Commit readiness guidance
+        run: |
+          git config user.name 'OneSmarterInc Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add sim03/public/instructor.html sim03/tools/team-flow-check.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add Sim03 classroom readiness guidance'
+          git push origin HEAD:ui/sim03-classroom-readiness
