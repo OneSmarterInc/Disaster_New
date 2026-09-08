@@ -34,6 +34,7 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px}
 .card{border:1px solid var(--line);background:var(--panel);padding:19px 20px}.card h3{font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer);margin-bottom:9px}.card p{color:#C8C5BD}
 .cold{display:grid;gap:10px;margin:24px 0}.cold .line{border-left:2px solid var(--line2);padding:11px 16px;font-size:18px;color:#D1CEC6}.cold .line:last-child{border-left-color:var(--amber)}
+.room-tour{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:22px}.room-card{border:1px solid var(--line);background:var(--panel);padding:18px}.room-name{font-size:23px;font-weight:400;line-height:1.15}.room-role{font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-top:5px}.room-line{display:inline-flex;margin-top:13px;border:1px solid #8A6427;background:rgba(240,166,60,.06);padding:4px 7px;font:600 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}.room-quote{font-size:16px;line-height:1.55;color:#C8C5BD;margin-top:12px}.room-close{border-left:2px solid var(--amber);padding:11px 14px;background:rgba(240,166,60,.05);color:#CBC8C0;margin-top:18px}.line-guide{display:grid;gap:0;border:1px solid var(--line);background:var(--panel);margin-top:18px}.line-guide-row{display:grid;grid-template-columns:110px 1fr;gap:14px;padding:12px 14px;border-bottom:1px solid var(--line);align-items:start}.line-guide-row:last-child{border-bottom:0}.line-guide-row b{font-size:17px;font-weight:500}.line-guide-row span{font-size:14px;color:var(--dim);line-height:1.45}
 .field{margin-top:22px}.field label{display:block;font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.field textarea,.field input{width:100%;background:var(--panel);border:1px solid var(--line2);padding:13px 14px;font-size:17px}.field textarea{min-height:110px;resize:vertical}.hint{font-size:13px;color:var(--dimmer);margin-top:7px}
 .alloc-wrap{display:grid;grid-template-columns:1fr 245px;gap:22px;margin-top:25px}
 .allocs{display:grid;gap:8px}.alloc{border:1px solid var(--line);background:var(--panel);display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 14px 14px 17px;gap:14px}.alloc h3{font-size:20px;font-weight:400}.alloc .constraint{font:10px var(--mono);color:var(--dimmer);margin-top:3px;letter-spacing:.04em}.stepper{display:flex;align-items:center;gap:9px}.step{width:37px;height:37px;border:1px solid var(--line2);font:20px var(--mono);color:var(--dim)}.step:hover:not(:disabled){border-color:var(--amber);color:var(--amber)}.amount{min-width:62px;text-align:center;font:600 20px var(--mono);color:var(--bone)}.amount small{font-size:10px;color:var(--dimmer);font-weight:400}
@@ -51,7 +52,7 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .briefing-prep{margin:20px 0 0;border:1px solid var(--line2);background:rgba(22,30,46,.78);display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px 16px}.briefing-prep-copy{font-size:14px;color:#C8C5BD;line-height:1.55}.briefing-prep-copy b{color:var(--bone);font-weight:500}.briefing-prep-copy .small{display:block;font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer);margin-bottom:4px}
 .briefing-modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(5,9,17,.78);backdrop-filter:blur(5px)}.briefing-modal.open{display:flex}.briefing-dialog{width:min(900px,100%);max-height:88vh;background:var(--panel);border:1px solid var(--line2);box-shadow:0 26px 90px rgba(0,0,0,.55);display:flex;flex-direction:column}.briefing-dialog-head{display:flex;align-items:flex-start;gap:18px;padding:20px 22px;border-bottom:1px solid var(--line);background:var(--panel2)}.briefing-dialog-head .grow{flex:1}.briefing-dialog-kicker{font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--amber)}.briefing-dialog-title{font-size:30px;font-weight:400;letter-spacing:-.015em;margin:3px 0 4px}.briefing-dialog-meta{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer)}.briefing-dialog-close{width:36px;height:36px;border:1px solid var(--line2);background:transparent;color:var(--dim);font:20px var(--mono);line-height:1}.briefing-dialog-close:hover{border-color:var(--bone);color:var(--bone)}.briefing-dialog-body{padding:22px;overflow:auto;scrollbar-color:var(--line2) var(--panel)}.briefing-dialog-intro{border-left:2px solid var(--amber);padding:12px 14px;background:rgba(240,166,60,.05);color:#D0CDC5;margin-bottom:22px}.briefing-dialog-section{padding-top:20px;margin-top:20px;border-top:1px solid var(--line)}.briefing-dialog-section:first-of-type{border-top:0;margin-top:0;padding-top:0}.briefing-dialog-section h3{font-size:24px;font-weight:400;margin:0 0 10px}.briefing-dialog-section p{color:#C8C5BD;margin:8px 0}.briefing-dialog-table{overflow:auto;border:1px solid var(--line);margin-top:10px}.briefing-dialog-table table{width:100%;border-collapse:collapse;font-size:14px}.briefing-dialog-table th,.briefing-dialog-table td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.briefing-dialog-table tr:last-child td{border-bottom:0}.briefing-dialog-table th{font:9px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--dimmer);background:var(--panel2)}.briefing-person{padding:12px 0;border-bottom:1px solid var(--line)}.briefing-person:last-child{border-bottom:0}.briefing-person b{color:var(--bone);font-weight:500}.briefing-dialog-foot{padding:14px 22px;border-top:1px solid var(--line);background:var(--panel2);display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.briefing-dialog-foot .hint{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer);margin:0}
 .hidden{display:none!important}
-@media(max-width:760px){.page{width:min(100% - 26px,980px);padding-top:34px}h2{font-size:31px}.alloc-wrap{grid-template-columns:1fr}.budget{position:static}.events,.buyers,.summary{grid-template-columns:1fr}.running{grid-template-columns:repeat(2,1fr)}header{padding:11px 14px}.pills{order:3;width:100%}.joinbox .row{grid-template-columns:1fr}.briefing-prep{align-items:flex-start;flex-direction:column}.briefing-modal{padding:10px}.briefing-dialog{max-height:94vh}.briefing-dialog-body{padding:16px}.briefing-dialog-title{font-size:25px}}
+@media(max-width:760px){.page{width:min(100% - 26px,980px);padding-top:34px}h2{font-size:31px}.alloc-wrap{grid-template-columns:1fr}.budget{position:static}.events,.buyers,.summary,.room-tour{grid-template-columns:1fr}.line-guide-row{grid-template-columns:1fr;gap:3px}.running{grid-template-columns:repeat(2,1fr)}header{padding:11px 14px}.pills{order:3;width:100%}.joinbox .row{grid-template-columns:1fr}.briefing-prep{align-items:flex-start;flex-direction:column}.briefing-modal{padding:10px}.briefing-dialog{max-height:94vh}.briefing-dialog-body{padding:16px}.briefing-dialog-title{font-size:25px}}
 @media print{header,.actions,.team{display:none!important}.page{width:100%!important;padding:0!important}body{background:#fff!important;background-image:none!important;color:#000!important}.page,.page *{color:#000!important}.card,.outcome,.run-cell,.mini div{background:#fff!important;border-color:#999!important;color:#000!important}.eyebrow,.hint,.run-cell .k,.mini span{color:#222!important}.card,.outcome{break-inside:avoid}.summary{break-inside:avoid}}
 </style>
 </head>
@@ -83,7 +84,7 @@ const S={
   session:null,me:null,mates:[],canSubmit:true,teamRun:null,
   poll:null,error:''
 };
-const STEPS=['Brief','Position','View','Year 1','Outcome','Year 2','Events','Year 3','Buyers','Close'];
+const STEPS=['Brief','Position','Room','View','Year 1','Outcome','Year 2','Events','Year 3','Buyers','Close'];
 
 function friendlyError(code,status){
   const m={
@@ -119,7 +120,7 @@ async function sessionApi(payload){
 }
 
 function shell(content){
-  const visibleSteps=STEPS.map((x,i)=>({x,i})).filter(o=>C?.buyers?.authored!==false||o.i!==8);
+  const visibleSteps=STEPS.map((x,i)=>({x,i})).filter(o=>C?.buyers?.authored!==false||o.i!==9);
   const pills=visibleSteps.map((o,j)=>o.i===0
     ? `<button type="button" class="pill brief-link ${o.i===S.step?'on':o.i<S.step?'done':''}" data-open-briefing title="Open briefing packet">${j+1}. ${o.x}</button>`
     : `<span class="pill ${o.i===S.step?'on':o.i<S.step?'done':''}">${j+1}. ${o.x}</span>`).join('');
@@ -137,8 +138,8 @@ function teamBanner(){
   return `<div class="team"><b>${teamName} · session ${esc(S.session.code)}</b><br>${roster}<br>${esc(commit)} · ${esc(control)}</div>`;
 }
 function notice(msg,bad=false){return `<div class="notice ${bad?'error':''}">${esc(msg)}</div>`}
-function next(){let n=Math.min(9,S.step+1);if(n===8&&C?.buyers?.authored===false)n=9;S.step=n;render()}
-function back(){let n=Math.max(0,S.step-1);if(n===8&&C?.buyers?.authored===false)n=7;S.step=n;render()}
+function next(){let n=Math.min(10,S.step+1);if(n===9&&C?.buyers?.authored===false)n=10;S.step=n;render()}
+function back(){let n=Math.max(0,S.step-1);if(n===9&&C?.buyers?.authored===false)n=8;S.step=n;render()}
 function safeToRerender(){if(document.getElementById('briefingPacketModal')?.classList.contains('open'))return false;const el=document.activeElement;return !el||!['INPUT','TEXTAREA','SELECT'].includes(el.tagName)}
 
 async function init(){
@@ -228,13 +229,14 @@ function render(){
   switch(S.step){
     case 0:return renderBrief();
     case 1:return renderPosition();
-    case 2:return renderView();
-    case 3:return renderAllocation(1);
-    case 4:return renderYear1Outcome();
-    case 5:return renderAllocation(2);
-    case 6:return renderYear2Events();
-    case 7:return renderYear3();
-    case 8:return renderBuyers();
+    case 2:return renderRoom();
+    case 3:return renderView();
+    case 4:return renderAllocation(1);
+    case 5:return renderYear1Outcome();
+    case 6:return renderAllocation(2);
+    case 7:return renderYear2Events();
+    case 8:return renderYear3();
+    case 9:return renderBuyers();
     default:return renderClose();
   }
 }
@@ -274,18 +276,27 @@ function wireBriefingPacketModal(){
 }
 
 function renderBrief(){
-  shell(`<div class="eyebrow">Cold open</div><h2>Some decisions arrive years before their evidence.</h2>
-  <div class="cold">${C.coldOpen.map(x=>`<div class="line">${esc(x)}</div>`).join('')}</div>
+  shell(`<div class="eyebrow">MIDLAND EQUIPMENT</div><h2>Forty-one years old, profitable, and nobody thinks it is in trouble.</h2>
+  <div class="copy">${C.coldOpen.map(x=>`<p>${esc(x)}</p>`).join('')}</div>
   <p class="lede">There is no score, rank, grade or hidden correct allocation. You will find out what happened, not how you "did."</p>
   <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>This sim assumes you have read the briefing packet your instructor posted before class.</b> If you have not read it yet, read the full packet here before starting.</div><button class="btn" data-open-briefing>Read briefing packet</button></div>
   ${sessionGate()}${!S.session?'<div class="actions"><button class="btn" id="joinSessionEntry">Join a facilitated session</button></div>':''}${nav({backOk:false,disabled:blocked()})}`);
   const joinEntry=document.getElementById('joinSessionEntry');if(joinEntry)joinEntry.onclick=()=>{S.error='';renderJoin()};
   wireNav(next,false);
 }
+function lineGuide(){return `<div class="line-guide">${C.lines.map(l=>`<div class="line-guide-row"><b>${esc(l.label)}</b><span>${esc(l.description||'')}</span></div>`).join('')}</div>`}
 function renderPosition(){
   shell(`<div class="eyebrow">Your position</div><h2>You run technology at Midland.</h2><p class="lede">${esc(C.position)}</p>
-  <div class="rule"></div><div class="card"><h3>The five lines</h3><p><b>Run</b> keeps the operation functioning now. <b>Uptime</b>, <b>Capacity</b>, <b>Connect</b> and <b>Features</b> are the architecture choices competing for what remains.</p></div>
+  <div class="rule"></div><div class="eyebrow">The five lines</div>${lineGuide()}
   ${nav()}`);wireNav(next);
+}
+function renderRoom(){
+  const room=C.room||{},cast=Array.isArray(room.cast)?room.cast:[];
+  shell(`<div class="eyebrow">THE ROOM</div><h2>Four people, one budget.</h2>
+  <p class="lede">Nobody here is going to tell you what to do. Each of them is responsible for a different part of the company and each of them is right about their own part.</p>
+  <div class="room-tour">${cast.map(c=>`<div class="room-card"><div class="room-name">${esc(c.name)}</div><div class="room-role">${esc(c.role)}</div><div class="room-line">${esc(c.line)}</div><div class="room-quote">“${esc(c.quote||c.stake||'')}”</div></div>`).join('')}</div>
+  <div class="room-close">One of the five lines has nobody speaking for it. You may want to notice which.</div>
+  ${nav({nextLabel:'Take the seat'})}`);wireNav(next);
 }
 function renderView(){
   const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome);
@@ -321,7 +332,7 @@ function renderAllocation(year){
     shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${year===1?'Nine million. Five lines.':'You get one more allocation.'}</h2>
     <p class="lede">${year===1?'The physical constraint is the point: taking a million for one line means it does not exist somewhere else.':'Your Year 1 choices stay with you. The second allocation is shared by your team.'}</p>
     ${briefingPanel()}
-    ${committed?runningHTML(committed,`Team Year ${year} allocation`):notice(`Waiting for ${captain} to commit Year ${year}.`)}
+    ${committed?readOnlyAllocationHTML(committed,`Team Year ${year} allocation`):notice(`Waiting for ${captain} to commit Year ${year}.`)}
     ${running?runningHTML(running,'Cumulative team portfolio'):''}
     <div class="locked">Team allocation is read-only for non-captains. ${committed?`Committed by ${esc(captain)}.`:`${esc(captain)} is choosing the shared allocation.`}</div>
     ${nav({backOk:year===1,nextLabel:committed?'Continue':'Waiting for captain',disabled:blocked()||!committed})}`);
@@ -356,10 +367,11 @@ function renderAllocation(year){
     }catch(e){alert(e.message)}
   });
 }
+function readOnlyAllocationHTML(a,label){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="allocs">${C.lines.map(l=>`<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${esc(l.description||'')}</div></div><div class="amount">${a[l.id]}<small> M</small></div></div>`).join('')}</div>`}
 function allocRow(l,a,key){
   const n=a[l.id],min=l.id==='run'?3:0,max=l.id==='run'?9:3;
   const readOnly=!S.canSubmit&&S.session?.mode==='team';
-  return `<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${l.id==='run'&&n<=min?'Run floor: $3M keeps current operations functioning.':''}</div></div><div class="stepper">
+  return `<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${esc(l.description||'')}</div></div><div class="stepper">
     <button class="step" data-line="${l.id}" data-delta="-1" ${readOnly||n<=min?'disabled':''}>−</button>
     <div class="amount">${n}<small> M</small></div>
     <button class="step" data-line="${l.id}" data-delta="1" ${readOnly||n>=max?'disabled':''}>+</button></div></div>`;
@@ -414,7 +426,7 @@ function renderYear3(){
 }
 function renderBuyers(){
   const b=S.allOutcomes?.buyers;
-  if(!b){S.step=9;return renderClose()}
+  if(!b){S.step=10;return renderClose()}
   const ordered=[b.carrolton,b.ridge_hollow,b.corven].filter(Boolean);
   shell(`<div class="eyebrow">Three buyers</div><h2>Same company. Three different answers.</h2>
   <p class="lede">There is no valuation total, ranking or winner. Each buyer sees a different thing in the company you built.</p>
