@@ -1,0 +1,60 @@
+name: tmp-sim03-authored-content
+on:
+  push:
+    branches: [feat/sim03-authored-content]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/sim03-authored-content
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply authored content patch
+        run: |
+          git show 7337f707296799cef9d7c26b901fbeb488e87a9b:.github/scripts/sim03_authored_content_patch.py > /tmp/sim03_authored_content_patch.py
+          python /tmp/sim03_authored_content_patch.py
+      - name: Run Sim03 tests
+        run: npm --prefix sim03 test
+      - name: Build Sim03
+        run: npm --prefix sim03 run build
+      - name: Run platform integration check
+        run: node platform/tools/check-sim03-integration.js
+      - name: Parse student and instructor browser JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          for name in ['index.html','instructor.html']:
+              text=Path('sim03/public',name).read_text()
+              scripts=re.findall(r'<script>([\s\S]*?)</script>', text)
+              assert scripts
+              for i,s in enumerate(scripts):
+                  p=Path(tempfile.gettempdir())/f'sim03-authored-{name}-{i}.js'
+                  p.write_text(s)
+                  subprocess.run(['node','--check',str(p)],check=True)
+          PY
+      - name: Assert authored blockers resolved
+        run: |
+          grep -q "band: 'data_no_room'" sim03/lib/scenario.js
+          grep -q 'Carrolton Systems' sim03/lib/scenario.js
+          grep -q 'Ridge Hollow Partners' sim03/lib/scenario.js
+          grep -q 'Corven Building Systems' sim03/lib/scenario.js
+          ! grep -q 'unresolved_calibration' sim03/lib/scenario.js
+          ! grep -q 'calibrationGap' sim03/lib/scenario.js
+          grep -q 'Data without room to run it' sim03/public/instructor.html
+          grep -q 'Corven high / Ridge Hollow low' sim03/public/instructor.html
+      - name: Remove CONTENT-TODO and commit
+        run: |
+          rm -f sim03/CONTENT-TODO.md
+          git config user.name 'OneSmarterInc Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add sim03/lib/scenario.js sim03/tools/check.js sim03/public/index.html sim03/public/instructor.html sim03/api/finish.js sim03/build.js sim03/README.md sim03/CONTENT-TODO.md
+          git diff --cached --quiet && exit 0
+          git commit -m 'Resolve Midland authored content blockers'
+          git push origin HEAD:feat/sim03-authored-content
