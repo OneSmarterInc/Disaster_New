@@ -22,7 +22,7 @@ button{cursor:pointer;background:none;border:0}
 #app{min-height:100vh;display:flex;flex-direction:column}
 header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid var(--line);background:rgba(14,21,36,.94);backdrop-filter:blur(8px)}
 .brand{margin-right:auto}.brand h1{font-size:17px;font-weight:500}.brand .sub{font:10.5px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin-top:2px}
-.pills{display:flex;gap:5px;flex-wrap:wrap}.pill{font:10px var(--mono);letter-spacing:.09em;text-transform:uppercase;padding:5px 9px;border:1px solid var(--line);color:var(--dimmer)}.pill.on{color:var(--amber);border-color:#8A6427;background:rgba(240,166,60,.07)}.pill.done{color:var(--dim);border-color:var(--line2)}
+.pills{display:flex;gap:5px;flex-wrap:wrap}.pill{font:10px var(--mono);letter-spacing:.09em;text-transform:uppercase;padding:5px 9px;border:1px solid var(--line);color:var(--dimmer)}.pill.on{color:var(--amber);border-color:#8A6427;background:rgba(240,166,60,.07)}.pill.done{color:var(--dim);border-color:var(--line2)}.pill.brief-link{cursor:pointer}.pill.brief-link:hover{color:var(--amber);border-color:#8A6427;background:rgba(240,166,60,.07)}
 .timer{font:600 21px var(--mono);color:var(--amber)}
 .page{width:min(980px,calc(100% - 36px));margin:0 auto;padding:54px 0 74px}
 .eyebrow{font:10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin-bottom:9px}
@@ -120,8 +120,11 @@ async function sessionApi(payload){
 
 function shell(content){
   const visibleSteps=STEPS.map((x,i)=>({x,i})).filter(o=>C?.buyers?.authored!==false||o.i!==8);
-  const pills=visibleSteps.map((o,j)=>`<span class="pill ${o.i===S.step?'on':o.i<S.step?'done':''}">${j+1}. ${o.x}</span>`).join('');
-  app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">20 MIN</div></header><main class="page">${teamBanner()}${content}</main>`;
+  const pills=visibleSteps.map((o,j)=>o.i===0
+    ? `<button type="button" class="pill brief-link ${o.i===S.step?'on':o.i<S.step?'done':''}" data-open-briefing title="Open briefing packet">${j+1}. ${o.x}</button>`
+    : `<span class="pill ${o.i===S.step?'on':o.i<S.step?'done':''}">${j+1}. ${o.x}</span>`).join('');
+  app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">20 MIN</div></header><main class="page">${teamBanner()}${content}</main>${briefingPacketModal()}`;
+  wireBriefingPacketModal();
 }
 function teamBanner(){
   if(!S.session)return '';
@@ -136,7 +139,7 @@ function teamBanner(){
 function notice(msg,bad=false){return `<div class="notice ${bad?'error':''}">${esc(msg)}</div>`}
 function next(){let n=Math.min(9,S.step+1);if(n===8&&C?.buyers?.authored===false)n=9;S.step=n;render()}
 function back(){let n=Math.max(0,S.step-1);if(n===8&&C?.buyers?.authored===false)n=7;S.step=n;render()}
-function safeToRerender(){const el=document.activeElement;return !el||!['INPUT','TEXTAREA','SELECT'].includes(el.tagName)}
+function safeToRerender(){if(document.getElementById('briefingPacketModal')?.classList.contains('open'))return false;const el=document.activeElement;return !el||!['INPUT','TEXTAREA','SELECT'].includes(el.tagName)}
 
 async function init(){
   try{C=await request('/api/config',null,'GET')}
@@ -258,15 +261,15 @@ function briefingPacketModal(){
 }
 function wireBriefingPacketModal(){
   const modal=document.getElementById('briefingPacketModal');
-  const openBtn=document.getElementById('openBriefingPacket');
-  if(!modal||!openBtn)return;
+  const openBtns=[...document.querySelectorAll('[data-open-briefing]')];
+  if(!modal||!openBtns.length)return;
   const closeBtn=document.getElementById('closeBriefingPacket');
   const doneBtn=document.getElementById('doneBriefingPacket');
   let lastFocus=null;
   const escHandler=e=>{if(e.key==='Escape')close()};
   const open=()=>{lastFocus=document.activeElement;modal.classList.add('open');modal.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';document.addEventListener('keydown',escHandler);closeBtn?.focus()};
   const close=()=>{modal.classList.remove('open');modal.setAttribute('aria-hidden','true');document.body.style.overflow='';document.removeEventListener('keydown',escHandler);lastFocus?.focus()};
-  openBtn.onclick=open;if(closeBtn)closeBtn.onclick=close;if(doneBtn)doneBtn.onclick=close;
+  openBtns.forEach(btn=>btn.onclick=open);if(closeBtn)closeBtn.onclick=close;if(doneBtn)doneBtn.onclick=close;
   modal.onclick=e=>{if(e.target===modal)close()};
 }
 
@@ -274,10 +277,8 @@ function renderBrief(){
   shell(`<div class="eyebrow">Cold open</div><h2>Some decisions arrive years before their evidence.</h2>
   <div class="cold">${C.coldOpen.map(x=>`<div class="line">${esc(x)}</div>`).join('')}</div>
   <p class="lede">There is no score, rank, grade or hidden correct allocation. You will find out what happened, not how you "did."</p>
-  <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>This sim assumes you have read the briefing packet your instructor posted before class.</b> If you have not read it yet, read the full packet here before starting.</div><button class="btn" id="openBriefingPacket">Read briefing packet</button></div>
-  ${briefingPacketModal()}
+  <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>This sim assumes you have read the briefing packet your instructor posted before class.</b> If you have not read it yet, read the full packet here before starting.</div><button class="btn" data-open-briefing>Read briefing packet</button></div>
   ${sessionGate()}${!S.session?'<div class="actions"><button class="btn" id="joinSessionEntry">Join a facilitated session</button></div>':''}${nav({backOk:false,disabled:blocked()})}`);
-  wireBriefingPacketModal();
   const joinEntry=document.getElementById('joinSessionEntry');if(joinEntry)joinEntry.onclick=()=>{S.error='';renderJoin()};
   wireNav(next,false);
 }
