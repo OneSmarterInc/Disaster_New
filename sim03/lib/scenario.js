@@ -24,7 +24,7 @@ const META = {
     turn:
       'There is no scored or ranked answer. The same portfolio is later seen through different consequences and buyer perspectives.',
     roomIntro:
-      'There is no cast of advisers in this RapidSim. The argument is inside the allocation: what do you fund now when the evidence arrives later?',
+      'Four people want four different things from the same nine million dollars. None of them is wrong, and none of them is going to tell you what to do.',
     momentsIntro:
       'You commit a view, allocate Year 1, see what that made possible, allocate Year 2, then watch Year 3 arrive after your ability to change course has ended.',
     after:
@@ -46,7 +46,36 @@ const META = {
       { label: 'Played', value: 'Individual or team' },
       { label: 'Session', value: 'About an hour' }
     ],
-    cast: [],
+    cast: [
+      {
+        name: 'Dale Brenner',
+        role: 'Chief Financial Officer',
+        line: 'Run',
+        stake: 'Six million a year keeps the lights on and produces nothing new. Every conversation should start with getting that number down.',
+        quote: 'Six million dollars a year keeps the lights on and produces nothing new. Every conversation we have should start with getting that number down.'
+      },
+      {
+        name: 'Renata Oyelaran',
+        role: 'VP, Service',
+        line: 'Uptime',
+        stake: "Doesn't need software, needs eight more technicians. Every dollar spent on a system is a dollar that did not go to a truck.",
+        quote: 'I do not need software. I need eight more technicians. Every dollar you spend on a system is a dollar that did not go to a truck.'
+      },
+      {
+        name: 'Tom Vasquez',
+        role: 'Chief Executive',
+        line: 'Features',
+        stake: "In eighteen months has to stand in front of the board and show them something. Doesn't care what it is. Cares that it is real.",
+        quote: 'In eighteen months I have to stand in front of the board and show them something. I do not care what it is. I care that it is real.'
+      },
+      {
+        name: 'Sam Achterberg',
+        role: 'Field technician, 22 years',
+        line: 'Connect',
+        stake: 'Those machines have been telling us they were about to fail for years. There has never been anywhere to put what they say.',
+        quote: 'Those machines have been telling us they were about to fail for years. There has never been anywhere to put what they say.'
+      }
+    ],
     beats: [
       { at: 'Year 1', what: 'Commit a technology portfolio before the first consequence appears.' },
       { at: 'Year 2', what: 'Allocate again with Year 1 totals still visible, then face two events.' },
@@ -63,6 +92,13 @@ const LABELS = {
   connect: 'Connect',
   features: 'Features'
 };
+const LINE_DESCRIPTIONS = Object.freeze({
+  run: "Keeps the existing systems alive. Dale's floor: $3M, non-negotiable.",
+  uptime: "Backup and redundancy so dispatch survives a bad day. Renata's line.",
+  capacity: 'Headroom for growth and for anything that needs to compute. Nobody asks for this.',
+  connect: "Gets the data back from the units in the field, automatically. Sam's line.",
+  features: "Visible new things the business can point at. Tom's line."
+});
 
 // First-draft calibration lives in data rather than engine code. Facilitated
 // sessions copy these defaults and may edit their own copy while still in the
@@ -285,7 +321,11 @@ function publicConfig() {
       description: META.description,
       minutes: META.minutes
     },
-    lines: LINES.map(id => ({ id, label: LABELS[id] })),
+    lines: LINES.map(id => ({ id, label: LABELS[id], description: LINE_DESCRIPTIONS[id] })),
+    room: {
+      intro: META.detail.roomIntro,
+      cast: META.detail.cast.map(({ name, role, line, stake, quote }) => ({ name, role, line, stake, quote }))
+    },
     annualBudget: 9,
     runMinimum: 3,
     lineMaximum: 3,
@@ -362,14 +402,13 @@ function publicConfig() {
       ]
     },
     coldOpen: [
-      'Midland Equipment is a mid-sized HVAC company.',
-      'You are about to take responsibility for the technology choices that shape what it can become.',
-      'The choices arrive before the consequences.',
-      'Once the consequences show up, some of them will be too late to change.'
+      'Midland sells and services the big rooftop heating and cooling units on schools, hospitals, and office buildings across Ohio, Indiana, and Michigan. About four thousand of them are out there right now. Sixty-two technicians drive to those buildings all day, every day.',
+      'Selling equipment brings in most of the revenue. Servicing it brings in most of the profit.',
+      'The main office system is fourteen years old. Every unit installed since 2016 records its own run hours, temperatures, and faults. Nobody has ever looked at that data, because the only way to see it is to drive out and plug in a laptop.',
+      'You are about to take over technology decisions here.'
     ],
     position:
-      'You run technology at Midland. You have $9 million to allocate this year across five lines. ' +
-      'You cannot borrow from next year, and the annual caps are real.',
+      'You have $9 million to allocate this year across five lines. You cannot borrow from next year, and the annual caps are real.',
     viewPrompt: 'In one sentence: what should this company become?',
     viewDisclosure: 'Your instructor can see this sentence in the instructor view. It is not scored.',
     reflectionPrompts: [

@@ -108,6 +108,8 @@ if (index.includes('Valuation pending authored rule')) refuse('unauthored buyer 
 if (index.includes('authored calibration does not yet define')) refuse('Year 3 calibration scaffolding reached the student bundle');
 for (const marker of ['Briefing & exhibits','Your outcome','Overall result','Three-year consequence timeline','The portfolio that produced this','Your original view','Year 2 allocation','Cumulative portfolio','Three buyers','buyer-interest'])
   if (!index.includes(marker)) refuse('briefing/outcome-results marker missing: ' + marker);
+for (const marker of ['Forty-one years old, profitable, and nobody thinks it is in trouble.','Four people, one budget.','Take the seat','One of the five lines has nobody speaking for it'])
+  if (!index.includes(marker)) refuse('increment-1 story marker missing: ' + marker);
 if (!index.includes('function overallOutcomeText()')) refuse('deterministic overall outcome synthesis missing');
 for (const forbidden of ['Score:','Grade:','Rank:']) if (index.includes(forbidden)) refuse('grade-like final result leaked: ' + forbidden);
 for (const marker of ['Exhibit 1 — Where the revenue comes from','Exhibit 6 — What the machines already know'])

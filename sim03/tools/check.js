@@ -84,5 +84,16 @@ for (const key of Object.keys(S.DEFAULT_THRESHOLDS)) {
 }
 assert.equal(S.META.id, 'rapid-03-midland');
 assert.deepEqual(S.META.replaces, ['rapid-03-bench']);
+assert.equal(S.META.detail.roomIntro, 'Four people want four different things from the same nine million dollars. None of them is wrong, and none of them is going to tell you what to do.');
+assert.equal(S.META.detail.cast.length, 4);
+assert.deepEqual(S.META.detail.cast.map(x => x.name), ['Dale Brenner','Renata Oyelaran','Tom Vasquez','Sam Achterberg']);
+assert.deepEqual(S.META.detail.cast.map(x => x.line), ['Run','Uptime','Features','Connect']);
+assert.equal(S.META.detail.cast.some(x => x.line === 'Capacity'), false);
+const inc1 = S.publicConfig();
+assert.equal(inc1.room.cast.length, 4);
+assert.equal(inc1.lines.find(x => x.id === 'capacity').description, 'Headroom for growth and for anything that needs to compute. Nobody asks for this.');
+assert.equal(inc1.lines.find(x => x.id === 'connect').description, "Gets the data back from the units in the field, automatically. Sam's line.");
+assert.equal(inc1.coldOpen[0].startsWith('Midland sells and services the big rooftop heating and cooling units'), true);
+assert.equal(inc1.position.startsWith('You have $9 million'), true);
 
 console.log('RapidSim 03 checks passed.');
