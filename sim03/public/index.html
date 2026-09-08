@@ -42,7 +42,7 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .outcome{border:1px solid var(--line2);background:var(--panel);padding:25px;margin-top:22px}.outcome .band{font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--amber);margin-bottom:7px}.outcome h3{font-size:27px;font-weight:400;margin-bottom:9px}.outcome p{font-size:18px;color:#D0CDC5;line-height:1.65}.events{display:grid;grid-template-columns:1fr 1fr;gap:12px}.events .outcome{margin-top:12px}
 .locked{border:1px dashed var(--line2);padding:14px 16px;color:var(--dim);margin-top:18px}
 .team{border:1px solid var(--blue);background:rgba(111,168,214,.06);padding:12px 14px;margin:0 0 20px;font-size:14px;color:#C8D8E8}.team b{color:#A8CBE7;font-weight:500}
-.buyers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:21px}.buyer{border:1px solid var(--line);background:var(--panel);padding:18px}.buyer h3{font-size:21px;font-weight:400}.buyer .value{font:10px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin-top:12px}.buyer p{font-size:14px;color:var(--dim);margin-top:7px}
+.buyers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:21px}.buyer{border:1px solid var(--line);background:var(--panel);padding:18px}.buyer h3{font-size:21px;font-weight:400}.buyer .value{font:10px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--dimmer);margin-top:12px}.buyer p{font-size:14px;color:var(--dim);margin-top:7px}.buyer-interest{display:inline-flex;margin:10px 0 3px;padding:4px 7px;border:1px solid var(--line2);font:600 9px var(--mono);letter-spacing:.12em;text-transform:uppercase}.buyer-interest.high{color:var(--green);border-color:#476b58}.buyer-interest.qualified{color:var(--amber);border-color:#8A6427}.buyer-interest.low{color:var(--red);border-color:#7d4553}.buyer-close{border-left:2px solid var(--amber);padding:12px 14px;margin-top:18px;background:rgba(240,166,60,.05);font-size:18px;color:#D0CDC5}
 .summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}.summary .card{min-height:150px}.mini{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:12px}.mini div{border:1px solid var(--line);padding:8px 5px;text-align:center}.mini b{display:block;font:600 17px var(--mono);color:var(--amber)}.mini span{font:8px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--dimmer)}
 .briefing{margin:20px 0;border:1px solid var(--line2);background:var(--panel)}.briefing>summary{cursor:pointer;padding:13px 16px;font:11px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--amber);list-style:none}.briefing>summary::-webkit-details-marker{display:none}.briefing>summary:after{content:'+';float:right;color:var(--dim)}.briefing[open]>summary:after{content:'−'}.briefing-body{padding:0 16px 18px;border-top:1px solid var(--line)}.briefing-body>p{margin-top:14px;color:#C9C6BE}.exhibit{margin-top:18px;padding-top:15px;border-top:1px solid var(--line)}.exhibit h3{font:500 15px var(--serif);color:var(--bone);margin-bottom:8px}.exhibit p{color:#C3C0B8;margin:7px 0}.exhibit table{width:100%;border-collapse:collapse;margin-top:9px;font-size:13px}.exhibit th,.exhibit td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}.exhibit th{font:9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer)}.result-section{margin-top:26px}.result-section>.eyebrow{margin-bottom:10px}.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.result-grid .outcome{margin-top:0}.result-grid .card{min-height:0}@media(max-width:760px){.result-grid{grid-template-columns:1fr}}
 .result-hero{border:1px solid #8A6427;background:rgba(240,166,60,.07);padding:22px 24px;margin:20px 0 28px}.result-hero h3{font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.result-hero p{font-size:21px;line-height:1.55;color:var(--bone)}.timeline{display:grid;gap:12px}.timeline-year{display:grid;grid-template-columns:90px 1fr;gap:14px;align-items:start}.timeline-label{font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--amber);padding-top:18px}.timeline-body{display:grid;gap:10px}.timeline-body .outcome{margin-top:0}@media(max-width:760px){.timeline-year{grid-template-columns:1fr}.timeline-label{padding-top:0}}
@@ -412,7 +412,16 @@ function renderYear3(){
   ${o?`<div class="outcome"><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Year 3 outcome is unavailable.',true)}
   ${nav({backOk:false,nextLabel:C.buyers?.authored===false?'Continue to close':'See the three buyers'})}`);wireNav(next,false);
 }
-function renderBuyers(){S.step=9;return renderClose()}
+function renderBuyers(){
+  const b=S.allOutcomes?.buyers;
+  if(!b){S.step=9;return renderClose()}
+  const ordered=[b.carrolton,b.ridge_hollow,b.corven].filter(Boolean);
+  shell(`<div class="eyebrow">Three buyers</div><h2>Same company. Three different answers.</h2>
+  <p class="lede">There is no valuation total, ranking or winner. Each buyer sees a different thing in the company you built.</p>
+  <div class="buyers">${ordered.map(x=>`<div class="buyer"><div class="eyebrow">${esc(x.description)}</div><h3>${esc(x.name)}</h3><div class="buyer-interest ${esc(x.interest)}">${esc(x.interest)}</div><p>${esc(x.reason)}</p></div>`).join('')}</div>
+  <div class="buyer-close">${esc(b.closing||C.buyers?.closing||'')}</div>
+  ${nav({backOk:false,nextLabel:'Continue to close'})}`);wireNav(next,false);
+}
 function renderClose(){
   if(S.finished){
     const y1o=S.allOutcomes?.year1||S.year1Outcome||null;
@@ -440,6 +449,7 @@ function renderClose(){
         <div class="card" style="grid-column:1/-1"><h3>Cumulative portfolio</h3>${cum?miniAlloc(cum):'<p>—</p>'}</div>
       </div>
     </div>
+    ${S.allOutcomes?.buyers?`<div class="result-section"><div class="eyebrow">The three buyers</div><div class="buyers">${[S.allOutcomes.buyers.carrolton,S.allOutcomes.buyers.ridge_hollow,S.allOutcomes.buyers.corven].filter(Boolean).map(x=>`<div class="buyer"><h3>${esc(x.name)}</h3><div class="buyer-interest ${esc(x.interest)}">${esc(x.interest)}</div><p>${esc(x.reason)}</p></div>`).join('')}</div><div class="buyer-close">${esc(S.allOutcomes.buyers.closing||'')}</div></div>`:''}
     <div class="result-section"><div class="eyebrow">Your original view</div>
       <div class="card"><p>${esc(S.strategicView||'—')}</p></div>
     </div>
@@ -484,6 +494,7 @@ function overallOutcomeText(){
   const d={
     strong:'By Year 3, the architecture supported predictive service as something Midland could actually sell.',
     pilot:'By Year 3, predictive service was promising, but still only a pilot.',
+    data_no_room:'You have three years of fault history and nowhere to put it.',
     weak:'By Year 3, the architecture still lacked the usable data foundation for predictive service.'
   }[y3]||'';
   return [a,b,c,d].filter(Boolean).join(' ');

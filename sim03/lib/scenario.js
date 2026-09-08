@@ -87,10 +87,37 @@ const COPY = Object.freeze({
   },
   year3: {
     strong: 'It works. Three years of fault history, somewhere to run it. Uptime becomes a product you sell.',
+    data_no_room: 'You have three years of fault history and nowhere to put it. The model runs overnight on borrowed capacity and finishes some mornings. The CEO sees a demo that works and asks why it cannot go to every customer by spring. The honest answer is that you built the harder half and skipped the cheap half.',
     pilot: 'Pilot on the newest units. Promising, not a business.',
     weak: 'Nothing to predict from. The model is fine. There is no data.'
   }
 });
+
+const BUYERS = Object.freeze({
+  carrolton: {
+    id: 'carrolton',
+    name: 'Carrolton Systems',
+    description: 'Regional competitor',
+    copy: 'Buys the customers and the contracts. Everything you built is overhead they intend to retire in the first year. Your portfolio did not change this number, which is worth sitting with.'
+  },
+  ridge_hollow: {
+    id: 'ridge_hollow',
+    name: 'Ridge Hollow Partners',
+    description: 'Private equity',
+    high: 'Likes what it sees: a lean operation with no expensive habits. Plans to hold four years and sell, and nothing in your portfolio gets in the way of that.',
+    qualified: 'Interested, with reservations about how much of the spending it would have to keep funding.',
+    low: 'Sees a cost base it would have to cut hard, and it has done this often enough to know how that goes.'
+  },
+  corven: {
+    id: 'corven',
+    name: 'Corven Building Systems',
+    description: 'Platform acquirer',
+    high: 'This is the only reason it is at the table. Three years of fault history from four thousand units in buildings it does not yet serve. It is not buying an HVAC dealer, it is buying what those machines have been saying.',
+    qualified: 'Sees the beginning of something and would want to finish it themselves, which changes the price and who runs the company afterward.',
+    low: 'Cannot see what it would be buying. Says so politely.'
+  }
+});
+const BUYER_CLOSING = 'Three buyers, one company, three different answers. Which one showed up was never yours to control. What you controlled was whether there was anything worth paying for.';
 
 function integer(v) {
   const n = Number(v);
@@ -200,24 +227,43 @@ function evaluateYear3(y1, y2, thresholds) {
   if (c.connect >= t.year3ConnectStrong && c.capacity >= t.year3CapacityStrong) {
     return { band: 'strong', title: 'The CEO wants AI failure prediction', narrative: COPY.year3.strong, cumulative: c };
   }
+  if (c.connect >= t.year3ConnectStrong && c.capacity < t.year3CapacityStrong) {
+    return { band: 'data_no_room', title: 'The CEO wants AI failure prediction', narrative: COPY.year3.data_no_room, cumulative: c };
+  }
   if (c.connect >= t.year3ConnectPilotMin && c.connect <= t.year3ConnectPilotMax) {
     return { band: 'pilot', title: 'The CEO wants AI failure prediction', narrative: COPY.year3.pilot, cumulative: c };
   }
-  if (c.connect < t.year3ConnectPilotMin) {
-    return { band: 'weak', title: 'The CEO wants AI failure prediction', narrative: COPY.year3.weak, cumulative: c };
-  }
+  return { band: 'weak', title: 'The CEO wants AI failure prediction', narrative: COPY.year3.weak, cumulative: c };
+}
 
-  // The authored build spec has no row for Connect >= strong with Capacity below
-  // the strong capacity requirement. Students must never see development
-  // scaffolding, so use the nearest authored non-success narrative while
-  // retaining a separate calibrationGap flag for the instructor console.
+function evaluateBuyers(y1, y2) {
+  const c = cumulative(y1, y2);
+  const ridgeSpend = c.run + c.features;
+  const ridgeInterest = ridgeSpend <= 8 ? 'high' : ridgeSpend >= 12 ? 'low' : 'qualified';
+  const corvenInterest = c.connect >= 5 ? 'high' : c.connect >= 3 ? 'qualified' : 'low';
   return {
-    band: 'pilot',
-    calibrationGap: true,
-    internalBand: 'unresolved_calibration',
-    title: 'The CEO wants AI failure prediction',
-    narrative: COPY.year3.pilot,
-    cumulative: c
+    carrolton: {
+      id: BUYERS.carrolton.id,
+      name: BUYERS.carrolton.name,
+      description: BUYERS.carrolton.description,
+      interest: 'qualified',
+      reason: BUYERS.carrolton.copy
+    },
+    ridge_hollow: {
+      id: BUYERS.ridge_hollow.id,
+      name: BUYERS.ridge_hollow.name,
+      description: BUYERS.ridge_hollow.description,
+      interest: ridgeInterest,
+      reason: BUYERS.ridge_hollow[ridgeInterest]
+    },
+    corven: {
+      id: BUYERS.corven.id,
+      name: BUYERS.corven.name,
+      description: BUYERS.corven.description,
+      interest: corvenInterest,
+      reason: BUYERS.corven[corvenInterest]
+    },
+    closing: BUYER_CLOSING
   };
 }
 
@@ -225,7 +271,8 @@ function evaluateAll(y1, y2, thresholds) {
   return {
     year1: evaluateYear1(y1, thresholds),
     year2: evaluateYear2(y1, y2, thresholds),
-    year3: evaluateYear3(y1, y2, thresholds)
+    year3: evaluateYear3(y1, y2, thresholds),
+    buyers: evaluateBuyers(y1, y2)
   };
 }
 
@@ -330,9 +377,10 @@ function publicConfig() {
       'If you could change one Year 1 million after seeing Year 3, where would it move and why?'
     ],
     buyers: {
-      authored: false,
-      note:
-        'The build specification requires three buyer valuations but does not yet define their valuation rules or copy.'
+      authored: true,
+      title: 'Three buyers, one company',
+      note: 'Each buyer gives a verdict and an interest level. There is no total, ranking or winner.',
+      closing: BUYER_CLOSING
     }
   };
 }
@@ -340,5 +388,5 @@ function publicConfig() {
 module.exports = {
   META, LINES, LABELS, DEFAULT_THRESHOLDS, sanitizeThresholds, validateThresholds,
   validateAllocation, cumulative, evaluateYear1, evaluateYear2, evaluateYear3,
-  evaluateAll, publicConfig
+  evaluateBuyers, evaluateAll, publicConfig
 };

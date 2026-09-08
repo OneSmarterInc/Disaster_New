@@ -106,12 +106,17 @@ for (const marker of ['Resume session code','Students self-select teams at join'
   if (!instructor.includes(marker)) refuse('team/projector instructor marker missing: ' + marker);
 if (index.includes('Valuation pending authored rule')) refuse('unauthored buyer placeholder reached the student bundle');
 if (index.includes('authored calibration does not yet define')) refuse('Year 3 calibration scaffolding reached the student bundle');
-for (const marker of ['Briefing & exhibits','Your outcome','Overall result','Three-year consequence timeline','The portfolio that produced this','Your original view','Year 2 allocation','Cumulative portfolio'])
+for (const marker of ['Briefing & exhibits','Your outcome','Overall result','Three-year consequence timeline','The portfolio that produced this','Your original view','Year 2 allocation','Cumulative portfolio','Three buyers','buyer-interest'])
   if (!index.includes(marker)) refuse('briefing/outcome-results marker missing: ' + marker);
 if (!index.includes('function overallOutcomeText()')) refuse('deterministic overall outcome synthesis missing');
 for (const forbidden of ['Score:','Grade:','Rank:']) if (index.includes(forbidden)) refuse('grade-like final result leaked: ' + forbidden);
 for (const marker of ['Exhibit 1 — Where the revenue comes from','Exhibit 6 — What the machines already know'])
   if (!S.publicConfig().briefing?.exhibits?.some(x => x.title === marker)) refuse('briefing data missing: ' + marker);
+if (S.publicConfig().buyers?.authored !== true) refuse('buyer content is not marked authored');
+if (!index.includes('data_no_room')) refuse('student final result does not recognize data_no_room');
+if (index.includes('calibrationGap') || index.includes('unresolved_calibration')) refuse('resolved Year 3 calibration scaffolding remains in the student UI');
+if (!instructor.includes('Data without room to run it')) refuse('instructor Year 3 distribution is missing data_no_room label');
+if (!instructor.includes('Corven high / Ridge Hollow low')) refuse('instructor buyer debate finder is missing');
 
 function checkScripts(name, source) {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]);

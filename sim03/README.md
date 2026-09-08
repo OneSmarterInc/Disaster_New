@@ -40,15 +40,13 @@ console while the session is still in the lobby. The chosen calibration is store
 with that session, so thresholds can be changed between class sections without a
 deploy.
 
-## Content gaps deliberately not invented
+## Authored Year 3 and buyer content
 
-The supplied build spec does not define:
-1. the Year-3 result when cumulative Connect is at least 5 but Capacity is below 2;
-2. the actual three buyer valuation rules/content.
-
-The engine reports the first case as `unresolved_calibration` and the student view
-does not fabricate buyer values. Both are visible to faculty so the missing authored
-content can be supplied before publishing the sim.
+The formerly open Year 3 calibration case is now authored as `data_no_room` when
+Connect reaches the strong threshold but Capacity does not. The buyer stage is also
+authored: Carrolton Systems, Ridge Hollow Partners and Corven Building Systems each
+return a deterministic `high`, `qualified` or `low` interest verdict without a
+dollar valuation, total, ranking or winner.
 
 ## Endpoints
 
