@@ -245,6 +245,10 @@ function publicConfig() {
     briefing: {
       title: 'Midland Equipment — Briefing & exhibits',
       note: 'Reference copy of the pre-class packet. It is collapsed by default so the simulation does not reteach the briefing.',
+      intro: [
+        'Read this before Tuesday. It is the only preparation for the class.',
+        'You are about to take over technology decisions at Midland Equipment. On Tuesday your team will spend three years of the company’s money in eighty minutes. Nobody will re-explain this packet in class, and the teams that read it carefully will run the room. It should take you about six minutes.'
+      ],
       company: [
         'Midland sells and services commercial HVAC systems — the large rooftop units that heat and cool schools, hospitals, and office buildings. The company operates in Ohio, Indiana, and Michigan, and has roughly 4,000 of its units installed in customers’ buildings. Revenue comes from two places: selling equipment, and a service department that bills by the visit. Sixty-two field technicians drive to those buildings all day, every day.',
         'The company is 41 years old, profitable, and nobody thinks it is in trouble.'
@@ -297,6 +301,17 @@ function publicConfig() {
             'Trade press, March: Carrolton Systems has been piloting a flat-rate coverage program for commercial customers in Georgia and Tennessee.'
           ]
         }
+      ],
+      people: [
+        { role: 'The CFO', quote: 'Six million dollars a year keeps the lights on and produces nothing new. Every conversation we have should start with getting that number down.' },
+        { role: 'The VP of Service', quote: 'I do not need software. I need eight more technicians. Every dollar you spend on a system is a dollar that did not go to a truck.' },
+        { role: 'The CEO', quote: 'In eighteen months I have to stand in front of the board and show them something. I do not care what it is. I care that it is real.' },
+        { role: 'A technician, 22 years at Midland', quote: 'Those machines have been telling us they were about to fail for years. There has never been anywhere to put what they say.' }
+      ],
+      peopleNote: 'All four of them are reasonable. None of them is going to tell you the answer, and if you ask any of them what you should do, you will get a confident reply shaped by the part of the company they are responsible for.',
+      whatHappens: [
+        'Your team runs Midland’s technology for three years. Each year you get $9 million, you spend all of it across five lines, and then you find out what happened that year.',
+        'You do not get to save money. Come with a view about what this company should become. You will be asked for it early, in one sentence.'
       ]
     },
     coldOpen: [
