@@ -116,6 +116,8 @@ for (const marker of ['Exhibit 1 â€” Where the revenue comes from','Exhibit 6 â€
   if (!S.publicConfig().briefing?.exhibits?.some(x => x.title === marker)) refuse('briefing data missing: ' + marker);
 if (S.publicConfig().buyers?.authored !== true) refuse('buyer content is not marked authored');
 if (!index.includes('data_no_room')) refuse('student final result does not recognize data_no_room');
+for (const marker of ['function closingLessonHTML()','What this run was teaching you','run-complete','closingLesson=done.closingLesson']) if (!index.includes(marker)) refuse('closing lesson marker missing: ' + marker);
+if (!fs.readFileSync(path.join(__dirname, 'api', 'finish.js'), 'utf8').includes('function closingLesson()')) refuse('server-authored closing lesson missing');
 if (index.includes('calibrationGap') || index.includes('unresolved_calibration')) refuse('resolved Year 3 calibration scaffolding remains in the student UI');
 if (!instructor.includes('Data without room to run it')) refuse('instructor Year 3 distribution is missing data_no_room label');
 if (!instructor.includes('Corven high / Ridge Hollow low')) refuse('instructor buyer debate finder is missing');
