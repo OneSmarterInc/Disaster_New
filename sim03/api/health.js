@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { announce } = require('../lib/launch.js');
 const store = require('../lib/store.js');
 const S = require('../lib/scenario.js');
 const { canonicalUrl } = require('../lib/guard.js');
@@ -21,26 +20,34 @@ const fingerprint = (v) => v
   ? crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 8)
   : null;
 
-function holdsTheSecret(req) {
-  const given = String(req.headers['x-health-key'] || (req.query && req.query.key) || '');
-  const want = String(process.env.LAUNCH_SECRET || '');
-  return !!want && given === want;
+function hasHealthAccess(req) {
+  const want = String(process.env.HEALTH_SECRET || '');
+  const given = String(req.headers['x-health-key'] || '');
+  if (!want || !given) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(want);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 module.exports = async (req, res) => {
-  try {
-    await announce(S.META, canonicalUrl(req));
-  } catch {}
+  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
+
+  // Health is deliberately read-only. Registration continues to happen through
+  // the normal guarded application routes rather than by probing this endpoint.
+  if (!hasHealthAccess(req)) {
+    return res.status(200).json({ ok: true, sim: S.META.id });
+  }
 
   const secret = process.env.LAUNCH_SECRET;
-  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   return res.status(200).json({
+    ok: true,
     sim: S.META.id,
+    diagnostic: true,
     build: BUILD,
     accessCode: process.env.ACCESS_CODE ? 'configured' : 'not set (standalone access closed)',
     sessions: store.configured() ? 'configured' : 'MISSING',
     launchSecret: secret ? 'configured' : 'MISSING',
-    launchSecretFingerprint: holdsTheSecret(req) ? fingerprint(secret) : 'hidden',
+    launchSecretFingerprint: fingerprint(secret),
     platformUrl: process.env.PLATFORM_URL || 'MISSING (registration/completions disabled)',
     registersAs: canonicalUrl(req) || 'MISSING',
     catalogueRevision: S.META.catalogueRevision,
