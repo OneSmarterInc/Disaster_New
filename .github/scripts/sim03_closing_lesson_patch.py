@@ -28,13 +28,7 @@ f = replace_once(
 FINISH.write_text(f)
 
 h = INDEX.read_text()
-h = replace_once(
-    h,
-    ".result-hero{border:1px solid #8A6427;background:rgba(240,166,60,.07);padding:22px 24px;margin:20px 0 28px}.result-hero h3{font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.result-hero p{font-size:21px;line-height:1.55;color:var(--bone)}.",
-    ".result-hero{border:1px solid #8A6427;background:rgba(240,166,60,.07);padding:22px 24px;margin:20px 0 28px}.result-hero h3{font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.result-hero p{font-size:21px;line-height:1.55;color:var(--bone)}.",
-    'noop result hero anchor'
-)
-# The exact CSS block is long; insert lesson styles before .joinbox instead.
+# Insert lesson styles before .joinbox.
 h = replace_once(
     h,
     ".joinbox{max-width:560px}",
