@@ -28,7 +28,7 @@ jobs:
           PY
       - name: Apply visibility follow-up
         run: python .github/scripts/sim03_increment2_visibility_followup.py
-      - name: Align reflection regression marker
+      - name: Align reflection regression markers
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -37,8 +37,14 @@ jobs:
           old="'30 MIN','allocationConfirmation','usefulOpeningView','year3-stage','timeline-pair','reflectionDisclosure','buyer-room-link'"
           new="'30 MIN','allocationConfirmation','usefulOpeningView','year3-stage','timeline-pair','may read it aloud in the debrief','buyer-room-link'"
           if old not in s:
-              raise SystemExit('missing reflection guard anchor')
+              raise SystemExit('missing reflection build guard anchor')
           p.write_text(s.replace(old,new,1))
+
+          p=Path('sim03/tools/increment2-check.js')
+          s=p.read_text()
+          if "'reflectionDisclosure'" not in s:
+              raise SystemExit('missing reflection Increment 2 test anchor')
+          p.write_text(s.replace("'reflectionDisclosure'","'may read it aloud in the debrief'",1))
           PY
       - name: Assert gameplay and out-of-scope files untouched
         run: |
@@ -66,7 +72,7 @@ jobs:
         run: |
           git config user.name 'OneSmarterInc Bot'
           git config user.email 'actions@users.noreply.github.com'
-          git add sim03/lib/scenario.js sim03/public/index.html sim03/build.js sim03/tools/check.js
+          git add sim03/lib/scenario.js sim03/public/index.html sim03/build.js sim03/tools/check.js sim03/tools/increment2-check.js
           git diff --cached --quiet && exit 0
           git commit -m 'Make Increment 2 visibility explicit'
           git push origin HEAD:ui/sim03-increment2-visibility-followup
