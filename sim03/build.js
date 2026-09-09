@@ -116,8 +116,10 @@ for (const marker of ['Exhibit 1 â€” Where the revenue comes from','Exhibit 6 â€
   if (!S.publicConfig().briefing?.exhibits?.some(x => x.title === marker)) refuse('briefing data missing: ' + marker);
 if (S.publicConfig().buyers?.authored !== true) refuse('buyer content is not marked authored');
 if (!index.includes('data_no_room')) refuse('student final result does not recognize data_no_room');
-for (const marker of ['function closingLessonHTML()','What this run was teaching you','run-complete','closingLesson=done.closingLesson']) if (!index.includes(marker)) refuse('closing lesson marker missing: ' + marker);
-if (!fs.readFileSync(path.join(__dirname, 'api', 'finish.js'), 'utf8').includes('function closingLesson()')) refuse('server-authored closing lesson missing');
+for (const marker of ['function closingLessonHTML()','What this run was teaching you','In your run','d.yourRun','run-complete','closingLesson=done.closingLesson']) if (!index.includes(marker)) refuse('closing lesson marker missing: ' + marker);
+const finishSource = fs.readFileSync(path.join(__dirname, 'api', 'finish.js'), 'utf8');
+if (!finishSource.includes('buildClosingLesson(y1, y2, outcomes)')) refuse('server-authored dynamic closing lesson missing');
+if (index.includes('Your largest cumulative commitment was')) refuse('run-specific closing prose leaked into student bundle before completion');
 if (index.includes('calibrationGap') || index.includes('unresolved_calibration')) refuse('resolved Year 3 calibration scaffolding remains in the student UI');
 if (!instructor.includes('Data without room to run it')) refuse('instructor Year 3 distribution is missing data_no_room label');
 if (!instructor.includes('Corven high / Ridge Hollow low')) refuse('instructor buyer debate finder is missing');
@@ -141,5 +143,6 @@ execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-commit-ch
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'access-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-flow-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-handler-check.js')], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'closing-lesson-check.js')], { stdio: 'inherit' });
 
 console.log('RapidSim 03 build guards passed.');
