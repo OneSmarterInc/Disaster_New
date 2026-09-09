@@ -1,14 +1,11 @@
-// Tells you what this deployment has been configured with, without revealing
-// any of it. Useful when a launch is being rejected and you need to know
-// whether the two systems actually share a secret.
+// Public health is intentionally minimal. Detailed deployment diagnostics are
+// available only to operators who present a dedicated HEALTH_SECRET in the
+// x-health-key header. Never reuse LAUNCH_SECRET here and never accept secrets
+// in the query string.
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-// Which build this is. File timestamps are useless here — Vercel normalises
-// them to a fixed epoch so that builds are reproducible, which is why this
-// reported October 2018. The commit is what actually identifies a deployment,
-// and Vercel supplies it. Falling back to a file time only helps locally.
 const BUILD = (() => {
   const sha = process.env.VERCEL_GIT_COMMIT_SHA;
   if (sha) {
@@ -17,74 +14,49 @@ const BUILD = (() => {
   }
   try {
     return 'local, ' + fs.statSync(path.join(__dirname, '../public/index.html')).mtime.toISOString();
-  } catch (e) { return 'unknown'; }
+  } catch { return 'unknown'; }
 })();
 
 const fingerprint = (v) => v
   ? crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 8)
   : null;
 
-const { announce } = require('../lib/launch.js');
-const S = require('../lib/scenario.js');
-
-// The fingerprint confirms whether this simulation and the platform share a
-// secret, which is the single most useful thing on here when something is
-// misconfigured — and the only field derived from a secret. Shown to a caller
-// who already holds it; everything else is a diagnostic boolean and stays open.
-function holdsTheSecret(req) {
-  const given = String(req.headers['x-health-key'] || (req.query && req.query.key) || '');
-  const want = String(process.env.LAUNCH_SECRET || '');
-  return !!want && given === want;
+function hasHealthAccess(req) {
+  const want = String(process.env.HEALTH_SECRET || '');
+  const given = String(req.headers['x-health-key'] || '');
+  if (!want || !given) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(want);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 module.exports = async (req, res) => {
-  // Often the first thing anyone touches on a fresh deployment, and the one
-  // place we can afford to wait for the announcement to actually land.
-  try {
-    // Prefer the address this simulation is meant to be reached at. Without
-    // it we fall back to whichever host the request came in on — which may be
-    // a deployment-specific URL frozen to one build, and registering that in
-    // the catalogue would leave students on an old version for ever.
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    await announce(S.META, process.env.SIM_URL || (host ? `https://${host}` : ''));
-  } catch (e) {}
+  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
+
+  // Side-effect free: health checks must not register the sim or mutate state.
+  if (!hasHealthAccess(req)) {
+    return res.status(200).json({ ok: true, sim: 'rapid-02-relay' });
+  }
 
   const secret = process.env.LAUNCH_SECRET;
-  // Never cached. This is the one endpoint somebody reads to find out whether a
-  // deployment is current, and a cached copy answers the opposite of the
-  // question — it reports the build you are trying to find out you have moved on
-  // from.
-  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   return res.status(200).json({
+    ok: true,
     sim: 'rapid-02-relay',
+    diagnostic: true,
+    build: BUILD,
     characters: process.env.ANTHROPIC_API_KEY ? 'configured' : 'MISSING',
     accessCode: process.env.ACCESS_CODE ? 'configured' : 'not set (open)',
     sessions: (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) ? 'configured' : 'MISSING',
     launchSecret: secret ? 'configured' : 'MISSING',
-    // Same secret on both sides gives the same eight characters. Different
-    // values give different ones, and neither reveals the secret itself.
-    launchSecretFingerprint: holdsTheSecret(req) ? fingerprint(secret) : 'hidden',
+    launchSecretFingerprint: fingerprint(secret),
     platformUrl: process.env.PLATFORM_URL || 'MISSING (completions will not be reported)',
-    // The address this simulation puts in the catalogue. Without SIM_URL it
-    // registers whichever host the first request arrived on, which may be a
-    // deployment-specific URL frozen to one build.
-    registersAs: process.env.SIM_URL
-      || ((req.headers['x-forwarded-host'] || req.headers.host)
-          ? `https://${req.headers['x-forwarded-host'] || req.headers.host} (SIM_URL not set — whichever address is used)`
-          : 'MISSING'),
-    // What this build can do. The platform compares these against what it
-    // expects, so a deployment left behind is spotted rather than guessed at —
-    // a stale sim looks identical to a broken one from the outside.
-    // Which commit this deployment is running. The fastest way to tell a
-    // current build from one that answers identically because nothing visible
-    // changed.
-    build: BUILD,
+    registersAs: process.env.SIM_URL || 'MISSING',
     features: [
-      'launch-token',        // accepts a signed token in place of an access code
-      'launch-mode',         // plays or opens the session console, as asked
-      'console-token',       // a faculty token opens the console without a code
-      'self-register',       // tells the platform it exists
-      'completion-report'    // reports a finished run back
+      'launch-token',
+      'launch-mode',
+      'console-token',
+      'self-register',
+      'completion-report'
     ]
   });
 };
