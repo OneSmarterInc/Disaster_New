@@ -1,0 +1,28 @@
+name: tmp-health-hardening
+on:
+  push:
+    branches: [health/harden-all-sims]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Health endpoint security regression
+        run: node tools/health-security-check.js
+      - name: Sim01 regression checks
+        run: for f in sim/tools/*-check.js; do node "$f"; done
+      - name: Sim02 regression checks
+        run: for f in sim-02/tools/*-check.js; do node "$f"; done
+      - name: RapidSim Plus regression checks
+        run: npm --prefix sim-plus-01 test
+      - name: Sim03 regression checks
+        run: npm --prefix sim03 test
+      - name: Sim03 build guards
+        run: npm --prefix sim03 run build
+      - name: Platform integration check
+        run: node platform/tools/check-sim03-integration.js
