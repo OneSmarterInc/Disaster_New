@@ -28,6 +28,18 @@ jobs:
           PY
       - name: Apply visibility follow-up
         run: python .github/scripts/sim03_increment2_visibility_followup.py
+      - name: Align reflection regression marker
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('sim03/build.js')
+          s=p.read_text()
+          old="'30 MIN','allocationConfirmation','usefulOpeningView','year3-stage','timeline-pair','reflectionDisclosure','buyer-room-link'"
+          new="'30 MIN','allocationConfirmation','usefulOpeningView','year3-stage','timeline-pair','may read it aloud in the debrief','buyer-room-link'"
+          if old not in s:
+              raise SystemExit('missing reflection guard anchor')
+          p.write_text(s.replace(old,new,1))
+          PY
       - name: Assert gameplay and out-of-scope files untouched
         run: |
           git diff --exit-code HEAD -- sim03/config/thresholds.json sim03/public/instructor.html sim03/api/session.js sim03/api/outcome.js sim03/lib/store.js sim03/lib/guard.js sim03/api/health.js sim03/lib/closingLesson.js sim03/api/finish.js
