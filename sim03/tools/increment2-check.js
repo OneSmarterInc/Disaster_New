@@ -65,6 +65,6 @@ assert.ok(/less in Uptime|more in Uptime/.test(text));
 const html=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
 assert.ok(html.includes("const STEPS=['Brief','Room','Position','View'"));
 assert.ok(html.includes('case 1:return renderRoom()') && html.includes('case 2:return renderPosition()'));
-for(const marker of ['30 MIN','brief-profit','allocationConfirmation','usefulOpeningView','Year 1 committed','year3-stage','timeline-pair','reflectionDisclosure','buyer-room-link','$3M annual ceiling reached']) assert.ok(html.includes(marker),marker);
+for(const marker of ['30 MIN','brief-profit','allocationConfirmation','usefulOpeningView','Year 1 committed','year3-stage','timeline-pair','may read it aloud in the debrief','buyer-room-link','$3M annual ceiling reached']) assert.ok(html.includes(marker),marker);
 for(const old of ['The first consequence arrives.','You get one more allocation.','Two events resolve in sequence.','You do not get another move.','Return to what you believed before the consequences.']) assert.equal(html.includes(old),false,old);
 console.log('RapidSim 03 Increment 2 checks passed.');

@@ -28,7 +28,7 @@ header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:20px
 .eyebrow{font:10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin-bottom:9px}
 h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-bottom:16px}
 .lede{font-size:19px;line-height:1.65;color:#D0CDC5;max-width:760px}
-.copy{font-size:17px;color:#C9C6BE;line-height:1.7;max-width:780px}.copy p{margin-bottom:14px}.copy .brief-profit{font-size:20px;color:var(--bone);border-left:2px solid var(--amber);padding:11px 14px;background:rgba(240,166,60,.05)}
+.copy{font-size:17px;color:#C9C6BE;line-height:1.7;max-width:780px}.copy>p{margin-bottom:14px}.brief-profit{border:1px solid #8A6427;border-left:3px solid var(--amber);padding:15px 17px;background:rgba(240,166,60,.07);margin:18px 0}.brief-profit .eyebrow{margin-bottom:5px}.brief-profit p{font-size:21px;line-height:1.5;color:var(--bone);margin:0;font-weight:500}
 .rule{height:1px;background:var(--line);margin:29px 0}
 .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line2);padding:11px 16px;font:11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);transition:.12s}.btn:hover{border-color:var(--bone);color:var(--bone)}.btn.pri{background:var(--amber);border-color:var(--amber);color:#1A1206;font-weight:600}.btn.pri:hover{background:var(--amber2);border-color:var(--amber2)}.btn:disabled{opacity:.35;cursor:not-allowed}
 .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px}
@@ -37,9 +37,9 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .room-tour{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:22px}.room-card{border:1px solid var(--line);background:var(--panel);padding:18px}.room-name{font-size:23px;font-weight:400;line-height:1.15}.room-role{font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-top:5px}.room-line{display:inline-flex;margin-top:13px;border:1px solid #8A6427;background:rgba(240,166,60,.06);padding:4px 7px;font:600 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}.room-quote{font-size:16px;line-height:1.55;color:#C8C5BD;margin-top:12px}.room-close{border-left:2px solid var(--amber);padding:11px 14px;background:rgba(240,166,60,.05);color:#CBC8C0;margin-top:18px}.line-guide{display:grid;gap:0;border:1px solid var(--line);background:var(--panel);margin-top:18px}.line-guide-row{display:grid;grid-template-columns:110px 1fr;gap:14px;padding:12px 14px;border-bottom:1px solid var(--line);align-items:start}.line-guide-row:last-child{border-bottom:0}.line-guide-row b{font-size:17px;font-weight:500}.line-guide-row span{font-size:14px;color:var(--dim);line-height:1.45}
 .field{margin-top:22px}.field label{display:block;font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.field textarea,.field input{width:100%;background:var(--panel);border:1px solid var(--line2);padding:13px 14px;font-size:17px}.field textarea{min-height:110px;resize:vertical}.hint{font-size:13px;color:var(--dimmer);margin-top:7px}
 .alloc-wrap{display:grid;grid-template-columns:1fr 245px;gap:22px;margin-top:25px}
-.allocs{display:grid;gap:8px}.alloc{border:1px solid var(--line);background:var(--panel);display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 14px 14px 17px;gap:14px}.alloc h3{font-size:20px;font-weight:400}.alloc .constraint{font:10px var(--mono);color:var(--dimmer);margin-top:5px;letter-spacing:.02em;line-height:1.5}.alloc-rule{font:9px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--amber);margin-top:7px}.stepper{display:flex;align-items:center;gap:9px}.step{width:37px;height:37px;border:1px solid var(--line2);font:20px var(--mono);color:var(--dim)}.step:hover:not(:disabled){border-color:var(--amber);color:var(--amber)}.amount{min-width:62px;text-align:center;font:600 20px var(--mono);color:var(--bone)}.amount small{font-size:10px;color:var(--dimmer);font-weight:400}
+.allocs{display:grid;gap:8px}.alloc{border:1px solid var(--line);background:var(--panel);display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 14px 14px 17px;gap:14px}.alloc-title-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.alloc h3{font-size:20px;font-weight:400}.alloc-cap{display:inline-flex;border:1px solid #8A6427;background:rgba(240,166,60,.08);padding:3px 6px;font:600 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--amber)}.alloc .constraint{font:10px var(--mono);color:var(--dimmer);margin-top:5px;letter-spacing:.02em;line-height:1.5}.advocate-reminder{margin-top:9px;padding:8px 10px;border-left:2px solid var(--line2);background:rgba(255,255,255,.018);font-size:13px;line-height:1.45;color:#C8C5BD}.advocate-reminder b{display:block;font:600 9px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--bone);margin-bottom:3px}.alloc-rule{font:9px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--amber);margin-top:7px}.stepper{display:flex;align-items:center;gap:9px}.step{width:37px;height:37px;border:1px solid var(--line2);font:20px var(--mono);color:var(--dim)}.step:hover:not(:disabled){border-color:var(--amber);color:var(--amber)}.amount{min-width:62px;text-align:center;font:600 20px var(--mono);color:var(--bone)}.amount small{font-size:10px;color:var(--dimmer);font-weight:400}
 .budget{position:sticky;top:90px;border:1px solid #8A6427;background:rgba(240,166,60,.06);padding:20px}.budget .n{font:600 48px var(--mono);color:var(--amber);line-height:1}.budget .lab{font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);margin-top:7px}.budget .total{margin-top:20px;padding-top:14px;border-top:1px solid #6D5228;font-size:14px;color:#C9C6BE}
-.running{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:20px 0}.run-cell{border:1px solid var(--line);background:var(--panel);padding:12px;text-align:center}.run-cell .v{font:600 22px var(--mono);color:var(--amber)}.run-cell .k{font:9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-top:4px}
+.running{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:20px 0}.run-cell{border:1px solid var(--line);background:var(--panel);padding:12px;text-align:center}.run-cell .v{font:600 22px var(--mono);color:var(--amber)}.run-cell .k{font:9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-top:4px}.year2-breakdown{border:1px solid var(--line);background:var(--panel);margin:20px 0;overflow:auto}.year2-breakdown-row{display:grid;grid-template-columns:minmax(100px,1.2fr) repeat(3,minmax(86px,.8fr));border-bottom:1px solid var(--line);min-width:470px}.year2-breakdown-row:last-child{border-bottom:0}.year2-breakdown-row>div{padding:9px 11px;border-right:1px solid var(--line);text-align:right}.year2-breakdown-row>div:last-child{border-right:0}.year2-breakdown-head{background:var(--panel2);font:9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer)}.year2-breakdown-name{text-align:left!important;font-size:14px;color:var(--bone)}.year2-breakdown-num{font:600 14px var(--mono);color:var(--bone)}.year2-breakdown-total{color:var(--amber)}.reflection-note{padding:7px 9px;border-left:2px solid var(--line2);background:rgba(255,255,255,.018)}
 .outcome{border:1px solid var(--line2);background:var(--panel);padding:25px;margin-top:22px}.outcome .band{font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--amber);margin-bottom:7px}.outcome h3{font-size:27px;font-weight:400;margin-bottom:9px}.outcome p{font-size:18px;color:#D0CDC5;line-height:1.65}.events{display:grid;grid-template-columns:1fr 1fr;gap:12px}.events .outcome{margin-top:12px}
 .locked{border:1px dashed var(--line2);padding:14px 16px;color:var(--dim);margin-top:18px}
 .team{border:1px solid var(--blue);background:rgba(111,168,214,.06);padding:12px 14px;margin:0 0 20px;font-size:14px;color:#C8D8E8}.team b{color:#A8CBE7;font-weight:500}
@@ -277,7 +277,7 @@ function wireBriefingPacketModal(){
 
 function renderBrief(){
   shell(`<div class="eyebrow">MIDLAND EQUIPMENT</div><h2>Forty-one years old, profitable, and nobody thinks it is in trouble.</h2>
-  <div class="copy">${C.coldOpen.map((x,i)=>`<p class="${i===1?'brief-profit':''}">${esc(x)}</p>`).join('')}</div>
+  <div class="copy">${C.coldOpen.map((x,i)=>i===1?`<div class="brief-profit"><div class="eyebrow">The business model</div><p>${esc(x)}</p></div>`:`<p>${esc(x)}</p>`).join('')}</div>
   <p class="lede">There is no score, rank, grade or hidden correct allocation. You will find out what happened, not how you "did."</p>
   <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>This sim assumes you have read the briefing packet your instructor posted before class.</b> If you have not read it yet, read the full packet here before starting.</div><button class="btn" data-open-briefing>Read briefing packet</button></div>
   ${sessionGate()}${!S.session?'<div class="actions"><button class="btn" id="joinSessionEntry">Join a facilitated session</button></div>':''}${nav({backOk:false,disabled:blocked()})}`);
@@ -300,6 +300,13 @@ function renderRoom(){
 }
 function usefulOpeningView(v){const words=String(v||'').trim().split(/\s+/).filter(Boolean);return String(v||'').trim().length>=20&&words.length>=4}
 function allocationRule(line){return line.id==='run'?'$3M minimum · balance of budget is the only ceiling':'$3M annual ceiling'}
+function allocationCap(line){return line.id==='run'?'MIN $3M':'MAX $3M / YEAR'}
+function lineAdvocate(line){const a=line?.advocate;if(!a)return '';return `<div class="advocate-reminder"><b>${esc(a.name)} · speaks for ${esc(line.label)}</b><span>${esc(a.want)}</span></div>`}
+function year2BreakdownHTML(y1,y2,year2Label='Year 2 draft'){
+  if(!y1||!y2)return '';
+  const rows=C.lines.map(l=>{const a=Number(y1[l.id]||0),b=Number(y2[l.id]||0);return `<div class="year2-breakdown-row"><div class="year2-breakdown-name">${esc(l.label)}</div><div class="year2-breakdown-num">$${a}M</div><div class="year2-breakdown-num">$${b}M</div><div class="year2-breakdown-num year2-breakdown-total">$${a+b}M</div></div>`}).join('');
+  return `<div class="eyebrow" style="margin-top:24px">Year 1 + Year 2 split</div><div class="year2-breakdown"><div class="year2-breakdown-row year2-breakdown-head"><div>Line</div><div>Year 1 committed</div><div>${esc(year2Label)}</div><div>Cumulative</div></div>${rows}</div>`;
+}
 function allocationConfirmation(year,a){const text=C.lines.map(l=>`${l.label}: $${a[l.id]}M`).join('\n');return window.confirm(`Commit Year ${year}?\n\n${text}\n\nYou cannot change this allocation after the outcome is revealed.`)}
 function renderView(){
   const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome);
@@ -338,9 +345,8 @@ function renderAllocation(year){
     const running=year===2&&S.year1&&committed?runningTotals(S.year1,committed):null;
     shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${heading}</h2><p class="lede">${esc(intro)}</p>
     ${briefingPanel()}
-    ${year===2&&S.year1?runningHTML(S.year1,'Year 1 committed'):''}
+    ${year===2&&S.year1&&committed?year2BreakdownHTML(S.year1,committed,'Year 2 committed'):''}
     ${committed?readOnlyAllocationHTML(committed,`Team Year ${year} allocation`):notice(`Waiting for ${captain} to commit Year ${year}.`)}
-    ${running?runningHTML(running,'Cumulative team portfolio'):''}
     <div class="locked">Team allocation is read-only for non-captains. ${committed?`Committed by ${esc(captain)}.`:`${esc(captain)} is choosing the shared allocation.`}</div>
     ${nav({backOk:year===1,nextLabel:committed?'Continue':'Waiting for captain',disabled:blocked()||!committed})}`);
     wireNav(async()=>{
@@ -358,8 +364,7 @@ function renderAllocation(year){
   const running=year===2&&S.year1?runningTotals(S.year1,a):null;
   shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${heading}</h2><p class="lede">${esc(intro)}</p>
   ${briefingPanel()}
-  ${year===2&&S.year1?runningHTML(S.year1,'Year 1 committed'):''}
-  ${running?runningHTML(running,'Running totals, including this draft'):''}
+  ${year===2&&S.year1?year2BreakdownHTML(S.year1,a,'Year 2 draft'):''}
   <div class="alloc-wrap"><div class="allocs">${C.lines.map(l=>allocRow(l,a,year)).join('')}</div>
   <aside class="budget"><div class="n">${left}</div><div class="lab">$M remaining</div><div class="total">Allocated: <b>$${used}M</b> of $9M<br>Submit unlocks only at exactly $9M.</div></aside></div>
   ${nav({backOk:year===1,nextLabel:left===0?`Commit Year ${year}`:'Allocate all $9M',disabled:blocked()||left!==0})}`);
@@ -375,14 +380,14 @@ function renderAllocation(year){
     }catch(e){alert(e.message)}
   });
 }
-function readOnlyAllocationHTML(a,label){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="allocs">${C.lines.map(l=>`<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${esc(l.description||'')}</div><div class="alloc-rule">${esc(allocationRule(l))}</div></div><div class="amount">${a[l.id]}<small> M</small></div></div>`).join('')}</div>`}
+function readOnlyAllocationHTML(a,label){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="allocs">${C.lines.map(l=>`<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div><div class="constraint">${esc(l.description||'')}</div>${lineAdvocate(l)}<div class="alloc-rule">${esc(allocationRule(l))}</div></div><div class="amount">${a[l.id]}<small> M</small></div></div>`).join('')}</div>`}
 function allocRow(l,a,key){
   const n=a[l.id],min=l.id==='run'?3:0,max=l.id==='run'?9:3,used=Object.values(a).reduce((x,y)=>x+y,0);
   const readOnly=!S.canSubmit&&S.session?.mode==='team';
   const minusDisabled=readOnly||n<=min,plusDisabled=readOnly||n>=max||used>=9;
   const minusTitle=readOnly?'Read-only team allocation':n<=min?(l.id==='run'?'Run has a $3M minimum':'Already at $0M'):'Remove $1M';
   const plusTitle=readOnly?'Read-only team allocation':n>=max&&l.id!=='run'?'$3M annual ceiling reached':used>=9?'All $9M is already allocated':'Add $1M';
-  return `<div class="alloc"><div><h3>${esc(l.label)}</h3><div class="constraint">${esc(l.description||'')}</div><div class="alloc-rule">${esc(allocationRule(l))}</div></div><div class="stepper">
+  return `<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div><div class="constraint">${esc(l.description||'')}</div>${lineAdvocate(l)}<div class="alloc-rule">${esc(allocationRule(l))}</div></div><div class="stepper">
     <button class="step" title="${esc(minusTitle)}" data-line="${l.id}" data-delta="-1" ${minusDisabled?'disabled':''}>−</button>
     <div class="amount">${n}<small> M</small></div>
     <button class="step" title="${esc(plusTitle)}" data-line="${l.id}" data-delta="1" ${plusDisabled?'disabled':''}>+</button></div></div>`;
@@ -493,9 +498,8 @@ function renderClose(){
   shell(`<div class="eyebrow">Close</div><h2>The decisions are over. What changed your mind?</h2>
   <div class="summary"><div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
   <div class="card"><h3>Your Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div></div>
-  <div class="field"><label>${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(S.reflection1)}</textarea></div>
-  <div class="field"><label>${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea></div>
-  <div class="hint">${esc(C.reflectionDisclosure||'Your instructor can see these responses. They are not scored.')}</div>
+  <div class="field"><label>${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(S.reflection1)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
+  <div class="field"><label>${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
   <div class="actions"><button class="btn pri" id="finishBtn">Complete run</button></div>`);
   document.getElementById('finishBtn').onclick=finish;
 }

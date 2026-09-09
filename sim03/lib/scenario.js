@@ -331,7 +331,15 @@ function publicConfig() {
       description: META.description,
       minutes: META.minutes
     },
-    lines: LINES.map(id => ({ id, label: LABELS[id], description: LINE_DESCRIPTIONS[id] })),
+    lines: LINES.map(id => {
+      const cast = META.detail.cast.find(x => x.line === LABELS[id]);
+      return {
+        id,
+        label: LABELS[id],
+        description: LINE_DESCRIPTIONS[id],
+        advocate: cast ? { name: cast.name, want: cast.stake } : null
+      };
+    }),
     room: {
       intro: META.detail.roomIntro,
       cast: META.detail.cast.map(({ name, role, line, stake, quote }) => ({ name, role, line, stake, quote }))

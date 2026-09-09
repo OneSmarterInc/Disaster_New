@@ -120,12 +120,18 @@ for (const marker of ['function closingLessonHTML()','What this run was teaching
 const finishSource = fs.readFileSync(path.join(__dirname, 'api', 'finish.js'), 'utf8');
 if (!finishSource.includes('buildClosingLesson(y1, y2, outcomes, lessonThresholds)')) refuse('server-authored dynamic closing lesson missing');
 if (index.includes('Your largest cumulative commitment was')) refuse('run-specific closing prose leaked into student bundle before completion');
-for (const marker of ['30 MIN','allocationConfirmation','usefulOpeningView','year3-stage','timeline-pair','reflectionDisclosure','buyer-room-link']) if (!index.includes(marker)) refuse('Increment 2 student marker missing: ' + marker);
+for (const marker of ['30 MIN','allocationConfirmation','usefulOpeningView','year3-stage','timeline-pair','may read it aloud in the debrief','buyer-room-link']) if (!index.includes(marker)) refuse('Increment 2 student marker missing: ' + marker);
 if (S.META.minutes !== 30) refuse('Increment 2 catalogue duration is not 30 minutes');
 if (index.includes('That imbalance was intentional')) refuse('simulation-design language leaked into the debrief');
 if (index.includes('calibrationGap') || index.includes('unresolved_calibration')) refuse('resolved Year 3 calibration scaffolding remains in the student UI');
 if (!instructor.includes('Data without room to run it')) refuse('instructor Year 3 distribution is missing data_no_room label');
 if (!instructor.includes('Corven high / Ridge Hollow low')) refuse('instructor buyer debate finder is missing');
+for (const marker of ['MAX $3M / YEAR','The business model','function year2BreakdownHTML(','Year 1 + Year 2 split','advocate-reminder','may read it aloud in the debrief'])
+  if (!index.includes(marker)) refuse('Increment 2 visibility follow-up marker missing: ' + marker);
+for (const marker of ['Year 2 stops being quiet.','The CEO asks whether Midland can predict a failure before the truck rolls.','The decisions are over. What changed your mind?'])
+  if (!index.includes(marker)) refuse('situation heading missing: ' + marker);
+for (const old of ['Two events resolve in sequence.','You do not get another move.','Return to what you believed before the consequences.'])
+  if (index.includes(old)) refuse('old moralizing/software heading remains: ' + old);
 
 function checkScripts(name, source) {
   const scripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
