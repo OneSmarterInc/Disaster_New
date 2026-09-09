@@ -1,0 +1,48 @@
+name: tmp-sim03-increment2-visibility-followup
+on:
+  push:
+    branches: [ui/sim03-increment2-visibility-followup]
+permissions:
+  contents: write
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/sim03-increment2-visibility-followup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply visibility follow-up
+        run: python .github/scripts/sim03_increment2_visibility_followup.py
+      - name: Assert gameplay and out-of-scope files untouched
+        run: |
+          git diff --exit-code HEAD -- sim03/config/thresholds.json sim03/public/instructor.html sim03/api/session.js sim03/api/outcome.js sim03/lib/store.js sim03/lib/guard.js sim03/api/health.js sim03/lib/closingLesson.js sim03/api/finish.js
+      - name: Run Sim03 tests
+        run: npm --prefix sim03 test
+      - name: Run Sim03 build guards
+        run: npm --prefix sim03 run build
+      - name: Run platform integration
+        run: node platform/tools/check-sim03-integration.js
+      - name: Parse student browser JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          text=Path('sim03/public/index.html').read_text()
+          scripts=re.findall(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', text)
+          assert scripts
+          for i,s in enumerate(scripts):
+              p=Path(tempfile.gettempdir())/f'sim03-vis-{i}.js'
+              p.write_text(s)
+              subprocess.run(['node','--check',str(p)],check=True)
+          PY
+      - name: Commit follow-up
+        run: |
+          git config user.name 'OneSmarterInc Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add sim03/lib/scenario.js sim03/public/index.html sim03/build.js sim03/tools/check.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Make Increment 2 visibility explicit'
+          git push origin HEAD:ui/sim03-increment2-visibility-followup
