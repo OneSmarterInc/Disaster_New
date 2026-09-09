@@ -17,7 +17,7 @@ jobs:
       - name: Sim01 regression checks
         run: for f in sim/tools/*-check.js; do node "$f"; done
       - name: Sim02 regression checks
-        run: for f in sim-02/tools/*-check.js; do node "$f"; done
+        run: cd sim-02 && for f in tools/*-check.js; do node "$f"; done
       - name: RapidSim Plus regression checks
         run: npm --prefix sim-plus-01 test
       - name: Sim03 regression checks
