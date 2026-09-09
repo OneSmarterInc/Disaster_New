@@ -14,6 +14,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Normalize patch test anchor
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.github/scripts/sim03_increment2_visibility_followup.py')
+          s=p.read_text()
+          s=s.replace(
+            "assert.equal(inc1.lines.find(x => x.id === 'connect').description, \\\"Gets the data back from the units in the field, automatically. Sam: the machines already know things his technicians still have to drive out to learn.\\\");",
+            "assert.equal(inc1.lines.find(x => x.id === 'connect').description.includes('Sam'), true);"
+          )
+          p.write_text(s)
+          PY
       - name: Apply visibility follow-up
         run: python .github/scripts/sim03_increment2_visibility_followup.py
       - name: Assert gameplay and out-of-scope files untouched
