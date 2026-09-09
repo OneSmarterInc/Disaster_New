@@ -49,14 +49,15 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   const b = body(req);
-  let y1, y2, outcomes, summary;
+  let y1, y2, outcomes, summary, lessonThresholds;
 
   try {
     const sr = await sessionRun(b);
     if (sr) {
       y1 = sr.run.year1;
       y2 = sr.run.year2;
-      outcomes = sr.run.outcomes || S.evaluateAll(y1, y2, sr.sess.thresholds);
+      lessonThresholds = sr.sess.thresholds || S.DEFAULT_THRESHOLDS;
+      outcomes = sr.run.outcomes || S.evaluateAll(y1, y2, lessonThresholds);
       const reflection1 = String(b.reflection1 || '').slice(0, 1500);
       const reflection2 = String(b.reflection2 || '').slice(0, 1500);
       const reflections = { ...(sr.run.reflections || {}) };
@@ -85,7 +86,8 @@ module.exports = async (req, res) => {
       const v2 = S.validateAllocation(b.year2);
       if (!v1.ok || !v2.ok) return res.status(400).json({ error: 'invalid_allocations' });
       y1 = v1.allocation; y2 = v2.allocation;
-      outcomes = S.evaluateAll(y1, y2, S.DEFAULT_THRESHOLDS);
+      lessonThresholds = S.DEFAULT_THRESHOLDS;
+      outcomes = S.evaluateAll(y1, y2, lessonThresholds);
       summary = {
         strategicView: String(b.strategicView || '').slice(0, 500),
         year1: y1,
@@ -99,7 +101,7 @@ module.exports = async (req, res) => {
     return res.status(e.status || 500).json({ error: e.message || 'server_error' });
   }
 
-  const closingLesson = buildClosingLesson(y1, y2, outcomes);
+  const closingLesson = buildClosingLesson(y1, y2, outcomes, lessonThresholds);
 
   summary.result = {
     overall: overallOutcomeText(outcomes),

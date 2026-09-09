@@ -11,7 +11,7 @@ const META = {
   description:
     'You run technology for a mid-sized HVAC company and allocate a fixed budget across two years. ' +
     'The consequences of Year 1 arrive in Year 2, and the consequences of both arrive in a final year you cannot influence.',
-  minutes: 20,
+  minutes: 30,
   detail: {
     world: 'Technology architecture · mid-sized HVAC company',
     seat: 'Technology leader at Midland Equipment',
@@ -34,7 +34,7 @@ const META = {
     tryIt:
       'Run the same fixed-budget problem your students will see. Nothing is scored and no allocation is labelled correct.',
     sessionShape:
-      'About twenty minutes to play. The debrief is designed for the rest of the class hour.',
+      'About thirty minutes to play. The debrief is designed for the rest of the class hour.',
     catalogueFacts: [
       { label: 'played', value: 'individual or team' },
       { label: 'preparation', value: 'briefing packet before class' },
@@ -44,7 +44,7 @@ const META = {
       { label: 'Decisions', value: 'Two annual allocations' },
       { label: 'Quantitative', value: 'Five-line $9M budget' },
       { label: 'Played', value: 'Individual or team' },
-      { label: 'Session', value: 'About an hour' }
+      { label: 'Session', value: '30-minute simulation + debrief' }
     ],
     cast: [
       {
@@ -72,8 +72,8 @@ const META = {
         name: 'Sam Achterberg',
         role: 'Field technician, 22 years',
         line: 'Connect',
-        stake: 'Those machines have been telling us they were about to fail for years. There has never been anywhere to put what they say.',
-        quote: 'Those machines have been telling us they were about to fail for years. There has never been anywhere to put what they say.'
+        stake: 'Nineteen percent of 14,000 service visits find nothing wrong. At $290 a truck roll, the machines should be able to tell us before we drive there.',
+        quote: 'Nineteen percent of our visits find nothing wrong. At $290 a truck roll, I would rather hear the machine before I drive there. Those machines have been telling us they were about to fail for years.'
       }
     ],
     beats: [
@@ -93,11 +93,11 @@ const LABELS = {
   features: 'Features'
 };
 const LINE_DESCRIPTIONS = Object.freeze({
-  run: "Keeps the existing systems alive. Dale's floor: $3M, non-negotiable.",
-  uptime: "Backup and redundancy so dispatch survives a bad day. Renata's line.",
-  capacity: 'Headroom for growth and for anything that needs to compute. Nobody asks for this.',
-  connect: "Gets the data back from the units in the field, automatically. Sam's line.",
-  features: "Visible new things the business can point at. Tom's line."
+  run: "Keeps the existing systems alive. Dale: six million a year keeps the lights on and he wants that number down.",
+  uptime: "Backup and redundancy so dispatch survives a bad day. Renata: she would rather have eight more technicians than another system.",
+  capacity: 'Headroom for growth and for anything that needs to compute.',
+  connect: "Gets the data back from the units in the field, automatically. Sam: the machines already know things his technicians still have to drive out to learn.",
+  features: "Visible new things the business can point at. Tom: in eighteen months he needs something real to show the board."
 });
 
 // First-draft calibration lives in data rather than engine code. Facilitated
@@ -107,26 +107,32 @@ const DEFAULT_THRESHOLDS = Object.freeze(require('../config/thresholds.json'));
 
 const COPY = Object.freeze({
   year1: {
-    strong: 'Report produced in a day. District renews early, mentions it to two others.',
-    middle: 'Two techs on roofs with clipboards. Report late and thin. Grudging renewal.',
-    weak: 'No report. Renews on price, starts taking competitor calls.'
+    strong: 'The school district is six weeks from renewing its service contract and asks Midland for a performance report across its rooftop units: faults, downtime, and service history. With the units connected, Sam can pull the evidence in an afternoon and the report goes out the next day instead of sending trucks to buildings. The district renews early and mentions the capability to two neighboring districts. Sam: “This is what I meant — the machines already knew; we finally stopped making a technician drive out to ask them.”',
+    middle: 'The school district is six weeks from renewal and asks for the same performance report. Some unit data comes back, but coverage is patchy, so the service team still has to fill gaps by hand in a business that makes 14,000 visits a year at about $290 every time a truck rolls. The report arrives late and thin, and the district renews grudgingly. Sam: “We wired enough to prove the idea and not enough to keep my people off roofs.”',
+    weak: 'The school district is six weeks from renewal and asks Midland to show how its rooftop units actually performed. With no remote path to the machines, two of Sam’s technicians spend a week on roofs pulling histories by hand, and they still cannot assemble a credible report before the deadline. The district renews on price but starts taking competitor calls. Sam: “Nineteen percent of our visits find nothing wrong, and here we are sending people out again because the data still has nowhere to go.”'
   },
   heat: {
-    strong: 'Systems hold. Best month the service department has ever had.',
-    middle: 'Six hours down on the worst day. Paper dispatch, mistakes, annoyed customers.',
-    weak: 'Four days down in the hottest week. Two hospital accounts publicly furious.'
+    strong: 'July brings ten straight days above 95 degrees and service calls triple. Dispatch is the only thing standing between sixty-two technicians and chaos, and the backup path holds through the surge; the service department closes its best month ever. The trucks stay moving because the system stays up. Renata: “I still want eight more technicians. But if dispatch had gone down this week, eight more trucks would have been eight more people waiting for paper directions.”',
+    middle: 'July brings ten straight days above 95 degrees and service calls triple. Dispatch goes down for six hours on the worst day, so the team falls back to paper, duplicate trips and callbacks in a service operation where every truck roll costs about $290. Customers wait, but the department keeps moving. Renata: “Six hours was enough to turn my department into a clipboard. I can argue about software all year; I cannot argue with that day.”',
+    weak: 'July brings ten straight days above 95 degrees and service calls triple. Dispatch is down for four days in the hottest week, leaving sixty-two technicians working from phones and paper while repeat visits pile up and two hospital accounts go public with their anger. The system that was supposed to tell the trucks where to go becomes the failure inside the failure. Renata: “I asked for eight more trucks. Four days like this and I would not have known where to send them.”'
   },
   competitor: {
-    strong: 'Match it. You know which units are healthy, so you can price the risk.',
-    middle: 'Pilot on thirty units. Slow, but in the game.',
-    weak: 'Cannot respond. Buying it now takes eighteen months and the cap blocks it.'
+    strong: 'The Carrolton pilot from the trade press has become a national flat-rate coverage offer, and Midland customers start asking when they can buy the same thing. Flat-rate service only works if Midland can see which units are healthy and price the risk, and the connected history is already there when the question arrives. The alternative would have been starting an eighteen-month connectivity build after the market moved; this portfolio does not have to wait for that clock. Tom: “This is something real. I can put it in front of the board before my eighteen months are up.”',
+    middle: 'The Carrolton pilot from Georgia and Tennessee has become a national flat-rate coverage offer, and Midland customers immediately ask for an answer. Midland has enough connected data to price a thirty-unit pilot, but not enough coverage to make the offer broadly without guessing at the risk. Finishing the missing connection now is an eighteen-month job, which is exactly Tom’s board window. Tom: “Thirty units is a pilot. I have a board in eighteen months. I need to know whether this becomes a business before I walk into that room.”',
+    weak: 'A national rival turns Carrolton’s flat-rate pilot into a real market offer, and Midland customers start asking why they cannot have it too. Midland cannot price the risk because it still cannot see enough of the four thousand units in the field, and building that visibility now takes about eighteen months; the annual cap means money cannot buy the lost lead time back in one move. The market question arrived after the architecture decision had already been made. Tom: “That is my board window. Eighteen months to build the thing after customers ask for it means we decided this before we knew we were deciding it.”'
   },
   year3: {
-    strong: 'It works. Three years of fault history, somewhere to run it. Uptime becomes a product you sell.',
-    data_no_room: 'You have three years of fault history and nowhere to put it. The model runs overnight on borrowed capacity and finishes some mornings. The CEO sees a demo that works and asks why it cannot go to every customer by spring. The honest answer is that you built the harder half and skipped the cheap half.',
-    pilot: 'Pilot on the newest units. Promising, not a business.',
-    weak: 'Nothing to predict from. The model is fine. There is no data.'
+    strong: 'In Year 3 the CEO asks whether Midland can predict failures before a customer calls and sell that capability across the installed base. The company now has years of field history and enough capacity to run the model continuously, so patterns across thousands of units become service calls Midland can prevent instead of emergencies it reacts to. Predictive uptime becomes something Midland can actually sell, not a demo. Sam: “We used to spend $290 to send a truck to hear what the machine could have told us yesterday. Now it tells us before the customer calls.”',
+    data_no_room: 'In Year 3 the CEO asks whether Midland can predict failures before a customer calls, and the answer is painful because you have three years of fault history and nowhere to put it. The data exists, but the model runs overnight on borrowed capacity and finishes only some mornings; a conference-room demo works while a service for roughly 4,000 units does not. The CEO asks why it cannot go to every customer by spring, and the honest answer is that the harder half was built while the cheap half was starved. Sam: “You finally listened to the machines and then built nowhere for the answer to live. Now we can see the service we still cannot deliver.”',
+    pilot: 'In Year 3 the CEO asks for failure prediction across Midland’s installed base. There is enough connected history to make the model real on the newest units, but not enough coverage to promise the same service across roughly 4,000 machines, so the result is a pilot rather than a business. It catches some failures early and proves the idea without yet changing what Midland can sell at scale. Sam: “It is real on the units we can hear. Four thousand units is a business; a corner of the fleet is still a demonstration.”',
+    weak: 'In Year 3 the CEO asks for AI failure prediction, and the model itself is not the problem. Midland never accumulated enough usable field history, so the failure was effectively decided back in Year 1 when connecting controllers looked like plumbing and something else looked more urgent; three years later there is no history to reconstruct. Technicians are still making 14,000 service visits a year and 19% still find nothing wrong because the machines cannot tell Midland what they know remotely. Sam: “There has never been anywhere to put what they say. Three years later, that is still true.”'
   }
+});
+
+const YEAR2_INTRO = Object.freeze({
+  strong: 'A year has passed. The district renewed early, and Sam’s report is now the example people point to when they argue that the machines can do more than Midland has been asking of them. Dale is back at the table looking at the Run number, and the same $9 million is available again.',
+  middle: 'A year has passed. The district renewed, grudgingly, after Midland patched together a late report and the service team did work the architecture could not do for them. Dale is back at the table looking at the Run number, and the same $9 million is available again.',
+  weak: 'A year has passed. The district renewed on price but has started taking competitor calls, and Sam’s team remembers the week spent on roofs because Midland could not pull its own machine history. Dale is back at the table looking at the Run number, and the same $9 million is available again.'
 });
 
 const BUYERS = Object.freeze({
@@ -134,12 +140,13 @@ const BUYERS = Object.freeze({
     id: 'carrolton',
     name: 'Carrolton Systems',
     description: 'Regional competitor',
-    copy: 'Buys the customers and the contracts. Everything you built is overhead they intend to retire in the first year. Your portfolio did not change this number, which is worth sitting with.'
+    copy: 'We are buying the customers and the service contracts. Your systems are overhead we plan to retire in the first year.'
   },
   ridge_hollow: {
     id: 'ridge_hollow',
     name: 'Ridge Hollow Partners',
     description: 'Private equity',
+    roomLink: 'This is Dale’s argument from the room, judged by a buyer: keep the cost base lean and do not carry spending that has to be defended forever.',
     high: 'Likes what it sees: a lean operation with no expensive habits. Plans to hold four years and sell, and nothing in your portfolio gets in the way of that.',
     qualified: 'Interested, with reservations about how much of the spending it would have to keep funding.',
     low: 'Sees a cost base it would have to cut hard, and it has done this often enough to know how that goes.'
@@ -148,9 +155,10 @@ const BUYERS = Object.freeze({
     id: 'corven',
     name: 'Corven Building Systems',
     description: 'Platform acquirer',
+    roomLink: 'This is Sam’s argument from the room, judged by a buyer: the field data and customer relationships are valuable because they cannot be recreated quickly.',
     high: 'This is the only reason it is at the table. Three years of fault history from four thousand units in buildings it does not yet serve. It is not buying an HVAC dealer, it is buying what those machines have been saying.',
     qualified: 'Sees the beginning of something and would want to finish it themselves, which changes the price and who runs the company afterward.',
-    low: 'Cannot see what it would be buying. Says so politely.'
+    low: 'It came for the fault history from four thousand units and cannot find enough connected history to buy. Without that asset, Corven sees an HVAC dealer rather than the platform Sam kept arguing Midland could become.'
   }
 });
 const BUYER_CLOSING = 'Three buyers, one company, three different answers. Which one showed up was never yours to control. What you controlled was whether there was anything worth paying for.';
@@ -227,12 +235,12 @@ function evaluateYear1(y1, thresholds) {
   const t = sanitizeThresholds(thresholds);
   const c = y1.connect;
   if (c >= t.year1ConnectStrong) {
-    return { band: 'strong', title: 'The school district asks for a performance report', narrative: COPY.year1.strong };
+    return { band: 'strong', title: 'The school district asks for a performance report', narrative: COPY.year1.strong, year2Intro: YEAR2_INTRO.strong };
   }
   if (c > 0) {
-    return { band: 'middle', title: 'The school district asks for a performance report', narrative: COPY.year1.middle };
+    return { band: 'middle', title: 'The school district asks for a performance report', narrative: COPY.year1.middle, year2Intro: YEAR2_INTRO.middle };
   }
-  return { band: 'weak', title: 'The school district asks for a performance report', narrative: COPY.year1.weak };
+  return { band: 'weak', title: 'The school district asks for a performance report', narrative: COPY.year1.weak, year2Intro: YEAR2_INTRO.weak };
 }
 
 function evaluateYear2(y1, y2, thresholds) {
@@ -290,14 +298,16 @@ function evaluateBuyers(y1, y2) {
       name: BUYERS.ridge_hollow.name,
       description: BUYERS.ridge_hollow.description,
       interest: ridgeInterest,
-      reason: BUYERS.ridge_hollow[ridgeInterest]
+      reason: BUYERS.ridge_hollow[ridgeInterest],
+      roomLink: BUYERS.ridge_hollow.roomLink
     },
     corven: {
       id: BUYERS.corven.id,
       name: BUYERS.corven.name,
       description: BUYERS.corven.description,
       interest: corvenInterest,
-      reason: BUYERS.corven[corvenInterest]
+      reason: BUYERS.corven[corvenInterest],
+      roomLink: BUYERS.corven.roomLink
     },
     closing: BUYER_CLOSING
   };
@@ -409,12 +419,13 @@ function publicConfig() {
     ],
     position:
       'You have $9 million to allocate this year across five lines. You cannot borrow from next year, and the annual caps are real.',
-    viewPrompt: 'In one sentence: what should this company become?',
-    viewDisclosure: 'Your instructor can see this sentence in the instructor view. It is not scored.',
+    viewPrompt: 'Midland should become a company that can ___ for customers by ___.',
+    viewDisclosure: 'Your instructor can see this sentence in the instructor view. It is not scored, and it will come back to you at the close.',
     reflectionPrompts: [
-      'Which Year 1 choice mattered later in a way you did not expect?',
+      'Dale, Renata, Tom, or Sam: whose argument did you overrule most, and would you make the same call after seeing Year 3?',
       'If you could change one Year 1 million after seeing Year 3, where would it move and why?'
     ],
+    reflectionDisclosure: 'Your instructor can see these responses and may use them in the class debrief. They are not scored.',
     buyers: {
       authored: true,
       title: 'Three buyers, one company',

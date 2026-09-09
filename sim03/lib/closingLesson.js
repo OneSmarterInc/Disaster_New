@@ -61,17 +61,65 @@ function competitorSentence(c, band) {
   return '';
 }
 
+function dollars(n) { return `$${Math.max(0, Number(n) || 0)}M`; }
+
+function heatNearMiss(c, band, t) {
+  if (!t || !Number.isFinite(Number(t.heatUptimeStrong)) || !Number.isFinite(Number(t.heatUptimeMiddle))) return '';
+  const strong = Number(t.heatUptimeStrong), middle = Number(t.heatUptimeMiddle), x = c.uptime;
+  if (band === 'strong') {
+    const toMiddle = x - strong + 1;
+    const toWeak = x - middle + 1;
+    return `${dollars(toMiddle)} less in Uptime would have produced the six-hour paper-dispatch outcome; ${dollars(toWeak)} less would have produced the four-day outage.`;
+  }
+  if (band === 'middle') {
+    const toStrong = strong - x;
+    const toWeak = x - middle + 1;
+    return `${dollars(toStrong)} more in Uptime would have made dispatch hold; ${dollars(toWeak)} less would have produced the four-day outage.`;
+  }
+  return `${dollars(Math.max(0, middle - x))} more in Uptime would have reached the six-hour outcome, and ${dollars(Math.max(0, strong - x))} more would have made dispatch hold.`;
+}
+
+function competitorNearMiss(c, band, t) {
+  if (!t || !Number.isFinite(Number(t.competitorConnectStrong)) || !Number.isFinite(Number(t.competitorConnectPilotMin))) return '';
+  const strong = Number(t.competitorConnectStrong), pilot = Number(t.competitorConnectPilotMin), x = c.connect;
+  if (band === 'strong') {
+    return `${dollars(x - strong + 1)} less in Connect would have left Midland with only the thirty-unit pilot.`;
+  }
+  if (band === 'middle') {
+    return `${dollars(strong - x)} more in Connect would have let Midland match the competitor outright; ${dollars(x - pilot + 1)} less would have left it unable to respond.`;
+  }
+  return `${dollars(Math.max(0, pilot - x))} more in Connect would have reached the pilot, and ${dollars(Math.max(0, strong - x))} more would have let Midland match the offer outright.`;
+}
+
+function year3NearMiss(c, band, t) {
+  if (!t) return '';
+  const connectStrong = Number(t.year3ConnectStrong), capStrong = Number(t.year3CapacityStrong), pilot = Number(t.year3ConnectPilotMin);
+  if (![connectStrong, capStrong, pilot].every(Number.isFinite)) return '';
+  if (band === 'data_no_room') {
+    return `${dollars(Math.max(0, capStrong - c.capacity))} more in Capacity would have turned the working demo into a capability Midland could run at scale.`;
+  }
+  if (band === 'strong') {
+    return `${dollars(c.capacity - capStrong + 1)} less in Capacity would have left the same field history with nowhere reliable to run.`;
+  }
+  if (band === 'pilot') {
+    const needConnect = Math.max(0, connectStrong - c.connect);
+    const destination = c.capacity >= capStrong ? 'the full predictive-service outcome' : 'the data-without-room outcome';
+    return `${dollars(needConnect)} more in Connect would have moved Midland out of the pilot; with Capacity at ${dollars(c.capacity)}, that next outcome would have been ${destination}.`;
+  }
+  return `${dollars(Math.max(0, pilot - c.connect))} more in Connect would have reached the Year 3 pilot threshold.`;
+}
+
 function buyerSentence(buyers) {
   const ridge = buyers && buyers.ridge_hollow && buyers.ridge_hollow.interest;
   const corven = buyers && buyers.corven && buyers.corven.interest;
   if (!ridge || !corven) return '';
   if (ridge === corven) {
-    return `Ridge Hollow and Corven both showed ${ridge} interest, but for different reasons: Ridge Hollow was testing the spending base while Corven was testing the connected-data asset.`;
+    return `Ridge Hollow and Corven both showed ${ridge} interest, but for different reasons: Ridge Hollow was asking Dale’s question about the spending base while Corven was asking Sam’s question about the connected-data asset.`;
   }
-  return `Ridge Hollow showed ${ridge} interest while Corven showed ${corven} interest. The portfolio did not change between those judgments; what each buyer valued did.`;
+  return `Ridge Hollow showed ${ridge} interest while Corven showed ${corven} interest. Ridge Hollow was asking Dale’s question about the cost base; Corven was asking Sam’s question about the connected-data asset. The portfolio did not change between those judgments; what each buyer valued did.`;
 }
 
-function buildClosingLesson(y1, y2, outcomes) {
+function buildClosingLesson(y1, y2, outcomes, thresholds) {
   const c = cumulative(y1, y2);
   const top = largestLine(c);
   const y3 = outcomes && outcomes.year3 && outcomes.year3.band;
@@ -80,8 +128,8 @@ function buildClosingLesson(y1, y2, outcomes) {
   const buyers = outcomes && outcomes.buyers;
 
   const yourRun = [
-    `Your largest cumulative commitment was ${top.label} at $${top.amount}M. ${year3Sentence(c, y3)}`.trim(),
-    [heatSentence(c, heat), competitorSentence(c, competitor)].filter(Boolean).join(' '),
+    [`Your largest cumulative commitment was ${top.label} at $${top.amount}M.`, year3Sentence(c, y3), year3NearMiss(c, y3, thresholds)].filter(Boolean).join(' '),
+    [heatSentence(c, heat), heatNearMiss(c, heat, thresholds), competitorSentence(c, competitor), competitorNearMiss(c, competitor, thresholds)].filter(Boolean).join(' '),
     buyerSentence(buyers)
   ].filter(Boolean);
 
@@ -89,8 +137,8 @@ function buildClosingLesson(y1, y2, outcomes) {
     title: 'What this run was teaching you',
     paragraphs: [
       'You spent two years making choices before you knew which consequences would matter. That is the work of architecture. It is not predicting the future. It is deciding which capabilities Midland will already have when the future arrives.',
-      'Every million you put into Run, Uptime, Capacity, Connect, or Features was also a million you did not put somewhere else. The people in the room made every choice sound reasonable because each of them was right about their own part. The hard part was seeing the whole company before the evidence made the answer obvious.',
-      'Capacity had no advocate. Connect did. Features were visible. Run and Uptime had immediate operational arguments. That imbalance was intentional: important foundations are often easiest to starve when nobody is asking for them yet.',
+      'Every million you put into Run, Uptime, Capacity, Connect, or Features was also a million you did not put somewhere else. Dale was right that Run consumed money without producing something new. Renata was right that her trucks and technicians were stretched. Tom was right that the board needed something visible. Sam was right that the machines already knew more than Midland could hear. The hard part was seeing the whole company while each person was correctly defending only one part of it.',
+      'Capacity had no advocate. Connect did. Features were visible. Run and Uptime had immediate operational arguments. Foundations get starved precisely because nobody is asking for them yet, while the visible and urgent work arrives with a person attached.',
       'The three buyers were the final reminder that value depends on who is looking. You did not control which future arrived or what an eventual buyer would care about. You controlled whether Midland had built enough real capability that more than one future could still work.'
     ],
     yourRun,

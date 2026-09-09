@@ -91,8 +91,8 @@ assert.deepEqual(S.META.detail.cast.map(x => x.line), ['Run','Uptime','Features'
 assert.equal(S.META.detail.cast.some(x => x.line === 'Capacity'), false);
 const inc1 = S.publicConfig();
 assert.equal(inc1.room.cast.length, 4);
-assert.equal(inc1.lines.find(x => x.id === 'capacity').description, 'Headroom for growth and for anything that needs to compute. Nobody asks for this.');
-assert.equal(inc1.lines.find(x => x.id === 'connect').description, "Gets the data back from the units in the field, automatically. Sam's line.");
+assert.equal(inc1.lines.find(x => x.id === 'capacity').description, 'Headroom for growth and for anything that needs to compute.');
+assert.equal(inc1.lines.find(x => x.id === 'connect').description.includes('Sam'), true);
 assert.equal(inc1.coldOpen[0].startsWith('Midland sells and services the big rooftop heating and cooling units'), true);
 assert.equal(inc1.position.startsWith('You have $9 million'), true);
 
