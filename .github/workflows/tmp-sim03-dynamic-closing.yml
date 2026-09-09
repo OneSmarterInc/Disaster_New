@@ -1,0 +1,66 @@
+name: tmp-sim03-dynamic-closing
+on:
+  push:
+    branches: [content/sim03-dynamic-closing]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: content/sim03-dynamic-closing
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply dynamic closing lesson patch
+        run: python .github/scripts/sim03_dynamic_closing_patch.py
+      - name: Assert gameplay scope untouched
+        run: |
+          git diff --exit-code HEAD -- sim03/config/thresholds.json sim03/lib/scenario.js sim03/api/outcome.js sim03/api/session.js sim03/api/health.js sim03/public/instructor.html
+      - name: Run existing Sim03 tests
+        run: npm --prefix sim03 test
+      - name: Run dynamic closing tests
+        run: node sim03/tools/closing-lesson-check.js
+      - name: Build Sim03
+        run: npm --prefix sim03 run build
+      - name: Run platform integration check
+        run: node platform/tools/check-sim03-integration.js
+      - name: Parse student browser JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          text=Path('sim03/public/index.html').read_text()
+          scripts=re.findall(r'<script>([\s\S]*?)</script>', text)
+          assert scripts
+          for i,s in enumerate(scripts):
+              p=Path(tempfile.gettempdir())/f'sim03-dynamic-closing-{i}.js'
+              p.write_text(s)
+              subprocess.run(['node','--check',str(p)],check=True)
+          PY
+      - name: Assert dynamic lesson remains post-reflection only
+        run: |
+          grep -q "buildClosingLesson(y1, y2, outcomes)" sim03/api/finish.js
+          grep -q "yourRun" sim03/lib/closingLesson.js
+          grep -q "In your run" sim03/public/index.html
+          ! grep -q "Your largest cumulative commitment was" sim03/public/index.html
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('sim03/public/index.html').read_text()
+          finished=s.index('if(S.finished){')
+          lesson=s.index('${closingLessonHTML()}', finished)
+          reflections=s.index('Your reflections', finished)
+          banner=s.index('run-complete', reflections)
+          assert reflections < lesson < banner
+          assert "const done=await request('/api/finish'" in s
+          PY
+      - name: Commit dynamic closing lesson
+        run: |
+          git config user.name 'OneSmarterInc Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add sim03/api/finish.js sim03/public/index.html sim03/build.js sim03/lib/closingLesson.js sim03/tools/closing-lesson-check.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Make Midland closing lesson run-specific'
+          git push origin HEAD:content/sim03-dynamic-closing
