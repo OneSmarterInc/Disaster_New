@@ -2,6 +2,7 @@ const { checkAccess, body } = require('../lib/guard.js');
 const { reportCompletion } = require('../lib/launch.js');
 const { verifyLaunch } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
+const { buildClosingLesson } = require('../lib/closingLesson.js');
 const store = require('../lib/store.js');
 
 async function sessionRun(b) {
@@ -38,19 +39,6 @@ function overallOutcomeText(outcomes) {
   return [a,b,c,d].filter(Boolean).join(' ');
 }
 function publicOutcome(o) { return o ? { title:o.title, narrative:o.narrative, band:o.band } : null; }
-
-function closingLesson() {
-  return {
-    title: 'What this run was teaching you',
-    paragraphs: [
-      'You spent two years making choices before you knew which consequences would matter. That is the work of architecture. It is not predicting the future. It is deciding which capabilities Midland will already have when the future arrives.',
-      'Every million you put into Run, Uptime, Capacity, Connect, or Features was also a million you did not put somewhere else. The people in the room made every choice sound reasonable because each of them was right about their own part. The hard part was seeing the whole company before the evidence made the answer obvious.',
-      'Capacity had no advocate. Connect did. Features were visible. Run and Uptime had immediate operational arguments. That imbalance was intentional: important foundations are often easiest to starve when nobody is asking for them yet.',
-      'The three buyers were the final reminder that value depends on who is looking. You did not control which future arrived or what an eventual buyer would care about. You controlled whether Midland had built enough real capability that more than one future could still work.'
-    ],
-    carryOut: 'You never controlled which future arrived. You controlled what Midland was ready for when it did.'
-  };
-}
 
 function allocationLabel(a) {
   return `Run ${a.run} · Uptime ${a.uptime} · Capacity ${a.capacity} · Connect ${a.connect} · Features ${a.features}`;
@@ -111,6 +99,8 @@ module.exports = async (req, res) => {
     return res.status(e.status || 500).json({ error: e.message || 'server_error' });
   }
 
+  const closingLesson = buildClosingLesson(y1, y2, outcomes);
+
   summary.result = {
     overall: overallOutcomeText(outcomes),
     year1: publicOutcome(outcomes.year1),
@@ -149,6 +139,6 @@ module.exports = async (req, res) => {
     ok: true,
     completionReported: !!report.ok,
     outcomes,
-    closingLesson: closingLesson()
+    closingLesson
   });
 };
