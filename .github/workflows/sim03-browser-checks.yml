@@ -1,0 +1,58 @@
+name: sim03-browser-checks
+
+on:
+  pull_request:
+    paths:
+      - 'sim03/**'
+      - '.github/workflows/sim03-browser-checks.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'sim03/**'
+      - '.github/workflows/sim03-browser-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser-redis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser-test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sim03-browser" --no-audit --no-fund playwright@1 redis@5 agent-browser
+          "$RUNNER_TEMP/sim03-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Full simulation build and regression checks
+        working-directory: sim03
+        run: npm run build
+      - name: Three student browsers, instructor, and real Redis
+        env:
+          TEST_REDIS_URL: redis://127.0.0.1:6379
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/sim03-browser/node_modules"
+          export AGENT_BROWSER_BIN="$RUNNER_TEMP/sim03-browser/node_modules/.bin/agent-browser"
+          node sim03/tools/team-runner-browser-check.js
+      - name: Upload screenshots, browser traces, and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim03-browser-results
+          path: browser-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
