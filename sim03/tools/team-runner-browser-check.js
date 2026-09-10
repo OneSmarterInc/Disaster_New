@@ -150,7 +150,7 @@ async function snapshot(name, page) {
   check(await ann.evaluate(() => S.me.isCaptain), true, 'Delegation preserves team leadership');
   await control(code, 'start');
   await ben.locator('#nextBtn').waitFor({ state: 'visible' });
-  await ann.waitForFunction(() => document.body.innerText.includes('Team mode · read-only'));
+  await ann.waitForFunction(() => document.body.textContent.includes('Team mode · read-only'));
   check(await ann.locator('#nextBtn').count(), 0, 'Delegating lead cannot advance the simulation');
   check(await cal.locator('#nextBtn').count(), 0, 'Other member cannot advance the simulation');
   await snapshot('01-lead-observer', ann);
@@ -167,7 +167,7 @@ async function snapshot(name, page) {
   check(y1, { run: 3, uptime: 2, capacity: 1, connect: 2, features: 1 }, 'Runner commits Year 1 through browser controls');
   await ann.waitForFunction(() => !!S.teamRun?.year1);
   check(await ann.locator('.step').count(), 0, 'Observer sees the allocation without editable controls');
-  check(await ann.locator('body').innerText().then(t => t.includes('Shared Year 1 allocation')), true, 'Observer receives shared submitted decisions');
+  check(await ann.locator('#app').textContent().then(t => t.includes('Shared Year 1 allocation')), true, 'Observer receives shared submitted decisions');
   await next(ben, 6);
   await ben.reload(); await step(ben, 6);
   check(await ben.evaluate(() => S.year1), y1, 'Reload preserves Year 1 and resumes Year 2');
@@ -219,7 +219,7 @@ async function snapshot(name, page) {
   await instructor.locator('#resumeCode').fill(code);
   await instructor.locator('#resumeBtn').click();
   await instructor.waitForFunction(() => !!state?.runs?.['team:alpha']?.done);
-  check(await instructor.locator('body').innerText().then(t => t.includes('Ben personal reflection') && t.includes('Cal personal reflection')), true, 'Instructor UI displays each personal reflection');
+  check(await instructor.locator('#app').textContent().then(t => t.includes('Ben personal reflection') && t.includes('Cal personal reflection')), true, 'Instructor UI displays each personal reflection');
   await snapshot('05-instructor-completion', instructor);
   await control(code, 'close');
   check((await api({ action: 'set_runner', code, participantId: annId, runnerId: benId, expectedRunnerId: annId, runnerRevision: run.runnerRevision })).body.error, 'session_closed', 'Closed session rejects runner changes');
