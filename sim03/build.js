@@ -108,6 +108,9 @@ if (!launcher.includes("sessionStorage.setItem('m03-faculty-lt',token)")) refuse
 if (!index.includes("sessionStorage.setItem('m03-faculty-lt',LAUNCH_TOKEN)")) refuse('faculty play surface does not persist faculty authorization');
 for (const marker of ['Resume session code','Students self-select teams at join',"action:'set_captain'",'function startPresent()','dotcount','the annual cap is the wall'])
   if (!instructor.includes(marker)) refuse('team/projector instructor marker missing: ' + marker);
+for (const marker of ['How team mode works','Captain · commits for team','Make captain','Change team for','Create a new team…','Who is together, and who leads?'])
+  if (!instructor.includes(marker)) refuse('clear team-management marker missing: ' + marker);
+if (!index.includes('Students who enter the same team name join the same group. One member will be the captain.')) refuse('student team grouping explanation missing');
 if (index.includes('Valuation pending authored rule')) refuse('unauthored buyer placeholder reached the student bundle');
 if (index.includes('authored calibration does not yet define')) refuse('Year 3 calibration scaffolding reached the student bundle');
 for (const marker of ['Briefing & exhibits','Your outcome','Overall result','Three-year consequence timeline','The portfolio that produced this','Your original view','Year 2 allocation','Cumulative portfolio','Three buyers','buyer-interest'])
