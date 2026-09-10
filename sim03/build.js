@@ -97,6 +97,7 @@ if (!index.includes("location.assign(BASE+'/launch.html')")) {
   refuse('student access button does not target the explicit launch gate');
 }
 
+for (const marker of ['runSessionEntry','Run a facilitated session',"BASE+'/instructor.html#lt='","LAUNCH.role==='faculty'"]) if (!index.includes(marker)) refuse('faculty session-entry marker missing: ' + marker);
 for (const marker of [
   'Join a facilitated session', 'Team name <span', 'function safeToRerender()', 'Team allocation is read-only for non-captains',
   "if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true})",
