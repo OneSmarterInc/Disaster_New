@@ -169,7 +169,7 @@ function renderJoin(){
   ${S.error?notice(S.error,true):''}
   <div class="field"><label>Name</label><input id="joinName" autocomplete="name" placeholder="Your name"></div>
   <div class="field"><label>Session code</label><input id="joinCode" class="mono" maxlength="5" value="${esc(S.sessionCode)}" placeholder="ABCDE"></div>
-  <div class="field"><label>Team name <span class="hint">(team sessions only)</span></label><input id="teamName" maxlength="40" placeholder="Agree a short name with your table"></div>
+  <div class="field"><label>Team name <span class="hint">(team sessions only)</span></label><input id="teamName" maxlength="40" placeholder="Agree a short name with your table"><div class="hint">Students who enter the same team name join the same group. One member will be the captain.</div></div>
   <div class="actions"><button class="btn pri" id="joinBtn">Join session</button></div></section>`);
   document.getElementById('joinBtn').onclick=joinSession;
 }
