@@ -97,6 +97,7 @@ function friendlyError(code,status){
     captain_only:'Only your team lead can commit this choice.',
     team_lead_only:'Only the selected team runner opens and advances the simulation.',
     team_lead_locked:'The team runner is locked once play starts. Ask the instructor if a handoff is needed.',
+    team_run_not_complete:'Wait for your team runner to reach the close before submitting your reflection.',
     not_joined:'Rejoin the session before continuing.'
   };
   return m[code]||'';
@@ -134,7 +135,7 @@ function teamBanner(){
   if(!S.session)return '';
   const mode=S.session.mode==='team'?'Team':'Individual';
   if(S.session.mode!=='team')return `<div class="team"><b>${mode} session ${esc(S.session.code)}</b><br>You can commit this run.</div>`;
-  if(!S.me?.groupId)return `<div class="team"><b>Waiting for team assignment · session ${esc(S.session.code)}</b><br>Your instructor will place you on a team and choose the team lead. Stay on this page; it updates automatically.</div>`;
+  if(!S.me?.groupId)return `<div class="team"><b>Waiting for team assignment · session ${esc(S.session.code)}</b><br>Your instructor will place you on a team. Once assigned, your team can decide which one student will run the simulation. Stay on this page; it updates automatically.</div>`;
   const teamName=esc(S.me?.teamLabel||'Your team');
   const roster=S.mates.length?S.mates.map(x=>esc(x.name)+(x.isCaptain?' (team lead)':'')).join(' · '):'Waiting for teammates';
   const commit=S.teamRun?.year1?`Year 1 committed${S.teamRun.updatedAt?' · '+new Date(S.teamRun.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}`:'Year 1 not committed yet';

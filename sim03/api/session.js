@@ -410,6 +410,9 @@ module.exports = async (req, res) => {
         const rid = runIdFor(sess, me);
         const runs = await store.getRuns(code);
         const current = runs[rid] || { runId: rid, phase: 0, done: false, createdAt: Date.now() };
+        if (sess.mode === 'team' && !me.isCaptain && b.done && Number(current.phase || 0) < 3) {
+          return res.status(409).json({ error: 'team_run_not_complete', message: 'Wait for your team runner to reach the close before submitting your reflection.' });
+        }
         if (current.done && (wantsSharedDecision || sess.mode === 'individual')) {
           return res.status(409).json({ error: 'run_already_completed' });
         }

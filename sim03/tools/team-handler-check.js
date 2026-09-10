@@ -70,10 +70,12 @@ const y2 = { run: 3, uptime: 1, capacity: 1, connect: 2, features: 2 };
     r = await invoke({ action: 'submit', code, participantId: 'ben', year1: y1 }); assert.equal(r.status, 200);
     r = await invoke({ action: 'submit', code, participantId: 'ben', year2: y2 }); assert.equal(r.status, 200);
 
-    r = await invoke({ action: 'submit', code, participantId: 'ann', reflection1: 'Ann one', reflection2: 'Ann two', done: true }); assert.equal(r.status, 200);
-    let teamRun = (runs.get(code) || {})['team:alpha']; assert.equal(teamRun.done, false);
+    r = await invoke({ action: 'submit', code, participantId: 'ann', reflection1: 'Ann early', reflection2: 'Too early', done: true });
+    assert.equal(r.status, 409); assert.equal(r.body.error, 'team_run_not_complete');
     r = await invoke({ action: 'group', code, assign: { cal: '__unassigned__' }, facultyCode: 'faculty-secret' }); assert.equal(r.status, 200); roster = participants.get(code); assert.equal(roster.cal.groupId, null); assert.equal(roster.ben.isCaptain, true);
     r = await invoke({ action: 'submit', code, participantId: 'ben', reflection1: 'Ben one', reflection2: 'Ben two', done: true }); assert.equal(r.status, 200);
+    let teamRun = (runs.get(code) || {})['team:alpha']; assert.equal(teamRun.phase, 3); assert.equal(teamRun.done, false, 'runner reaching the close unlocks teammate reflections but does not finish them');
+    r = await invoke({ action: 'submit', code, participantId: 'ann', reflection1: 'Ann one', reflection2: 'Ann two', done: true }); assert.equal(r.status, 200);
     teamRun = (runs.get(code) || {})['team:alpha']; assert.equal(teamRun.done, true, 'shared run completes when every current assigned member is finished');
 
     r = await invoke({ action: 'state', code, participantId: 'ann' }); assert.equal(r.status, 200); assert.equal(r.body.run.reflection1, 'Ann one'); assert.equal(r.body.run.done, true);

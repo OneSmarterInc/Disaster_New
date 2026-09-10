@@ -23,6 +23,9 @@ async function sessionRun(b) {
   if (!run || !run.year1 || !run.year2) {
     const e = new Error('allocations_incomplete'); e.status = 409; throw e;
   }
+  if (sess.mode === 'team' && !me.isCaptain && Number(run.phase || 0) < 3) {
+    const e = new Error('team_run_not_complete'); e.status = 409; throw e;
+  }
   return { sess, run, participants, me, rid, code, pid };
 }
 
