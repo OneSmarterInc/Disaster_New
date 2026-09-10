@@ -190,17 +190,23 @@ module.exports = async (req, res) => {
         for (const p of Object.values(participants)) {
           if (!p || !Object.prototype.hasOwnProperty.call(rawAssign, p.id)) continue;
           const label = String(rawAssign[p.id] || '').trim().slice(0, 40);
-          if (label.startsWith('team:')) {
+          if (label === '__unassigned__' || !label) {
+            p.groupId = null;
+            p.teamLabel = '';
+            p.isCaptain = false;
+          } else if (label.startsWith('team:')) {
             const target = Object.values(participants).find(x => x && x.groupId === label);
+            if (!target) return res.status(404).json({ error: 'no_such_team' });
             p.groupId = label;
-            p.teamLabel = target ? (target.teamLabel || label.slice(5)) : label.slice(5);
-          } else if (label === '__solo__' || !label) {
+            p.teamLabel = target.teamLabel || label.slice(5);
+          } else if (label === '__solo__') {
             p.groupId = `solo:${p.id}`;
             p.teamLabel = p.name;
           } else {
             const norm = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
-            p.groupId = norm ? `team:${norm}` : `solo:${p.id}`;
-            p.teamLabel = label || p.name;
+            if (!norm) return res.status(400).json({ error: 'team_name_required' });
+            p.groupId = `team:${norm}`;
+            p.teamLabel = label;
           }
         }
         const caps = captainMap(participants, { ...previousCaptains, ...(b.captains || {}) });
@@ -210,6 +216,26 @@ module.exports = async (req, res) => {
           await store.setParticipant(code, p.id, p);
         }
         return res.status(200).json({ ok: true, captains: caps });
+      }
+
+      case 'rename_team': {
+        const who = whoIsFaculty(req, b);
+        if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
+        const sess = await store.getSession(code);
+        if (!sess) return res.status(404).json({ error: 'no_such_session' });
+        if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
+        if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
+        const groupId = String(b.groupId || '').trim();
+        const teamLabel = String(b.teamLabel || '').trim().slice(0, 40);
+        if (!groupId || !teamLabel) return res.status(400).json({ error: 'team_name_required' });
+        const participants = await store.getParticipants(code);
+        const members = Object.values(participants).filter(p => p && p.groupId === groupId);
+        if (!members.length) return res.status(404).json({ error: 'no_such_team' });
+        for (const p of members) {
+          p.teamLabel = teamLabel;
+          await store.setParticipant(code, p.id, p);
+        }
+        return res.status(200).json({ ok: true, groupId, teamLabel });
       }
 
       case 'set_captain': {
@@ -239,6 +265,28 @@ module.exports = async (req, res) => {
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
 
         if (b.set === 'start') {
+          if (sess.mode === 'team') {
+            const participants = await store.getParticipants(code);
+            const all = Object.values(participants).filter(Boolean);
+            if (!all.length) {
+              return res.status(409).json({ error: 'participants_required', message: 'At least one student must join before a team session can start.' });
+            }
+            const unassigned = all.filter(p => !p.groupId);
+            if (unassigned.length) {
+              return res.status(409).json({
+                error: 'unassigned_participants',
+                count: unassigned.length,
+                participantIds: unassigned.map(p => p.id),
+                message: `${unassigned.length} student${unassigned.length === 1 ? ' is' : 's are'} still unassigned. Assign every student to a team before starting.`
+              });
+            }
+            const groups = {};
+            for (const p of all) (groups[p.groupId] ||= []).push(p);
+            const missingLead = Object.entries(groups).filter(([, members]) => !members.some(p => p.isCaptain)).map(([gid]) => gid);
+            if (missingLead.length) {
+              return res.status(409).json({ error: 'team_lead_required', groupIds: missingLead, message: 'Every team must have one team lead before the session starts.' });
+            }
+          }
           sess.state = 'running';
           sess.startedAt = Date.now();
         }
@@ -268,25 +316,23 @@ module.exports = async (req, res) => {
         const existing = all[id];
 
         let groupId = existing ? existing.groupId : null;
-        let teamLabel = existing ? (existing.teamLabel || existing.name) : '';
+        let teamLabel = existing ? (existing.teamLabel || '') : '';
         if (sess.mode === 'individual') {
           groupId = `individual:${id}`;
           teamLabel = name;
-        } else if (!groupId) {
-          const asked = String(b.teamName || '').trim().slice(0, 40);
-          const norm = key(asked).replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
-          groupId = norm ? `team:${norm}` : `solo:${id}`;
-          teamLabel = asked || name;
+        } else if (!existing) {
+          // Team sessions are instructor-managed. New students always enter the
+          // unassigned pool; the faculty console creates teams and chooses leads.
+          groupId = null;
+          teamLabel = '';
         }
 
-        const members = Object.values(all).filter(p => p && p.groupId === groupId);
         const participant = {
           id,
           name,
           groupId,
           teamLabel,
-          isCaptain: existing ? !!existing.isCaptain
-            : (sess.mode === 'individual' || !members.some(m => m.isCaptain)),
+          isCaptain: existing ? !!existing.isCaptain : sess.mode === 'individual',
           joinedAt: existing ? existing.joinedAt : Date.now()
         };
         await store.addParticipant(code, id, participant);
