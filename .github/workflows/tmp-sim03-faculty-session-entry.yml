@@ -1,0 +1,59 @@
+name: tmp-sim03-faculty-session-entry
+on:
+  push:
+    branches: [fix/sim03-faculty-team-session-entry]
+permissions:
+  contents: write
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sim03-faculty-team-session-entry
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply faculty session-entry patch
+        run: python .github/scripts/sim03_faculty_session_entry.py
+      - name: Assert team/session engine untouched
+        run: |
+          git diff --exit-code HEAD -- sim03/api/session.js sim03/lib/store.js sim03/lib/guard.js sim03/config/thresholds.json sim03/public/instructor.html sim03/lib/scenario.js sim03/lib/closingLesson.js sim03/api/finish.js platform/api/launch.js platform/public/faculty.html
+      - name: Verify faculty and student entry paths
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=fs.readFileSync('sim03/public/index.html','utf8');
+          for(const x of ['Run a facilitated session','Join a facilitated session','runSessionEntry',"BASE+'/instructor.html#lt='","LAUNCH.role==='faculty'","LAUNCH.role==='faculty_preview'"]) if(!h.includes(x)) throw new Error('missing '+x);
+          const launch=fs.readFileSync('sim03/public/launch.html','utf8');
+          if(!launch.includes("launch.mode==='session'")) throw new Error('platform session launch routing missing');
+          if(!launch.includes("faculty?'/instructor.html':'/index.html'")) throw new Error('launch target routing missing');
+          console.log('Faculty/student session entry checks passed.');
+          NODE
+      - name: Run Sim03 tests
+        run: npm --prefix sim03 test
+      - name: Run Sim03 build guards
+        run: npm --prefix sim03 run build
+      - name: Run platform integration
+        run: node platform/tools/check-sim03-integration.js
+      - name: Parse student browser JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          text=Path('sim03/public/index.html').read_text()
+          scripts=re.findall(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', text)
+          assert scripts
+          for i,s in enumerate(scripts):
+              p=Path(tempfile.gettempdir())/f'sim03-fac-session-{i}.js'
+              p.write_text(s)
+              subprocess.run(['node','--check',str(p)],check=True)
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name 'OneSmarterInc Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add sim03/public/index.html sim03/build.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix Sim03 faculty team-session entry'
+          git push origin HEAD:fix/sim03-faculty-team-session-entry
