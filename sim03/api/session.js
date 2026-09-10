@@ -2,6 +2,7 @@ const { body } = require('../lib/guard.js');
 const store = require('../lib/store.js');
 const { verifyLaunch } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
+const { leadOf, runnerOf, revisionOf, screenOf } = require('../lib/team-runner.js');
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
@@ -81,6 +82,10 @@ function publicRun(run) {
   return {
     runId: run.runId,
     phase: run.phase || 0,
+    screen: screenOf(run),
+    year2Event: run.year2Event || 0,
+    runnerId: run.runnerId || null,
+    runnerRevision: revisionOf(run),
     year1: run.year1 || null,
     year2: run.year2 || null,
     strategicView: run.strategicView || '',
@@ -113,6 +118,7 @@ module.exports = async (req, res) => {
   const code = String(b.code || '').toUpperCase().trim();
 
   try {
+    for (let attempt = 0; attempt < 5; attempt++) {
     switch (action) {
       case 'create': {
         const who = whoIsFaculty(req, b);
@@ -238,24 +244,44 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, groupId, teamLabel });
       }
 
-      case 'claim_lead': {
+      // Older clients must not silently change team leadership to take control.
+      case 'claim_lead':
+        return res.status(409).json({ error: 'runner_assignment_required', message: 'Reload this page. Your team lead can select a simulation runner without changing team leadership.' });
+
+      case 'set_runner': {
         const sess = await store.getSession(code);
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
-        if (sess.state !== 'lobby') {
-          return res.status(409).json({ error: 'team_lead_locked', message: 'The team runner is locked once the session starts. Ask the instructor if a handoff is needed.' });
-        }
+        if (sess.state === 'closed') return res.status(409).json({ error: 'session_closed' });
         const participants = await store.getParticipants(code);
-        const pid = String(b.participantId || '');
-        const chosen = participants[pid];
-        if (!chosen) return res.status(404).json({ error: 'no_such_participant' });
-        if (!chosen.groupId) return res.status(409).json({ error: 'team_not_assigned', message: 'Wait for the instructor to place you on a team first.' });
-        for (const p of Object.values(participants)) {
-          if (!p || p.groupId !== chosen.groupId) continue;
-          p.isCaptain = p.id === pid;
-          await store.setParticipant(code, p.id, p);
+        const me = participants[String(b.participantId || '')];
+        if (!me) return res.status(403).json({ error: 'not_joined' });
+        if (!me.groupId) return res.status(409).json({ error: 'team_not_assigned' });
+        if (leadOf(participants, me.groupId)?.id !== me.id) {
+          return res.status(403).json({ error: 'team_lead_only', message: 'Agree as a team, then ask your team lead to assign the runner.' });
         }
-        return res.status(200).json({ ok: true, groupId: chosen.groupId, captainId: pid });
+        const chosen = participants[String(b.runnerId || '')];
+        if (!chosen || chosen.groupId !== me.groupId) {
+          return res.status(400).json({ error: 'runner_must_be_teammate' });
+        }
+        const previous = (await store.getRuns(code))[me.groupId] || null;
+        if (Number(previous?.phase || 0) >= 3 || previous?.done) {
+          return res.status(409).json({ error: 'run_already_completed' });
+        }
+        const runner = runnerOf(participants, me.groupId, previous);
+        if (b.expectedRunnerId !== (runner?.id || null) || b.runnerRevision !== revisionOf(previous)) {
+          return res.status(409).json({ error: 'runner_changed', message: 'The runner changed. Review the current selection and try again.' });
+        }
+        const next = {
+          ...(previous || { runId: me.groupId, phase: 0, done: false, createdAt: Date.now() }),
+          runnerId: chosen.id,
+          runnerRevision: revisionOf(previous) + 1,
+          runnerAssignedBy: me.id,
+          runnerAssignedAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        if (!await store.compareAndSetRun(code, me.groupId, previous, next, sess, participants)) continue;
+        return res.status(200).json({ ok: true, runnerId: chosen.id, runnerRevision: next.runnerRevision });
       }
 
       case 'set_captain': {
@@ -367,26 +393,28 @@ module.exports = async (req, res) => {
         const me = participants[pid] || null;
         if (!me) return res.status(403).json({ error: 'not_joined' });
 
-        let mates = [];
-        if (me.groupId) {
-          mates = Object.values(participants)
-            .filter(p => p && p.groupId === me.groupId)
-            .map(p => ({ id: p.id, name: p.name, isCaptain: !!p.isCaptain }));
-        }
         const runs = await store.getRuns(code);
         const rid = runIdFor(sess, me);
         const rawRun = rid ? runs[rid] : null;
+        const runner = runnerOf(participants, me.groupId, rawRun);
+        const canSubmit = sess.mode === 'individual' || runner?.id === me.id;
+        const mates = Object.values(participants).filter(p => p && me.groupId && p.groupId === me.groupId)
+          .map(p => ({ id: p.id, name: p.name, isCaptain: !!p.isCaptain, isRunner: p.id === runner?.id }));
         const run = publicRun(rawRun);
-        if (run && rawRun && rawRun.reflections && rawRun.reflections[pid]) {
-          run.reflection1 = rawRun.reflections[pid].reflection1 || '';
-          run.reflection2 = rawRun.reflections[pid].reflection2 || '';
+        if (run && sess.mode === 'team') {
+          const mine = rawRun.reflections?.[pid] || {};
+          run.reflection1 = mine.reflection1 || '';
+          run.reflection2 = mine.reflection2 || '';
+          run.done = !!rawRun.finishedBy?.[pid];
         }
-        if (run && sess.mode === 'team') run.done = !!(rawRun && rawRun.finishedBy && rawRun.finishedBy[pid]);
         return res.status(200).json({
           session: publicSession(sess),
-          me,
+          me: { ...me, isRunner: canSubmit },
           mates,
-          canSubmit: sess.mode === 'individual' || !!me.isCaptain,
+          canSubmit,
+          canAssignRunner: sess.mode === 'team' && leadOf(participants, me.groupId)?.id === me.id && sess.state !== 'closed' && Number(rawRun?.phase || 0) < 3,
+          runnerId: sess.mode === 'team' ? runner?.id || null : me.id,
+          runnerRevision: revisionOf(rawRun),
           run
         });
       }
@@ -402,28 +430,39 @@ module.exports = async (req, res) => {
         const me = participants[pid];
         if (!me) return res.status(403).json({ error: 'not_joined' });
         if (sess.mode === 'team' && !me.groupId) return res.status(409).json({ error: 'team_not_assigned' });
-        const wantsSharedDecision = b.strategicView !== undefined || b.year1 !== undefined || b.year2 !== undefined;
-        if (sess.mode === 'team' && wantsSharedDecision && !me.isCaptain) {
-          return res.status(403).json({ error: 'captain_only' });
-        }
-
+        const wantsSharedDecision = ['strategicView', 'year1', 'year2', 'screen', 'year2Event'].some(k => b[k] !== undefined);
         const rid = runIdFor(sess, me);
         const runs = await store.getRuns(code);
-        const current = runs[rid] || { runId: rid, phase: 0, done: false, createdAt: Date.now() };
-        if (sess.mode === 'team' && !me.isCaptain && b.done && Number(current.phase || 0) < 3) {
+        const previous = runs[rid] || null;
+        const current = previous || { runId: rid, phase: 0, done: false, createdAt: Date.now() };
+        const isRunner = sess.mode === 'individual' || runnerOf(participants, me.groupId, current)?.id === pid;
+        if (sess.mode === 'team' && wantsSharedDecision && !isRunner) {
+          return res.status(403).json({ error: 'runner_only', message: 'Only the selected simulation runner can submit or advance the shared run.' });
+        }
+        if (sess.mode === 'team' && !isRunner && b.done && Number(current.phase || 0) < 3) {
           return res.status(409).json({ error: 'team_run_not_complete', message: 'Wait for your team runner to reach the close before submitting your reflection.' });
         }
-        if (current.done && (wantsSharedDecision || sess.mode === 'individual')) {
+        if (sess.mode === 'team' && (wantsSharedDecision || (b.done && Number(current.phase || 0) < 3)) &&
+            b.runnerRevision !== revisionOf(current)) {
+          return res.status(409).json({ error: 'runner_changed', message: 'Runner control changed. Refresh before continuing.' });
+        }
+        if ((current.done || (sess.mode === 'team' && Number(current.phase || 0) >= 3)) && wantsSharedDecision ||
+            (current.done && sess.mode === 'individual')) {
           return res.status(409).json({ error: 'run_already_completed' });
         }
 
         const next = { ...current };
+        if (sess.mode === 'team') {
+          next.runnerId = runnerOf(participants, me.groupId, current)?.id || null;
+          next.runnerRevision = revisionOf(current);
+        }
         if (b.strategicView !== undefined) {
           const proposed = String(b.strategicView || '').slice(0, 500);
           if (current.strategicView && current.strategicView !== proposed) {
             return res.status(409).json({ error: 'strategic_view_locked' });
           }
           next.strategicView = current.strategicView || proposed;
+          if (!current.strategicView) next.screen = 4;
         }
         if (b.year1 !== undefined) {
           const v = S.validateAllocation(b.year1);
@@ -432,6 +471,7 @@ module.exports = async (req, res) => {
             return res.status(409).json({ error: 'year1_locked' });
           }
           next.year1 = current.year1 || v.allocation;
+          if (!current.year1) next.screen = 5;
           next.phase = Math.max(next.phase || 0, 1);
         }
         if (b.year2 !== undefined) {
@@ -442,6 +482,7 @@ module.exports = async (req, res) => {
             return res.status(409).json({ error: 'year2_locked' });
           }
           next.year2 = current.year2 || v.allocation;
+          if (!current.year2) next.screen = 7;
           next.phase = Math.max(next.phase || 0, 2);
         }
         if (b.reflection1 !== undefined || b.reflection2 !== undefined) {
@@ -455,14 +496,28 @@ module.exports = async (req, res) => {
             at: Date.now()
           };
           next.reflections = map;
-          if (sess.mode === 'individual' || me.isCaptain) {
+          if (isRunner) {
             next.reflection1 = map[pid].reflection1;
             next.reflection2 = map[pid].reflection2;
           }
         }
 
+        if (b.screen !== undefined) {
+          if (!Number.isInteger(b.screen) || b.screen < 0 || b.screen > 10) return res.status(400).json({ error: 'invalid_screen' });
+          if (b.screen >= 4 && !next.strategicView && !next.year1) return res.status(409).json({ error: 'strategic_view_required' });
+          if (b.screen >= 5 && !next.year1) return res.status(409).json({ error: 'year1_required' });
+          if (b.screen >= 7 && !next.year2) return res.status(409).json({ error: 'year2_required' });
+          next.screen = b.screen;
+        }
+        if (b.year2Event !== undefined) {
+          if (![0, 1].includes(b.year2Event)) return res.status(400).json({ error: 'invalid_year2_event' });
+          if (!next.year2) return res.status(409).json({ error: 'year2_required' });
+          next.year2Event = b.year2Event;
+        }
         if (next.year1 && next.year2) {
           next.outcomes = S.evaluateAll(next.year1, next.year2, sess.thresholds);
+        } else if (next.year1) {
+          next.outcomes = { year1: S.evaluateYear1(next.year1, sess.thresholds) };
         }
         if (b.done) {
           if (!next.year1 || !next.year2) return res.status(409).json({ error: 'allocations_incomplete' });
@@ -474,16 +529,23 @@ module.exports = async (req, res) => {
             next.done = true;
           }
           next.phase = 3;
+          next.screen = 10;
           if (next.done) next.completedAt = Date.now();
         }
         next.updatedAt = Date.now();
-        await store.setRun(code, rid, next);
+        if (sess.mode === 'team') {
+          if (!await store.compareAndSetRun(code, rid, previous, next, sess, participants)) continue;
+        } else {
+          await store.setRun(code, rid, next);
+        }
         return res.status(200).json({ ok: true, run: publicRun(next) });
       }
 
       default:
         return res.status(400).json({ error: 'unknown_action' });
     }
+    }
+    return res.status(409).json({ error: 'run_changed', message: 'The team state changed. Refresh and try again.' });
   } catch (e) {
     if (e.code === 'NO_STORE') return res.status(503).json({ error: 'no_store', message: e.message });
     console.error('session failure', action, e.message);

@@ -35,6 +35,23 @@ async function hgetall(key) {
   return out;
 }
 
+// Compare the run, session state and roster in one Redis operation. A handoff,
+// pause or reassignment invalidates an in-flight write; callers reread/revalidate.
+// Reflections share this path so concurrent member saves cannot erase each other.
+const CAS_RUN = `
+if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1] then return 0 end
+if (redis.call('HGET', KEYS[3], ARGV[2]) or '') ~= ARGV[3] then return 0 end
+local count = tonumber(ARGV[6])
+if redis.call('HLEN', KEYS[2]) ~= count then return 0 end
+for i = 1, count do
+  local offset = 7 + (i - 1) * 2
+  if (redis.call('HGET', KEYS[2], ARGV[offset]) or '') ~= ARGV[offset + 1] then return 0 end
+end
+redis.call('HSET', KEYS[3], ARGV[2], ARGV[4])
+redis.call('EXPIRE', KEYS[3], ARGV[5])
+return 1
+`;
+
 module.exports = {
   configured,
   async getSession(code) { return J(await cmd(['GET', `m03:sess:${code}`])); },
@@ -56,6 +73,14 @@ module.exports = {
     await cmd(['EXPIRE', `m03:sess:${code}:run`, String(TTL)]);
   },
   async getRuns(code) { return hgetall(`m03:sess:${code}:run`); },
+  async compareAndSetRun(code, runId, previous, next, session, participants) {
+    const roster = Object.entries(participants).flatMap(([id, p]) => [id, JSON.stringify(p)]);
+    const result = await cmd(['EVAL', CAS_RUN, '3',
+      `m03:sess:${code}`, `m03:sess:${code}:p`, `m03:sess:${code}:run`,
+      JSON.stringify(session), runId, previous ? JSON.stringify(previous) : '',
+      JSON.stringify(next), String(TTL), String(roster.length / 2), ...roster]);
+    return Number(result) === 1;
+  },
 
   async wipe(code) {
     await cmd(['DEL', `m03:sess:${code}`, `m03:sess:${code}:p`, `m03:sess:${code}:run`]);

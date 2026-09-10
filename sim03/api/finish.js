@@ -1,34 +1,60 @@
 const { checkAccess, body } = require('../lib/guard.js');
-const { reportCompletion } = require('../lib/launch.js');
-const { verifyLaunch } = require('../lib/launch.js');
+const { reportCompletion, verifyLaunch } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
 const { buildClosingLesson } = require('../lib/closingLesson.js');
 const store = require('../lib/store.js');
+const submitSession = require('./session.js');
 
-async function sessionRun(b) {
+async function sessionRun(req, b) {
   const code = String(b.sessionCode || '').toUpperCase().trim();
   const pid = String(b.participantId || '');
-  if (!code || !pid || !store.configured()) return null;
-  const sess = await store.getSession(code);
-  if (!sess) {
-    const e = new Error('no_such_session'); e.status = 404; throw e;
+  // Standalone launches may retain a participant ID from an earlier session.
+  // No session code means the normal standalone access guard must handle it.
+  if (!code) return null;
+  const reject = (status, message) => { const e = new Error(message); e.status = status; throw e; };
+  if (!code || !pid) reject(400, 'session_identity_required');
+  if (!store.configured()) reject(503, 'no_store');
+  const beforeSession = await store.getSession(code);
+  if (!beforeSession) reject(404, 'no_such_session');
+  const beforeParticipants = await store.getParticipants(code);
+  const beforeMe = beforeParticipants[pid];
+  if (!beforeMe) reject(403, 'not_joined');
+  const beforeRid = beforeSession.mode === 'individual' ? `individual:${pid}` : beforeMe.groupId;
+  const beforeRun = beforeRid ? (await store.getRuns(code))[beforeRid] : null;
+  const alreadySaved = beforeSession.mode === 'individual' ? beforeRun?.done : beforeRun?.finishedBy?.[pid];
+  // The browser saves its reflection before requesting the completion report.
+  // Repeated reports must not resubmit a completed individual run or overwrite
+  // a previously saved reflection with an empty/missing request field.
+  if (alreadySaved && beforeRun?.year1 && beforeRun?.year2) {
+    return { sess: beforeSession, run: beforeRun, participants: beforeParticipants,
+      me: beforeMe, rid: beforeRid, code, pid };
   }
+  // All facilitated completion writes use the same authorized, optimistic
+  // transaction as /session. A second read-modify-write here would lose other
+  // members' reflections and could race a runner handoff.
+  const saved = {
+    statusCode: 200, payload: null,
+    status(n) { this.statusCode = n; return this; },
+    json(value) { this.payload = value; return this; },
+    end() { return this; }
+  };
+  await submitSession({ method: 'POST', headers: req.headers, body: {
+    action: 'submit', code, participantId: pid, runnerRevision: b.runnerRevision,
+    reflection1: b.reflection1, reflection2: b.reflection2, done: true
+  } }, saved);
+  // Includes runner_only, runner_changed, and team_run_not_complete checks.
+  if (saved.statusCode !== 200) reject(saved.statusCode, saved.payload?.error || 'completion_failed');
+  const sess = await store.getSession(code);
+  if (!sess) reject(404, 'no_such_session');
   const participants = await store.getParticipants(code);
   const me = participants[pid];
-  if (!me) {
-    const e = new Error('not_joined'); e.status = 403; throw e;
-  }
-  const rid = sess.mode === 'individual' ? `individual:${me.id}` : me.groupId;
-  const run = rid ? (await store.getRuns(code))[rid] : null;
-  if (!run || !run.year1 || !run.year2) {
-    const e = new Error('allocations_incomplete'); e.status = 409; throw e;
-  }
-  if (sess.mode === 'team' && !me.isCaptain && Number(run.phase || 0) < 3) {
-    const e = new Error('team_run_not_complete'); e.status = 409; throw e;
-  }
+  if (!me) reject(403, 'not_joined');
+  // Use the run ID authorized by submit, not a possibly changed roster group.
+  const rid = saved.payload.run.runId;
+  const run = (await store.getRuns(code))[rid];
+  if (!run || !run.year1 || !run.year2) reject(409, 'allocations_incomplete');
   return { sess, run, participants, me, rid, code, pid };
 }
-
 
 function overallOutcomeText(outcomes) {
   const y1 = outcomes && outcomes.year1 && outcomes.year1.band;
@@ -42,7 +68,6 @@ function overallOutcomeText(outcomes) {
   return [a,b,c,d].filter(Boolean).join(' ');
 }
 function publicOutcome(o) { return o ? { title:o.title, narrative:o.narrative, band:o.band } : null; }
-
 function allocationLabel(a) {
   return `Run ${a.run} · Uptime ${a.uptime} · Capacity ${a.capacity} · Connect ${a.connect} · Features ${a.features}`;
 }
@@ -50,37 +75,19 @@ function allocationLabel(a) {
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-
   const b = body(req);
   let y1, y2, outcomes, summary, lessonThresholds;
-
   try {
-    const sr = await sessionRun(b);
+    const sr = await sessionRun(req, b);
     if (sr) {
       y1 = sr.run.year1;
       y2 = sr.run.year2;
       lessonThresholds = sr.sess.thresholds || S.DEFAULT_THRESHOLDS;
       outcomes = sr.run.outcomes || S.evaluateAll(y1, y2, lessonThresholds);
-      const reflection1 = String(b.reflection1 || '').slice(0, 1500);
-      const reflection2 = String(b.reflection2 || '').slice(0, 1500);
-      const reflections = { ...(sr.run.reflections || {}) };
-      reflections[sr.pid] = { participantId: sr.pid, name: sr.me.name, reflection1, reflection2, at: Date.now() };
-      const finishedBy = { ...(sr.run.finishedBy || {}), [sr.pid]: Date.now() };
-      const members = Object.values(sr.participants).filter(p => p && p.groupId === sr.rid);
-      const allDone = sr.sess.mode === 'individual' || (members.length > 0 && members.every(m => finishedBy[m.id]));
-      const updated = { ...sr.run, reflections, finishedBy, done: allDone, phase: 3, updatedAt: Date.now() };
-      if (allDone) updated.completedAt = Date.now();
-      if (sr.sess.mode === 'individual' || sr.me.isCaptain) {
-        updated.reflection1 = reflection1;
-        updated.reflection2 = reflection2;
-      }
-      await store.setRun(sr.code, sr.rid, updated);
+      const mine = sr.run.reflections?.[sr.pid] || {};
       summary = {
-        strategicView: sr.run.strategicView || '',
-        year1: y1,
-        year2: y2,
-        reflection1,
-        reflection2,
+        strategicView: sr.run.strategicView || '', year1: y1, year2: y2,
+        reflection1: mine.reflection1 || '', reflection2: mine.reflection2 || '',
         year3Band: outcomes.year3.band
       };
     } else {
@@ -93,8 +100,7 @@ module.exports = async (req, res) => {
       outcomes = S.evaluateAll(y1, y2, lessonThresholds);
       summary = {
         strategicView: String(b.strategicView || '').slice(0, 500),
-        year1: y1,
-        year2: y2,
+        year1: y1, year2: y2,
         reflection1: String(b.reflection1 || '').slice(0, 1500),
         reflection2: String(b.reflection2 || '').slice(0, 1500),
         year3Band: outcomes.year3.band
@@ -103,9 +109,7 @@ module.exports = async (req, res) => {
   } catch (e) {
     return res.status(e.status || 500).json({ error: e.message || 'server_error' });
   }
-
   const closingLesson = buildClosingLesson(y1, y2, outcomes, lessonThresholds);
-
   summary.result = {
     overall: overallOutcomeText(outcomes),
     year1: publicOutcome(outcomes.year1),
@@ -114,11 +118,6 @@ module.exports = async (req, res) => {
     cumulative: outcomes.year3 && outcomes.year3.cumulative ? outcomes.year3.cumulative : null,
     buyers: outcomes.buyers || null
   };
-
-  // These are intentionally decision/debrief summaries rather than hidden
-  // thresholds. The platform faculty progress page renders metrics directly,
-  // so the facilitator can see what the student chose and reflected on after a
-  // platform-launched run without opening a separate Sim03 datastore.
   const metrics = {
     openingView: summary.strategicView,
     year1Allocation: allocationLabel(y1),
@@ -130,20 +129,9 @@ module.exports = async (req, res) => {
     cumulativeCapacity: outcomes.year3.cumulative.capacity,
     year3Band: outcomes.year3.band
   };
-
-  // A facilitated session can be used standalone. Report back only when this
-  // browser also carries a valid platform launch token.
   const lt = req.headers['x-launch-token'];
   const launch = lt ? verifyLaunch(String(lt)) : null;
   let report = { ok: false, skipped: true };
-  if (launch && (!launch.sim || launch.sim === S.META.id)) {
-    report = await reportCompletion({ launch, summary, metrics });
-  }
-
-  return res.status(200).json({
-    ok: true,
-    completionReported: !!report.ok,
-    outcomes,
-    closingLesson
-  });
+  if (launch && (!launch.sim || launch.sim === S.META.id)) report = await reportCompletion({ launch, summary, metrics });
+  return res.status(200).json({ ok: true, completionReported: !!report.ok, outcomes, closingLesson });
 };
