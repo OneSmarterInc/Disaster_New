@@ -1,6 +1,7 @@
 const assert = require('assert');
 const store = require('../lib/store.js');
 const handler = require('../api/session.js');
+const { launchToken } = require('../../platform/lib/launch.js');
 
 const originalEnv = {
   FACULTY_CODES: process.env.FACULTY_CODES,
@@ -54,6 +55,19 @@ async function invoke(body, headers = {}) {
     assert.equal(r.status, 401, 'anonymous create must fail closed when no roster is configured');
     assert.equal(r.body.error, 'faculty_authorization_required');
 
+    process.env.LAUNCH_SECRET = 'shared-test-secret';
+    const token = launchToken({
+      userId: 'faculty-1', name: 'Instructor', role: 'faculty',
+      simId: 'rapid-03-midland', mode: 'session', minutes: 60
+    });
+    r = await invoke({ action: 'create', name: 'Platform team smoke', mode: 'team' }, { 'x-launch-token': token });
+    assert.equal(r.status, 200, 'signed platform faculty token should create a team session');
+    assert.equal(r.body.session.mode, 'team');
+    r = await invoke({ action: 'create', name: 'Platform body-token smoke', mode: 'team', launchToken: token });
+    assert.equal(r.status, 200, 'instructor body fallback should accept the same signed token');
+    assert.equal(r.body.session.mode, 'team');
+
+    delete process.env.LAUNCH_SECRET;
     process.env.FACULTY_CODES = 'Instructor:faculty-secret';
 
     r = await invoke({ action: 'create', name: 'Audit', mode: 'individual', facultyCode: 'wrong' });
