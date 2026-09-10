@@ -132,10 +132,11 @@ function teamBanner(){
   if(!S.session)return '';
   const mode=S.session.mode==='team'?'Team':'Individual';
   if(S.session.mode!=='team')return `<div class="team"><b>${mode} session ${esc(S.session.code)}</b><br>You can commit this run.</div>`;
+  if(!S.me?.groupId)return `<div class="team"><b>Waiting for team assignment · session ${esc(S.session.code)}</b><br>Your instructor will place you on a team and choose the team lead. Stay on this page; it updates automatically.</div>`;
   const teamName=esc(S.me?.teamLabel||'Your team');
-  const roster=S.mates.length?S.mates.map(x=>esc(x.name)+(x.isCaptain?' (captain)':'')).join(' · '):'Waiting for teammates';
+  const roster=S.mates.length?S.mates.map(x=>esc(x.name)+(x.isCaptain?' (team lead)':'')).join(' · '):'Waiting for teammates';
   const commit=S.teamRun?.year1?`Year 1 committed${S.teamRun.updatedAt?' · '+new Date(S.teamRun.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}`:'Year 1 not committed yet';
-  const control=S.canSubmit?'You are the captain and commit the shared allocation.':'Your captain commits the shared allocation.';
+  const control=S.canSubmit?'You are the team lead and commit the shared allocation.':'Your team lead commits the shared allocation.';
   return `<div class="team"><b>${teamName} · session ${esc(S.session.code)}</b><br>${roster}<br>${esc(commit)} · ${esc(control)}</div>`;
 }
 function notice(msg,bad=false){return `<div class="notice ${bad?'error':''}">${esc(msg)}</div>`}
@@ -165,20 +166,18 @@ async function init(){
 }
 
 function renderJoin(){
-  shell(`<section class="joinbox"><div class="eyebrow">Facilitated session</div><h2>Join Midland Equipment</h2><p class="lede">Enter your name and the session code shown by your instructor.</p>
+  shell(`<section class="joinbox"><div class="eyebrow">Facilitated session</div><h2>Join Midland Equipment</h2><p class="lede">Enter your name and the session code shown by your instructor. Your instructor will place you on a team if this is a team session.</p>
   ${S.error?notice(S.error,true):''}
   <div class="field"><label>Name</label><input id="joinName" autocomplete="name" placeholder="Your name"></div>
   <div class="field"><label>Session code</label><input id="joinCode" class="mono" maxlength="5" value="${esc(S.sessionCode)}" placeholder="ABCDE"></div>
-  <div class="field"><label>Team name <span class="hint">(team sessions only)</span></label><input id="teamName" maxlength="40" placeholder="Agree a short name with your table"></div>
   <div class="actions"><button class="btn pri" id="joinBtn">Join session</button></div></section>`);
   document.getElementById('joinBtn').onclick=joinSession;
 }
 async function joinSession(){
   const name=document.getElementById('joinName').value.trim();
   const code=document.getElementById('joinCode').value.trim().toUpperCase();
-  const teamName=document.getElementById('teamName')?.value.trim()||'';
   try{
-    const d=await sessionApi({action:'join',code,name,teamName,participantId:S.participantId||undefined});
+    const d=await sessionApi({action:'join',code,name,participantId:S.participantId||undefined});
     S.sessionCode=code;S.participantId=d.participantId;S.session=d.session;S.me=d.me;
     localStorage.setItem('m03-pid',S.participantId);S.error='';
     await pollSession(true);startPolling();render();
@@ -209,7 +208,7 @@ function sessionGate(){
   if(S.session.state==='closed')return notice('This session is closed.',true);
   return '';
 }
-function blocked(){return !!(S.session&&(S.session.state!=='running'||S.session.paused))}
+function blocked(){return !!(S.session&&(S.session.state!=='running'||S.session.paused||(S.session.mode==='team'&&!S.me?.groupId)))}
 
 async function saveRun(patch){
   if(!S.session)return {ok:true};
