@@ -7,7 +7,7 @@ const handler = require('../api/session.js');
 const outcome = require('../api/outcome.js');
 const finish = require('../api/finish.js');
 const originalStore = { ...store };
-const originalEnv = { FACULTY_CODE: process.env.FACULTY_CODE, FACULTY_CODES: process.env.FACULTY_CODES, LAUNCH_SECRET: process.env.LAUNCH_SECRET };
+const originalEnv = { FACULTY_CODE: process.env.FACULTY_CODE, FACULTY_CODES: process.env.FACULTY_CODES, LAUNCH_SECRET: process.env.LAUNCH_SECRET, ACCESS_CODE: process.env.ACCESS_CODE };
 const copy = value => value == null ? value : JSON.parse(JSON.stringify(value));
 const sessions = new Map(), participants = new Map(), runs = new Map();
 let beforeCAS = null, assertions = 0;
@@ -133,6 +133,10 @@ async function assign(lead, target) {
 
     for (const endpoint of [outcome, finish]) {
       check((await invoke({ sessionCode: code, year1: y1, year2: y2 }, endpoint)).body.error, 'session_identity_required', 'partial session identity must not fall back to standalone');
+    }
+    process.env.ACCESS_CODE = 'standalone-test';
+    for (const endpoint of [outcome, finish]) {
+      check((await invoke({ participantId: 'remembered-student', stage: 'year1', year1: y1, year2: y2 }, endpoint, { 'x-access-code': 'standalone-test' })).status, 200, 'remembered participant identity must not break a standalone launch');
     }
     const individual = await invoke({ action: 'create', mode: 'individual', ...faculty });
     code = individual.body.session.code;

@@ -8,7 +8,9 @@ const submitSession = require('./session.js');
 async function sessionRun(req, b) {
   const code = String(b.sessionCode || '').toUpperCase().trim();
   const pid = String(b.participantId || '');
-  if (!code && !pid) return null;
+  // Standalone launches may retain a participant ID from an earlier session.
+  // No session code means the normal standalone access guard must handle it.
+  if (!code) return null;
   const reject = (status, message) => { const e = new Error(message); e.status = status; throw e; };
   if (!code || !pid) reject(400, 'session_identity_required');
   if (!store.configured()) reject(503, 'no_store');

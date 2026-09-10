@@ -13,7 +13,9 @@ function evaluate(stage, y1, y2, thresholds) {
 async function fromSession(b, res) {
   const code = String(b.sessionCode || '').toUpperCase().trim();
   const pid = String(b.participantId || '');
-  if (!code && !pid) return false;
+  // A remembered participant ID without a session code is a standalone run.
+  // Standalone access is still checked by checkAccess below.
+  if (!code) return false;
   const reject = (status, error) => { res.status(status).json({ error }); return true; };
   if (!code || !pid) return reject(400, 'session_identity_required');
   if (!store.configured()) return reject(503, 'no_store');
