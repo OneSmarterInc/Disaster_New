@@ -1,0 +1,56 @@
+name: Midland Increment 3 implementation verification
+on:
+  push:
+    branches: [feature/midland-increment-3]
+    paths: ['.midland-increment3/**']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Capture accepted baseline
+        run: |
+          mkdir -p "$RUNNER_TEMP/midland-baseline"
+          git archive 843da85c2ef97298a7d51c3c49c0b67ea1fa9c1f sim03 | tar -x -C "$RUNNER_TEMP/midland-baseline"
+      - name: Apply student-only Increment 3
+        run: python3 .midland-increment3/apply.py
+      - name: Build, behavioral regressions, and unchanged-band proof
+        env:
+          MIDLAND_BASELINE: ${{ runner.temp }}/midland-baseline/sim03
+        run: |
+          cd sim03
+          npm test
+          npm run build
+      - name: Install browser test runtime outside the repository
+        run: |
+          mkdir -p "$RUNNER_TEMP/midland-browser"
+          cd "$RUNNER_TEMP/midland-browser"
+          npm install --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Student browser and laptop-layout checks
+        env:
+          NODE_PATH: ${{ runner.temp }}/midland-browser/node_modules
+          MIDLAND_SCREENSHOTS: ${{ runner.temp }}/midland-screenshots
+        run: node sim03/tools/increment3-browser-check.js
+      - name: Preserve verification screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midland-increment3-browser-evidence
+          path: ${{ runner.temp }}/midland-screenshots
+          if-no-files-found: ignore
+      - name: Commit only verified student changes to the isolated branch
+        run: |
+          git diff --check
+          git diff --exit-code -- sim03/public/instructor.html sim03/api/session.js sim03/lib/store.js sim03/config/thresholds.json sim03/api/finish.js
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sim03/lib/scenario.js sim03/lib/closingLesson.js sim03/public/index.html sim03/build.js sim03/tools/increment2-check.js
+          git commit -m 'Tighten and generalise Midland student experience (Increment 3)'
+          git push origin HEAD:feature/midland-increment-3
