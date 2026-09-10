@@ -99,7 +99,7 @@ if (!index.includes("location.assign(BASE+'/launch.html')")) {
 
 for (const marker of ['runSessionEntry','Run a facilitated session',"BASE+'/instructor.html#lt='","LAUNCH.role==='faculty'"]) if (!index.includes(marker)) refuse('faculty session-entry marker missing: ' + marker);
 for (const marker of [
-  'Join a facilitated session', 'Waiting for team assignment', 'function safeToRerender()', 'Team allocation is read-only for non-captains',
+  'Join a facilitated session', 'Waiting for team assignment', 'function safeToRerender()', 'Team mode · read-only',
   "if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true})",
   "C.buyers?.authored===false", "const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome)"
 ]) if (!index.includes(marker)) refuse('team/conformance student marker missing: ' + marker);
@@ -159,5 +159,7 @@ execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-flow-check.j
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-handler-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'closing-lesson-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'increment2-check.js')], { stdio: 'inherit' });
+
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-runner-ui-check.js')], { stdio: 'inherit' });
 
 console.log('RapidSim 03 build guards passed.');

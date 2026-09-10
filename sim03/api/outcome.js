@@ -1,45 +1,39 @@
 const { checkAccess, body } = require('../lib/guard.js');
 const S = require('../lib/scenario.js');
 const store = require('../lib/store.js');
+const { runnerOf } = require('../lib/team-runner.js');
 
 function evaluate(stage, y1, y2, thresholds) {
   if (stage === 'year1') return { outcome: S.evaluateYear1(y1, thresholds) };
   if (stage === 'year2') return { outcome: S.evaluateYear2(y1, y2, thresholds) };
-  if (stage === 'year3' || stage === 'all') {
-    return { outcome: S.evaluateAll(y1, y2, thresholds) };
-  }
+  if (stage === 'year3' || stage === 'all') return { outcome: S.evaluateAll(y1, y2, thresholds) };
   return null;
 }
 
 async function fromSession(b, res) {
   const code = String(b.sessionCode || '').toUpperCase().trim();
   const pid = String(b.participantId || '');
-  if (!code || !pid || !store.configured()) return false;
-
+  if (!code && !pid) return false;
+  const reject = (status, error) => { res.status(status).json({ error }); return true; };
+  if (!code || !pid) return reject(400, 'session_identity_required');
+  if (!store.configured()) return reject(503, 'no_store');
   const sess = await store.getSession(code);
-  if (!sess) { res.status(404).json({ error: 'no_such_session' }); return true; }
+  if (!sess) return reject(404, 'no_such_session');
   const participants = await store.getParticipants(code);
   const me = participants[pid];
-  if (!me) { res.status(403).json({ error: 'not_joined' }); return true; }
-  if (sess.mode === 'team' && !me.isCaptain) {
-    res.status(403).json({ error: 'team_lead_only', message: 'Only the selected team runner opens and advances the simulation.' });
-    return true;
-  }
-
+  if (!me) return reject(403, 'not_joined');
   const rid = sess.mode === 'individual' ? `individual:${me.id}` : me.groupId;
-  if (!rid) { res.status(409).json({ error: 'team_not_assigned' }); return true; }
+  if (!rid) return reject(409, 'team_not_assigned');
   const run = (await store.getRuns(code))[rid];
-  if (!run) { res.status(409).json({ error: 'nothing_committed_yet' }); return true; }
-
-  const stage = String(b.stage || '');
-  if (!run.year1) { res.status(409).json({ error: 'year1_not_committed' }); return true; }
-  if (stage !== 'year1' && !run.year2) {
-    res.status(409).json({ error: 'year2_not_committed' });
-    return true;
+  if (sess.mode === 'team' && runnerOf(participants, rid, run)?.id !== me.id) {
+    return reject(403, 'runner_only');
   }
-
+  if (!run) return reject(409, 'nothing_committed_yet');
+  const stage = String(b.stage || '');
+  if (!run.year1) return reject(409, 'year1_not_committed');
+  if (stage !== 'year1' && !run.year2) return reject(409, 'year2_not_committed');
   const result = evaluate(stage, run.year1, run.year2, sess.thresholds);
-  if (!result) { res.status(400).json({ error: 'unknown_stage' }); return true; }
+  if (!result) return reject(400, 'unknown_stage');
   res.status(200).json(result);
   return true;
 }
@@ -47,7 +41,6 @@ async function fromSession(b, res) {
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-
   const b = body(req);
   try {
     if (await fromSession(b, res)) return;
@@ -55,17 +48,11 @@ module.exports = async (req, res) => {
     console.error('session outcome lookup failed', e.message);
     return res.status(500).json({ error: 'server_error' });
   }
-
   if (!checkAccess(req, res)) return;
-
   const stage = String(b.stage || '');
   const v1 = S.validateAllocation(b.year1);
   if (!v1.ok) return res.status(400).json(v1);
-
-  if (stage === 'year1') {
-    return res.status(200).json(evaluate(stage, v1.allocation, null, S.DEFAULT_THRESHOLDS));
-  }
-
+  if (stage === 'year1') return res.status(200).json(evaluate(stage, v1.allocation, null, S.DEFAULT_THRESHOLDS));
   const v2 = S.validateAllocation(b.year2);
   if (!v2.ok) return res.status(400).json(v2);
   const result = evaluate(stage, v1.allocation, v2.allocation, S.DEFAULT_THRESHOLDS);

@@ -15,7 +15,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%;background:var(--night);color:var(--bone)}
 body{font-family:var(--serif);font-size:16px;line-height:1.55;background-image:radial-gradient(1200px 650px at 70% -10%,rgba(240,166,60,.06),transparent 60%)}
-button,input,textarea{font:inherit;color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0}
 :focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .mono{font-family:var(--mono)}
@@ -35,7 +35,7 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .card{border:1px solid var(--line);background:var(--panel);padding:19px 20px}.card h3{font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer);margin-bottom:9px}.card p{color:#C8C5BD}
 .cold{display:grid;gap:10px;margin:24px 0}.cold .line{border-left:2px solid var(--line2);padding:11px 16px;font-size:18px;color:#D1CEC6}.cold .line:last-child{border-left-color:var(--amber)}
 .room-tour{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:22px}.room-card{border:1px solid var(--line);background:var(--panel);padding:18px}.room-name{font-size:23px;font-weight:400;line-height:1.15}.room-role{font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-top:5px}.room-line{display:inline-flex;margin-top:13px;border:1px solid #8A6427;background:rgba(240,166,60,.06);padding:4px 7px;font:600 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}.room-quote{font-size:16px;line-height:1.55;color:#C8C5BD;margin-top:12px}.room-close{border-left:2px solid var(--amber);padding:11px 14px;background:rgba(240,166,60,.05);color:#CBC8C0;margin-top:18px}.line-guide{display:grid;gap:0;border:1px solid var(--line);background:var(--panel);margin-top:18px}.line-guide-row{display:grid;grid-template-columns:110px 1fr;gap:14px;padding:12px 14px;border-bottom:1px solid var(--line);align-items:start}.line-guide-row:last-child{border-bottom:0}.line-guide-row b{font-size:17px;font-weight:500}.line-guide-row span{font-size:14px;color:var(--dim);line-height:1.45}
-.field{margin-top:22px}.field label{display:block;font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.field textarea,.field input{width:100%;background:var(--panel);border:1px solid var(--line2);padding:13px 14px;font-size:17px}.field textarea{min-height:110px;resize:vertical}.hint{font-size:13px;color:var(--dimmer);margin-top:7px}
+.field{margin-top:22px}.field label{display:block;font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}.field textarea,.field input,.field select{width:100%;background:var(--panel);border:1px solid var(--line2);padding:13px 14px;font-size:17px}.field textarea{min-height:110px;resize:vertical}.hint{font-size:13px;color:var(--dimmer);margin-top:7px}
 .alloc-wrap{display:grid;grid-template-columns:1fr 245px;gap:22px;margin-top:25px}
 .allocs{display:grid;gap:8px}.alloc{border:1px solid var(--line);background:var(--panel);display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 14px 14px 17px;gap:14px}.alloc-title-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.alloc h3{font-size:20px;font-weight:400}.alloc-cap{display:inline-flex;border:1px solid #8A6427;background:rgba(240,166,60,.08);padding:3px 6px;font:600 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--amber)}.alloc .constraint{font:10px var(--mono);color:var(--dimmer);margin-top:5px;letter-spacing:.02em;line-height:1.5}.advocate-reminder{margin-top:9px;padding:8px 10px;border-left:2px solid var(--line2);background:rgba(255,255,255,.018);font-size:13px;line-height:1.45;color:#C8C5BD}.advocate-reminder b{display:block;font:600 9px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--bone);margin-bottom:3px}.alloc-rule{font:9px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--amber);margin-top:7px}.stepper{display:flex;align-items:center;gap:9px}.step{width:37px;height:37px;border:1px solid var(--line2);font:20px var(--mono);color:var(--dim)}.step:hover:not(:disabled){border-color:var(--amber);color:var(--amber)}.amount{min-width:62px;text-align:center;font:600 20px var(--mono);color:var(--bone)}.amount small{font-size:10px;color:var(--dimmer);font-weight:400}
 .budget{position:sticky;top:90px;border:1px solid #8A6427;background:rgba(240,166,60,.06);padding:20px}.budget .n{font:600 48px var(--mono);color:var(--amber);line-height:1}.budget .lab{font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);margin-top:7px}.budget .total{margin-top:20px;padding-top:14px;border-top:1px solid #6D5228;font-size:14px;color:#C9C6BE}
@@ -83,7 +83,9 @@ const S={
   reflection1:'',reflection2:'',finished:false,year2Event:0,viewCommitted:false,
   sessionCode:INITIAL_SESSION,participantId:localStorage.getItem('m03-pid')||'',
   session:null,me:null,mates:[],canSubmit:true,teamRun:null,
-  poll:null,error:'',closingLesson:null
+  poll:null,error:'',closingLesson:null,
+  runnerId:null,runnerRevision:0,canAssignRunner:false,runnerChoice:'',
+  hasSessionState:false,stateRequest:0,stateApplied:0,reflectionDirty:false,advancing:false
 };
 const STEPS=['Brief','Room','Position','View','Year 1','Outcome','Year 2','Events','Year 3','Buyers','Close'];
 
@@ -94,9 +96,12 @@ function friendlyError(code,status){
     year2_locked:'Year 2 has already been committed and cannot be changed after its events are revealed.',
     session_not_running:'Your instructor has not started the session yet.',
     session_paused:'Your instructor has paused the session.',
-    captain_only:'Only your team lead can commit this choice.',
-    team_lead_only:'Only the selected team runner opens and advances the simulation.',
-    team_lead_locked:'The team runner is locked once play starts. Ask the instructor if a handoff is needed.',
+    captain_only:'Only the selected simulation runner can commit this choice.',
+    runner_only:'Only the selected simulation runner can submit or advance the shared run.',
+    runner_changed:'Runner control changed. Review the current selection before continuing.',
+    runner_must_be_teammate:'Choose a member of your own team.',
+    team_lead_only:'Only your team lead can assign the simulation runner.',
+    run_already_completed:'The shared run is complete. Each student can still submit their own reflection.',
     team_run_not_complete:'Wait for your team runner to reach the close before submitting your reflection.',
     not_joined:'Rejoin the session before continuing.'
   };
@@ -130,6 +135,7 @@ function shell(content){
     : `<span class="pill ${o.i===S.step?'on':o.i<S.step?'done':''}">${j+1}. ${o.x}</span>`).join('');
   app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">30 MIN</div></header><main class="page">${teamBanner()}${content}</main>${briefingPacketModal()}`;
   wireBriefingPacketModal();
+  wireRunnerPicker();
 }
 function teamBanner(){
   if(!S.session)return '';
@@ -137,14 +143,22 @@ function teamBanner(){
   if(S.session.mode!=='team')return `<div class="team"><b>${mode} session ${esc(S.session.code)}</b><br>You can commit this run.</div>`;
   if(!S.me?.groupId)return `<div class="team"><b>Waiting for team assignment · session ${esc(S.session.code)}</b><br>Your instructor will place you on a team. Once assigned, your team can decide which one student will run the simulation. Stay on this page; it updates automatically.</div>`;
   const teamName=esc(S.me?.teamLabel||'Your team');
-  const roster=S.mates.length?S.mates.map(x=>esc(x.name)+(x.isCaptain?' (team lead)':'')).join(' · '):'Waiting for teammates';
+  const roster=S.mates.length?S.mates.map(x=>esc(x.name)+(x.isCaptain?' (team lead)':'')+(x.isRunner?' (runner)':'')).join(' · '):'Waiting for teammates';
   const commit=S.teamRun?.year1?`Year 1 committed${S.teamRun.updatedAt?' · '+new Date(S.teamRun.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}`:'Year 1 not committed yet';
-  const control=S.canSubmit?'You are the team lead and the one person running this simulation.':'Only your team lead runs the simulation; work together on that device.';
-  return `<div class="team"><b>${teamName} · session ${esc(S.session.code)}</b><br>${roster}<br>${esc(commit)} · ${esc(control)}</div>`;
+  const control=S.canSubmit?'You are the selected runner. Only you can submit and advance this shared simulation.':`${teamRunner()?.name||'The selected runner'} is operating the simulation. Your screen follows the shared decisions and results.`;
+  return `<div class="team"><b>${teamName} · session ${esc(S.session.code)}</b><br>${roster}<br>${esc(commit)} · ${esc(control)}${runnerPicker()}</div>`;
 }
 function notice(msg,bad=false){return `<div class="notice ${bad?'error':''}">${esc(msg)}</div>`}
-function next(){let n=Math.min(10,S.step+1);if(n===9&&C?.buyers?.authored===false)n=10;S.step=n;render()}
-function back(){let n=Math.max(0,S.step-1);if(n===9&&C?.buyers?.authored===false)n=8;S.step=n;render()}
+async function goToStep(n){
+  if(S.advancing||blocked()||(S.session?.mode==='team'&&!S.canSubmit))return;
+  S.advancing=true;
+  try{
+    if(S.session?.mode==='team')await saveRun({screen:n});
+    S.step=n;render();
+  }catch(e){alert(e.message)}finally{S.advancing=false}
+}
+function next(){let n=Math.min(10,S.step+1);if(n===9&&C?.buyers?.authored===false)n=10;return goToStep(n)}
+function back(){let n=Math.max(0,S.step-1);if(n===9&&C?.buyers?.authored===false)n=8;return goToStep(n)}
 function safeToRerender(){if(document.getElementById('briefingPacketModal')?.classList.contains('open'))return false;const el=document.activeElement;return !el||!['INPUT','TEXTAREA','SELECT'].includes(el.tagName)}
 
 async function init(){
@@ -183,6 +197,7 @@ async function joinSession(){
     const d=await sessionApi({action:'join',code,name,participantId:S.participantId||undefined});
     S.sessionCode=code;S.participantId=d.participantId;S.session=d.session;S.me=d.me;
     localStorage.setItem('m03-pid',S.participantId);S.error='';
+    const params=new URLSearchParams(location.search);params.set('session',code);history.replaceState(null,'',location.pathname+'?'+params.toString());
     await pollSession(true);startPolling();render();
   }catch(e){S.error=e.message;renderJoin()}
 }
@@ -191,19 +206,37 @@ function startPolling(){
 }
 async function pollSession(redraw){
   if(!S.sessionCode||!S.participantId)return;
+  const seq=++S.stateRequest;
   const d=await sessionApi({action:'state',code:S.sessionCode,participantId:S.participantId});
-  const changed=JSON.stringify([S.session,S.me,S.mates,S.canSubmit,S.teamRun])!==JSON.stringify([d.session,d.me,d.mates,d.canSubmit,d.run]);
+  if(seq<S.stateApplied)return;
+  S.stateApplied=seq;
+  const groupChanged=S.me?.groupId!==d.me?.groupId;
+  const controlChanged=groupChanged||S.canSubmit!==!!d.canSubmit||S.runnerId!==d.runnerId||S.runnerRevision!==(d.runnerRevision||0);
+  const gateChanged=S.session?.state!==d.session?.state||S.session?.paused!==d.session?.paused;
+  const restore=!S.hasSessionState||groupChanged||(controlChanged&&d.canSubmit);
+  const changed=JSON.stringify([S.session,S.me,S.mates,S.teamRun])!==JSON.stringify([d.session,d.me,d.mates,d.run]);
   S.session=d.session;S.me=d.me;S.mates=d.mates||[];S.canSubmit=!!d.canSubmit;S.teamRun=d.run||null;
-  if(S.teamRun){
-    if(S.teamRun.strategicView){S.strategicView=S.teamRun.strategicView;S.viewCommitted=true}
-    if(S.teamRun.year1)S.year1=S.teamRun.year1;
-    if(S.teamRun.year2)S.year2=S.teamRun.year2;
-    if(S.teamRun.reflection1)S.reflection1=S.teamRun.reflection1;
-    if(S.teamRun.reflection2)S.reflection2=S.teamRun.reflection2;
-    if(S.teamRun.outcomes)S.allOutcomes=S.teamRun.outcomes;
-    if(S.session?.mode==='team'&&S.teamRun.done)S.finished=true;
+  S.runnerId=d.runnerId||null;S.runnerRevision=d.runnerRevision||0;S.canAssignRunner=!!d.canAssignRunner;S.hasSessionState=true;
+  if(controlChanged)S.runnerChoice='';
+  if(groupChanged){S.reflectionDirty=false;S.reflection1='';S.reflection2=''}
+  const r=S.teamRun;
+  if(restore&&S.session?.mode==='team'){
+    S.step=r?.screen??(r?.phase>=3?10:r?.year2?7:r?.year1?5:r?.strategicView?4:0);
+    S.year2Event=r?.year2Event||0;
+    S.strategicView=r?.strategicView||'';S.viewCommitted=!!r?.strategicView;
+    S.year1=r?.year1||null;S.year2=r?.year2||null;
+    S.year1Outcome=null;S.year2Outcome=null;S.allOutcomes=null;
   }
-  if(redraw||(changed&&safeToRerender()))render();
+  if(r){
+    if(r.strategicView){S.strategicView=r.strategicView;S.viewCommitted=true}
+    if(r.year1)S.year1={...r.year1};
+    if(r.year2)S.year2={...r.year2};
+    if(!S.reflectionDirty){S.reflection1=r.reflection1||'';S.reflection2=r.reflection2||''}
+    if(r.outcomes){S.allOutcomes=r.outcomes;S.year1Outcome=r.outcomes.year1||null;S.year2Outcome=r.outcomes.year2||null}
+  }
+  if(S.session?.mode==='team')S.finished=!!r?.done;
+  // Revocation must redraw even while the former runner has a focused input.
+  if(redraw||controlChanged||gateChanged||(changed&&safeToRerender()))render();
 }
 function sessionGate(){
   if(!S.session)return '';
@@ -216,11 +249,19 @@ function blocked(){return !!(S.session&&(S.session.state!=='running'||S.session.
 
 async function saveRun(patch){
   if(!S.session)return {ok:true};
-  const shared=patch.strategicView!==undefined||patch.year1!==undefined||patch.year2!==undefined;
-  if(!S.canSubmit&&shared)throw new Error('Only your team lead runs and commits the shared simulation.');
-  return sessionApi({action:'submit',code:S.sessionCode,participantId:S.participantId,...patch});
+  const shared=['strategicView','year1','year2','screen','year2Event'].some(k=>patch[k]!==undefined);
+  if(!S.canSubmit&&shared)throw new Error('Only the selected simulation runner can submit or advance the shared run.');
+  try{
+    const d=await sessionApi({action:'submit',code:S.sessionCode,participantId:S.participantId,runnerRevision:S.runnerRevision,...patch});
+    S.stateApplied=++S.stateRequest; // Ignore state reads started before this write.
+    return d;
+  }catch(e){
+    if(['runner_only','runner_changed','run_changed'].includes(e.code))await pollSession(true).catch(()=>{});
+    throw e;
+  }
 }
 function nav({backOk=true,nextLabel='Continue',onNext,disabled=false}={}){
+  disabled=disabled||blocked()||(S.session?.mode==='team'&&!S.canSubmit);
   return `<div class="actions">${backOk?'<button class="btn" id="backBtn">Back</button>':''}<button class="btn pri" id="nextBtn" ${disabled?'disabled':''}>${esc(nextLabel)}</button></div>`;
 }
 function wireNav(onNext,backOk=true){
@@ -232,29 +273,57 @@ function teamLead(){return (S.mates||[]).find(x=>x.isCaptain)||null}
 function teamProgressText(){
   const r=S.teamRun||{};
   if((r.phase||0)>=3)return 'The shared run has reached the close. Your individual reflection is ready.';
-  if(r.year2)return 'Year 2 is committed. Your team lead is moving through the final consequences.';
-  if(r.year1)return 'Year 1 is committed. Your team lead is continuing the shared run.';
-  if(r.strategicView)return 'The opening view is committed. Your team lead is working on Year 1.';
+  if(r.year2)return 'Year 2 is committed. Your runner is moving through the final consequences.';
+  if(r.year1)return 'Year 1 is committed. Your runner is continuing the shared run.';
+  if(r.strategicView)return 'The opening view is committed. Your runner is working on Year 1.';
   return 'The shared run has not committed its opening view yet.';
 }
-async function claimTeamLead(){
-  try{await sessionApi({action:'claim_lead',code:S.sessionCode,participantId:S.participantId});await pollSession(true)}catch(e){alert(e.message)}
+function teamRunner(){return S.mates.find(x=>x.id===S.runnerId)||null}
+function runnerPicker(){
+  if(!S.canAssignRunner)return '';
+  const value=S.runnerChoice||S.runnerId;
+  return `<div class="field"><label for="runnerSelect">Who will run the simulation for your team?</label>
+    <select id="runnerSelect">${S.mates.map(m=>`<option value="${esc(m.id)}" ${m.id===value?'selected':''}>${esc(m.name)}${m.isCaptain?' (team lead)':''}</option>`).join('')}</select>
+    <div class="hint">Agree as a team; the team lead assigns the runner. Changing the runner keeps all submitted decisions and progress. Unsubmitted drafts stay on the previous device.</div>
+    <div class="actions"><button type="button" class="btn" id="assignRunnerBtn" ${value===S.runnerId?'disabled':''}>Assign runner</button></div></div>`;
+}
+function wireRunnerPicker(){
+  const select=document.getElementById('runnerSelect'),button=document.getElementById('assignRunnerBtn');
+  if(!select||!button)return;
+  const expectedRunnerId=S.runnerId,runnerRevision=S.runnerRevision;
+  select.onchange=()=>{S.runnerChoice=select.value;button.disabled=select.value===S.runnerId};
+  button.onclick=async()=>{
+    button.disabled=true;
+    try{
+      await sessionApi({action:'set_runner',code:S.sessionCode,participantId:S.participantId,runnerId:select.value,expectedRunnerId,runnerRevision});
+      S.stateApplied=++S.stateRequest;S.runnerChoice='';
+      await pollSession(true);
+    }catch(e){alert(e.message);await pollSession(true).catch(()=>{button.disabled=false})}
+  };
 }
 function renderTeamLobby(){
-  const lead=teamLead(),teamName=S.me?.teamLabel||'Your team';
+  const runner=teamRunner(),teamName=S.me?.teamLabel||'Your team';
   shell(`<div class="eyebrow">Team lobby</div><h2>${esc(teamName)} chooses one runner.</h2>
-    <p class="lede">Work as a group, but only one student's browser will run Midland. Decide who will operate the simulation for the team before the instructor starts the session.</p>
-    <div class="card" style="margin-top:22px"><h3>Current team runner</h3><p>${lead?`<b>${esc(lead.name)}</b> is selected.`:'No runner selected yet.'}</p><p class="hint">Everyone can discuss every decision. The selected runner is the only person who advances screens and commits the shared choices.</p></div>
-    ${S.me?.isCaptain?notice('You are currently the team runner. If the group wants someone else, that student can choose “I will run this team” on their own screen.'):`<div class="actions"><button class="btn pri" id="claimLeadBtn">I will run this team</button></div>`}
+    <p class="lede">Work as a group. One student enters your decisions and advances the shared simulation. The team lead is selected by default, but can assign any teammate.</p>
+    <div class="card" style="margin-top:22px"><h3>Selected simulation runner</h3><p>${runner?`<b>${esc(runner.name)}</b> is selected.`:'Waiting for a team lead.'}</p><p class="hint">Team leadership does not change when you choose a different runner.</p></div>
+    ${!S.canAssignRunner?notice('Tell your team lead who the group has chosen to run the simulation.'):''}
     ${sessionGate()}`);
-  const b=document.getElementById('claimLeadBtn');if(b)b.onclick=claimTeamLead;
+}
+function sharedResultsHTML(){
+  const r=S.teamRun||{},o=r.outcomes||{};
+  const cards=[o.year1, (r.screen>=7?o.year2?.heat:null), (r.year2Event>=1||r.screen>=8?o.year2?.competitor:null), (r.screen>=8?o.year3:null)].filter(Boolean);
+  return `${r.strategicView?`<div class="card"><h3>Team opening view</h3><p>${esc(r.strategicView)}</p></div>`:''}
+    ${r.year1?readOnlyAllocationHTML(r.year1,'Shared Year 1 allocation'):''}
+    ${r.year2?readOnlyAllocationHTML(r.year2,'Shared Year 2 allocation'):''}
+    ${cards.map(x=>`<div class="outcome"><h3>${esc(x.title)}</h3><p>${esc(x.narrative)}</p></div>`).join('')}`;
 }
 function renderTeamMemberWaiting(){
-  const lead=teamLead(),teamName=S.me?.teamLabel||'Your team',leadName=lead?.name||'your team lead';
-  shell(`<div class="eyebrow">Team mode</div><h2>${esc(leadName)} is running ${esc(teamName)}.</h2>
-    <p class="lede">Only one browser runs this simulation. Stay with your team and make the decisions together on ${esc(leadName)}'s screen. This browser will not advance through Midland.</p>
-    ${notice(teamProgressText())}
-    <div class="card"><h3>Your role</h3><p>Discuss, challenge, and help decide. When the team runner reaches the close, your own reflection questions will appear here automatically.</p></div>`);
+  const runner=teamRunner(),teamName=S.me?.teamLabel||'Your team',runnerName=runner?.name||'Your selected runner';
+  shell(`<div class="eyebrow">Team mode · read-only</div><h2>${esc(runnerName)} is running ${esc(teamName)}.</h2>
+    <p class="lede">Discuss the decisions together. This screen follows your team's submitted decisions and results, but cannot run a separate simulation or advance the shared run.</p>
+    ${sessionGate()}${notice(teamProgressText())}
+    <div class="card"><h3>Your role</h3><p>Discuss, challenge, and help decide. Your individual reflection will appear here when the runner completes the shared run.</p></div>
+    ${sharedResultsHTML()}`);
 }
 function renderTeamMemberReflection(){
   shell(`<div class="eyebrow">Your reflection</div><h2>The shared team run is complete.</h2>
@@ -269,7 +338,7 @@ function render(){
   if(S.session?.mode==='team'&&S.me?.groupId){
     if(S.finished)return renderClose();
     if(S.session.state==='lobby')return renderTeamLobby();
-    if(!S.me.isCaptain){
+    if(!S.canSubmit){
       if((S.teamRun?.phase||0)>=3)return renderTeamMemberReflection();
       return renderTeamMemberWaiting();
     }
@@ -361,7 +430,7 @@ function renderView(){
   const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome);
   shell(`<div class="eyebrow">Commit a view</div><h2>What should this company become?</h2><p class="lede">Write one sentence before you see the first allocation outcome.</p>
   <div class="field"><label>Your sentence</label><textarea id="viewText" maxlength="500" placeholder="${esc(C.viewPrompt)}" ${committed?'readonly':''}>${esc(S.strategicView)}</textarea><div class="hint">${committed?'This opening view is already committed.':esc(C.viewDisclosure)}</div></div>
-  ${nav({nextLabel:committed?'Continue':(S.canSubmit?'Commit view':'Waiting for captain'),disabled:blocked()||(!S.canSubmit&&!S.teamRun?.strategicView)})}`);
+  ${nav({nextLabel:committed?'Continue':(S.canSubmit?'Commit view':'Waiting for runner'),disabled:blocked()||(!S.canSubmit&&!S.teamRun?.strategicView)})}`);
   wireNav(async()=>{
     if(committed)return next();
     const v=document.getElementById('viewText').value.trim();
@@ -387,27 +456,7 @@ function renderAllocation(year){
   const intro=year===1
     ? 'The ERP is fourteen years old, the service operation is profitable, and every line has a constituency. This is the first portfolio you set before anyone knows which problem arrives first.'
     : (S.year1Outcome?.year2Intro||'A year has passed. The first consequence is now part of Midland’s history, and the same five lines are competing for the same budget again.');
-  if(teamReadOnly){
-    const committed=S.teamRun?.[key]||null;
-    if(committed)S[key]=committed;
-    const captain=S.mates.find(m=>m.isCaptain)?.name||'your captain';
-    const running=year===2&&S.year1&&committed?runningTotals(S.year1,committed):null;
-    shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${heading}</h2><p class="lede">${esc(intro)}</p>
-    ${briefingPanel()}
-    ${year===2&&S.year1&&committed?year2BreakdownHTML(S.year1,committed,'Year 2 committed'):''}
-    ${committed?readOnlyAllocationHTML(committed,`Team Year ${year} allocation`):notice(`Waiting for ${captain} to commit Year ${year}.`)}
-    <div class="locked">Team allocation is read-only for non-captains. ${committed?`Committed by ${esc(captain)}.`:`${esc(captain)} is choosing the shared allocation.`}</div>
-    ${nav({backOk:year===1,nextLabel:committed?'Continue':'Waiting for captain',disabled:blocked()||!committed})}`);
-    wireNav(async()=>{
-      if(!committed)return;
-      try{
-        if(year===1){const d=await request('/api/outcome',{stage:'year1',year1:S.year1,sessionCode:S.sessionCode,participantId:S.participantId});S.year1Outcome=d.outcome}
-        else {const d=await request('/api/outcome',{stage:'year2',year1:S.year1,year2:S.year2,sessionCode:S.sessionCode,participantId:S.participantId});S.year2Outcome=d.outcome}
-        next();
-      }catch(e){alert(e.message)}
-    });
-    return;
-  }
+  if(teamReadOnly)return renderTeamMemberWaiting();
   if(!S[key])S[key]=defaultAlloc();
   const a=S[key],used=Object.values(a).reduce((x,y)=>x+y,0),left=9-used;
   const running=year===2&&S.year1?runningTotals(S.year1,a):null;
@@ -442,6 +491,7 @@ function allocRow(l,a,key){
     <button class="step" title="${esc(plusTitle)}" data-line="${l.id}" data-delta="1" ${plusDisabled?'disabled':''}>+</button></div></div>`;
 }
 function changeAlloc(key,line,delta){
+  if(blocked()||(S.session?.mode==='team'&&!S.canSubmit))return;
   const a=S[key],min=line==='run'?3:0,max=line==='run'?9:3,nextv=a[line]+delta;
   if(nextv<min||nextv>max)return;
   const used=Object.values(a).reduce((x,y)=>x+y,0);
@@ -475,7 +525,7 @@ function renderYear2Events(){
   ${S.year2Event<1
     ? nav({backOk:false,nextLabel:'Continue to the second event'})
     : nav({backOk:false,nextLabel:'Go to Year 3'})}`);
-  if(S.year2Event<1){wireNav(()=>{S.year2Event=1;render()},false);return}
+  if(S.year2Event<1){wireNav(async()=>{try{if(S.session?.mode==='team')await saveRun({year2Event:1});S.year2Event=1;render()}catch(e){alert(e.message)}},false);return}
   wireNav(async()=>{
     try{const d=await request('/api/outcome',{stage:'all',year1:S.year1,year2:S.year2,sessionCode:S.sessionCode,participantId:S.participantId});S.allOutcomes=d.outcome;next()}catch(e){alert(e.message)}
   },false);
@@ -585,11 +635,17 @@ async function finish(){
   S.reflection1=document.getElementById('r1').value.trim();S.reflection2=document.getElementById('r2').value.trim();
   try{
     if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true});
-    const done=await request('/api/finish',{year1:S.year1,year2:S.year2,strategicView:S.strategicView,reflection1:S.reflection1,reflection2:S.reflection2,sessionCode:S.sessionCode,participantId:S.participantId});
-    S.closingLesson=done.closingLesson||null;S.finished=true;render();
+    const done=await request('/api/finish',{runnerRevision:S.runnerRevision,year1:S.year1,year2:S.year2,strategicView:S.strategicView,reflection1:S.reflection1,reflection2:S.reflection2,sessionCode:S.sessionCode,participantId:S.participantId});
+    S.closingLesson=done.closingLesson||null;S.finished=true;S.reflectionDirty=false;render();
     requestAnimationFrame(()=>document.getElementById('closingLesson')?.scrollIntoView({behavior:'smooth',block:'start'}));
   }catch(e){alert(e.message)}
 }
+
+document.addEventListener('input',e=>{
+  if(e.target.id==='r1'){S.reflection1=e.target.value;S.reflectionDirty=true}
+  if(e.target.id==='r2'){S.reflection2=e.target.value;S.reflectionDirty=true}
+  if(e.target.id==='viewText'&&!S.viewCommitted)S.strategicView=e.target.value;
+});
 
 init();
 </script>
