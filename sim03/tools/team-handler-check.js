@@ -35,14 +35,26 @@ const y2 = { run: 3, uptime: 1, capacity: 1, connect: 2, features: 2 };
     assert.equal(r.status, 200); let roster = participants.get(code);
     assert.equal(roster.ann.groupId, 'team:alpha'); assert.equal(roster.ann.isCaptain, true); assert.equal(roster.ben.isCaptain, false);
 
+    // The team can decide which student will be the one runner. A student may
+    // claim the team lead role for themselves while the session is in the lobby.
+    r = await invoke({ action: 'claim_lead', code, participantId: 'ben' });
+    assert.equal(r.status, 200); roster = participants.get(code);
+    assert.equal(roster.ben.isCaptain, true); assert.equal(roster.ann.isCaptain, false);
+
     r = await invoke({ action: 'rename_team', code, groupId: 'team:alpha', teamLabel: 'Architecture A', facultyCode: 'faculty-secret' });
     assert.equal(r.status, 200); roster = participants.get(code); assert.equal(roster.ann.groupId, 'team:alpha'); assert.equal(roster.ann.teamLabel, 'Architecture A'); assert.equal(roster.ben.teamLabel, 'Architecture A');
 
-    r = await invoke({ action: 'set_captain', code, participantId: 'ben', facultyCode: 'faculty-secret' });
+    // Faculty retains an override for recovery/setup, but the team can reclaim
+    // its agreed runner before Start.
+    r = await invoke({ action: 'set_captain', code, participantId: 'ann', facultyCode: 'faculty-secret' });
+    assert.equal(r.status, 200); roster = participants.get(code); assert.equal(roster.ann.isCaptain, true);
+    r = await invoke({ action: 'claim_lead', code, participantId: 'ben' });
     assert.equal(r.status, 200); roster = participants.get(code); assert.equal(roster.ben.isCaptain, true); assert.equal(roster.ann.isCaptain, false);
 
     r = await invoke({ action: 'control', code, set: 'start', facultyCode: 'faculty-secret' });
     assert.equal(r.status, 200);
+    r = await invoke({ action: 'claim_lead', code, participantId: 'ann' });
+    assert.equal(r.status, 409); assert.equal(r.body.error, 'team_lead_locked');
 
     r = await invoke({ action: 'join', code, name: 'Cal', participantId: 'cal' });
     assert.equal(r.status, 200, 'late joiner should be admitted after start'); assert.equal(r.body.me.groupId, null, 'late joiner stays unassigned until faculty places them');
@@ -58,14 +70,16 @@ const y2 = { run: 3, uptime: 1, capacity: 1, connect: 2, features: 2 };
     r = await invoke({ action: 'submit', code, participantId: 'ben', year1: y1 }); assert.equal(r.status, 200);
     r = await invoke({ action: 'submit', code, participantId: 'ben', year2: y2 }); assert.equal(r.status, 200);
 
-    r = await invoke({ action: 'submit', code, participantId: 'ann', reflection1: 'Ann one', reflection2: 'Ann two', done: true }); assert.equal(r.status, 200);
-    let teamRun = (runs.get(code) || {})['team:alpha']; assert.equal(teamRun.done, false);
+    r = await invoke({ action: 'submit', code, participantId: 'ann', reflection1: 'Ann early', reflection2: 'Too early', done: true });
+    assert.equal(r.status, 409); assert.equal(r.body.error, 'team_run_not_complete');
     r = await invoke({ action: 'group', code, assign: { cal: '__unassigned__' }, facultyCode: 'faculty-secret' }); assert.equal(r.status, 200); roster = participants.get(code); assert.equal(roster.cal.groupId, null); assert.equal(roster.ben.isCaptain, true);
     r = await invoke({ action: 'submit', code, participantId: 'ben', reflection1: 'Ben one', reflection2: 'Ben two', done: true }); assert.equal(r.status, 200);
+    let teamRun = (runs.get(code) || {})['team:alpha']; assert.equal(teamRun.phase, 3); assert.equal(teamRun.done, false, 'runner reaching the close unlocks teammate reflections but does not finish them');
+    r = await invoke({ action: 'submit', code, participantId: 'ann', reflection1: 'Ann one', reflection2: 'Ann two', done: true }); assert.equal(r.status, 200);
     teamRun = (runs.get(code) || {})['team:alpha']; assert.equal(teamRun.done, true, 'shared run completes when every current assigned member is finished');
 
     r = await invoke({ action: 'state', code, participantId: 'ann' }); assert.equal(r.status, 200); assert.equal(r.body.run.reflection1, 'Ann one'); assert.equal(r.body.run.done, true);
-    console.log('RapidSim 03 instructor-managed team handler regression checks passed.');
+    console.log('RapidSim 03 single-runner team handler regression checks passed.');
   } finally {
     for (const [k, v] of Object.entries(originalEnv)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
     Object.assign(store, originalStore);
