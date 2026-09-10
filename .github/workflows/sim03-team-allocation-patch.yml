@@ -1,0 +1,35 @@
+name: sim03-team-allocation-patch
+
+on:
+  push:
+    branches:
+      - 'feature/sim-03-midland'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/sim-03-midland
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Apply team allocation update
+        run: python3 sim03/tools/apply-team-allocation-update.py
+      - name: Commit generated source update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git add sim03/api/session.js sim03/public/index.html sim03/public/instructor.html sim03/build.js sim03/package.json sim03/tools/team-flow-check.js sim03/tools/team-handler-check.js
+          git commit -m "Simplify Sim03 instructor team allocation"
+          git push origin HEAD:feature/sim-03-midland
