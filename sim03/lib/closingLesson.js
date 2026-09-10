@@ -4,13 +4,7 @@
 // outcomes that have already been resolved by the existing scenario engine.
 // This module does not introduce thresholds, scores, or alternate outcome rules.
 const ORDER = ['run', 'uptime', 'capacity', 'connect', 'features'];
-const LABELS = {
-  run: 'Run',
-  uptime: 'Uptime',
-  capacity: 'Capacity',
-  connect: 'Connect',
-  features: 'Features'
-};
+
 
 function amount(v) {
   const n = Number(v);
@@ -21,14 +15,6 @@ function cumulative(y1, y2) {
   const out = {};
   for (const key of ORDER) out[key] = amount(y1 && y1[key]) + amount(y2 && y2[key]);
   return out;
-}
-
-function largestLine(c) {
-  let key = ORDER[0];
-  for (const candidate of ORDER.slice(1)) {
-    if (c[candidate] > c[key]) key = candidate;
-  }
-  return { key, label: LABELS[key], amount: c[key] };
 }
 
 function year3Sentence(c, band) {
@@ -47,49 +33,7 @@ function year3Sentence(c, band) {
   return '';
 }
 
-function heatSentence(c, band) {
-  if (band === 'strong') return `Your $${c.uptime}M in Uptime also meant dispatch held when the heat wave tested it.`;
-  if (band === 'middle') return `Your $${c.uptime}M in Uptime kept the heat wave from becoming a full breakdown, but the service operation still had to fall back to manual work.`;
-  if (band === 'weak') return `Your $${c.uptime}M in Uptime left the service operation exposed when the heat wave arrived.`;
-  return '';
-}
-
-function competitorSentence(c, band) {
-  if (band === 'strong') return `The same $${c.connect}M Connect investment let Midland answer the competitor from a position of strength.`;
-  if (band === 'middle') return `The same $${c.connect}M Connect investment got Midland only as far as a limited pilot against the competitor.`;
-  if (band === 'weak') return `The same $${c.connect}M Connect investment was not enough to answer the competitor quickly.`;
-  return '';
-}
-
 function dollars(n) { return `$${Math.max(0, Number(n) || 0)}M`; }
-
-function heatNearMiss(c, band, t) {
-  if (!t || !Number.isFinite(Number(t.heatUptimeStrong)) || !Number.isFinite(Number(t.heatUptimeMiddle))) return '';
-  const strong = Number(t.heatUptimeStrong), middle = Number(t.heatUptimeMiddle), x = c.uptime;
-  if (band === 'strong') {
-    const toMiddle = x - strong + 1;
-    const toWeak = x - middle + 1;
-    return `${dollars(toMiddle)} less in Uptime would have produced the six-hour paper-dispatch outcome; ${dollars(toWeak)} less would have produced the four-day outage.`;
-  }
-  if (band === 'middle') {
-    const toStrong = strong - x;
-    const toWeak = x - middle + 1;
-    return `${dollars(toStrong)} more in Uptime would have made dispatch hold; ${dollars(toWeak)} less would have produced the four-day outage.`;
-  }
-  return `${dollars(Math.max(0, middle - x))} more in Uptime would have reached the six-hour outcome, and ${dollars(Math.max(0, strong - x))} more would have made dispatch hold.`;
-}
-
-function competitorNearMiss(c, band, t) {
-  if (!t || !Number.isFinite(Number(t.competitorConnectStrong)) || !Number.isFinite(Number(t.competitorConnectPilotMin))) return '';
-  const strong = Number(t.competitorConnectStrong), pilot = Number(t.competitorConnectPilotMin), x = c.connect;
-  if (band === 'strong') {
-    return `${dollars(x - strong + 1)} less in Connect would have left Midland with only the thirty-unit pilot.`;
-  }
-  if (band === 'middle') {
-    return `${dollars(strong - x)} more in Connect would have let Midland match the competitor outright; ${dollars(x - pilot + 1)} less would have left it unable to respond.`;
-  }
-  return `${dollars(Math.max(0, pilot - x))} more in Connect would have reached the pilot, and ${dollars(Math.max(0, strong - x))} more would have let Midland match the offer outright.`;
-}
 
 function year3NearMiss(c, band, t) {
   if (!t) return '';
@@ -99,12 +43,13 @@ function year3NearMiss(c, band, t) {
     return `${dollars(Math.max(0, capStrong - c.capacity))} more in Capacity would have turned the working demo into a capability Midland could run at scale.`;
   }
   if (band === 'strong') {
+    if (capStrong <= 0) return '';
     return `${dollars(c.capacity - capStrong + 1)} less in Capacity would have left the same field history with nowhere reliable to run.`;
   }
   if (band === 'pilot') {
     const needConnect = Math.max(0, connectStrong - c.connect);
     const destination = c.capacity >= capStrong ? 'the full predictive-service outcome' : 'the data-without-room outcome';
-    return `${dollars(needConnect)} more in Connect would have moved Midland out of the pilot; with Capacity at ${dollars(c.capacity)}, that next outcome would have been ${destination}.`;
+    return `Reallocating ${dollars(needConnect)} more to Connect across the two years would have reached ${destination}${c.capacity < capStrong ? ', not yet a service at scale' : ''}.`;
   }
   return `${dollars(Math.max(0, pilot - c.connect))} more in Connect would have reached the Year 3 pilot threshold.`;
 }
@@ -119,17 +64,44 @@ function buyerSentence(buyers) {
   return `Ridge Hollow showed ${ridge} interest while Corven showed ${corven} interest. Ridge Hollow was asking Dale’s question about the cost base; Corven was asking Sam’s question about the connected-data asset. The portfolio did not change between those judgments; what each buyer valued did.`;
 }
 
+// Reallocate only Uptime spending above what this heat wave required.
+// Validate the annual budgets/caps and re-evaluate the existing engine before
+// describing an opportunity cost. This never writes a different allocation.
+function uptimeTrade(y1, y2, outcomes, thresholds) {
+  const engine=require('./scenario.js'),t=engine.sanitizeThresholds(thresholds);
+  const c=cumulative(y1,y2),spare=c.uptime-t.heatUptimeStrong;
+  if(spare<=0 || outcomes?.year2?.heat?.band!=='strong')return null;
+  const band=outcomes?.year3?.band;
+  const target=band==='data_no_room'?'capacity':band!=='strong'?'connect':'features';
+  const need=target==='capacity'?t.year3CapacityStrong-c.capacity:target==='connect'?(band==='weak'?t.year3ConnectPilotMin:t.year3ConnectStrong)-c.connect:6-c.features;
+  let left=Math.min(spare,Math.max(0,need)),moved=0;
+  const a={...y1},b={...y2};
+  for(const row of [a,b]){const n=Math.max(0,Math.min(left,row.uptime,3-row[target]));row.uptime-=n;row[target]+=n;left-=n;moved+=n;}
+  if(!moved || !engine.validateAllocation(a).ok || !engine.validateAllocation(b).ok)return null;
+  const next=engine.evaluateAll(a,b,t);
+  if(next.year2.heat.band!==outcomes.year2.heat.band)return null;
+  const person=target==='connect'?'Sam’s field connections':target==='capacity'?'the Capacity line with no advocate':'the visible Features Tom wanted';
+  const consequence=next.year3.band!==band?({strong:' and made predictive service possible at scale',pilot:' and reached a Year 3 pilot',data_no_room:' and gathered the field history, although Capacity would still have been short'}[next.year3.band]||''):'';
+  const multiple=c.uptime===2*t.heatUptimeStrong && t.heatUptimeStrong>0?' — twice what this heat wave needed':'';
+  const text=`Renata’s Uptime received $${c.uptime}M${multiple}, while ${target==='connect'?'Sam’s Connect':target==='capacity'?'Capacity':'Tom’s Features'} received $${c[target]}M. Moving $${moved}M of that extra protection to ${person}, within the annual caps, would have kept dispatch up${consequence}. That was the opportunity the extra protection displaced.`;
+  return {text,amount:moved,source:'uptime',target,year1:a,year2:b};
+}
+
 function buildClosingLesson(y1, y2, outcomes, thresholds) {
   const c = cumulative(y1, y2);
-  const top = largestLine(c);
+  const t = require('./scenario.js').sanitizeThresholds(thresholds);
   const y3 = outcomes && outcomes.year3 && outcomes.year3.band;
   const heat = outcomes && outcomes.year2 && outcomes.year2.heat && outcomes.year2.heat.band;
-  const competitor = outcomes && outcomes.year2 && outcomes.year2.competitor && outcomes.year2.competitor.band;
   const buyers = outcomes && outcomes.buyers;
 
+  const tradeoff=uptimeTrade(y1,y2,outcomes,t);
+  const main=year3Sentence(c,y3);
+  const comparison=y3==='strong' && heat!=='strong'
+    ? `Reallocating ${dollars(Math.max(0,t.heatUptimeStrong-c.uptime))} more to Uptime across the two years would have kept dispatch up in the heat wave.`
+    : year3NearMiss(c,y3,t);
   const yourRun = [
-    [`Your largest cumulative commitment was ${top.label} at $${top.amount}M.`, year3Sentence(c, y3), year3NearMiss(c, y3, thresholds)].filter(Boolean).join(' '),
-    [heatSentence(c, heat), heatNearMiss(c, heat, thresholds), competitorSentence(c, competitor), competitorNearMiss(c, competitor, thresholds)].filter(Boolean).join(' '),
+    tradeoff ? tradeoff.text : [main,comparison].filter(Boolean).join(' '),
+    tradeoff ? main : '',
     buyerSentence(buyers)
   ].filter(Boolean);
 
@@ -142,6 +114,7 @@ function buildClosingLesson(y1, y2, outcomes, thresholds) {
       'The three buyers were the final reminder that value depends on who is looking. You did not control which future arrived or what an eventual buyer would care about. You controlled whether Midland had built enough real capability that more than one future could still work.'
     ],
     yourRun,
+    tradeoff,
     carryOut: 'You never controlled which future arrived. You controlled what Midland was ready for when it did.'
   };
 }

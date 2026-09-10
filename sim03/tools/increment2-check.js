@@ -13,7 +13,7 @@ assert.ok(cfg.lines.find(x=>x.id==='uptime').description.includes('Renata'));
 assert.ok(cfg.lines.find(x=>x.id==='connect').description.includes('Sam'));
 assert.ok(cfg.lines.find(x=>x.id==='features').description.includes('Tom'));
 assert.ok(cfg.reflectionPrompts[0].includes('Dale') && cfg.reflectionPrompts[0].includes('Sam'));
-assert.ok(cfg.reflectionDisclosure.includes('class debrief'));
+assert.ok(cfg.reflectionDisclosure.includes('session debrief'));
 assert.ok(cfg.viewPrompt.includes('___'));
 
 const y1Weak=valid({run:3,uptime:2,capacity:2,connect:0,features:2});
@@ -59,8 +59,8 @@ const lesson=buildClosingLesson(midA,midB,S.evaluateAll(midA,midB),S.DEFAULT_THR
 const text=[...lesson.paragraphs,...lesson.yourRun].join(' ');
 for(const name of ['Dale','Renata','Tom','Sam']) assert.ok(text.includes(name));
 assert.equal(text.includes('That imbalance was intentional'),false);
-assert.ok(text.includes('more in Connect would have let Midland match the competitor outright'));
-assert.ok(/less in Uptime|more in Uptime/.test(text));
+assert.ok(lesson.yourRun.length <= 3, 'Increment 3 selects a focused comparison');
+assert.ok(/Reallocating|more in Connect|Moving/.test(lesson.yourRun[0]), 'a concrete counterfactual remains');
 
 const html=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
 assert.ok(html.includes("const STEPS=['Brief','Room','Position','View'"));

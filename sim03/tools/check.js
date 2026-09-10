@@ -91,7 +91,7 @@ assert.deepEqual(S.META.detail.cast.map(x => x.line), ['Run','Uptime','Features'
 assert.equal(S.META.detail.cast.some(x => x.line === 'Capacity'), false);
 const inc1 = S.publicConfig();
 assert.equal(inc1.room.cast.length, 4);
-assert.equal(inc1.lines.find(x => x.id === 'capacity').description, 'Headroom for growth and for anything that needs to compute.');
+assert.equal(inc1.lines.find(x => x.id === 'capacity').description, 'Headroom for growth and for anything that needs to compute. No one in the room speaks for this line.');
 assert.equal(inc1.lines.find(x => x.id === 'connect').description.includes('Sam'), true);
 assert.equal(inc1.lines.find(x => x.id === 'run').advocate.name, 'Dale Brenner');
 assert.equal(inc1.lines.find(x => x.id === 'uptime').advocate.name, 'Renata Oyelaran');
@@ -99,6 +99,6 @@ assert.equal(inc1.lines.find(x => x.id === 'connect').advocate.name, 'Sam Achter
 assert.equal(inc1.lines.find(x => x.id === 'features').advocate.name, 'Tom Vasquez');
 assert.equal(inc1.lines.find(x => x.id === 'capacity').advocate, null);
 assert.equal(inc1.coldOpen[0].startsWith('Midland sells and services the big rooftop heating and cooling units'), true);
-assert.equal(inc1.position.startsWith('You have $9 million'), true);
+assert.equal(inc1.position.startsWith('Allocate all $9 million'), true);
 
 console.log('RapidSim 03 checks passed.');

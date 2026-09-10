@@ -54,6 +54,26 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .hidden{display:none!important}
 @media(max-width:760px){.page{width:min(100% - 26px,980px);padding-top:34px}h2{font-size:31px}.alloc-wrap{grid-template-columns:1fr}.budget{position:static}.events,.buyers,.summary,.room-tour{grid-template-columns:1fr}.line-guide-row{grid-template-columns:1fr;gap:3px}.running{grid-template-columns:repeat(2,1fr)}header{padding:11px 14px}.pills{order:3;width:100%}.joinbox .row{grid-template-columns:1fr}.briefing-prep{align-items:flex-start;flex-direction:column}.briefing-modal{padding:10px}.briefing-dialog{max-height:94vh}.briefing-dialog-body{padding:16px}.briefing-dialog-title{font-size:25px}}
 @media print{header,.actions,.team,.run-complete{display:none!important}.page{width:100%!important;padding:0!important}body{background:#fff!important;background-image:none!important;color:#000!important}.page,.page *{color:#000!important}.card,.outcome,.run-cell,.mini div,.buyer,.result-hero,.closing-lesson,.closing-run,.closing-carry,.year3-stage{background:#fff!important;border-color:#888!important;color:#000!important}.closing-carry{border-left:3px solid #aaa!important}.eyebrow,.hint,.run-cell .k,.mini span{color:#222!important}.card,.outcome,.buyer,.closing-lesson,.year3-stage{break-inside:avoid;page-break-inside:avoid}.summary{break-inside:avoid}.timeline-pair{border-left-color:#aaa!important}}
+
+/* Increment 3: keep decisions and the budget visible without truncating copy. */
+.brief-page{padding-top:22px;padding-bottom:24px;width:min(1040px,calc(100% - 36px))}
+.brief-page h2{font-size:32px;margin-bottom:12px}.brief-page .copy{max-width:none;font-size:16px;line-height:1.45}
+.brief-page .copy>p{margin-bottom:10px}.brief-page .brief-profit{margin:12px 0;padding:10px 14px}.brief-page .brief-profit p{font-size:19px;line-height:1.35}
+.brief-page>.lede{font-size:16px;line-height:1.45}.brief-page .briefing-prep{margin:14px 0;padding:12px 14px}.brief-page .actions{margin-top:14px}
+.allocation-page{width:min(1120px,calc(100% - 36px));padding-top:18px;padding-bottom:20px}
+.allocation-page h2{font-size:30px;margin-bottom:8px}.allocation-page>.lede{font-size:15px;line-height:1.4;max-width:none}
+.allocation-page .briefing{margin:10px 0}.allocation-page .briefing>summary{padding:9px 12px}
+.allocation-page .alloc-wrap{display:block;margin-top:10px}.allocation-page .allocs{gap:6px}
+.allocation-page .alloc{padding:9px 12px;gap:12px}.allocation-page .alloc h3{font-size:19px}
+.allocation-page .advocate-reminder{margin-top:5px;padding:5px 9px;font-size:14px;line-height:1.35}
+.allocation-page .advocate-reminder b{display:inline;margin-right:8px;font-size:9px}
+.capacity-silence{color:var(--dim)}
+.allocation-dock{position:sticky;bottom:0;z-index:9;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:12px 14px;border:1px solid #8A6427;background:var(--night);box-shadow:0 -8px 18px rgba(14,21,36,.25)}
+.allocation-dock .actions{margin:0}.budget-live{display:flex;flex-direction:column;gap:3px}.budget-live strong{font:600 19px var(--mono);color:var(--amber)}.budget-live span{font:10px var(--mono);color:var(--dim)}
+.year2-split{margin:10px 0;border:1px solid var(--line2);background:var(--panel)}.year2-split>summary{padding:8px 12px;cursor:pointer;font:11px var(--mono);color:var(--amber)}.year2-split .year2-breakdown{margin:0;border:0}
+.outcome .outcome-near-miss{margin-top:14px;padding-top:12px;border-top:1px solid var(--line2);font-size:15px;color:var(--dim)}
+@media(max-width:600px){.allocation-page .alloc{grid-template-columns:1fr}.allocation-page .stepper{justify-content:flex-end}.allocation-dock{flex-wrap:wrap;padding:10px}.allocation-dock .actions{flex:1;justify-content:flex-end}.budget-live strong{font-size:16px}.allocation-dock .btn{padding:10px;letter-spacing:.04em}.brief-page h2{font-size:29px}}
+@media print{.allocation-dock{position:static;box-shadow:none}}
 </style>
 </head>
 <body>
@@ -77,6 +97,7 @@ if(LAUNCH_TOKEN||ACCESS_CODE){
 }
 
 let C=null;
+let year2SplitOpen=false;
 const S={
   step:0, strategicView:'', year1:null, year2:null,
   year1Outcome:null, year2Outcome:null, allOutcomes:null,
@@ -125,8 +146,9 @@ function shell(content){
   const pills=visibleSteps.map((o,j)=>o.i===0
     ? `<button type="button" class="pill brief-link ${o.i===S.step?'on':o.i<S.step?'done':''}" data-open-briefing title="Open briefing packet">${j+1}. ${o.x}</button>`
     : `<span class="pill ${o.i===S.step?'on':o.i<S.step?'done':''}">${j+1}. ${o.x}</span>`).join('');
-  app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">30 MIN</div></header><main class="page">${teamBanner()}${content}</main>${briefingPacketModal()}`;
+  app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">30 MIN</div></header><main class="page ${S.step===0?'brief-page':''} ${[4,6].includes(S.step)?'allocation-page':''}">${teamBanner()}${content}</main>${briefingPacketModal()}`;
   wireBriefingPacketModal();
+  const split=document.querySelector('.year2-split');if(split)split.ontoggle=()=>{year2SplitOpen=split.open};
 }
 function teamBanner(){
   if(!S.session)return '';
@@ -249,14 +271,14 @@ function briefingPacketModal(){
     const table=ex.rows?.length?`<div class="briefing-dialog-table"><table><thead>${ex.columns?.length?`<tr>${ex.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>`:''}</thead><tbody>${ex.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'';
     return `<section class="briefing-dialog-section"><h3>${esc(ex.title)}</h3>${body}${table}${ex.note?`<p><b>${esc(ex.note)}</b></p>`:''}</section>`;
   }).join('');
-  const people=(b.people||[]).map(p=>`<div class="briefing-person"><b>${esc(p.role)}.</b> “${esc(p.quote)}”</div>`).join('');
+  const people=(b.people||[]).map(p=>`<div class="briefing-person"><b>${esc(p.name)} · ${esc(p.role)}.</b> “${esc(p.quote)}”</div>`).join('');
   return `<div class="briefing-modal" id="briefingPacketModal" aria-hidden="true"><section class="briefing-dialog" role="dialog" aria-modal="true" aria-labelledby="briefingPacketTitle">
-    <div class="briefing-dialog-head"><div class="grow"><div class="briefing-dialog-kicker">Pre-class briefing · about 6 minutes</div><div class="briefing-dialog-title" id="briefingPacketTitle">Midland Equipment — Briefing</div><div class="briefing-dialog-meta">Reference copy · read before starting the simulation</div></div><button class="briefing-dialog-close" id="closeBriefingPacket" aria-label="Close briefing">×</button></div>
+    <div class="briefing-dialog-head"><div class="grow"><div class="briefing-dialog-kicker">Briefing packet · about 6 minutes</div><div class="briefing-dialog-title" id="briefingPacketTitle">Midland Equipment — Briefing</div><div class="briefing-dialog-meta">Read before starting the simulation</div></div><button class="briefing-dialog-close" id="closeBriefingPacket" aria-label="Close briefing">×</button></div>
     <div class="briefing-dialog-body"><div class="briefing-dialog-intro">${intro}</div>
       <section class="briefing-dialog-section"><h3>The company</h3>${(b.company||[]).map(x=>`<p>${esc(x)}</p>`).join('')}</section>
       ${exhibits}
       ${people?`<section class="briefing-dialog-section"><h3>Four people you work with</h3>${people}${b.peopleNote?`<p>${esc(b.peopleNote)}</p>`:''}</section>`:''}
-      ${(b.whatHappens||[]).length?`<section class="briefing-dialog-section"><h3>What happens Tuesday</h3>${b.whatHappens.map(x=>`<p>${esc(x)}</p>`).join('')}</section>`:''}
+      ${(b.whatHappens||[]).length?`<section class="briefing-dialog-section"><h3>What happens in the session</h3>${b.whatHappens.map(x=>`<p>${esc(x)}</p>`).join('')}</section>`:''}
     </div>
     <div class="briefing-dialog-foot"><span class="hint">You can reopen this packet later from the allocation screens.</span><button class="btn pri" id="doneBriefingPacket">Done reading</button></div>
   </section></div>`;
@@ -277,9 +299,9 @@ function wireBriefingPacketModal(){
 
 function renderBrief(){
   shell(`<div class="eyebrow">MIDLAND EQUIPMENT</div><h2>Forty-one years old, profitable, and nobody thinks it is in trouble.</h2>
-  <div class="copy">${C.coldOpen.map((x,i)=>i===1?`<div class="brief-profit"><div class="eyebrow">The business model</div><p>${esc(x)}</p></div>`:`<p>${esc(x)}</p>`).join('')}</div>
+  <div class="copy">${C.coldOpen.map((x,i)=>i===2?`<div class="brief-profit"><div class="eyebrow">The business model</div><p>${esc(x)}</p></div>`:`<p>${esc(x)}</p>`).join('')}</div>
   <p class="lede">There is no score, rank, grade or hidden correct allocation. You will find out what happened, not how you "did."</p>
-  <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>This sim assumes you have read the briefing packet your instructor posted before class.</b> If you have not read it yet, read the full packet here before starting.</div><button class="btn" data-open-briefing>Read briefing packet</button></div>
+  <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>Read the briefing packet before you start.</b> It introduces Midland and the four people you will meet.</div><button class="btn" data-open-briefing>Read briefing packet</button></div>
   ${sessionGate()}${!S.session?(LAUNCH&&(LAUNCH.role==='faculty'||LAUNCH.role==='faculty_preview')?'<div class="actions"><button class="btn" id="runSessionEntry">Run a facilitated session</button></div>':'<div class="actions"><button class="btn" id="joinSessionEntry">Join a facilitated session</button></div>'):''}${nav({backOk:false,disabled:blocked()})}`);
   const runEntry=document.getElementById('runSessionEntry');if(runEntry)runEntry.onclick=()=>location.assign(BASE+'/instructor.html#lt='+encodeURIComponent(LAUNCH_TOKEN));
   const joinEntry=document.getElementById('joinSessionEntry');if(joinEntry)joinEntry.onclick=()=>{S.error='';renderJoin()};
@@ -302,16 +324,21 @@ function renderRoom(){
 function usefulOpeningView(v){const words=String(v||'').trim().split(/\s+/).filter(Boolean);return String(v||'').trim().length>=20&&words.length>=4}
 function allocationRule(line){return line.id==='run'?'$3M minimum · balance of budget is the only ceiling':'$3M annual ceiling'}
 function allocationCap(line){return line.id==='run'?'MIN $3M':'MAX $3M / YEAR'}
-function lineAdvocate(line){const a=line?.advocate;if(!a)return '';return `<div class="advocate-reminder"><b>${esc(a.name)} · speaks for ${esc(line.label)}</b><span>${esc(a.want)}</span></div>`}
+function lineAdvocate(line,year=1){
+  const a=line?.advocate;
+  if(!a)return '<div class="advocate-reminder capacity-silence"><span>No one in the room speaks for this line.</span></div>';
+  const want=year===2?(a.shortWant||a.want):a.want;
+  return `<div class="advocate-reminder"><b>${esc(a.name)} · ${esc(line.label)}</b><span>${year===1?'“':''}${esc(want)}${year===1?'”':''}</span></div>`;
+}
 function year2BreakdownHTML(y1,y2,year2Label='Year 2 draft'){
   if(!y1||!y2)return '';
   const rows=C.lines.map(l=>{const a=Number(y1[l.id]||0),b=Number(y2[l.id]||0);return `<div class="year2-breakdown-row"><div class="year2-breakdown-name">${esc(l.label)}</div><div class="year2-breakdown-num">$${a}M</div><div class="year2-breakdown-num">$${b}M</div><div class="year2-breakdown-num year2-breakdown-total">$${a+b}M</div></div>`}).join('');
-  return `<div class="eyebrow" style="margin-top:24px">Year 1 + Year 2 split</div><div class="year2-breakdown"><div class="year2-breakdown-row year2-breakdown-head"><div>Line</div><div>Year 1 committed</div><div>${esc(year2Label)}</div><div>Cumulative</div></div>${rows}</div>`;
+  return `<details class="year2-split" ${year2SplitOpen?'open':''}><summary>Year 1 + Year 2 split</summary><div class="year2-breakdown"><div class="year2-breakdown-row year2-breakdown-head"><div>Line</div><div>Year 1 committed</div><div>${esc(year2Label)}</div><div>Cumulative</div></div>${rows}</div></details>`;
 }
 function allocationConfirmation(year,a){const text=C.lines.map(l=>`${l.label}: $${a[l.id]}M`).join('\n');return window.confirm(`Commit Year ${year}?\n\n${text}\n\nYou cannot change this allocation after the outcome is revealed.`)}
 function renderView(){
   const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome);
-  shell(`<div class="eyebrow">Commit a view</div><h2>What should this company become?</h2><p class="lede">Write one sentence before you see the first allocation outcome.</p>
+  shell(`<div class="eyebrow">Commit a view</div><h2>What should this company become?</h2><p class="lede">${esc(C.viewIntro)}</p>
   <div class="field"><label>Your sentence</label><textarea id="viewText" maxlength="500" placeholder="${esc(C.viewPrompt)}" ${committed?'readonly':''}>${esc(S.strategicView)}</textarea><div class="hint">${committed?'This opening view is already committed.':esc(C.viewDisclosure)}</div></div>
   ${nav({nextLabel:committed?'Continue':(S.canSubmit?'Commit view':'Waiting for captain'),disabled:blocked()||(!S.canSubmit&&!S.teamRun?.strategicView)})}`);
   wireNav(async()=>{
@@ -330,7 +357,7 @@ function briefingPanel(){
     const table=ex.rows?.length?`<table><thead>${ex.columns?.length?`<tr>${ex.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>`:''}</thead><tbody>${ex.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`:'';
     return `<section class="exhibit"><h3>${esc(ex.title)}</h3>${body}${table}${ex.note?`<p><em>${esc(ex.note)}</em></p>`:''}</section>`;
   }).join('');
-  return `<details class="briefing"><summary>Briefing & exhibits</summary><div class="briefing-body"><p class="hint">${esc(b.note||'Reference copy of the pre-class briefing.')}</p>${(b.company||[]).map(x=>`<p>${esc(x)}</p>`).join('')}${exhibits}</div></details>`;
+  return `<details class="briefing"><summary>Briefing & exhibits</summary><div class="briefing-body"><p class="hint">${esc(b.note||'Reference copy of the briefing packet.')}</p>${(b.company||[]).map(x=>`<p>${esc(x)}</p>`).join('')}${exhibits}</div></details>`;
 }
 function renderAllocation(year){
   const key=year===1?'year1':'year2';
@@ -347,7 +374,7 @@ function renderAllocation(year){
     shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${heading}</h2><p class="lede">${esc(intro)}</p>
     ${briefingPanel()}
     ${year===2&&S.year1&&committed?year2BreakdownHTML(S.year1,committed,'Year 2 committed'):''}
-    ${committed?readOnlyAllocationHTML(committed,`Team Year ${year} allocation`):notice(`Waiting for ${captain} to commit Year ${year}.`)}
+    ${committed?readOnlyAllocationHTML(committed,`Team Year ${year} allocation`,year):notice(`Waiting for ${captain} to commit Year ${year}.`)}
     <div class="locked">Team allocation is read-only for non-captains. ${committed?`Committed by ${esc(captain)}.`:`${esc(captain)} is choosing the shared allocation.`}</div>
     ${nav({backOk:year===1,nextLabel:committed?'Continue':'Waiting for captain',disabled:blocked()||!committed})}`);
     wireNav(async()=>{
@@ -367,8 +394,9 @@ function renderAllocation(year){
   ${briefingPanel()}
   ${year===2&&S.year1?year2BreakdownHTML(S.year1,a,'Year 2 draft'):''}
   <div class="alloc-wrap"><div class="allocs">${C.lines.map(l=>allocRow(l,a,year)).join('')}</div>
-  <aside class="budget"><div class="n">${left}</div><div class="lab">$M remaining</div><div class="total">Allocated: <b>$${used}M</b> of $9M<br>Submit unlocks only at exactly $9M.</div></aside></div>
-  ${nav({backOk:year===1,nextLabel:left===0?`Commit Year ${year}`:'Allocate all $9M',disabled:blocked()||left!==0})}`);
+  </div>
+  <div class="allocation-dock"><div class="budget-live" role="status" aria-live="polite" aria-atomic="true"><strong>$${left}M remaining</strong><span>$${used}M of $9M allocated</span></div>
+  ${nav({backOk:year===1,nextLabel:left===0?`Commit Year ${year}`:'Allocate all $9M',disabled:blocked()||left!==0})}</div>`);
   document.querySelectorAll('.step').forEach(b=>b.onclick=()=>changeAlloc(key,b.dataset.line,Number(b.dataset.delta)));
   wireNav(async()=>{
     const v=validateClient(S[key]);if(v)return alert(v);
@@ -381,14 +409,14 @@ function renderAllocation(year){
     }catch(e){alert(e.message)}
   });
 }
-function readOnlyAllocationHTML(a,label){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="allocs">${C.lines.map(l=>`<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div><div class="constraint">${esc(l.description||'')}</div>${lineAdvocate(l)}<div class="alloc-rule">${esc(allocationRule(l))}</div></div><div class="amount">${a[l.id]}<small> M</small></div></div>`).join('')}</div>`}
-function allocRow(l,a,key){
+function readOnlyAllocationHTML(a,label,year=1){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="allocs">${C.lines.map(l=>`<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div>${lineAdvocate(l,year)}</div><div class="amount">${a[l.id]}<small> M</small></div></div>`).join('')}</div>`}
+function allocRow(l,a,year){
   const n=a[l.id],min=l.id==='run'?3:0,max=l.id==='run'?9:3,used=Object.values(a).reduce((x,y)=>x+y,0);
   const readOnly=!S.canSubmit&&S.session?.mode==='team';
   const minusDisabled=readOnly||n<=min,plusDisabled=readOnly||n>=max||used>=9;
   const minusTitle=readOnly?'Read-only team allocation':n<=min?(l.id==='run'?'Run has a $3M minimum':'Already at $0M'):'Remove $1M';
   const plusTitle=readOnly?'Read-only team allocation':n>=max&&l.id!=='run'?'$3M annual ceiling reached':used>=9?'All $9M is already allocated':'Add $1M';
-  return `<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div><div class="constraint">${esc(l.description||'')}</div>${lineAdvocate(l)}<div class="alloc-rule">${esc(allocationRule(l))}</div></div><div class="stepper">
+  return `<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div>${lineAdvocate(l,year)}</div><div class="stepper">
     <button class="step" title="${esc(minusTitle)}" data-line="${l.id}" data-delta="-1" ${minusDisabled?'disabled':''}>−</button>
     <div class="amount">${n}<small> M</small></div>
     <button class="step" title="${esc(plusTitle)}" data-line="${l.id}" data-delta="1" ${plusDisabled?'disabled':''}>+</button></div></div>`;
@@ -410,20 +438,22 @@ function validateClient(a){
 function runningTotals(a,b){const o={};C.lines.forEach(l=>o[l.id]=(a[l.id]||0)+(b[l.id]||0));return o}
 function runningHTML(o,label){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="running">${C.lines.map(l=>`<div class="run-cell"><div class="v">${o[l.id]}</div><div class="k">${esc(l.label)}</div></div>`).join('')}</div>`}
 
+function outcomeNearMiss(o){return o?.nearMiss?`<p class="outcome-near-miss">${esc(o.nearMiss)}</p>`:''}
 function renderYear1Outcome(){
   const o=S.year1Outcome;
   shell(`<div class="eyebrow">Year 1 outcome</div><h2>A renewal is six weeks away. The district wants proof.</h2>
+  ${o?`<div class="outcome"><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p>${outcomeNearMiss(o)}</div>`:notice('Outcome not loaded. Return to Year 1 and recommit.',true)}
   ${runningHTML(S.year1,'Year 1 portfolio')}
-  ${o?`<div class="outcome"><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Outcome not loaded. Return to Year 1 and recommit.',true)}
   ${nav({backOk:false})}`);wireNav(next,false);
 }
 function renderYear2Events(){
   const o=S.year2Outcome;
   const cum=S.year1&&S.year2?runningTotals(S.year1,S.year2):null;
-  const first=o?`<div class="outcome"><h3>${esc(o.heat.title)}</h3><p>${esc(o.heat.narrative)}</p></div>`:'';
+  const first=o?`<div class="outcome"><h3>${esc(o.heat.title)}</h3><p>${esc(o.heat.narrative)}</p>${outcomeNearMiss(o.heat)}</div>`:'';
   const second=o?`<div class="outcome"><h3>${esc(o.competitor.title)}</h3><p>${esc(o.competitor.narrative)}</p></div>`:'';
-  shell(`<div class="eyebrow">Year 2 outcomes</div><h2>Year 2 stops being quiet.</h2><p class="lede">First the weather turns. Then the market does.</p>${cum?runningHTML(cum,'Cumulative portfolio'):''}
+  shell(`<div class="eyebrow">Year 2 outcomes</div><h2>Year 2 stops being quiet.</h2><p class="lede">First the weather turns. Then the market does.</p>
   ${o?`<div class="events" style="grid-template-columns:1fr">${first}${S.year2Event>=1?second:''}</div>`:notice('Outcome not loaded. Return to Year 2 and recommit.',true)}
+  ${cum?runningHTML(cum,'Cumulative portfolio'):''}
   ${S.year2Event<1
     ? nav({backOk:false,nextLabel:'Continue to the second event'})
     : nav({backOk:false,nextLabel:'Go to Year 3'})}`);
@@ -436,7 +466,7 @@ function renderYear3(){
   const o=S.allOutcomes?.year3;
   const cum=o?.cumulative||(S.year1&&S.year2?runningTotals(S.year1,S.year2):null);
   shell(`<div class="eyebrow">Year 3</div><h2>The CEO asks whether Midland can predict a failure before the truck rolls.</h2>
-  <p class="lede">The request is now on the table. The architecture underneath it is the one built over the previous two years.</p>
+  <p class="lede">There is no allocation in Year 3. Read what happened, then continue to the buyers.</p>
   ${cum?runningHTML(cum,'Cumulative portfolio'):''}
   <section class="year3-stage">
     <div class="eyebrow">Your opening view</div><div class="year3-opening">“${esc(S.strategicView||'—')}”</div>
@@ -455,6 +485,15 @@ function renderBuyers(){
   ${nav({backOk:false,nextLabel:'Continue to close'})}`);wireNav(next,false);
 }
 function closingLessonHTML(){const d=S.closingLesson;if(!d)return '';const ps=Array.isArray(d.paragraphs)?d.paragraphs:[];const run=Array.isArray(d.yourRun)?d.yourRun:[];return `<div class="result-section" id="closingLesson"><div class="eyebrow">${esc(d.title||'What this run was teaching you')}</div><div class="closing-lesson"><div class="closing-lesson-inner">${ps.map(p=>`<p>${esc(p)}</p>`).join('')}${run.length?`<div class="closing-run"><h3>In your run</h3>${run.map(p=>`<p>${esc(p)}</p>`).join('')}</div>`:''}<div class="closing-carry">${esc(d.carryOut||'')}</div></div></div></div>`}
+const REFLECTION_DIVIDER='\n\nAfter Year 3 — would I make the same call?\n';
+function splitFirstReflection(value){
+  const text=String(value||''),i=text.indexOf(REFLECTION_DIVIDER);
+  return i<0?{argument:text,reconsideration:''}:{argument:text.slice(0,i),reconsideration:text.slice(i+REFLECTION_DIVIDER.length)};
+}
+function firstReflectionHTML(){
+  const answers=splitFirstReflection(S.reflection1);
+  return `<div class="card"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(answers.argument||'—')}</p></div>${answers.reconsideration?`<div class="card" style="margin-top:12px"><h3>${esc(C.reflectionFollowUp)}</h3><p style="white-space:pre-wrap">${esc(answers.reconsideration)}</p></div>`:''}`;
+}
 function renderClose(){
   if(S.finished){
     const y1o=S.allOutcomes?.year1||S.year1Outcome||null;
@@ -487,7 +526,7 @@ function renderClose(){
       <div class="card"><p>${esc(S.strategicView||'—')}</p></div>
     </div>
     <div class="result-section"><div class="eyebrow">Your reflections</div>
-      <div class="card"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(S.reflection1||'—')}</p></div>
+      ${firstReflectionHTML()}
       <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[1])}</h3><p style="white-space:pre-wrap">${esc(S.reflection2||'—')}</p></div>
     </div>
     ${closingLessonHTML()}
@@ -496,10 +535,12 @@ function renderClose(){
     document.getElementById('printBtn').onclick=()=>window.print();
     return;
   }
-  shell(`<div class="eyebrow">Close</div><h2>The decisions are over. What changed your mind?</h2>
+  const firstAnswers=splitFirstReflection(S.reflection1);
+  shell(`<div class="eyebrow">Close</div><h2>The decisions are over. Look back at your choices.</h2>
   <div class="summary"><div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
   <div class="card"><h3>Your Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div></div>
-  <div class="field"><label>${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(S.reflection1)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
+  <div class="field"><label for="r1">${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="500" required>${esc(firstAnswers.argument)}</textarea></div>
+  <div class="field"><label for="r1FollowUp">${esc(C.reflectionFollowUp)}</label><textarea id="r1FollowUp" maxlength="900" required>${esc(firstAnswers.reconsideration)}</textarea><div class="hint reflection-note">Your instructor can see these responses and may read them aloud in the debrief. They are not scored.</div></div>
   <div class="field"><label>${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
   <div class="actions"><button class="btn pri" id="finishBtn">Complete run</button></div>`);
   document.getElementById('finishBtn').onclick=finish;
@@ -534,7 +575,12 @@ function overallOutcomeText(){
   return [a,b,c,d].filter(Boolean).join(' ');
 }
 async function finish(){
-  S.reflection1=document.getElementById('r1').value.trim();S.reflection2=document.getElementById('r2').value.trim();
+  const argument=document.getElementById('r1'),reconsideration=document.getElementById('r1FollowUp');
+  if(!argument.value.trim()){argument.setCustomValidity('Name the argument you overruled.');argument.reportValidity();argument.oninput=()=>argument.setCustomValidity('');return}
+  if(!reconsideration.value.trim()){reconsideration.setCustomValidity('Explain whether you would make the same call after Year 3.');reconsideration.reportValidity();reconsideration.oninput=()=>reconsideration.setCustomValidity('');return}
+  const firstResponse=argument.value.trim()+REFLECTION_DIVIDER+reconsideration.value.trim();
+  if(firstResponse.length>1500){alert('Please shorten the first two answers to fit the saved-response limit. Your text has not been changed.');return}
+  S.reflection1=firstResponse;S.reflection2=document.getElementById('r2').value.trim();
   try{
     if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true});
     const done=await request('/api/finish',{year1:S.year1,year2:S.year2,strategicView:S.strategicView,reflection1:S.reflection1,reflection2:S.reflection2,sessionCode:S.sessionCode,participantId:S.participantId});
