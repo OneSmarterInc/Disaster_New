@@ -103,6 +103,9 @@ for (const marker of [
   "if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true})",
   "C.buyers?.authored===false", "const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome)"
 ]) if (!index.includes(marker)) refuse('team/conformance student marker missing: ' + marker);
+for (const marker of ['m03-faculty-lt','Faculty authorization received from RapidSims.','Your faculty authorization has expired. Return to RapidSims and click Run a session again.']) if (!instructor.includes(marker)) refuse('faculty authorization persistence marker missing: ' + marker);
+if (!launcher.includes("sessionStorage.setItem('m03-faculty-lt',token)")) refuse('launch router does not persist faculty authorization');
+if (!index.includes("sessionStorage.setItem('m03-faculty-lt',LAUNCH_TOKEN)")) refuse('faculty play surface does not persist faculty authorization');
 for (const marker of ['Resume session code','Students self-select teams at join',"action:'set_captain'",'function startPresent()','dotcount','the annual cap is the wall'])
   if (!instructor.includes(marker)) refuse('team/projector instructor marker missing: ' + marker);
 if (index.includes('Valuation pending authored rule')) refuse('unauthored buyer placeholder reached the student bundle');

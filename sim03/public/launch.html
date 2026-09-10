@@ -20,6 +20,7 @@ const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
 const raw=location.hash+location.search,match=raw.match(/lt=([^&]+)/);let launch=null,token=match?decodeURIComponent(match[1]):null;
 if(token){try{launch=JSON.parse(atob(token.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')))}catch{launch=null}}
 const faculty=launch&&(launch.role==='faculty'||launch.role==='faculty_preview')&&launch.mode==='session';
+if(faculty&&token)sessionStorage.setItem('m03-faculty-lt',token);
 const params=new URLSearchParams(location.search);params.delete('lt');const q=params.toString();
 function goWithToken(){const target=faculty?'/instructor.html':'/index.html';location.replace(BASE+target+(q?'?'+q:'')+'#lt='+encodeURIComponent(token))}
 if(token){goWithToken()}
