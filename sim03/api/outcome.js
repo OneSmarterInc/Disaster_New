@@ -21,6 +21,10 @@ async function fromSession(b, res) {
   const participants = await store.getParticipants(code);
   const me = participants[pid];
   if (!me) { res.status(403).json({ error: 'not_joined' }); return true; }
+  if (sess.mode === 'team' && !me.isCaptain) {
+    res.status(403).json({ error: 'team_lead_only', message: 'Only the selected team runner opens and advances the simulation.' });
+    return true;
+  }
 
   const rid = sess.mode === 'individual' ? `individual:${me.id}` : me.groupId;
   if (!rid) { res.status(409).json({ error: 'team_not_assigned' }); return true; }

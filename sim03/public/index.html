@@ -94,7 +94,9 @@ function friendlyError(code,status){
     year2_locked:'Year 2 has already been committed and cannot be changed after its events are revealed.',
     session_not_running:'Your instructor has not started the session yet.',
     session_paused:'Your instructor has paused the session.',
-    captain_only:'Only your team captain can commit this choice.',
+    captain_only:'Only your team lead can commit this choice.',
+    team_lead_only:'Only the selected team runner opens and advances the simulation.',
+    team_lead_locked:'The team runner is locked once play starts. Ask the instructor if a handoff is needed.',
     not_joined:'Rejoin the session before continuing.'
   };
   return m[code]||'';
@@ -136,7 +138,7 @@ function teamBanner(){
   const teamName=esc(S.me?.teamLabel||'Your team');
   const roster=S.mates.length?S.mates.map(x=>esc(x.name)+(x.isCaptain?' (team lead)':'')).join(' · '):'Waiting for teammates';
   const commit=S.teamRun?.year1?`Year 1 committed${S.teamRun.updatedAt?' · '+new Date(S.teamRun.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):''}`:'Year 1 not committed yet';
-  const control=S.canSubmit?'You are the team lead and commit the shared allocation.':'Your team lead commits the shared allocation.';
+  const control=S.canSubmit?'You are the team lead and the one person running this simulation.':'Only your team lead runs the simulation; work together on that device.';
   return `<div class="team"><b>${teamName} · session ${esc(S.session.code)}</b><br>${roster}<br>${esc(commit)} · ${esc(control)}</div>`;
 }
 function notice(msg,bad=false){return `<div class="notice ${bad?'error':''}">${esc(msg)}</div>`}
@@ -198,6 +200,7 @@ async function pollSession(redraw){
     if(S.teamRun.reflection1)S.reflection1=S.teamRun.reflection1;
     if(S.teamRun.reflection2)S.reflection2=S.teamRun.reflection2;
     if(S.teamRun.outcomes)S.allOutcomes=S.teamRun.outcomes;
+    if(S.session?.mode==='team'&&S.teamRun.done)S.finished=true;
   }
   if(redraw||(changed&&safeToRerender()))render();
 }
@@ -213,7 +216,7 @@ function blocked(){return !!(S.session&&(S.session.state!=='running'||S.session.
 async function saveRun(patch){
   if(!S.session)return {ok:true};
   const shared=patch.strategicView!==undefined||patch.year1!==undefined||patch.year2!==undefined;
-  if(!S.canSubmit&&shared)throw new Error('Your team captain commits this choice.');
+  if(!S.canSubmit&&shared)throw new Error('Only your team lead runs and commits the shared simulation.');
   return sessionApi({action:'submit',code:S.sessionCode,participantId:S.participantId,...patch});
 }
 function nav({backOk=true,nextLabel='Continue',onNext,disabled=false}={}){
@@ -224,8 +227,52 @@ function wireNav(onNext,backOk=true){
   document.getElementById('nextBtn').onclick=onNext||next;
 }
 
+function teamLead(){return (S.mates||[]).find(x=>x.isCaptain)||null}
+function teamProgressText(){
+  const r=S.teamRun||{};
+  if((r.phase||0)>=3)return 'The shared run has reached the close. Your individual reflection is ready.';
+  if(r.year2)return 'Year 2 is committed. Your team lead is moving through the final consequences.';
+  if(r.year1)return 'Year 1 is committed. Your team lead is continuing the shared run.';
+  if(r.strategicView)return 'The opening view is committed. Your team lead is working on Year 1.';
+  return 'The shared run has not committed its opening view yet.';
+}
+async function claimTeamLead(){
+  try{await sessionApi({action:'claim_lead',code:S.sessionCode,participantId:S.participantId});await pollSession(true)}catch(e){alert(e.message)}
+}
+function renderTeamLobby(){
+  const lead=teamLead(),teamName=S.me?.teamLabel||'Your team';
+  shell(`<div class="eyebrow">Team lobby</div><h2>${esc(teamName)} chooses one runner.</h2>
+    <p class="lede">Work as a group, but only one student's browser will run Midland. Decide who will operate the simulation for the team before the instructor starts the session.</p>
+    <div class="card" style="margin-top:22px"><h3>Current team runner</h3><p>${lead?`<b>${esc(lead.name)}</b> is selected.`:'No runner selected yet.'}</p><p class="hint">Everyone can discuss every decision. The selected runner is the only person who advances screens and commits the shared choices.</p></div>
+    ${S.me?.isCaptain?notice('You are currently the team runner. If the group wants someone else, that student can choose “I will run this team” on their own screen.'):`<div class="actions"><button class="btn pri" id="claimLeadBtn">I will run this team</button></div>`}
+    ${sessionGate()}`);
+  const b=document.getElementById('claimLeadBtn');if(b)b.onclick=claimTeamLead;
+}
+function renderTeamMemberWaiting(){
+  const lead=teamLead(),teamName=S.me?.teamLabel||'Your team',leadName=lead?.name||'your team lead';
+  shell(`<div class="eyebrow">Team mode</div><h2>${esc(leadName)} is running ${esc(teamName)}.</h2>
+    <p class="lede">Only one browser runs this simulation. Stay with your team and make the decisions together on ${esc(leadName)}'s screen. This browser will not advance through Midland.</p>
+    ${notice(teamProgressText())}
+    <div class="card"><h3>Your role</h3><p>Discuss, challenge, and help decide. When the team runner reaches the close, your own reflection questions will appear here automatically.</p></div>`);
+}
+function renderTeamMemberReflection(){
+  shell(`<div class="eyebrow">Your reflection</div><h2>The shared team run is complete.</h2>
+    <p class="lede">You worked through the decisions with your team on one runner's screen. Now answer these two questions in your own words.</p>
+    <div class="field"><label>${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(S.reflection1)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
+    <div class="field"><label>${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
+    <div class="actions"><button class="btn pri" id="memberFinishBtn">Submit my reflection</button></div>`);
+  document.getElementById('memberFinishBtn').onclick=finish;
+}
 function render(){
   if(!C)return;
+  if(S.session?.mode==='team'&&S.me?.groupId){
+    if(S.finished)return renderClose();
+    if(S.session.state==='lobby')return renderTeamLobby();
+    if(!S.me.isCaptain){
+      if((S.teamRun?.phase||0)>=3)return renderTeamMemberReflection();
+      return renderTeamMemberWaiting();
+    }
+  }
   switch(S.step){
     case 0:return renderBrief();
     case 1:return renderRoom();

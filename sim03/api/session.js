@@ -238,6 +238,26 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, groupId, teamLabel });
       }
 
+      case 'claim_lead': {
+        const sess = await store.getSession(code);
+        if (!sess) return res.status(404).json({ error: 'no_such_session' });
+        if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
+        if (sess.state !== 'lobby') {
+          return res.status(409).json({ error: 'team_lead_locked', message: 'The team runner is locked once the session starts. Ask the instructor if a handoff is needed.' });
+        }
+        const participants = await store.getParticipants(code);
+        const pid = String(b.participantId || '');
+        const chosen = participants[pid];
+        if (!chosen) return res.status(404).json({ error: 'no_such_participant' });
+        if (!chosen.groupId) return res.status(409).json({ error: 'team_not_assigned', message: 'Wait for the instructor to place you on a team first.' });
+        for (const p of Object.values(participants)) {
+          if (!p || p.groupId !== chosen.groupId) continue;
+          p.isCaptain = p.id === pid;
+          await store.setParticipant(code, p.id, p);
+        }
+        return res.status(200).json({ ok: true, groupId: chosen.groupId, captainId: pid });
+      }
+
       case 'set_captain': {
         const who = whoIsFaculty(req, b);
         if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
