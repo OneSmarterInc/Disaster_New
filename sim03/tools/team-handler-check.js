@@ -79,8 +79,8 @@ async function assign(lead, target) {
     check((await submit('ben', { screen: 6 }, 1)).status, 200);
     check((await invoke({ sessionCode: code, participantId: 'ann', stage: 'year1' }, outcome)).body.error, 'runner_only');
     check((await invoke({ sessionCode: code, participantId: 'ben', stage: 'year1' }, outcome)).status, 200);
-    check((await submit('ann', { done: true }, 1)).body.error, 'team_run_not_complete');
-    check((await invoke({ sessionCode: code, participantId: 'ann', done: true }, finish)).body.error, 'team_run_not_complete');
+    check((await submit('ann', { done: true }, 1)).body.error, 'runner_only');
+    check((await invoke({ sessionCode: code, participantId: 'ann', done: true }, finish)).body.error, 'runner_only');
 
     check((await assign('ann', 'cal')).status, 200, 'handoff is allowed during play');
     s = await state('cal');
@@ -113,12 +113,10 @@ async function assign(lead, target) {
     check((await invoke({ sessionCode: code, participantId: runner, runnerRevision: rev, reflection1: 'Runner one', reflection2: 'Runner two' }, finish)).status, 200);
     check((await state(runner)).run.done, true);
     const members = ['ann', 'ben', 'cal'].filter(id => id !== runner);
-    check((await state(members[0])).run.reflection1, '', 'a teammate must never inherit the runner\'s reflection');
-    check((await state(members[0])).run.done, false);
-    const reflections = await Promise.all(members.map(id => invoke({ sessionCode: code, participantId: id, reflection1: `${id} one`, reflection2: `${id} two` }, finish)));
-    check(reflections.map(x => x.status), [200, 200]);
+    check((await state(members[0])).run.done, true, 'runner completion finishes the shared run for teammates');
+    check((await state(members[0])).run.reflection1, 'Runner one', 'teammates see the same submitted team summary');
+    check((await invoke({ sessionCode: code, participantId: members[0], reflection1: `${members[0]} one`, reflection2: `${members[0]} two`, done: true }, finish)).status, 200, 'member completion endpoint is idempotent after runner submits');
     check(runs.get(code)['team:alpha'].done, true);
-    for (const id of members) check((await state(id)).run.reflection1, `${id} one`);
     check(Object.keys(runs.get(code)['team:alpha'].finishedBy).sort(), ['ann', 'ben', 'cal']);
     check((await assign('ann', 'cal')).body.error, 'run_already_completed');
 

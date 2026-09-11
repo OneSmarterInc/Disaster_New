@@ -91,13 +91,13 @@ run("C={lines:['run','uptime','capacity','connect','features'].map(id=>({id,labe
   assert.equal(run('S.runnerId'), 'ben');
   assert.equal(run('S.runnerRevision'), 3);
 
-  // Own draft reflections survive polling; submitted peer content is never used.
+  // When the runner completes, members see the same result instead of a separate reflection form.
   run("S.reflectionDirty=true; S.reflection1='My unsaved draft'; S.participantId='ann'");
-  response = data({ runner: 'ben', pid: 'ann', revision: 3, shared: { ...shared, phase: 3, screen: 10, reflection1: '' } });
+  response = data({ runner: 'ben', pid: 'ann', revision: 3, shared: { ...shared, phase: 3, screen: 10, done: true, reflection1: '' } });
   await run('pollSession(true)');
-  assert(html.includes('My unsaved draft'));
-  assert(html.includes('id="memberFinishBtn"'));
+  assert(html.includes('Team submission'));
+  assert(!html.includes('id="memberFinishBtn"'));
   assert(!html.includes('id="nextBtn"'));
   assert.equal(alerts.length, 0);
-  console.log('RapidSim 03 runner UI checks passed (selection, observer gating, handoff/reload, focus revocation, stale polls, reflection drafts).');
+  console.log('RapidSim 03 runner UI checks passed (selection, observer gating, handoff/reload, focus revocation, stale polls, runner-only completion).');
 })().catch(error => { console.error(error); process.exitCode = 1; });

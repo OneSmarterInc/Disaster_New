@@ -109,7 +109,7 @@ function friendlyError(code,status){
     runner_changed:'Runner control changed. Review the current selection before continuing.',
     runner_must_be_teammate:'Choose a member of your own team.',
     team_lead_only:'Only your team lead can assign the simulation runner.',
-    run_already_completed:'The shared run is complete. Each student can still submit their own reflection.',
+    run_already_completed:'The shared team run is complete.',
     team_run_not_complete:'Wait for your team runner to reach the close before submitting your reflection.',
     not_joined:'Rejoin the session before continuing.'
   };
@@ -292,7 +292,7 @@ function wireNav(onNext,backOk=true){
 function teamLead(){return (S.mates||[]).find(x=>x.isCaptain)||null}
 function teamProgressText(){
   const r=S.teamRun||{};
-  if((r.phase||0)>=3)return 'The shared run has reached the close. Your individual reflection is ready.';
+  if((r.phase||0)>=3)return 'The shared run is complete. The same team result is ready here.';
   if(r.year2)return 'Year 2 is committed. Your runner is moving through the final consequences.';
   if(r.year1)return 'Year 1 is committed. Your runner is continuing the shared run.';
   if(r.strategicView)return 'The opening view is committed. Your runner is working on Year 1.';
@@ -354,7 +354,7 @@ function renderTeamMemberWaiting(){
   shell(`<div class="eyebrow">Team mode · read-only</div><h2>${esc(runnerName)} will run the simulation for ${esc(teamName)}.</h2>
     <p class="lede">Contact ${esc(runnerName)} and make decisions together on that person's screen. This page is read-only so the team does not accidentally create separate results.</p>
     ${sessionGate()}${notice(teamProgressText())}
-    <div class="card"><h3>Your role</h3><p>Discuss, challenge, and help decide. Your individual reflection will appear here after the runner completes the shared run.</p></div>
+    <div class="card"><h3>Your role</h3><p>Discuss, challenge, and help decide. The same team result will appear here after the runner completes the shared run.</p></div>
     ${sharedResultsHTML()}`);
 }
 function renderTeamMemberReflection(){
@@ -372,7 +372,6 @@ function render(){
     if(S.finished)return renderClose();
     if(S.session.state==='lobby')return renderTeamLobby();
     if(!S.canSubmit){
-      if((S.teamRun?.phase||0)>=3)return renderTeamMemberReflection();
       return renderTeamMemberWaiting();
     }
   }
@@ -596,6 +595,7 @@ function renderBuyers(){
 function closingLessonHTML(){const d=S.closingLesson;if(!d)return '';const ps=Array.isArray(d.paragraphs)?d.paragraphs:[];const run=Array.isArray(d.yourRun)?d.yourRun:[];return `<div class="result-section" id="closingLesson"><div class="eyebrow">${esc(d.title||'What this run was teaching you')}</div><div class="closing-lesson"><div class="closing-lesson-inner">${ps.map(p=>`<p>${esc(p)}</p>`).join('')}${run.length?`<div class="closing-run"><h3>In your run</h3>${run.map(p=>`<p>${esc(p)}</p>`).join('')}</div>`:''}<div class="closing-carry">${esc(d.carryOut||'')}</div></div></div></div>`}
 function renderClose(){
   if(S.finished){
+    const teamMode=S.session?.mode==='team';
     const y1o=S.allOutcomes?.year1||S.year1Outcome||null;
     const y2o=S.allOutcomes?.year2||S.year2Outcome||null;
     const y3o=S.allOutcomes?.year3||null;
@@ -625,11 +625,11 @@ function renderClose(){
     <div class="result-section"><div class="eyebrow">Your original view</div>
       <div class="card"><p>${esc(S.strategicView||'—')}</p></div>
     </div>
-    <div class="result-section"><div class="eyebrow">Your reflections</div>
+    ${teamMode?`<div class="result-section"><div class="eyebrow">Team submission</div><div class="card"><p>The selected runner submitted this shared result for the whole team. Every team member sees the same outcome.</p></div></div>`:`<div class="result-section"><div class="eyebrow">Your reflections</div>
       <div class="card"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(S.reflection1||'—')}</p></div>
       <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[1])}</h3><p style="white-space:pre-wrap">${esc(S.reflection2||'—')}</p></div>
     </div>
-    ${closingLessonHTML()}
+    ${closingLessonHTML()}`}
     <div class="notice run-complete">Run complete. The full outcome, portfolio and reflections are ready to screenshot or print to PDF.</div>
     <div class="actions"><button class="btn pri" id="printBtn">Print / save PDF</button><a class="btn" id="studentHomeBtn" href="${esc((C.platformUrl||'https://rapidsims.flexee.org').replace(/\/$/,'')+'/student.html')}">Back to student home</a></div>`);
     document.getElementById('printBtn').onclick=()=>window.print();

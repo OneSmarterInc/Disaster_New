@@ -24,7 +24,7 @@ async function sessionRun(req, b) {
   if (!beforeMe) reject(403, 'not_joined');
   const beforeRid = beforeSession.mode === 'individual' ? `individual:${pid}` : beforeMe.groupId;
   const beforeRun = beforeRid ? (await store.getRuns(code))[beforeRid] : null;
-  const alreadySaved = beforeSession.mode === 'individual' ? beforeRun?.done : beforeRun?.finishedBy?.[pid];
+  const alreadySaved = beforeSession.mode === 'individual' ? beforeRun?.done : beforeRun?.done;
   // The browser saves its reflection before requesting the completion report.
   // Repeated reports must not resubmit a completed individual run or overwrite
   // a previously saved reflection with an empty/missing request field.
@@ -79,18 +79,23 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const b = body(req);
-  let y1, y2, outcomes, summary, lessonThresholds;
+  let y1, y2, outcomes, summary, lessonThresholds, sr = null;
   try {
-    const sr = await sessionRun(req, b);
+    sr = await sessionRun(req, b);
     if (sr) {
       y1 = sr.run.year1;
       y2 = sr.run.year2;
       lessonThresholds = sr.sess.thresholds || S.DEFAULT_THRESHOLDS;
       outcomes = sr.run.outcomes || S.evaluateAll(y1, y2, lessonThresholds);
-      const mine = sr.run.reflections?.[sr.pid] || {};
+      const mine = sr.sess.mode === 'team'
+        ? { reflection1: sr.run.reflection1 || '', reflection2: sr.run.reflection2 || '' }
+        : (sr.run.reflections?.[sr.pid] || {});
       summary = {
         strategicView: sr.run.strategicView || '', year1: y1, year2: y2,
         reflection1: mine.reflection1 || '', reflection2: mine.reflection2 || '',
+        teamRunId: sr.sess.mode === 'team' ? sr.rid : null,
+        teamLabel: sr.sess.mode === 'team' ? (sr.me.teamLabel || sr.rid) : null,
+        completedBy: sr.sess.mode === 'team' ? (sr.run.completedByName || sr.me.name) : null,
         year3Band: outcomes.year3.band
       };
     } else {
@@ -135,6 +140,23 @@ module.exports = async (req, res) => {
   const lt = req.headers['x-launch-token'];
   const launch = lt ? verifyLaunch(String(lt)) : null;
   let report = { ok: false, skipped: true };
-  if (launch && (!launch.sim || launch.sim === S.META.id)) report = await reportCompletion({ launch, summary, metrics });
+  if (launch && (!launch.sim || launch.sim === S.META.id)) {
+    let subjects = [launch.sub];
+    if (sr && sr.sess.mode === 'team') {
+      const teamSubjects = Object.values(sr.participants || {})
+        .filter(p => p && p.groupId === sr.rid && String(p.id || '').startsWith('platform:'))
+        .map(p => String(p.id).slice('platform:'.length));
+      if (teamSubjects.length) subjects = teamSubjects;
+    }
+    const reports = [];
+    for (const sub of [...new Set(subjects)]) {
+      reports.push(await reportCompletion({
+        launch: { ...launch, sub },
+        summary: sr && sr.sess.mode === 'team' ? { ...summary, completedFor: sub } : summary,
+        metrics
+      }));
+    }
+    report = { ok: reports.some(r => r.ok), reports };
+  }
   return res.status(200).json({ ok: true, completionReported: !!report.ok, outcomes, closingLesson });
 };

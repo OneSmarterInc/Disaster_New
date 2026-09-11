@@ -87,6 +87,7 @@ function runIdFor(sess, participant) {
 
 function publicRun(run) {
   if (!run) return null;
+  const teamRunComplete = !!run.runId && !String(run.runId).startsWith('individual:') && Number(run.phase || 0) >= 3;
   return {
     runId: run.runId,
     phase: run.phase || 0,
@@ -100,10 +101,18 @@ function publicRun(run) {
     reflection1: run.reflection1 || '',
     reflection2: run.reflection2 || '',
     outcomes: run.outcomes || null,
-    done: !!run.done,
+    done: !!run.done || teamRunComplete,
     finishedBy: run.finishedBy || {},
     updatedAt: run.updatedAt || null
   };
+}
+
+function visibleFacultyRuns(sess, runs) {
+  if (!sess || sess.mode !== 'team') return runs;
+  return Object.fromEntries(Object.entries(runs || {}).map(([id, run]) => {
+    const complete = !!run?.done || Number(run?.phase || 0) >= 3;
+    return [id, complete ? { ...run, done: true, completedAt: run.completedAt || run.updatedAt || null } : run];
+  }));
 }
 
 function sameAllocation(a, b) {
@@ -177,7 +186,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
           session: { ...sess, joinUrl: sess.platformAuth ? accountJoinUrl(sess) : null },
           participants,
-          runs,
+          runs: visibleFacultyRuns(sess, runs),
           you: who.name,
           defaultThresholds: S.DEFAULT_THRESHOLDS
         });
@@ -441,10 +450,10 @@ module.exports = async (req, res) => {
           .map(p => ({ id: p.id, name: p.name, isCaptain: !!p.isCaptain, isRunner: p.id === runner?.id }));
         const run = publicRun(rawRun);
         if (run && sess.mode === 'team') {
-          const mine = rawRun.reflections?.[pid] || {};
-          run.reflection1 = mine.reflection1 || '';
-          run.reflection2 = mine.reflection2 || '';
-          run.done = !!rawRun.finishedBy?.[pid];
+          const runnerReflection = rawRun.reflections?.[runner?.id] || {};
+          run.reflection1 = rawRun.reflection1 || runnerReflection.reflection1 || '';
+          run.reflection2 = rawRun.reflection2 || runnerReflection.reflection2 || '';
+          run.done = !!rawRun.done || Number(rawRun.phase || 0) >= 3;
         }
         return res.status(200).json({
           session: publicSession(sess),
@@ -475,11 +484,8 @@ module.exports = async (req, res) => {
         const previous = runs[rid] || null;
         const current = previous || { runId: rid, phase: 0, done: false, createdAt: Date.now() };
         const isRunner = sess.mode === 'individual' || runnerOf(participants, me.groupId, current)?.id === pid;
-        if (sess.mode === 'team' && wantsSharedDecision && !isRunner) {
+        if (sess.mode === 'team' && (wantsSharedDecision || b.done) && !isRunner) {
           return res.status(403).json({ error: 'runner_only', message: 'Only the selected simulation runner can submit or advance the shared run.' });
-        }
-        if (sess.mode === 'team' && !isRunner && b.done && Number(current.phase || 0) < 3) {
-          return res.status(409).json({ error: 'team_run_not_complete', message: 'Wait for your team runner to reach the close before submitting your reflection.' });
         }
         if (sess.mode === 'team' && (wantsSharedDecision || (b.done && Number(current.phase || 0) < 3)) &&
             b.runnerRevision !== revisionOf(current)) {
@@ -561,9 +567,14 @@ module.exports = async (req, res) => {
         if (b.done) {
           if (!next.year1 || !next.year2) return res.status(409).json({ error: 'allocations_incomplete' });
           if (sess.mode === 'team') {
-            next.finishedBy = { ...(current.finishedBy || {}), [pid]: Date.now() };
+            if (!isRunner) return res.status(403).json({ error: 'runner_only', message: 'Only the selected simulation runner can complete the shared team run.' });
+            const finishedAt = Date.now();
             const members = Object.values(participants).filter(p => p && p.groupId === rid);
-            next.done = members.length > 0 && members.every(m => next.finishedBy[m.id]);
+            next.finishedBy = { ...(current.finishedBy || {}) };
+            for (const m of members) next.finishedBy[m.id] = finishedAt;
+            next.done = true;
+            next.completedBy = pid;
+            next.completedByName = me.name;
           } else {
             next.done = true;
           }
