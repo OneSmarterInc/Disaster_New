@@ -104,7 +104,7 @@ for (const marker of [
   "C.buyers?.authored===false", "const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome)"
 ]) if (!index.includes(marker)) refuse('team/conformance student marker missing: ' + marker);
 if (index.includes('id=\"teamName\"')) refuse('student team-name input returned; team allocation must stay instructor-managed');
-for (const marker of ['m03-faculty-lt','Faculty authorization received from RapidSims.','opened without RapidSims faculty authorization','Your faculty authorization has expired. Return to RapidSims, open your course, and click Run a session again.']) if (!instructor.includes(marker)) refuse('faculty authorization persistence marker missing: ' + marker);
+for (const marker of ['m03-faculty-lt','Faculty authorization received from RapidSims.','async function renewFaculty()','captureDraft()','facultyRecovery']) if (!instructor.includes(marker)) refuse('faculty authorization persistence marker missing: ' + marker);
 if (!launcher.includes("sessionStorage.setItem('m03-faculty-lt',token)")) refuse('launch router does not persist faculty authorization');
 if (!index.includes("sessionStorage.setItem('m03-faculty-lt',LAUNCH_TOKEN)")) refuse('faculty play surface does not persist faculty authorization');
 for (const marker of ['Resume session code','Auto split teams','Unassigned students','Team lead',"action:'set_captain'","action:'rename_team'",'function startPresent()','dotcount','the annual cap is the wall'])

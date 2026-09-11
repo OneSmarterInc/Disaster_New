@@ -26,7 +26,7 @@ function whoIsFaculty(req, b) {
   if (lt) {
     const p = verifyLaunch(String(lt));
     if (p && p.sim === S.META.id && (p.role === 'faculty' || p.role === 'faculty_preview')) {
-      return { name: p.name || 'Facilitator', platformAuth: true, courseId: p.course || null };
+      return { name: p.name || 'Facilitator', userId: p.sub || null, platformAuth: true, courseId: p.course || null };
     }
   }
 
@@ -42,7 +42,13 @@ function whoIsFaculty(req, b) {
 }
 
 function ownsSession(who, sess) {
-  return !!who && (!sess.owner || sess.owner === who.name);
+  if (!who) return false;
+  if (sess.platformAuth) {
+    if (!who.platformAuth) return false;
+    if (sess.courseId && sess.courseId !== who.courseId) return false;
+    if (sess.ownerId) return sess.ownerId === who.userId;
+  }
+  return !sess.owner || sess.owner === who.name;
 }
 
 function publicSession(sess) {
@@ -142,6 +148,7 @@ module.exports = async (req, res) => {
         const sess = {
           code: c,
           owner: who.name,
+          ownerId: who.userId || null,
           platformAuth: !!who.platformAuth,
           courseId: who.courseId || null,
           name: String(b.name || 'Midland Equipment').slice(0, 80),

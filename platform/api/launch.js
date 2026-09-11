@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
   const q = req.query || {};
   const wants = q.format === 'json' ? 'json' : 'html';
   const simId = String(q.sim || '');
-  const courseId = String(q.course || '') || null;
+  let courseId = String(q.course || '') || null;
   const session = String(q.session || '').trim().toUpperCase();
   if (session && (simId !== 'rapid-03-midland' || !/^[A-Z2-9]{5}$/.test(session))) {
     return res.status(400).json({ error: 'invalid_session_invite' });
@@ -44,11 +44,42 @@ module.exports = async (req, res) => {
     return res.redirect(302, '/');
   }
 
+  // Session launch is an instructor capability, not a student play option.
+  if (mode === 'session' && !['admin', 'faculty'].includes(me.role)) {
+    return deny(res, wants, 'Faculty sign-in required', 'Sign in with a faculty account to create or manage a class session.');
+  }
+
   const s = sql();
   try {
     const sim = (await s`SELECT * FROM sims WHERE id = ${simId}`)[0];
     if (!sim) return deny(res, wants, 'No such simulation', "That simulation isn't in the catalogue.");
     if (!sim.launch_url) return deny(res, wants, 'Not available yet', 'This simulation has no address set. Ask an administrator.');
+
+    // A recovered Midland instructor tab may have no launch token/course.
+    // Never guess among classes or create an unbound room for a course owner.
+    if (simId === 'rapid-03-midland' && mode === 'session' && !courseId && me.role === 'faculty') {
+      const eligible = await s`
+        SELECT c.id, c.title FROM course_sims cs JOIN courses c ON c.id = cs.course_id
+        WHERE cs.sim_id = ${simId} AND c.faculty_id = ${me.id} AND c.archived = false
+        ORDER BY c.title, c.id`;
+      if (eligible.length === 1) courseId = eligible[0].id;
+      else if (eligible.length > 1) {
+        if (wants === 'json') return res.status(409).json({
+          error: 'course_selection_required', message: 'Choose the course for this session.',
+          courses: eligible.map(c => ({ id: c.id, title: c.title }))
+        });
+        return res.redirect(302, '/faculty.html');
+      }
+    }
+    // Explicit class context must be authorized, even when the faculty member
+    // has access to this simulation through a different course or a preview.
+    if (simId === 'rapid-03-midland' && mode === 'session' && courseId) {
+      const course = (await s`SELECT id, faculty_id, archived FROM courses WHERE id = ${courseId}`)[0];
+      const attached = await s`SELECT 1 FROM course_sims WHERE course_id = ${courseId} AND sim_id = ${simId}`;
+      if (!course || course.archived || !attached.length || (me.role !== 'admin' && course.faculty_id !== me.id)) {
+        return deny(res, wants, 'Course not available', 'Open a course you manage that includes Midland Equipment, then choose Run a session.');
+      }
+    }
 
     let asRole = null;
 

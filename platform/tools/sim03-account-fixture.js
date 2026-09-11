@@ -63,6 +63,10 @@ const query = async (strings, ...v) => {
     return [];
   }
   if (q.startsWith('SELECT * FROM sims WHERE id')) return v[0] === sim.id ? [sim] : [];
+  if (q.startsWith('SELECT c.id, c.title FROM course_sims cs')) {
+    return v[0] === sim.id && !sim.detached ? [...courses.values()]
+      .filter(c => c.faculty_id === v[1] && !c.archived).map(c => ({id:c.id,title:c.title})) : [];
+  }
   if (q.startsWith('SELECT 1 FROM course_sims cs')) {
     const c = q.includes('cs.course_id =') ? courses.get(v[0]) : courses.get('course-a');
     const teacher = v.at(-1), simulation = q.includes('cs.course_id =') ? v[1] : v[0];

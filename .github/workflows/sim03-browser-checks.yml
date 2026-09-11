@@ -70,6 +70,10 @@ jobs:
           export NODE_PATH="$RUNNER_TEMP/sim03-browser/node_modules"
           export AGENT_BROWSER_BIN="$RUNNER_TEMP/sim03-browser/node_modules/.bin/agent-browser"
           node platform/tools/sim03-account-entry-browser-check.js
+      - name: Faculty session authorization recovery and form persistence
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/sim03-browser/node_modules"
+          node platform/tools/sim03-faculty-auth-browser-check.js
       - name: Upload screenshots, browser traces, and test results
         if: always()
         uses: actions/upload-artifact@v4

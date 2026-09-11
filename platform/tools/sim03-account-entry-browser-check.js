@@ -92,8 +92,12 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   const noAuth=await page('teacher-no-auth');
   await noAuth.goto(platform+'/sim03/instructor.html');
   await noAuth.locator('[data-mode="team"]').click();
-  equal(await noAuth.locator('#create').isDisabled(),true,'direct instructor page cannot create without faculty authorization');
-  equal((await noAuth.locator('body').innerText()).includes('opened without RapidSims faculty authorization'),true,'direct instructor page explains how to recover');
+  let anonymousCreates=0;
+  noAuth.on('request',r=>{if(r.url().includes('/api/session')&&r.method()==='POST'){try{if(r.postDataJSON()?.action==='create')anonymousCreates++;}catch{}}});
+  await noAuth.locator('#create').click();await noAuth.locator('#facultyRecovery').waitFor();
+  equal(anonymousCreates,0,'direct instructor page does not send an anonymous create request');
+  equal(f.sessions.size,0,'direct instructor page cannot create without faculty authorization');
+  equal((await noAuth.locator('body').innerText()).includes('Sign in to your faculty account'),true,'direct instructor page explains how to recover');
 
   // Exercise the exact real user path: faculty first opens Midland as a normal
   // play launch, then clicks Run a facilitated session inside the simulation.

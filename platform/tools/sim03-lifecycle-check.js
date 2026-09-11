@@ -88,6 +88,16 @@ function sql(strings, ...v) {
     const sim = state.sims.get(v[0]);
     return Promise.resolve(sim ? [sim] : []);
   }
+  if (q.startsWith('SELECT id, faculty_id, archived FROM courses WHERE id')) {
+    const c = state.courses.get(v[0]);
+    return Promise.resolve(c ? [c] : []);
+  }
+  if (q.startsWith('SELECT 1 FROM course_sims WHERE')) {
+    return Promise.resolve(state.courseSims.some(x => x.course_id === v[0] && x.sim_id === v[1]) ? [{one:1}] : []);
+  }
+  if (q.startsWith('SELECT c.id, c.title FROM course_sims cs')) {
+    return Promise.resolve([...state.courses.values()].filter(c => c.faculty_id === v[1] && !c.archived && state.courseSims.some(x => x.course_id === c.id && x.sim_id === v[0])).map(c => ({id:c.id,title:c.title})));
+  }
   if (q.includes('SELECT 1 FROM course_sims cs JOIN courses c') && q.includes('cs.course_id =') && q.includes('c.faculty_id =')) {
     const [courseId, simId, facultyId] = v;
     const c = state.courses.get(courseId);
