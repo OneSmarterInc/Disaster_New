@@ -1,0 +1,64 @@
+name: tmp-sim03-increment3
+on:
+  push:
+    branches: [ui/sim03-increment3-tighten-generalise]
+permissions:
+  contents: write
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/sim03-increment3-tighten-generalise
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply Increment 3
+        run: python .github/scripts/sim03_increment3.py
+      - name: Assert calibration, instructor and team engine untouched
+        run: |
+          git diff --exit-code HEAD -- \
+            sim03/config/thresholds.json \
+            sim03/public/instructor.html \
+            sim03/api/session.js \
+            sim03/lib/store.js \
+            sim03/lib/guard.js \
+            sim03/lib/launch.js \
+            sim03/api/health.js \
+            sim03/api/outcome.js \
+            sim03/api/finish.js \
+            sim03/tools/team-flow-check.js \
+            sim03/tools/team-handler-check.js \
+            sim03/tools/team-runner-ui-check.js
+      - name: Run Sim03 tests
+        run: npm --prefix sim03 test
+      - name: Run Sim03 build guards
+        run: npm --prefix sim03 run build
+      - name: Run platform integration
+        run: node platform/tools/check-sim03-integration.js
+      - name: Parse student browser JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          text=Path('sim03/public/index.html').read_text()
+          scripts=re.findall(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>', text)
+          assert scripts
+          for i,s in enumerate(scripts):
+              p=Path(tempfile.gettempdir())/f'sim03-inc3-{i}.js'
+              p.write_text(s)
+              subprocess.run(['node','--check',str(p)],check=True)
+          PY
+      - name: Verify no schedule-specific packet language
+        run: |
+          ! grep -Eqi 'Tuesday|eighty minutes|semester' sim03/lib/scenario.js
+          ! grep -q 'What happens Tuesday' sim03/public/index.html
+      - name: Commit Increment 3
+        run: |
+          git config user.name 'OneSmarterInc Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add sim03/lib/scenario.js sim03/public/index.html sim03/lib/closingLesson.js sim03/build.js sim03/tools/check.js sim03/tools/increment2-check.js sim03/tools/closing-lesson-check.js sim03/tools/increment3-check.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Midland Increment 3: tighten and generalise'
+          git push origin HEAD:ui/sim03-increment3-tighten-generalise
