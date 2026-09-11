@@ -19,6 +19,7 @@ store.getParticipants = async code => copy(participants.get(code) || {});
 store.getRuns = async code => copy(runs.get(code) || {});
 store.setParticipant = async (code, id, value) => { participants.set(code, { ...(participants.get(code) || {}), [id]: copy(value) }); };
 store.addParticipant = store.setParticipant;
+require('./roster-fixture.js').installRosterTransactions(store, sessions, participants);
 store.setRun = async (code, id, value) => { runs.set(code, { ...(runs.get(code) || {}), [id]: copy(value) }); };
 store.compareAndSetRun = async (code, id, previous, next, session, roster) => {
   if (beforeCAS) { const hook = beforeCAS; beforeCAS = null; await hook(); }

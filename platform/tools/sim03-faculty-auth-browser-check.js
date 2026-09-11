@@ -51,8 +51,8 @@ async function sessionCode(p) {
         if(r.url)res.setHeader('location',r.url);
         res.setHeader('content-type','application/json');return res.end(r.payload?JSON.stringify(r.payload):'');
       }
-      if(pathname==='/instructor.html'){
-        res.setHeader('content-type','text/html');return res.end(await fs.readFile(path.join(root,'sim03/public/instructor.html')));
+      if(['/instructor.html','/faculty-workspace.js','/faculty-workspace.css'].includes(pathname)){
+        res.setHeader('content-type',pathname.endsWith('.js')?'text/javascript':pathname.endsWith('.css')?'text/css':'text/html');return res.end(await fs.readFile(path.join(root,'sim03/public',pathname.slice(1))));
       }
       res.statusCode=404;res.end();
     }catch(e){errors.push(e.stack);res.statusCode=500;res.end('{}');}
@@ -154,29 +154,83 @@ async function sessionCode(p) {
   equal(roster.statusCode,200,'recovered shortcut authorizes the course roster');
   equal(roster.payload.students.some(p=>p.name==='Alex Student'),true,'recovered shortcut returns real enrolled student names');
   equal(f.sessions.get(shortcutCode).courseId,'course-a','shortcut keeps its original course');
-  await shortcut.waitForFunction(() => document.querySelector('#course-enrolments')?.textContent.includes('not in team list yet'));
-  equal((await shortcut.locator('#course-enrolments').textContent()).includes('Only students marked In this session can be assigned to teams'),true,'course roster explains access vs joined students');
-  equal((await shortcut.locator('.joined-panel').textContent()).includes('0'),true,'team setup starts from joined students only');
-  const now=Date.now();
+  await shortcut.waitForFunction(() => document.querySelectorAll('.fw-unassigned .fw-person').length === 2);
+  equal(Object.values(f.participants.get(shortcutCode)).every(p=>p.joinedAt===null),true,'approved roster is available before any student opens the sim');
+  equal(await shortcut.locator('#start-session').isDisabled(),true,'start explains missing team assignments');
   f.seed('third','third@example.test','student',true,'Third Student');
   f.seed('fourth','fourth@example.test','student',true,'Fourth Student');
-  f.participants.set(shortcutCode,{
-    'platform:alice':{id:'platform:alice',name:'Alex Student A',joinedAt:now,groupId:null,teamLabel:'',isCaptain:false},
-    'platform:bob':{id:'platform:bob',name:'Alex Student B',joinedAt:now+1,groupId:null,teamLabel:'',isCaptain:false},
-    'platform:third':{id:'platform:third',name:'Third Student',joinedAt:now+2,groupId:null,teamLabel:'',isCaptain:false},
-    'platform:fourth':{id:'platform:fourth',name:'Fourth Student',joinedAt:now+3,groupId:null,teamLabel:'',isCaptain:false}
-  });
-  await shortcut.evaluate(() => refresh());
-  await shortcut.locator('#teamCount').waitFor();
-  equal(await shortcut.locator('#teamCount').inputValue(),'2','four joined students default to two teams');
-  equal((await shortcut.locator('.joined-panel').textContent()).includes('Alex Student A'),true,'joined roster lists available team members');
+  await shortcut.locator('#fw-refresh').click();
+  await shortcut.waitForFunction(() => document.querySelectorAll('.fw-unassigned .fw-person').length === 4);
+  equal(await shortcut.locator('#teamCount').inputValue(),'2','four approved students default to two teams');
   await shortcut.locator('#autoSplit').click();
-  await shortcut.waitForFunction(() => document.querySelectorAll('.team-card').length === 2);
-  equal(await shortcut.locator('.team-card').count(),2,'auto split creates two visible team cards');
-  equal(await shortcut.locator('.team-lead').first().locator('option').count(),2,'team runner dropdown contains the members of that team');
-  equal((await shortcut.locator('.result-guide').textContent()).includes('Where faculty sees results'),true,'instructor console points faculty to group results');
-  equal(await shortcut.locator('details.advanced').count(),1,'advanced calibration is collapsed away from the main team flow');
+  await shortcut.waitForFunction(() => document.querySelectorAll('.fw-team-card').length === 2);
+  equal(await shortcut.locator('.fw-team-card').count(),2,'auto split creates two visible team cards before launch');
+  equal(await shortcut.locator('.team-lead').first().locator('option[value^="platform:"]').count(),2,'runner dropdown includes both real member IDs');
+  equal(await shortcut.locator('#start-session').isEnabled(),true,'assigned teams can start without student attendance');
+  const startBox=await shortcut.locator('#start-session').boundingBox();
+  equal(startBox.y+startBox.height <= (await shortcut.evaluate(()=>innerHeight)),true,'start action stays visible without scrolling back to top');
+  await shortcut.locator('#fw-advanced summary').click();
+  await shortcut.evaluate(()=>refresh());
+  equal(await shortcut.locator('#fw-advanced').evaluate(el=>el.open),true,'advanced settings stay open through polling');
+  await shortcut.locator('#fw-advanced summary').click();
+  await shortcut.locator('#start-session').click();
+  await shortcut.waitForFunction(() => document.querySelector('#results-view')?.hidden===false);
+  equal((await shortcut.locator('#response-heading').textContent()).includes('All team results'),true,'start leads directly to all team results');
+  equal(await shortcut.locator('.fw-overview tbody tr').count(),2,'all teams including not-started runs appear once');
+  equal(Object.values(f.participants.get(shortcutCode)).every(p=>p.joinedAt===null),true,'starting did not manufacture attendance');
+  await shortcut.reload();await shortcut.locator('#resumeBtn').click();
+  await shortcut.locator('.fw-overview tbody tr').first().waitFor();
+  equal(await shortcut.locator('#manage-view').isHidden(),true,'resuming a running room opens results rather than setup');
   await shortcut.screenshot({path:path.join(artifacts,'02-faculty-shortcut-roster.png'),fullPage:true});
+  const rosterPeople=Object.values(f.participants.get(shortcutCode));
+  const teamIds=[...new Set(rosterPeople.map(p=>p.groupId))];
+  const allocations=[{run:3,uptime:2,capacity:1,connect:3,features:0},{run:4,uptime:1,capacity:1,connect:1,features:2}];
+  for(const [i,groupId] of teamIds.entries()){
+    const lead=rosterPeople.find(p=>p.groupId===groupId&&p.isCaptain);
+    const user=f.users.get(lead.id.slice(9));
+    const studentCookie=await f.signin(user.email);
+    const launch=await f.call('launch',{}, {method:'GET',headers:{cookie:studentCookie},query:{sim:f.sim.id,course:'course-a',session:shortcutCode,format:'json'}});
+    equal(launch.statusCode,200,'assigned runner receives a course-authorized launch');
+    const token=new URLSearchParams(new URL(launch.payload.url).hash.slice(1)).get('lt');
+    const headers={'x-launch-token':token};
+    equal((await f.call('session',{action:'join',code:shortcutCode},{headers})).payload.me.groupId,groupId,'runner launch restores the preassigned team');
+    const answer='Team '+(i+1)+' committed response — '+('Explain our trade-off. '.repeat(55));
+    const submitted=await f.call('session',{action:'submit',code:shortcutCode,participantId:lead.id,runnerRevision:0,
+      strategicView:'Midland should provide reliable service through connected equipment.',year1:allocations[i],year2:allocations[i],reflection1:answer,reflection2:'We would move one million into capacity.',done:true},{headers});
+    equal(submitted.statusCode,200,'runner submits the single shared result through the production handler');
+  }
+  await shortcut.evaluate(()=>refresh());
+  await shortcut.waitForFunction(()=>document.getElementById('submitted-stat')?.textContent==='2');
+  equal(await shortcut.locator('.fw-overview tbody tr').count(),2,'two completed teams produce two rows, not four student copies');
+  await shortcut.locator('.fw-overview [data-open-team]').first().click();
+  equal((await shortcut.locator('#response-content').textContent()).includes('committed response'),true,'faculty can read the actual runner answer inline');
+  await shortcut.locator('#tab-outcomes').click();
+  equal((await shortcut.locator('#response-content').textContent()).includes('Carrolton Systems'),true,'saved buyer outcomes appear in the same selected-team panel');
+  await shortcut.locator('#compare-btn').click();
+  const compared=await shortcut.locator('#compare-left').inputValue();
+  await shortcut.evaluate(()=>refresh());
+  equal(await shortcut.locator('#compare-dialog').evaluate(el=>el.open),true,'polling does not close comparison');
+  equal(await shortcut.locator('#compare-left').inputValue(),compared,'polling preserves comparison selection');
+  await shortcut.locator('#close-compare').click();
+  await shortcut.locator('#tab-answers').click();
+  await shortcut.screenshot({path:path.join(artifacts,'03-team-written-responses.png'),fullPage:true});
+  const exportPromise=shortcut.waitForEvent('download');await shortcut.locator('#export-btn').click();
+  const download=await exportPromise;const csvPath=path.join(artifacts,'shared-team-responses.csv');await download.saveAs(csvPath);
+  const csv=await fs.readFile(csvPath,'utf8');
+  equal(csv.split('Team 1 committed response').length-1,1,'the team answer appears once in the export');
+  await shortcut.setViewportSize({width:390,height:844});
+  equal(await shortcut.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'mobile results have no page-wide horizontal overflow');
+  await shortcut.screenshot({path:path.join(artifacts,'04-mobile-results.png'),fullPage:true});
+  await shortcut.setViewportSize({width:1366,height:900});
+  await shortcut.locator('#manage-tab').click();
+  await shortcut.locator('#fw-advanced summary').click();
+  const calibration=shortcut.locator('.th').first();
+  equal(await calibration.isDisabled(),true,'advanced calibration is locked after start');
+  shortcut.once('dialog',d=>d.accept());await shortcut.locator('[data-session-control="close"]').click();
+  await shortcut.waitForFunction(()=>state.session.state==='closed');
+  await shortcut.reload();await shortcut.locator('#resumeBtn').click();
+  await shortcut.locator('.fw-overview tbody tr').first().waitFor();
+  equal(await shortcut.locator('#manage-view').isHidden(),true,'resuming a closed room opens all saved results');
   equal(errors,[],'no browser or server errors');
   await fs.writeFile(path.join(artifacts,'results.json'),JSON.stringify({ok:true,checks,productionDataTouched:false},null,2));
   console.log(`Midland faculty-auth browser checks passed (${checks} assertions).`);

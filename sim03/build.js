@@ -13,6 +13,7 @@ const read = (name) => fs.readFileSync(path.join(__dirname, 'public', name), 'ut
 const index = read('index.html');
 const instructor = read('instructor.html');
 const launcher = read('launch.html');
+const workspace = read('faculty-workspace.js');
 const configApi = fs.readFileSync(path.join(__dirname, 'api', 'config.js'), 'utf8');
 
 function refuse(message) {
@@ -107,9 +108,11 @@ if (index.includes('id=\"teamName\"')) refuse('student team-name input returned;
 for (const marker of ['m03-faculty-lt','Faculty authorization received from RapidSims.','async function renewFaculty()','captureDraft()','facultyRecovery']) if (!instructor.includes(marker)) refuse('faculty authorization persistence marker missing: ' + marker);
 if (!launcher.includes("sessionStorage.setItem('m03-faculty-lt',token)")) refuse('launch router does not persist faculty authorization');
 if (!index.includes("sessionStorage.setItem('m03-faculty-lt',LAUNCH_TOKEN)")) refuse('faculty play surface does not persist faculty authorization');
-for (const marker of ['Resume session code','Auto split teams','Unassigned students','Team lead',"action:'set_captain'","action:'rename_team'",'function startPresent()','dotcount','the annual cap is the wall',
-  'Run the class in five steps','Only students marked In this session can be assigned to teams','Access released — waiting to join (not in team list yet)','Joined students available for teams','Where faculty sees results','Advanced settings and instructor notes'])
-  if (!instructor.includes(marker)) refuse('team/projector instructor marker missing: ' + marker);
+for (const marker of ['Resume session code', 'function startPresent()', 'dotcount', 'the annual cap is the wall'])
+  if (!instructor.includes(marker)) refuse('instructor entry/debrief marker missing: ' + marker);
+for (const marker of ['Auto split teams', 'Unassigned students', 'Team lead', 'All team results', 'Start session',
+  'Advanced settings and instructor notes', 'Approved · not opened yet'])
+  if (!workspace.includes(marker)) refuse('faculty workspace marker missing: ' + marker);
 if (index.includes('Valuation pending authored rule')) refuse('unauthored buyer placeholder reached the student bundle');
 if (index.includes('authored calibration does not yet define')) refuse('Year 3 calibration scaffolding reached the student bundle');
 for (const marker of ['Briefing & exhibits','Your outcome','Overall result','Three-year consequence timeline','The portfolio that produced this','Your original view','Year 2 allocation','Cumulative portfolio','Three buyers','buyer-interest'])
@@ -148,6 +151,7 @@ try {
   checkScripts('index.html', index);
   checkScripts('instructor.html', instructor);
   checkScripts('launch.html', launcher);
+  new vm.Script(workspace, { filename: 'faculty-workspace.js' });
 } catch (e) {
   refuse('browser JavaScript does not parse: ' + e.message);
 }
@@ -167,4 +171,6 @@ execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-runner-ui-ch
 
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-entry-url-check.js')], { stdio: 'inherit' });
 
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'faculty-workspace-check.js')], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'course-roster-check.js')], { stdio: 'inherit' });
 console.log('RapidSim 03 build guards passed.');

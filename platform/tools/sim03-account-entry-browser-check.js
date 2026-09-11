@@ -40,7 +40,7 @@ async function simRoute(req,res,url) {
   let pathname=url.pathname.replace(/^\/sim03(?=\/|$)/,'')||'/';
   if(pathname.startsWith('/api/')) return invoke(pathname.slice(5),req,res,url);
   if(pathname==='/')pathname='/launch.html';
-  if(!['/launch.html','/index.html','/instructor.html'].includes(pathname)){res.statusCode=404;return res.end();}
+  if(!['/launch.html','/index.html','/instructor.html','/faculty-workspace.js','/faculty-workspace.css'].includes(pathname)){res.statusCode=404;return res.end();}
   return file(res,'sim03/public'+pathname);
 }
 async function page(name) {
@@ -120,7 +120,9 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   equal(new URL(invite).origin,platform,'generated invite uses platform account origin');
   equal(new URL(invite).searchParams.get('course'),'course-a','generated invite carries class');
   equal(new URL(invite).hash,'','no teacher token copied');await shot(teacher,'01-faculty-session-link');
-  await teacher.locator('[data-enrolled-id="platform:pending"]').filter({hasText:'Waiting for access release'}).waitFor();
+  await teacher.waitForFunction(()=>enrolmentData?.students.some(p=>p.participantId==='platform:pending'&&!p.accessReleased));
+  await teacher.locator('[data-person-id="platform:alice"]').filter({hasText:'Approved · not opened yet'}).waitFor();
+  equal(Object.keys(f.participants.get(code)).length,2,'both approved students are in the setup roster before launch');
   equal((await teacher.locator('#courseAccess').getAttribute('href')).includes('course=course-a'),true,'faculty release link targets the current course');
   // Selecting the read-only share link must not freeze the live participant UI.
   await teacher.locator('#join').focus();
@@ -129,13 +131,14 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   await alice.goto(invite);await joined(alice,'platform:alice');
   equal(await alice.evaluate(()=>S.sessionCode),code,'already signed-in student reaches original session');
   await shot(alice,'02-signed-in-student');
-  await teacher.waitForFunction(()=>document.querySelector('.kpi b')?.textContent==='1');
-  await teacher.locator('[data-enrolled-id="platform:alice"]').filter({hasText:'In this session'}).waitFor();checks++;
+  await teacher.waitForFunction(()=>Object.values(state.participants).filter(p=>p.joinedAt).length===1);
+  await teacher.locator('[data-person-id="platform:alice"]').filter({hasText:'Opened the simulation'}).waitFor();checks++;
   // A read-only enrolment refresh must not wipe an unfinished team name.
+  await teacher.locator('#fw-manual-team summary').click();
   await teacher.locator('#newTeamName').fill('My unfinished team');
 
   await alice.reload();await joined(alice,'platform:alice');
-  equal(Object.keys(f.participants.get(code)).length,1,'reload does not create duplicate participant');
+  equal(Object.keys(f.participants.get(code)).length,2,'reload reuses the approved participant instead of duplicating it');
   const loggedOut=await page('logged-out');await loggedOut.goto(invite);
   await loggedOut.locator('#name').waitFor();await shot(loggedOut,'03-create-account');
   await loggedOut.locator('#switch-account').click();
@@ -154,7 +157,7 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   await shot(fresh,'04-awaiting-release');
   const user=[...f.users.values()].find(u=>u.email==='fresh@example.test');
   equal(!!user,true,'existing signup API created a real hashed account in test DB');
-  await teacher.locator('[data-enrolled-id="platform:'+user.id+'"]').filter({hasText:'Waiting for access release'}).waitFor();
+  await teacher.waitForFunction(id=>enrolmentData?.students.some(p=>p.participantId==='platform:'+id&&!p.accessReleased),user.id);
   equal(await teacher.locator('#newTeamName').inputValue(),'My unfinished team','new enrolment becomes visible without losing the focused team draft');
   equal(!!f.participants.get(code)['platform:'+user.id],false,'roster visibility does not bypass launch authorization');
   await shot(teacher,'05-faculty-enrolment-before-release');
@@ -176,7 +179,7 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   await coursePage.close();
   // No refresh or Check again click: the waiting page resumes on its own.
   await joined(fresh,'platform:'+user.id);
-  await teacher.locator('[data-enrolled-id="platform:'+user.id+'"]').filter({hasText:'In this session'}).waitFor();
+  await teacher.locator('[data-person-id="platform:'+user.id+'"]').filter({hasText:'Opened the simulation'}).waitFor();
   checks++;
 
   equal(await fresh.evaluate(()=>S.sessionCode),code,'after faculty release newcomer enters same session');

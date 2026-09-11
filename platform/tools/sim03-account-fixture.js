@@ -10,7 +10,7 @@ Module._load = function(name, ...args) {
 const db = require('../lib/db.js');
 Module._load = original;
 let sequence = 0;
-const users = new Map(), cookies = new Map(), participants = new Map(), sessions = new Map();
+const users = new Map(), cookies = new Map(), participants = new Map(), sessions = new Map(), runs = new Map();
 const courses = new Map([['course-a', { id:'course-a', title:'Test course', join_code:'COURSE', faculty_id:'teacher', archived:false }]]);
 const enrolments = [], launches = [];
 const sim = { id:'rapid-03-midland', launch_url:'https://midland.test/sim03', published:true };
@@ -99,7 +99,15 @@ store.putSession = async (code,value) => { sessions.set(code,structuredClone(val
 store.getSession = async code => structuredClone(sessions.get(code) || null);
 store.getParticipants = async code => structuredClone(participants.get(code) || {});
 store.addParticipant = store.setParticipant = async (code,id,value) => { const p=participants.get(code)||{};p[id]=structuredClone(value);participants.set(code,p); };
-store.getRuns = async () => ({});
+require('../../sim03/tools/roster-fixture.js').installRosterTransactions(store, sessions, participants);
+store.getRuns = async code => structuredClone(runs.get(code) || {});
+store.setRun = async (code,id,next) => {const all=runs.get(code)||{};all[id]=structuredClone(next);runs.set(code,all);};
+store.compareAndSetRun = async (code,id,previous,next,session,roster) => {
+  const same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
+  const all=runs.get(code)||{};
+  if(!same(all[id],previous)||!same(sessions.get(code),session)||!same(participants.get(code)||{},roster))return false;
+  await store.setRun(code,id,next);return true;
+};
 const handlers = {
   'session-enrolments':require('../api/session-enrolments.js'),
   faculty:require('../api/faculty.js'),
@@ -127,7 +135,7 @@ async function createClass() {
 }
 process.env.LAUNCH_SECRET = 'local-fixture-secret-never-production';
 process.env.ACCESS_CODE = 'standalone-secret-not-shared';
-module.exports = {call,signin,cookie,createClass,handlers,users,cookies,courses,enrolments,sessions,participants,sim,seed,auth,launches};
+module.exports = {call,signin,cookie,createClass,handlers,users,cookies,courses,enrolments,sessions,participants,runs,sim,seed,auth,launches};
 
 // The sim-to-platform roster bridge uses the real read-only handler with the
 // same test SQL adapter. No production network or student records are used.
