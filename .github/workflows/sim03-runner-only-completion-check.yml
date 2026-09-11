@@ -1,0 +1,85 @@
+name: sim03-runner-only-completion-check
+on:
+  push:
+    branches: [fix/sim03-runner-only-completion]
+    paths:
+      - '.github/workflows/sim03-runner-only-completion-check.yml'
+      - 'tools/patch-sim03-runner-only-completion.py'
+permissions:
+  contents: write
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser-test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sim03-browser" --no-audit --no-fund playwright@1 redis@5 agent-browser
+          "$RUNNER_TEMP/sim03-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Apply runner-only team completion patch
+        run: |
+          python tools/patch-sim03-runner-only-completion.py
+          git diff --check
+          node <<'JS'
+          const fs=require('fs'),assert=require('assert');
+          const session=fs.readFileSync('sim03/api/session.js','utf8');
+          const finish=fs.readFileSync('sim03/api/finish.js','utf8');
+          const student=fs.readFileSync('sim03/public/index.html','utf8');
+          const instructor=fs.readFileSync('sim03/public/instructor.html','utf8');
+          const browser=fs.readFileSync('sim03/tools/team-runner-browser-check.js','utf8');
+          for (const [name,hay,markers] of [
+            ['session',session,['visibleFacultyRuns','completedByName','Only the selected simulation runner can complete the shared team run','run.done = !!rawRun.done || Number(rawRun.phase || 0) >= 3']],
+            ['finish',finish,['teamSubjects','completedFor','beforeRun?.done']],
+            ['student',student,['Team submission','same team result will appear here','Member is not asked','The selected runner submitted this shared result for the whole team']],
+            ['instructor',instructor,['stablePeople','min-height:54px','r.reflections?.[r.completedBy]']],
+            ['browser-test',browser,['Member is not asked for a separate final reflection','All team members see the same overall result','Shared run completes when the runner submits']]
+          ]) for (const m of markers) assert(hay.includes(m), `${name} missing ${m}`);
+          assert(!student.includes('Your individual reflection will appear here after the runner completes the shared run.'));
+          console.log('Static runner-only completion assertions passed.');
+          JS
+      - name: Build and handler regressions
+        run: |
+          (cd sim03 && npm test && npm run build)
+          node platform/tools/check-sim03-integration.js
+          node platform/tools/sim03-lifecycle-check.js
+          node platform/tools/sim03-account-entry-check.js
+          node platform/tools/check-faculty-student-results.js
+      - name: Chromium faculty/student/team regressions with real Redis
+        env:
+          TEST_REDIS_URL: redis://127.0.0.1:6379
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/sim03-browser/node_modules"
+          export AGENT_BROWSER_BIN="$RUNNER_TEMP/sim03-browser/node_modules/.bin/agent-browser"
+          node sim03/tools/team-runner-browser-check.js --required
+          node platform/tools/sim03-account-entry-browser-check.js
+          node platform/tools/sim03-faculty-auth-browser-check.js
+      - name: Commit the tested runtime changes to this fix branch
+        run: |
+          rm -f .github/workflows/sim03-runner-only-completion-check.yml tools/patch-sim03-runner-only-completion.py
+          git config user.name "OneSmarterInc"
+          git config user.email "135138556+OneSmarterInc@users.noreply.github.com"
+          git add sim03/api/session.js sim03/api/finish.js sim03/public/index.html sim03/public/instructor.html sim03/tools/team-flow-check.js sim03/tools/team-handler-check.js sim03/tools/team-runner-ui-check.js sim03/tools/team-runner-browser-check.js
+          git commit -m "Make Midland team completion runner-only and stabilize team result views"
+          git push origin HEAD:fix/sim03-runner-only-completion
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim03-runner-only-completion-results
+          path: browser-artifacts/
+          retention-days: 7
