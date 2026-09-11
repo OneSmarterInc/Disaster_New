@@ -76,3 +76,40 @@ the CEO to see until the later consequences arrived.
 - `POST /api/outcome` — server-side deterministic outcome evaluation
 - `POST /api/session` — facilitated session/team/instructor state
 - `POST /api/finish` — completion report to the platform
+
+## Standalone checks
+
+A copy of this folder alone (including an unzip named `sim-03`) is sufficient for
+`npm test` or `npm run build`. Node 20 or later is required; no sibling `platform/`
+folder or npm packages are needed for these guards. The faculty authorization
+check signs a test-only launch-token fixture and exercises the real session
+handler, including invalid signatures, expired tokens, other simulations, and
+student roles. Full platform-to-sim compatibility is also checked separately in
+the monorepo's platform integration job.
+
+`npm run test:browser` is a separate, optional integration check. It uses the real
+HTML, API handlers and Redis Lua scripts, not a mocked Redis implementation. It
+requires Playwright, Redis's Node client, Chromium, an agent-browser CLI, and a
+**disposable test Redis service**. Install the same isolated tools used by CI:
+
+```sh
+npm install --prefix /tmp/midland-browser --no-audit --no-fund playwright@1 redis@5 agent-browser
+/tmp/midland-browser/node_modules/.bin/playwright install --with-deps chromium
+export NODE_PATH=/tmp/midland-browser/node_modules
+export AGENT_BROWSER_BIN=/tmp/midland-browser/node_modules/.bin/agent-browser
+export TEST_REDIS_URL=redis://127.0.0.1:6379
+npm run test:browser -- --required
+```
+
+These shell commands are for Linux/macOS; on Windows use equivalent paths and
+PowerShell environment assignments. Never point TEST_REDIS_URL at production.
+Without the prerequisites, the optional command prints **SKIP / NOT RUN**, gives
+the missing requirements, and exits cleanly. `--required` (or
+`SIM03_BROWSER_REQUIRED=1`) instead fails. Missing prerequisites are never reported
+as a passing browser test. Connection attempts to an absent Redis stop rather
+than retrying indefinitely.
+
+The browser CI job first tests a standalone archive without dependencies, then
+runs the full browser/Redis check from that same isolated folder in required
+mode. It also checks the rendered Brief and Position screens and the story-before-
+portfolio order on the Year 1 outcome and both Year 2 events.

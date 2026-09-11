@@ -1,7 +1,19 @@
 const assert = require('assert');
 const store = require('../lib/store.js');
 const handler = require('../api/session.js');
-const { launchToken } = require('../../platform/lib/launch.js');
+const { createHmac } = require('node:crypto');
+
+// Test-only implementation of the documented platform wire format. Keep this
+// independent of the sim's verifier so a verifier defect cannot sign its own
+// passing fixture. The real platform integration checks remain in platform/.
+function launchToken({ userId, name, role, simId, mode, minutes = 60 }) {
+  const now = Date.now();
+  const payload = { sub: userId, name, role, sim: simId, mode: mode || 'play',
+    course: null, iat: now, exp: now + minutes * 60000 };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const mac = createHmac('sha256', process.env.LAUNCH_SECRET).update(body).digest('base64url');
+  return `${body}.${mac}`;
+}
 
 const originalEnv = {
   FACULTY_CODES: process.env.FACULTY_CODES,
@@ -66,6 +78,16 @@ async function invoke(body, headers = {}) {
     r = await invoke({ action: 'create', name: 'Platform body-token smoke', mode: 'team', launchToken: token });
     assert.equal(r.status, 200, 'instructor body fallback should accept the same signed token');
     assert.equal(r.body.session.mode, 'team');
+
+    for (const [label, invalid] of [
+      ['student role', launchToken({ userId: 'student-1', role: 'student', simId: 'rapid-03-midland' })],
+      ['another simulation', launchToken({ userId: 'faculty-1', role: 'faculty', simId: 'another-sim' })],
+      ['expired token', launchToken({ userId: 'faculty-1', role: 'faculty', simId: 'rapid-03-midland', minutes: -1 })],
+      ['invalid signature', token + 'tampered']
+    ]) {
+      r = await invoke({ action: 'create', mode: 'team' }, { 'x-launch-token': invalid });
+      assert.equal(r.status, 401, `${label} must not authorize a faculty session`);
+    }
 
     delete process.env.LAUNCH_SECRET;
     process.env.FACULTY_CODES = 'Instructor:faculty-secret';

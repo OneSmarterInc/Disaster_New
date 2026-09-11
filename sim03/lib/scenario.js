@@ -459,7 +459,7 @@ function publicConfig() {
       'You are about to take over technology decisions here.'
     ],
     position:
-      'You have $9 million to allocate this year across five lines. Run has a $3M minimum. Uptime, Capacity, Connect, and Features each have a $3M annual ceiling. Spend all $9M; you cannot borrow from next year.',
+      'You have $9 million to allocate this year across five lines. Spend all $9M; you cannot borrow from next year. Run has a $3M minimum. Each other line — Uptime, Capacity, Connect, and Features — has a $3M maximum per year.',
     viewPrompt: 'Midland should become a company that can ___ for customers by ___.',
     viewDisclosure: 'Your instructor can see this sentence in the instructor view. It is not scored, and it will come back to you at the close.',
     reflectionPrompts: [

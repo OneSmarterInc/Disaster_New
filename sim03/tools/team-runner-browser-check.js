@@ -9,14 +9,36 @@ const path = require('node:path');
 const { randomBytes } = require('node:crypto');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
+const existsSync = require('node:fs').existsSync;
+const required = process.argv.includes('--required') || process.env.SIM03_BROWSER_REQUIRED === '1';
+function unavailable(reason) {
+  console[required ? 'error' : 'log'](`${required ? 'FAIL' : 'SKIP'}: RapidSim 03 browser/Redis check NOT RUN: ${reason}`);
+  console[required ? 'error' : 'log']('See README.md: Standalone checks. CI must use --required so a skip cannot pass its browser gate.');
+  if (required) process.exitCode = 1;
+}
+const missing = [];
+for (const name of ['playwright', 'redis']) {
+  try { require.resolve(name); }
+  catch (error) {
+    if (error.code !== 'MODULE_NOT_FOUND') throw error;
+    missing.push(`missing npm package ${name}`);
+  }
+}
+const agent = process.env.AGENT_BROWSER_BIN;
+if (!agent || !existsSync(agent)) missing.push('AGENT_BROWSER_BIN does not point to an installed agent-browser CLI');
+if (missing.length) { unavailable(missing.join('; ')); process.exit(required ? 1 : 0); }
 const { chromium } = require('playwright');
 const { createClient } = require('redis');
+if (!existsSync(chromium.executablePath())) {
+  unavailable('Playwright Chromium is not installed; run playwright install chromium');
+  process.exit(required ? 1 : 0);
+}
 const exec = promisify(execFile);
 const root = path.resolve(__dirname, '..');
 const artifacts = path.resolve(process.env.BROWSER_ARTIFACTS || 'browser-artifacts');
 const access = randomBytes(16).toString('hex');
 const faculty = randomBytes(16).toString('hex');
-const redis = createClient({ url: process.env.TEST_REDIS_URL || 'redis://127.0.0.1:6379' });
+const redis = createClient({ url: process.env.TEST_REDIS_URL || 'redis://127.0.0.1:6379', socket: { connectTimeout: 3000, reconnectStrategy: false } });
 const sessions = [];
 const servers = [];
 const contexts = [];
@@ -88,7 +110,11 @@ async function snapshot(name, page) {
 (async () => {
   await fs.mkdir(artifacts, { recursive: true });
   redis.on('error', e => failures.push(`Redis: ${e.message}`));
-  await redis.connect();
+  try { await redis.connect(); }
+  catch (error) {
+    unavailable(`test Redis is unavailable (${error.code || 'connection failed'}); start a disposable Redis and set TEST_REDIS_URL`);
+    return;
+  }
   // Only the transport adapter is a test fixture. Redis executes the exact Lua
   // compare-and-set from the production store, including competing requests.
   const kv = await listen(async (req, res) => {
@@ -121,8 +147,6 @@ async function snapshot(name, page) {
   console.log('Isolated Sim03 server ready:', origin);
   // Verify a real dev-server page with agent-browser as well as the detailed
   // Playwright multi-context flow below. No production access key is exposed.
-  const agent = process.env.AGENT_BROWSER_BIN;
-  if (!agent) throw new Error('AGENT_BROWSER_BIN must point to the installed CLI');
   const agentEnv = { ...process.env, AGENT_BROWSER_EXECUTABLE_PATH: chromium.executablePath() };
   await exec(agent, ['--session', 'sim03-check', 'open', `${origin}/sim03/launch.html`], { env: agentEnv });
   const initial = await exec(agent, ['--session', 'sim03-check', 'snapshot', '-i'], { env: agentEnv });
@@ -158,11 +182,28 @@ async function snapshot(name, page) {
   const revision = await ben.evaluate(() => S.runnerRevision);
   check((await api({ action: 'submit', code, participantId: annId, runnerRevision: revision, screen: 1 })).body.error, 'runner_only', 'Backend rejects non-runner advance');
   check((await api({ action: 'set_runner', code, participantId: calId, runnerId: calId, expectedRunnerId: benId, runnerRevision: revision })).status, 403, 'Backend rejects a member taking control');
-  await next(ben, 1); await next(ben, 2); await next(ben, 3);
+  // Rendered-content regressions: presence in a source file is not sufficient.
+  await ben.setViewportSize({ width: 1366, height: 768 });
+  check(await ben.locator('.brief-profit').evaluate(box =>
+    box.previousElementSibling.textContent.includes('main office system') &&
+    box.nextElementSibling.textContent.includes('about to take over technology')), true,
+    'Brief places the business-model callout after systems and before taking over');
+  await snapshot('06-brief-order', ben);
+  await next(ben, 1); await next(ben, 2);
+  const rules = await ben.locator('#position-rules').innerText();
+  check(rules.includes('Run has a $3M minimum') && rules.includes('$3M maximum per year') && rules.includes('cannot borrow from next year'), true,
+    'Position states the Run minimum, other-line caps, and no-borrow rule before allocation');
+  check(await ben.locator('.line-guide-row[data-line="capacity"]').innerText().then(t => t.includes('No one in the room speaks for this line.')), true,
+    'Position explains Capacity silence in its own table row');
+  await snapshot('07-position-rules', ben);
+  await next(ben, 3);
   await ben.locator('#viewText').fill('Build a resilient service platform for Midland customers.');
   await next(ben, 4);
   await allocate(ben, { uptime: 2, capacity: 1, connect: 2, features: 1 });
   await next(ben, 5);
+  check(await ben.locator('.outcome').evaluate(box => !!(box.compareDocumentPosition(document.querySelector('.running')) & Node.DOCUMENT_POSITION_FOLLOWING)), true,
+    'Year 1 story precedes portfolio reference numbers');
+  await snapshot('08-year1-story-first', ben);
   const y1 = await ben.evaluate(() => S.year1);
   check(y1, { run: 3, uptime: 2, capacity: 1, connect: 2, features: 1 }, 'Runner commits Year 1 through browser controls');
   await ann.waitForFunction(() => !!S.teamRun?.year1);
@@ -189,8 +230,15 @@ async function snapshot(name, page) {
   await ann.waitForFunction(() => !S.session.paused);
   check(await ann.locator('#nextBtn').isEnabled(), true, 'Resume preserves draft allocation and enables submission');
   await next(ann, 7);
+  check(await ann.locator('.events').evaluate(box => !!(box.compareDocumentPosition(document.querySelector('.running')) & Node.DOCUMENT_POSITION_FOLLOWING)), true,
+    'Heat-wave story precedes cumulative portfolio numbers');
+  await snapshot('09-heat-story-first', ann);
   await ann.locator('#nextBtn').click();
   await ann.waitForFunction(() => S.year2Event === 1);
+  check(await ann.locator('.events .outcome').count(), 2, 'The second event is actually rendered');
+  check(await ann.locator('.events .outcome').last().evaluate(box => !!(box.compareDocumentPosition(document.querySelector('.running')) & Node.DOCUMENT_POSITION_FOLLOWING)), true,
+    'Competitor story also precedes cumulative portfolio numbers');
+  await snapshot('10-competitor-story-first', ann);
   await next(ann, 8); await next(ann, 9); await next(ann, 10);
   check((await api({ action: 'submit', code, participantId: calId, reflection1: 'Premature', done: true })).body.error, 'team_run_not_complete', 'Member cannot complete before runner');
   await ann.locator('#r1').fill('Ann learned why reliable service needs an information foundation.');

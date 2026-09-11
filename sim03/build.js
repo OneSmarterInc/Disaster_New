@@ -160,6 +160,7 @@ execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-handler-chec
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'closing-lesson-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'increment2-check.js')], { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'increment3-check.js')], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'browser-preflight-check.js')], { stdio: 'inherit' });
 
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-runner-ui-check.js')], { stdio: 'inherit' });
 

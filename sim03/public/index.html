@@ -409,10 +409,11 @@ function renderBrief(){
   const joinEntry=document.getElementById('joinSessionEntry');if(joinEntry)joinEntry.onclick=()=>{S.error='';renderJoin()};
   wireNav(next,false);
 }
-function positionVoice(l){const a=l?.advocate;return a?`<div class="line-guide-voice"><b>${esc(a.name)} · speaks for ${esc(l.label)}</b>${esc(a.shortWant||a.want||'')}</div>`:`<div class="line-guide-voice capacity"><b>Capacity</b>No one in the room speaks for this line.</div>`}
-function lineGuide(){return `<div class="line-guide">${C.lines.map(l=>`<div class="line-guide-row"><b>${esc(l.label)}</b><div class="line-guide-main"><span class="line-guide-desc">${esc(l.description||'')}</span>${positionVoice(l)}</div></div>`).join('')}</div>`}
+const CAPACITY_SILENCE='No one in the room speaks for this line.';
+function positionVoice(l){const a=l?.advocate;return a?`<div class="line-guide-voice"><b>${esc(a.name)} · speaks for ${esc(l.label)}</b>${esc(a.shortWant||a.want||'')}</div>`:`<div class="line-guide-voice capacity"><b>Capacity</b>${esc(CAPACITY_SILENCE)}</div>`}
+function lineGuide(){return `<div class="line-guide">${C.lines.map(l=>`<div class="line-guide-row" data-line="${esc(l.id)}"><b>${esc(l.label)}</b><div class="line-guide-main"><span class="line-guide-desc">${esc(l.description||'')}</span>${positionVoice(l)}</div></div>`).join('')}</div>`}
 function renderPosition(){
-  shell(`<div class="eyebrow">Your position</div><h2>You run technology at Midland.</h2><p class="lede">${esc(C.position)}</p>
+  shell(`<div class="eyebrow">Your position</div><h2>You run technology at Midland.</h2><p class="lede" id="position-rules">${esc(C.position)}</p>
   <div class="rule"></div><div class="eyebrow">The five lines</div>${lineGuide()}
   ${nav()}`);wireNav(next);
 }
@@ -426,7 +427,7 @@ function renderRoom(){
 }
 function usefulOpeningView(v){const words=String(v||'').trim().split(/\s+/).filter(Boolean);return String(v||'').trim().length>=20&&words.length>=4}
 function allocationCap(line){return line.id==='run'?'MIN $3M':'MAX $3M / YEAR'}
-function lineAdvocate(line,year=1){const a=line?.advocate;if(!a)return `<div class="advocate-reminder capacity-silence"><b>No advocate · ${esc(line.label)}</b><span>No one in the room speaks for this line.</span></div>`;const text=year===2?(a.shortWant||a.want):a.want;return `<div class="advocate-reminder"><b>${esc(a.name)} · speaks for ${esc(line.label)}</b><span>${esc(text)}</span></div>`}
+function lineAdvocate(line,year=1){const a=line?.advocate;if(!a)return `<div class="advocate-reminder capacity-silence"><b>No advocate · ${esc(line.label)}</b><span>${esc(CAPACITY_SILENCE)}</span></div>`;const text=year===2?(a.shortWant||a.want):a.want;return `<div class="advocate-reminder"><b>${esc(a.name)} · speaks for ${esc(line.label)}</b><span>${esc(text)}</span></div>`}
 function year2BreakdownHTML(y1,y2,year2Label='Year 2 draft'){
   if(!y1||!y2)return '';
   const rows=C.lines.map(l=>{const a=Number(y1[l.id]||0),b=Number(y2[l.id]||0);return `<div class="year2-breakdown-row"><div class="year2-breakdown-name">${esc(l.label)}</div><div class="year2-breakdown-num">$${a}M</div><div class="year2-breakdown-num">$${b}M</div><div class="year2-breakdown-num year2-breakdown-total">$${a+b}M</div></div>`}).join('');
