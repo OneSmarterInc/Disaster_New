@@ -1,5 +1,5 @@
 const { body } = require('../lib/guard.js');
-const { courseEnrolments } = require('../lib/course-enrolments.js');
+const { syncCourseRoster, approvedIds } = require('../lib/session-roster.js');
 const store = require('../lib/store.js');
 const { verifyLaunch } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
@@ -188,7 +188,9 @@ module.exports = async (req, res) => {
           participants,
           runs: visibleFacultyRuns(sess, runs),
           you: who.name,
-          defaultThresholds: S.DEFAULT_THRESHOLDS
+          defaultThresholds: S.DEFAULT_THRESHOLDS,
+          responsePrompts: { opening: S.publicConfig().viewPrompt,
+            reflections: S.publicConfig().reflectionPrompts, followups: S.publicConfig().reflectionFollowups }
         });
       }
 
@@ -198,7 +200,10 @@ module.exports = async (req, res) => {
         const sess = await store.getSession(code);
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
-        try { return res.status(200).json(await courseEnrolments(req, b, sess)); }
+        try {
+          const roster = await syncCourseRoster(req, b, sess);
+          return res.status(200).json({ ...roster, participants: await store.getParticipants(code) });
+        }
         catch (error) {
           return res.status(error.status || 503).json({ error: 'course_roster_unavailable',
             message: error.message || 'Course enrolment could not be refreshed.' });
@@ -229,10 +234,20 @@ module.exports = async (req, res) => {
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
         if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
 
+        if (sess.state === 'closed') return res.status(409).json({ error: 'session_closed' });
+        const roster = sess.platformAuth && sess.courseId ? await syncCourseRoster(req, b, sess) : null;
+        const allowed = approvedIds(roster);
         const participants = await store.getParticipants(code);
+        const previousParticipants = structuredClone(participants);
         const previousCaptains = {};
         for (const p of Object.values(participants)) if (p && p.groupId && p.isCaptain) previousCaptains[p.groupId] = p.id;
         const rawAssign = b.assign && typeof b.assign === 'object' ? b.assign : {};
+        for (const [id, label] of Object.entries(rawAssign)) {
+          if (!participants[id]) return res.status(404).json({ error: 'no_such_participant', message: 'Refresh students before assigning this person.' });
+          if (allowed && !allowed.has(id) && label !== '__unassigned__' && label) {
+            return res.status(403).json({ error: 'student_not_approved', message: 'Only currently approved course students can be assigned to teams.' });
+          }
+        }
         for (const p of Object.values(participants)) {
           if (!p || !Object.prototype.hasOwnProperty.call(rawAssign, p.id)) continue;
           const label = String(rawAssign[p.id] || '').trim().slice(0, 40);
@@ -259,8 +274,8 @@ module.exports = async (req, res) => {
         for (const p of Object.values(participants)) {
           if (!p) continue;
           p.isCaptain = !!(p.groupId && caps[p.groupId] === p.id);
-          await store.setParticipant(code, p.id, p);
         }
+        if (!await store.compareAndSetRoster(code, previousParticipants, participants, sess)) continue;
         return res.status(200).json({ ok: true, captains: caps });
       }
 
@@ -271,16 +286,18 @@ module.exports = async (req, res) => {
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
         if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
+        if (sess.state === 'closed') return res.status(409).json({ error: 'session_closed' });
         const groupId = String(b.groupId || '').trim();
         const teamLabel = String(b.teamLabel || '').trim().slice(0, 40);
         if (!groupId || !teamLabel) return res.status(400).json({ error: 'team_name_required' });
         const participants = await store.getParticipants(code);
+        const previousParticipants = structuredClone(participants);
         const members = Object.values(participants).filter(p => p && p.groupId === groupId);
         if (!members.length) return res.status(404).json({ error: 'no_such_team' });
         for (const p of members) {
           p.teamLabel = teamLabel;
-          await store.setParticipant(code, p.id, p);
         }
+        if (!await store.compareAndSetRoster(code, previousParticipants, participants, sess)) continue;
         return res.status(200).json({ ok: true, groupId, teamLabel });
       }
 
@@ -331,15 +348,17 @@ module.exports = async (req, res) => {
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
         if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
+        if (sess.state === 'closed') return res.status(409).json({ error: 'session_closed' });
         const participants = await store.getParticipants(code);
+        const previousParticipants = structuredClone(participants);
         const pid = String(b.participantId || '');
         const chosen = participants[pid];
         if (!chosen || !chosen.groupId) return res.status(404).json({ error: 'no_such_participant' });
         for (const p of Object.values(participants)) {
           if (!p || p.groupId !== chosen.groupId) continue;
           p.isCaptain = p.id === pid;
-          await store.setParticipant(code, p.id, p);
         }
+        if (!await store.compareAndSetRoster(code, previousParticipants, participants, sess)) continue;
         return res.status(200).json({ ok: true, groupId: chosen.groupId, captainId: pid });
       }
 
@@ -350,12 +369,20 @@ module.exports = async (req, res) => {
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
 
+        if (b.set === 'start' && sess.state !== 'lobby') {
+          return res.status(409).json({ error: 'session_already_started', message: 'This session has already started. Use Resume for a paused session.' });
+        }
         if (b.set === 'start') {
           if (sess.mode === 'team') {
+            const roster = sess.platformAuth && sess.courseId ? await syncCourseRoster(req, b, sess) : null;
+            const allowed = approvedIds(roster);
             const participants = await store.getParticipants(code);
-            const all = Object.values(participants).filter(Boolean);
+            const inactiveAssigned = Object.values(participants).filter(p => p && p.groupId && allowed && !allowed.has(p.id));
+            if (inactiveAssigned.length) return res.status(409).json({ error: 'student_not_approved',
+              message: 'Some assigned students no longer have course access. Unassign them or restore approval before starting.' });
+            const all = Object.values(participants).filter(p => p && (!allowed || allowed.has(p.id)));
             if (!all.length) {
-              return res.status(409).json({ error: 'participants_required', message: 'At least one student must join before a team session can start.' });
+              return res.status(409).json({ error: 'participants_required', message: 'Approve at least one course student and assign a team before starting. Standalone students join using the session link.' });
             }
             const unassigned = all.filter(p => !p.groupId);
             if (unassigned.length) {
@@ -422,14 +449,15 @@ module.exports = async (req, res) => {
         }
 
         const participant = {
+          ...existing,
           id,
           name,
           groupId,
           teamLabel,
           isCaptain: existing ? !!existing.isCaptain : sess.mode === 'individual',
-          joinedAt: existing ? existing.joinedAt : Date.now()
+          joinedAt: existing?.joinedAt || Date.now()
         };
-        await store.addParticipant(code, id, participant);
+        if (!await store.compareAndSetParticipant(code, id, existing, participant, sess)) continue;
         return res.status(200).json({ participantId: id, session: publicSession(sess), me: participant });
       }
 
@@ -597,6 +625,7 @@ module.exports = async (req, res) => {
     }
     return res.status(409).json({ error: 'run_changed', message: 'The team state changed. Refresh and try again.' });
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: 'course_roster_unavailable', message: e.message });
     if (e.code === 'NO_STORE') return res.status(503).json({ error: 'no_store', message: e.message });
     console.error('session failure', action, e.message);
     return res.status(500).json({ error: 'server_error' });

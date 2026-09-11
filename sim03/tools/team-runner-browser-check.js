@@ -140,8 +140,8 @@ async function snapshot(name, page) {
       await handlers[match[1]](req, res); return;
     }
     const name = route === '/' ? 'index.html' : route.slice(1);
-    if (!['index.html', 'instructor.html', 'launch.html'].includes(name)) return json(res, 404, { error: 'not_found' });
-    res.writeHead(200, { 'content-type': 'text/html' });
+    if (!['index.html', 'instructor.html', 'launch.html', 'faculty-workspace.js', 'faculty-workspace.css'].includes(name)) return json(res, 404, { error: 'not_found' });
+    res.writeHead(200, { 'content-type': name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html' });
     res.end(await fs.readFile(path.join(root, 'public', name)));
   });
   console.log('Isolated Sim03 server ready:', origin);
@@ -155,6 +155,27 @@ async function snapshot(name, page) {
   await exec(agent, ['--session', 'sim03-check', 'screenshot', path.join(artifacts, 'access-page.png')], { env: agentEnv });
   await exec(agent, ['--session', 'sim03-check', 'close'], { env: agentEnv });
   browser = await chromium.launch({ headless: true });
+
+  // Exercise the new roster transactions against the real disposable Redis,
+  // independently of the account tests' in-memory SQL/session adapters.
+  const rosterRoom = await api({action:'create',mode:'team',name:'Roster Lua verification',facultyCode:faculty});
+  const rosterCode = rosterRoom.body.session.code; sessions.push(rosterCode);
+  const productionStore = require('../lib/store.js');
+  const rosterSession = await productionStore.getSession(rosterCode);
+  const approved = ['a','b'].map(id=>({id:'roster-'+id,name:'Roster '+id,groupId:null,teamLabel:'',isCaptain:false,source:'course',joinedAt:null}));
+  check(await productionStore.ensureParticipants(rosterCode,approved,rosterSession),2,'Real Redis imports pre-launch roster atomically');
+  check(await productionStore.ensureParticipants(rosterCode,approved,rosterSession),0,'Real Redis roster import is idempotent');
+  check((await api({action:'group',code:rosterCode,facultyCode:faculty,assign:{'roster-a':'Prepared team','roster-b':'Prepared team'}})).status,200,'Real Redis assignment works before attendance');
+  let prepared = await productionStore.getParticipants(rosterCode);
+  check(prepared['roster-a'].joinedAt,null,'Assignment does not manufacture attendance');
+  check(await productionStore.ensureParticipants(rosterCode,approved,rosterSession),0,'Repeat import preserves assigned entries');
+  check((await productionStore.getParticipants(rosterCode))['roster-a'].groupId,'team:prepared-team','HSETNX cannot erase a team');
+  const joined = await api({action:'join',code:rosterCode,name:'Roster a',participantId:'roster-a'});
+  check(joined.body.me.groupId,'team:prepared-team','First real join retains the preassigned team');
+  check(!!joined.body.me.joinedAt,true,'First join records actual attendance');
+  check(await productionStore.compareAndSetRoster(rosterCode,prepared,prepared,rosterSession),false,'Stale roster edit cannot erase a concurrent join');
+  await control(rosterCode,'close');
+  check(await productionStore.ensureParticipants(rosterCode,approved,rosterSession),-1,'An in-flight import cannot mutate a session after close');
 
   const created = await api({ action: 'create', mode: 'team', name: 'Automated browser runner verification', facultyCode: faculty });
   check(created.status, 200, 'Create isolated team session');
@@ -267,12 +288,13 @@ async function snapshot(name, page) {
   await instructor.locator('#resumeBtn').click();
   await instructor.waitForFunction(() => !!state?.runs?.['team:alpha']?.done);
   const downloadPromise = instructor.waitForEvent('download');
-  await instructor.locator('#export').click();
+  await instructor.locator('#export-btn').click();
   const download = await downloadPromise;
   const exportPath = path.join(artifacts, 'faculty-export.csv');
   await download.saveAs(exportPath);
   const exported = await fs.readFile(exportPath, 'utf8');
-  check(exported.includes('Test Ann') && exported.includes('Test Ben') && exported.includes('Test Cal') && exported.includes('Ann learned'), true, 'Instructor CSV export includes each team member with the shared result');
+  check(exported.includes('Test Ann') && exported.includes('Test Ben') && exported.includes('Test Cal') && exported.includes('Ann learned'), true, 'Instructor CSV includes all team members and the shared runner response once');
+  check(exported.split('Ann learned').length-1,1,'Shared response is exported once, not once per member');
   await snapshot('05-instructor-completion', instructor);
   await control(code, 'close');
   check((await api({ action: 'set_runner', code, participantId: annId, runnerId: benId, expectedRunnerId: annId, runnerRevision: run.runnerRevision })).body.error, 'session_closed', 'Closed session rejects runner changes');

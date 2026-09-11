@@ -52,8 +52,62 @@ redis.call('EXPIRE', KEYS[3], ARGV[5])
 return 1
 `;
 
+// Create roster entries without changing existing assignments. The session
+// comparison prevents an in-flight import from modifying a closed session.
+const ENSURE_PARTICIPANTS = `
+if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1] then return -1 end
+local added = 0
+for i = 2, #ARGV, 2 do
+  added = added + redis.call('HSETNX', KEYS[2], ARGV[i], ARGV[i + 1])
+end
+local ttl = redis.call('TTL', KEYS[1])
+if ttl > 0 then redis.call('EXPIRE', KEYS[2], ttl) end
+return added
+`;
+const CAS_PARTICIPANT = `
+if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1] then return 0 end
+if (redis.call('HGET', KEYS[2], ARGV[2]) or '') ~= ARGV[3] then return 0 end
+redis.call('HSET', KEYS[2], ARGV[2], ARGV[4])
+local ttl = redis.call('TTL', KEYS[1])
+if ttl > 0 then redis.call('EXPIRE', KEYS[2], ttl) end
+return 1
+`;
+
+// Roster edits are atomic too: a concurrent join/import invalidates the edit
+// snapshot instead of losing attendance, assigning twice or replacing a lead.
+const CAS_ROSTER = `
+if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1] then return 0 end
+local count = tonumber(ARGV[2])
+if redis.call('HLEN', KEYS[2]) ~= count then return 0 end
+for i = 1, count do
+  local offset = 3 + (i - 1) * 3
+  if (redis.call('HGET', KEYS[2], ARGV[offset]) or '') ~= ARGV[offset + 1] then return 0 end
+end
+for i = 1, count do
+  local offset = 3 + (i - 1) * 3
+  redis.call('HSET', KEYS[2], ARGV[offset], ARGV[offset + 2])
+end
+return 1
+`;
+
 module.exports = {
   configured,
+  async compareAndSetRoster(code, previous, next, session) {
+    const entries = Object.entries(previous);
+    return Number(await cmd(['EVAL', CAS_ROSTER, '2',
+      `m03:sess:${code}`, `m03:sess:${code}:p`, JSON.stringify(session), String(entries.length),
+      ...entries.flatMap(([id, p]) => [id, JSON.stringify(p), JSON.stringify(next[id])])])) === 1;
+  },
+  async ensureParticipants(code, people, session) {
+    return Number(await cmd(['EVAL', ENSURE_PARTICIPANTS, '2',
+      `m03:sess:${code}`, `m03:sess:${code}:p`, JSON.stringify(session),
+      ...people.flatMap(p => [p.id, JSON.stringify(p)])]));
+  },
+  async compareAndSetParticipant(code, id, previous, next, session) {
+    return Number(await cmd(['EVAL', CAS_PARTICIPANT, '2',
+      `m03:sess:${code}`, `m03:sess:${code}:p`, JSON.stringify(session), id,
+      previous ? JSON.stringify(previous) : '', JSON.stringify(next)])) === 1;
+  },
   async getSession(code) { return J(await cmd(['GET', `m03:sess:${code}`])); },
   async putSession(code, obj) {
     await cmd(['SET', `m03:sess:${code}`, JSON.stringify(obj), 'EX', String(TTL)]);
