@@ -377,7 +377,10 @@ function renderCourse() {
           </div>
           <div class="side faculty-sim-side">
             <div class="faculty-sim-actions">
-              <a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session">Run a session</a>
+              ${x.sim_id==='rapid-03-midland'
+                ? `<a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session&play=team">Run groups</a>
+                   <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session&play=individual">Run individual</a>`
+                : `<a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session">Run a session</a>`}
               <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Play it yourself</a>
               <button class="btn sm faculty-result-btn" data-prog="${esc(x.sim_id)}">Who has played</button>
               <button class="btn sm" data-seats="${esc(x.sim_id)}" data-cur="${x.expected_seats||''}">Expected number</button>

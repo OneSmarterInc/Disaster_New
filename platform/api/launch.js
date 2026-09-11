@@ -183,13 +183,12 @@ module.exports = async (req, res) => {
     // through landed on a 404 while the sim itself was healthy. Both forms are
     // routed now, but emitting the canonical one means a future sim does not
     // depend on someone having added the extra rule.
-    let url = sim.launch_url.replace(/\/+$/, '') + '#lt=' + encodeURIComponent(token);
-    if (session) {
-      const target = new URL(sim.launch_url.replace(/\/+$/, ''));
-      target.searchParams.set('session', session);
-      target.hash = 'lt=' + encodeURIComponent(token);
-      url = target.href;
-    }
+    const target = new URL(sim.launch_url.replace(/\/+$/, ''));
+    if (mode === 'session' && q.play === 'team') target.searchParams.set('play', 'team');
+    if (mode === 'session' && q.play === 'individual') target.searchParams.set('play', 'individual');
+    if (session) target.searchParams.set('session', session);
+    target.hash = 'lt=' + encodeURIComponent(token);
+    let url = target.href;
     if (wants === 'json') return res.status(200).json({ url });
     return res.redirect(302, url);
 

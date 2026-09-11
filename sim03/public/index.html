@@ -15,7 +15,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%;background:var(--night);color:var(--bone)}
 body{font-family:var(--serif);font-size:16px;line-height:1.55;background-image:radial-gradient(1200px 650px at 70% -10%,rgba(240,166,60,.06),transparent 60%)}
-button,input,textarea,select{font:inherit;color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}select option{background:#0E1524;color:#E8E4DA}
 button{cursor:pointer;background:none;border:0}
 :focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .mono{font-family:var(--mono)}
@@ -321,12 +321,24 @@ function wireRunnerPicker(){
     }catch(e){alert(e.message);await pollSession(true).catch(()=>{button.disabled=false})}
   };
 }
+
+function renderUnassignedLobby(){
+  const teamText=S.session?.state==='running'
+    ? 'The class has started, but your team has not been assigned yet. Ask your instructor to place you into a group.'
+    : 'Your instructor will create groups from the students who have joined. Stay on this page; it updates automatically.';
+  shell(`<div class="eyebrow">Waiting for group assignment</div><h2>You are in the session. The instructor creates the teams.</h2>
+    <p class="lede">${esc(teamText)}</p>
+    ${sessionGate()}
+    <div class="card" style="margin-top:22px"><h3>What happens next</h3><p>1. Faculty releases access from the course page.</p><p>2. Students open the class link and appear as joined.</p><p>3. Faculty creates teams and chooses the team lead / runner.</p><p>4. Only that runner advances the simulation. Other team members watch and discuss.</p></div>
+    ${notice('Do not start a separate run. Your group will appear here after the instructor assigns teams.')}`);
+}
 function renderTeamLobby(){
-  const runner=teamRunner(),teamName=S.me?.teamLabel||'Your team';
-  shell(`<div class="eyebrow">Team lobby</div><h2>${esc(teamName)} chooses one runner.</h2>
-    <p class="lede">Work as a group. One student enters your decisions and advances the shared simulation. The team lead is selected by default, but can assign any teammate.</p>
-    <div class="card" style="margin-top:22px"><h3>Selected simulation runner</h3><p>${runner?`<b>${esc(runner.name)}</b> is selected.`:'Waiting for a team lead.'}</p><p class="hint">Team leadership does not change when you choose a different runner.</p></div>
-    ${!S.canAssignRunner?notice('Tell your team lead who the group has chosen to run the simulation.'):''}
+  const runner=teamRunner(),lead=teamLead(),teamName=S.me?.teamLabel||'Your team';
+  const runnerName=runner?.name||lead?.name||'your team lead';
+  shell(`<div class="eyebrow">Team lobby</div><h2>${esc(teamName)} has one shared run.</h2>
+    <p class="lede">The team lead / runner will run the simulation on one screen. Everyone else should discuss decisions with that person, not start a separate run.</p>
+    <div class="card" style="margin-top:22px"><h3>Selected runner</h3><p>${runner?`<b>${esc(runner.name)}</b> will run the simulation for this team.`:'Waiting for the instructor to choose a team lead / runner.'}</p><p class="hint">Only the selected runner gets the Start/Continue controls after faculty starts the room.</p></div>
+    ${!S.canSubmit?notice(`Your team lead / runner is ${runnerName}. Contact ${runnerName} and play together on that person's screen.`):''}
     ${sessionGate()}`);
 }
 function sharedResultsHTML(){
@@ -338,11 +350,11 @@ function sharedResultsHTML(){
     ${cards.map(x=>`<div class="outcome"><h3>${esc(x.title)}</h3><p>${esc(x.narrative)}</p></div>`).join('')}`;
 }
 function renderTeamMemberWaiting(){
-  const runner=teamRunner(),teamName=S.me?.teamLabel||'Your team',runnerName=runner?.name||'Your selected runner';
-  shell(`<div class="eyebrow">Team mode · read-only</div><h2>${esc(runnerName)} is running ${esc(teamName)}.</h2>
-    <p class="lede">Discuss the decisions together. This screen follows your team's submitted decisions and results, but cannot run a separate simulation or advance the shared run.</p>
+  const runner=teamRunner(),teamName=S.me?.teamLabel||'Your team',runnerName=runner?.name||'your team lead';
+  shell(`<div class="eyebrow">Team mode · read-only</div><h2>${esc(runnerName)} will run the simulation for ${esc(teamName)}.</h2>
+    <p class="lede">Contact ${esc(runnerName)} and make decisions together on that person's screen. This page is read-only so the team does not accidentally create separate results.</p>
     ${sessionGate()}${notice(teamProgressText())}
-    <div class="card"><h3>Your role</h3><p>Discuss, challenge, and help decide. Your individual reflection will appear here when the runner completes the shared run.</p></div>
+    <div class="card"><h3>Your role</h3><p>Discuss, challenge, and help decide. Your individual reflection will appear here after the runner completes the shared run.</p></div>
     ${sharedResultsHTML()}`);
 }
 function renderTeamMemberReflection(){
@@ -355,7 +367,8 @@ function renderTeamMemberReflection(){
 }
 function render(){
   if(!C)return;
-  if(S.session?.mode==='team'&&S.me?.groupId){
+  if(S.session?.mode==='team'){
+    if(!S.me?.groupId)return renderUnassignedLobby();
     if(S.finished)return renderClose();
     if(S.session.state==='lobby')return renderTeamLobby();
     if(!S.canSubmit){
