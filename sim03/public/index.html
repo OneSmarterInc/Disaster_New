@@ -53,6 +53,48 @@ h2{font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.02em;margin-
 .briefing-modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(5,9,17,.78);backdrop-filter:blur(5px)}.briefing-modal.open{display:flex}.briefing-dialog{width:min(900px,100%);max-height:88vh;background:var(--panel);border:1px solid var(--line2);box-shadow:0 26px 90px rgba(0,0,0,.55);display:flex;flex-direction:column}.briefing-dialog-head{display:flex;align-items:flex-start;gap:18px;padding:20px 22px;border-bottom:1px solid var(--line);background:var(--panel2)}.briefing-dialog-head .grow{flex:1}.briefing-dialog-kicker{font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--amber)}.briefing-dialog-title{font-size:30px;font-weight:400;letter-spacing:-.015em;margin:3px 0 4px}.briefing-dialog-meta{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer)}.briefing-dialog-close{width:36px;height:36px;border:1px solid var(--line2);background:transparent;color:var(--dim);font:20px var(--mono);line-height:1}.briefing-dialog-close:hover{border-color:var(--bone);color:var(--bone)}.briefing-dialog-body{padding:22px;overflow:auto;scrollbar-color:var(--line2) var(--panel)}.briefing-dialog-intro{border-left:2px solid var(--amber);padding:12px 14px;background:rgba(240,166,60,.05);color:#D0CDC5;margin-bottom:22px}.briefing-dialog-section{padding-top:20px;margin-top:20px;border-top:1px solid var(--line)}.briefing-dialog-section:first-of-type{border-top:0;margin-top:0;padding-top:0}.briefing-dialog-section h3{font-size:24px;font-weight:400;margin:0 0 10px}.briefing-dialog-section p{color:#C8C5BD;margin:8px 0}.briefing-dialog-table{overflow:auto;border:1px solid var(--line);margin-top:10px}.briefing-dialog-table table{width:100%;border-collapse:collapse;font-size:14px}.briefing-dialog-table th,.briefing-dialog-table td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.briefing-dialog-table tr:last-child td{border-bottom:0}.briefing-dialog-table th{font:9px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--dimmer);background:var(--panel2)}.briefing-person{padding:12px 0;border-bottom:1px solid var(--line)}.briefing-person:last-child{border-bottom:0}.briefing-person b{color:var(--bone);font-weight:500}.briefing-dialog-foot{padding:14px 22px;border-top:1px solid var(--line);background:var(--panel2);display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.briefing-dialog-foot .hint{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer);margin:0}
 .hidden{display:none!important}
 @media(max-width:760px){.page{width:min(100% - 26px,980px);padding-top:34px}h2{font-size:31px}.alloc-wrap{grid-template-columns:1fr}.budget{position:static}.events,.buyers,.summary,.room-tour{grid-template-columns:1fr}.line-guide-row{grid-template-columns:1fr;gap:3px}.running{grid-template-columns:repeat(2,1fr)}header{padding:11px 14px}.pills{order:3;width:100%}.joinbox .row{grid-template-columns:1fr}.briefing-prep{align-items:flex-start;flex-direction:column}.briefing-modal{padding:10px}.briefing-dialog{max-height:94vh}.briefing-dialog-body{padding:16px}.briefing-dialog-title{font-size:25px}}
+
+/* Increment 3: one statement per allocation fact, with decisions and budget together. */
+.page.allocation-page{width:min(1180px,calc(100% - 36px));padding:24px 0 28px}
+.allocation-page .alloc-wrap{grid-template-columns:minmax(230px,.8fr) minmax(0,2fr);gap:24px;margin-top:0;align-items:start}
+.allocation-context h2{font-size:30px;line-height:1.13}
+.allocation-context .lede{font-size:16px;line-height:1.5}
+.allocation-context .briefing{margin:16px 0 0}
+.allocation-controls{min-width:0}
+.allocation-controls .alloc{padding:7px 12px;gap:12px}
+.allocation-controls .allocs{gap:6px}
+.allocation-controls .alloc h3{font-size:19px;line-height:1.2}
+.allocation-controls .advocate-reminder{margin-top:4px;padding:4px 8px;font-size:14px;line-height:1.35}
+.advocate-reminder.unrepresented{border-left-style:dashed;background:transparent}
+.advocate-reminder.unrepresented b{color:var(--dim)}
+.allocation-footer{position:sticky;bottom:0;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:9px 12px;border:1px solid #8A6427;background:var(--night)}
+.allocation-footer .budget{position:static;border:0;padding:0;background:none;flex-shrink:0}
+.allocation-footer .budget .n{font-size:26px}
+.allocation-footer .budget .lab{font-size:9px;letter-spacing:.06em}
+.allocation-footer .budget .total{border:0;padding:0;margin-top:3px;font-size:13px}
+.allocation-footer .actions{margin:0;justify-content:flex-end}
+.allocation-split{margin-top:12px;border:1px solid var(--line);padding:10px}
+.allocation-split summary,.closing-details summary{cursor:pointer;color:var(--amber);font-size:14px}
+.allocation-split .year2-breakdown{margin:10px 0 0}
+.allocation-split .eyebrow{display:none}
+.line-guide-copy{font-size:14px;color:var(--dim);line-height:1.45}.line-guide-row .advocate-reminder{margin-top:6px}
+.outcome .outcome-note{margin-top:14px;border-top:1px solid var(--line2);padding-top:12px;font-size:15px;color:var(--dim)}
+.year3-status{display:inline-block;border:1px solid var(--line2);padding:7px 11px;color:var(--dim);margin-bottom:12px}
+.closing-details{border-top:1px solid var(--line2);padding-top:12px;margin-top:16px}
+.page.brief-page{padding-top:24px;padding-bottom:28px}
+.brief-page .copy{max-width:940px;line-height:1.55}
+.brief-page h2{max-width:940px;font-size:34px}
+.brief-page .copy>p{margin-bottom:10px}
+.brief-page .brief-profit{padding:10px 14px;margin:12px 0}
+.brief-page .brief-profit p{font-size:20px;line-height:1.4}
+.brief-page .lede{font-size:16px;max-width:940px}
+.brief-page .briefing-prep{margin-top:12px;padding:10px 14px}
+.brief-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;bottom:0;z-index:5;background:var(--night);padding:12px 0 4px}
+.brief-controls .actions{margin:0}
+@media(min-width:1000px){header{gap:14px}.pills{gap:3px}.pill{padding:5px 6px;font-size:9.5px;letter-spacing:.06em}}
+@media(max-width:960px){.allocation-page .alloc-wrap{grid-template-columns:1fr}.allocation-context h2{font-size:28px}.allocation-footer{bottom:0}.allocation-controls .alloc{padding:10px 12px}}
+@media(max-width:540px){.allocation-footer{gap:8px;flex-wrap:wrap}.allocation-footer .actions{flex:1}.allocation-footer .btn{padding:10px 12px;font-size:10px}.allocation-controls .alloc{grid-template-columns:1fr;gap:7px}.allocation-controls .stepper{justify-content:flex-end}.brief-controls{align-items:stretch;flex-direction:column}.brief-controls .actions{justify-content:flex-end}.page.brief-page{padding-top:20px}}
+
 @media print{header,.actions,.team,.run-complete{display:none!important}.page{width:100%!important;padding:0!important}body{background:#fff!important;background-image:none!important;color:#000!important}.page,.page *{color:#000!important}.card,.outcome,.run-cell,.mini div,.buyer,.result-hero,.closing-lesson,.closing-run,.closing-carry,.year3-stage{background:#fff!important;border-color:#888!important;color:#000!important}.closing-carry{border-left:3px solid #aaa!important}.eyebrow,.hint,.run-cell .k,.mini span{color:#222!important}.card,.outcome,.buyer,.closing-lesson,.year3-stage{break-inside:avoid;page-break-inside:avoid}.summary{break-inside:avoid}.timeline-pair{border-left-color:#aaa!important}}
 </style>
 </head>
@@ -85,7 +127,7 @@ const S={
   session:null,me:null,mates:[],canSubmit:true,teamRun:null,
   poll:null,error:'',closingLesson:null,
   runnerId:null,runnerRevision:0,canAssignRunner:false,runnerChoice:'',
-  hasSessionState:false,stateRequest:0,stateApplied:0,reflectionDirty:false,advancing:false
+  hasSessionState:false,stateRequest:0,stateApplied:0,reflectionDirty:false,advancing:false,breakdownOpen:false
 };
 const STEPS=['Brief','Room','Position','View','Year 1','Outcome','Year 2','Events','Year 3','Buyers','Close'];
 
@@ -128,12 +170,12 @@ async function sessionApi(payload){
   return d;
 }
 
-function shell(content){
+function shell(content,pageClass=''){
   const visibleSteps=STEPS.map((x,i)=>({x,i})).filter(o=>C?.buyers?.authored!==false||o.i!==9);
   const pills=visibleSteps.map((o,j)=>o.i===0
     ? `<button type="button" class="pill brief-link ${o.i===S.step?'on':o.i<S.step?'done':''}" data-open-briefing title="Open briefing packet">${j+1}. ${o.x}</button>`
     : `<span class="pill ${o.i===S.step?'on':o.i<S.step?'done':''}">${j+1}. ${o.x}</span>`).join('');
-  app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">30 MIN</div></header><main class="page">${teamBanner()}${content}</main>${briefingPacketModal()}`;
+  app.innerHTML=`<header><div class="brand"><h1>Midland Equipment</h1><div class="sub">Flexee RapidSim 03 · architecture</div></div><div class="pills">${pills}</div><div class="timer">30 MIN</div></header><main class="page ${esc(pageClass)}">${teamBanner()}${content}</main>${briefingPacketModal()}`;
   wireBriefingPacketModal();
   wireRunnerPicker();
 }
@@ -325,11 +367,18 @@ function renderTeamMemberWaiting(){
     <div class="card"><h3>Your role</h3><p>Discuss, challenge, and help decide. Your individual reflection will appear here when the runner completes the shared run.</p></div>
     ${sharedResultsHTML()}`);
 }
+function outcomeNoteHTML(outcome){return outcome?.allocationNote?`<p class="outcome-note">${esc(outcome.allocationNote)}</p>`:''}
+// Preserve reflection1/reflection2 API fields, including legacy free-text responses.
+const REFLECTION_SEPARATOR='\n\nAfter Year 3 — same call?\n';
+function splitFirstReflection(text){const v=String(text||''),at=v.indexOf(REFLECTION_SEPARATOR);return at<0?{argument:v,reconsideration:''}:{argument:v.slice(0,at),reconsideration:v.slice(at+REFLECTION_SEPARATOR.length)}}
+function readFirstReflection(){const first=document.getElementById('r1')?.value||'',second=document.getElementById('r1followup')?.value||'';return second.trim()?first.trim()+REFLECTION_SEPARATOR+second.trim():first.trim()}
+function reflectionFields(){const r=splitFirstReflection(S.reflection1);return `<div class="field"><label for="r1">${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(r.argument)}</textarea></div><div class="field"><label for="r1followup">${esc(C.reflectionFollowUp)}</label><textarea id="r1followup" maxlength="1500">${esc(r.reconsideration)}</textarea><div class="hint">These first two answers share a 1,500-character limit.</div></div><div class="field"><label for="r2">${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea></div><div class="hint reflection-note">Your instructor can see each response and may read it aloud in the debrief. Responses are not scored.</div>`}
+function reflectionResultHTML(){const r=splitFirstReflection(S.reflection1);return `<div class="card"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(r.argument||'—')}</p></div><div class="card" style="margin-top:12px"><h3>${esc(C.reflectionFollowUp)}</h3><p style="white-space:pre-wrap">${esc(r.reconsideration||'—')}</p></div>`}
+
 function renderTeamMemberReflection(){
   shell(`<div class="eyebrow">Your reflection</div><h2>The shared team run is complete.</h2>
-    <p class="lede">You worked through the decisions with your team on one runner's screen. Now answer these two questions in your own words.</p>
-    <div class="field"><label>${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(S.reflection1)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
-    <div class="field"><label>${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
+    <p class="lede">You worked through the decisions with your team on one runner's screen. Now answer the reflection questions in your own words.</p>
+    ${reflectionFields()}
     <div class="actions"><button class="btn pri" id="memberFinishBtn">Submit my reflection</button></div>`);
   document.getElementById('memberFinishBtn').onclick=finish;
 }
@@ -366,14 +415,14 @@ function briefingPacketModal(){
     const table=ex.rows?.length?`<div class="briefing-dialog-table"><table><thead>${ex.columns?.length?`<tr>${ex.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>`:''}</thead><tbody>${ex.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'';
     return `<section class="briefing-dialog-section"><h3>${esc(ex.title)}</h3>${body}${table}${ex.note?`<p><b>${esc(ex.note)}</b></p>`:''}</section>`;
   }).join('');
-  const people=(b.people||[]).map(p=>`<div class="briefing-person"><b>${esc(p.role)}.</b> “${esc(p.quote)}”</div>`).join('');
+  const people=(b.people||[]).map(p=>`<div class="briefing-person"><b>${esc(p.name)} · ${esc(p.role)}.</b> “${esc(p.quote)}”</div>`).join('');
   return `<div class="briefing-modal" id="briefingPacketModal" aria-hidden="true"><section class="briefing-dialog" role="dialog" aria-modal="true" aria-labelledby="briefingPacketTitle">
-    <div class="briefing-dialog-head"><div class="grow"><div class="briefing-dialog-kicker">Pre-class briefing · about 6 minutes</div><div class="briefing-dialog-title" id="briefingPacketTitle">Midland Equipment — Briefing</div><div class="briefing-dialog-meta">Reference copy · read before starting the simulation</div></div><button class="briefing-dialog-close" id="closeBriefingPacket" aria-label="Close briefing">×</button></div>
+    <div class="briefing-dialog-head"><div class="grow"><div class="briefing-dialog-kicker">Before the session · about 6 minutes</div><div class="briefing-dialog-title" id="briefingPacketTitle">Midland Equipment — Briefing</div><div class="briefing-dialog-meta">Reference copy · read before starting the simulation</div></div><button class="briefing-dialog-close" id="closeBriefingPacket" aria-label="Close briefing">×</button></div>
     <div class="briefing-dialog-body"><div class="briefing-dialog-intro">${intro}</div>
       <section class="briefing-dialog-section"><h3>The company</h3>${(b.company||[]).map(x=>`<p>${esc(x)}</p>`).join('')}</section>
       ${exhibits}
       ${people?`<section class="briefing-dialog-section"><h3>Four people you work with</h3>${people}${b.peopleNote?`<p>${esc(b.peopleNote)}</p>`:''}</section>`:''}
-      ${(b.whatHappens||[]).length?`<section class="briefing-dialog-section"><h3>What happens Tuesday</h3>${b.whatHappens.map(x=>`<p>${esc(x)}</p>`).join('')}</section>`:''}
+      ${(b.whatHappens||[]).length?`<section class="briefing-dialog-section"><h3>What happens in the simulation</h3>${b.whatHappens.map(x=>`<p>${esc(x)}</p>`).join('')}</section>`:''}
     </div>
     <div class="briefing-dialog-foot"><span class="hint">You can reopen this packet later from the allocation screens.</span><button class="btn pri" id="doneBriefingPacket">Done reading</button></div>
   </section></div>`;
@@ -394,15 +443,15 @@ function wireBriefingPacketModal(){
 
 function renderBrief(){
   shell(`<div class="eyebrow">MIDLAND EQUIPMENT</div><h2>Forty-one years old, profitable, and nobody thinks it is in trouble.</h2>
-  <div class="copy">${C.coldOpen.map((x,i)=>i===1?`<div class="brief-profit"><div class="eyebrow">The business model</div><p>${esc(x)}</p></div>`:`<p>${esc(x)}</p>`).join('')}</div>
+  <div class="copy">${C.coldOpen.map((x,i)=>i===2?`<div class="brief-profit"><div class="eyebrow">The business model</div><p>${esc(x)}</p></div>`:`<p>${esc(x)}</p>`).join('')}</div>
   <p class="lede">There is no score, rank, grade or hidden correct allocation. You will find out what happened, not how you "did."</p>
-  <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>This sim assumes you have read the briefing packet your instructor posted before class.</b> If you have not read it yet, read the full packet here before starting.</div><button class="btn" data-open-briefing>Read briefing packet</button></div>
-  ${sessionGate()}${!S.session?(LAUNCH&&(LAUNCH.role==='faculty'||LAUNCH.role==='faculty_preview')?'<div class="actions"><button class="btn" id="runSessionEntry">Run a facilitated session</button></div>':'<div class="actions"><button class="btn" id="joinSessionEntry">Join a facilitated session</button></div>'):''}${nav({backOk:false,disabled:blocked()})}`);
+  <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>Read the briefing packet before you start.</b> It is available here throughout the simulation.</div><button class="btn" data-open-briefing>Read briefing packet</button></div>
+  ${sessionGate()}<div class="brief-controls">${!S.session?(LAUNCH&&(LAUNCH.role==='faculty'||LAUNCH.role==='faculty_preview')?'<div class="actions"><button class="btn" id="runSessionEntry">Run a facilitated session</button></div>':'<div class="actions"><button class="btn" id="joinSessionEntry">Join a facilitated session</button></div>'):''}${nav({backOk:false,disabled:blocked()})}</div>`, 'brief-page');
   const runEntry=document.getElementById('runSessionEntry');if(runEntry)runEntry.onclick=()=>location.assign(BASE+'/instructor.html#lt='+encodeURIComponent(LAUNCH_TOKEN));
   const joinEntry=document.getElementById('joinSessionEntry');if(joinEntry)joinEntry.onclick=()=>{S.error='';renderJoin()};
   wireNav(next,false);
 }
-function lineGuide(){return `<div class="line-guide">${C.lines.map(l=>`<div class="line-guide-row"><b>${esc(l.label)}</b><span>${esc(l.description||'')}</span></div>`).join('')}</div>`}
+function lineGuide(){return `<div class="line-guide">${C.lines.map(l=>`<div class="line-guide-row"><b>${esc(l.label)}</b><div class="line-guide-copy">${esc(l.description||'')}${lineAdvocate(l,2)}</div></div>`).join('')}</div>`}
 function renderPosition(){
   shell(`<div class="eyebrow">Your position</div><h2>You run technology at Midland.</h2><p class="lede">${esc(C.position)}</p>
   <div class="rule"></div><div class="eyebrow">The five lines</div>${lineGuide()}
@@ -419,7 +468,7 @@ function renderRoom(){
 function usefulOpeningView(v){const words=String(v||'').trim().split(/\s+/).filter(Boolean);return String(v||'').trim().length>=20&&words.length>=4}
 function allocationRule(line){return line.id==='run'?'$3M minimum · balance of budget is the only ceiling':'$3M annual ceiling'}
 function allocationCap(line){return line.id==='run'?'MIN $3M':'MAX $3M / YEAR'}
-function lineAdvocate(line){const a=line?.advocate;if(!a)return '';return `<div class="advocate-reminder"><b>${esc(a.name)} · speaks for ${esc(line.label)}</b><span>${esc(a.want)}</span></div>`}
+function lineAdvocate(line,year=1){const a=line?.advocate;if(!a)return `<div class="advocate-reminder unrepresented"><b>${esc(line.label)} · no spokesperson</b><span>${esc(line.unrepresented||'No one in the room speaks for this line.')}</span></div>`;return `<div class="advocate-reminder"><b>${esc(a.name)} · ${esc(line.label)}</b><span>${esc(year===2?(a.shortWant||a.want):a.want)}</span></div>`}
 function year2BreakdownHTML(y1,y2,year2Label='Year 2 draft'){
   if(!y1||!y2)return '';
   const rows=C.lines.map(l=>{const a=Number(y1[l.id]||0),b=Number(y2[l.id]||0);return `<div class="year2-breakdown-row"><div class="year2-breakdown-name">${esc(l.label)}</div><div class="year2-breakdown-num">$${a}M</div><div class="year2-breakdown-num">$${b}M</div><div class="year2-breakdown-num year2-breakdown-total">$${a+b}M</div></div>`}).join('');
@@ -428,7 +477,7 @@ function year2BreakdownHTML(y1,y2,year2Label='Year 2 draft'){
 function allocationConfirmation(year,a){const text=C.lines.map(l=>`${l.label}: $${a[l.id]}M`).join('\n');return window.confirm(`Commit Year ${year}?\n\n${text}\n\nYou cannot change this allocation after the outcome is revealed.`)}
 function renderView(){
   const committed=!!(S.viewCommitted||S.teamRun?.strategicView||S.year1Outcome);
-  shell(`<div class="eyebrow">Commit a view</div><h2>What should this company become?</h2><p class="lede">Write one sentence before you see the first allocation outcome.</p>
+  shell(`<div class="eyebrow">Commit a view</div><h2>What should this company become?</h2><p class="lede">${esc(C.viewContext)}</p>
   <div class="field"><label>Your sentence</label><textarea id="viewText" maxlength="500" placeholder="${esc(C.viewPrompt)}" ${committed?'readonly':''}>${esc(S.strategicView)}</textarea><div class="hint">${committed?'This opening view is already committed.':esc(C.viewDisclosure)}</div></div>
   ${nav({nextLabel:committed?'Continue':(S.canSubmit?'Commit view':'Waiting for runner'),disabled:blocked()||(!S.canSubmit&&!S.teamRun?.strategicView)})}`);
   wireNav(async()=>{
@@ -447,25 +496,28 @@ function briefingPanel(){
     const table=ex.rows?.length?`<table><thead>${ex.columns?.length?`<tr>${ex.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>`:''}</thead><tbody>${ex.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`:'';
     return `<section class="exhibit"><h3>${esc(ex.title)}</h3>${body}${table}${ex.note?`<p><em>${esc(ex.note)}</em></p>`:''}</section>`;
   }).join('');
-  return `<details class="briefing"><summary>Briefing & exhibits</summary><div class="briefing-body"><p class="hint">${esc(b.note||'Reference copy of the pre-class briefing.')}</p>${(b.company||[]).map(x=>`<p>${esc(x)}</p>`).join('')}${exhibits}</div></details>`;
+  return `<details class="briefing"><summary>Briefing & exhibits</summary><div class="briefing-body"><p class="hint">${esc(b.note||'Reference copy of the briefing before the session.')}</p>${(b.company||[]).map(x=>`<p>${esc(x)}</p>`).join('')}${exhibits}</div></details>`;
 }
 function renderAllocation(year){
   const key=year===1?'year1':'year2';
   const teamReadOnly=!S.canSubmit&&S.session?.mode==='team';
   const heading=year===1?'The first $9 million is yours.':'A year later, the same $9 million is back on the table.';
   const intro=year===1
-    ? 'The ERP is fourteen years old, the service operation is profitable, and every line has a constituency. This is the first portfolio you set before anyone knows which problem arrives first.'
+    ? 'The ERP is fourteen years old, the service operation is profitable, and four people are arguing for different parts of it. This is the first portfolio you set before anyone knows which problem arrives first.'
     : (S.year1Outcome?.year2Intro||'A year has passed. The first consequence is now part of Midland’s history, and the same five lines are competing for the same budget again.');
   if(teamReadOnly)return renderTeamMemberWaiting();
   if(!S[key])S[key]=defaultAlloc();
   const a=S[key],used=Object.values(a).reduce((x,y)=>x+y,0),left=9-used;
   const running=year===2&&S.year1?runningTotals(S.year1,a):null;
-  shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${heading}</h2><p class="lede">${esc(intro)}</p>
+  shell(`<div class="alloc-wrap"><section class="allocation-context"><div class="eyebrow">Year ${year} allocation</div><h2>${heading}</h2><p class="lede">${esc(intro)}</p>
   ${briefingPanel()}
-  ${year===2&&S.year1?year2BreakdownHTML(S.year1,a,'Year 2 draft'):''}
-  <div class="alloc-wrap"><div class="allocs">${C.lines.map(l=>allocRow(l,a,year)).join('')}</div>
-  <aside class="budget"><div class="n">${left}</div><div class="lab">$M remaining</div><div class="total">Allocated: <b>$${used}M</b> of $9M<br>Submit unlocks only at exactly $9M.</div></aside></div>
-  ${nav({backOk:year===1,nextLabel:left===0?`Commit Year ${year}`:'Allocate all $9M',disabled:blocked()||left!==0})}`);
+  ${year===2&&S.year1?`<details class="allocation-split" id="allocationSplit" ${S.breakdownOpen?'open':''}><summary>Year 1 + Year 2 split</summary>${year2BreakdownHTML(S.year1,a,'Year 2 draft')}</details>`:''}
+  </section><section class="allocation-controls" aria-label="Year ${year} budget">
+  <div class="allocs">${C.lines.map(l=>allocRow(l,a,year)).join('')}</div>
+  <div class="allocation-footer"><div class="budget" role="status" aria-live="polite"><div><span class="n">${left}</span> <span class="lab">$M remaining</span></div><div class="total">Allocated: <b>$${used}M</b> of $9M</div></div>
+  ${nav({backOk:year===1,nextLabel:left===0?`Commit Year ${year}`:'Allocate all $9M',disabled:blocked()||left!==0})}</div>
+  </section></div>`, 'allocation-page');
+  const split=document.getElementById('allocationSplit');if(split)split.ontoggle=()=>{S.breakdownOpen=split.open};
   document.querySelectorAll('.step').forEach(b=>b.onclick=()=>changeAlloc(key,b.dataset.line,Number(b.dataset.delta)));
   wireNav(async()=>{
     const v=validateClient(S[key]);if(v)return alert(v);
@@ -478,17 +530,17 @@ function renderAllocation(year){
     }catch(e){alert(e.message)}
   });
 }
-function readOnlyAllocationHTML(a,label){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="allocs">${C.lines.map(l=>`<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div><div class="constraint">${esc(l.description||'')}</div>${lineAdvocate(l)}<div class="alloc-rule">${esc(allocationRule(l))}</div></div><div class="amount">${a[l.id]}<small> M</small></div></div>`).join('')}</div>`}
-function allocRow(l,a,key){
+function readOnlyAllocationHTML(a,label){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="allocs">${C.lines.map(l=>`<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div>${lineAdvocate(l)}</div><div class="amount">${a[l.id]}<small> M</small></div></div>`).join('')}</div>`}
+function allocRow(l,a,year){
   const n=a[l.id],min=l.id==='run'?3:0,max=l.id==='run'?9:3,used=Object.values(a).reduce((x,y)=>x+y,0);
   const readOnly=!S.canSubmit&&S.session?.mode==='team';
   const minusDisabled=readOnly||n<=min,plusDisabled=readOnly||n>=max||used>=9;
   const minusTitle=readOnly?'Read-only team allocation':n<=min?(l.id==='run'?'Run has a $3M minimum':'Already at $0M'):'Remove $1M';
   const plusTitle=readOnly?'Read-only team allocation':n>=max&&l.id!=='run'?'$3M annual ceiling reached':used>=9?'All $9M is already allocated':'Add $1M';
-  return `<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div><div class="constraint">${esc(l.description||'')}</div>${lineAdvocate(l)}<div class="alloc-rule">${esc(allocationRule(l))}</div></div><div class="stepper">
-    <button class="step" title="${esc(minusTitle)}" data-line="${l.id}" data-delta="-1" ${minusDisabled?'disabled':''}>−</button>
+  return `<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div>${lineAdvocate(l,year)}</div><div class="stepper">
+    <button class="step" aria-label="Remove $1M from ${esc(l.label)}" title="${esc(minusTitle)}" data-line="${l.id}" data-delta="-1" ${minusDisabled?'disabled':''}>−</button>
     <div class="amount">${n}<small> M</small></div>
-    <button class="step" title="${esc(plusTitle)}" data-line="${l.id}" data-delta="1" ${plusDisabled?'disabled':''}>+</button></div></div>`;
+    <button class="step" aria-label="Add $1M to ${esc(l.label)}" title="${esc(plusTitle)}" data-line="${l.id}" data-delta="1" ${plusDisabled?'disabled':''}>+</button></div></div>`;
 }
 function changeAlloc(key,line,delta){
   if(blocked()||(S.session?.mode==='team'&&!S.canSubmit))return;
@@ -497,6 +549,7 @@ function changeAlloc(key,line,delta){
   const used=Object.values(a).reduce((x,y)=>x+y,0);
   if(delta>0&&used>=9)return;
   a[line]=nextv;render();
+  document.querySelector(`.step[data-line="${line}"][data-delta="${delta}"]`)?.focus({preventScroll:true});
 }
 function validateClient(a){
   const total=Object.values(a).reduce((x,y)=>x+y,0);
@@ -511,17 +564,18 @@ function runningHTML(o,label){return `<div class="eyebrow" style="margin-top:24p
 function renderYear1Outcome(){
   const o=S.year1Outcome;
   shell(`<div class="eyebrow">Year 1 outcome</div><h2>A renewal is six weeks away. The district wants proof.</h2>
+  ${o?`<div class="outcome"><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p>${outcomeNoteHTML(o)}</div>`:notice('Outcome not loaded. Return to Year 1 and recommit.',true)}
   ${runningHTML(S.year1,'Year 1 portfolio')}
-  ${o?`<div class="outcome"><h3>${esc(o.title)}</h3><p>${esc(o.narrative)}</p></div>`:notice('Outcome not loaded. Return to Year 1 and recommit.',true)}
   ${nav({backOk:false})}`);wireNav(next,false);
 }
 function renderYear2Events(){
   const o=S.year2Outcome;
   const cum=S.year1&&S.year2?runningTotals(S.year1,S.year2):null;
-  const first=o?`<div class="outcome"><h3>${esc(o.heat.title)}</h3><p>${esc(o.heat.narrative)}</p></div>`:'';
+  const first=o?`<div class="outcome"><h3>${esc(o.heat.title)}</h3><p>${esc(o.heat.narrative)}</p>${outcomeNoteHTML(o.heat)}</div>`:'';
   const second=o?`<div class="outcome"><h3>${esc(o.competitor.title)}</h3><p>${esc(o.competitor.narrative)}</p></div>`:'';
-  shell(`<div class="eyebrow">Year 2 outcomes</div><h2>Year 2 stops being quiet.</h2><p class="lede">First the weather turns. Then the market does.</p>${cum?runningHTML(cum,'Cumulative portfolio'):''}
+  shell(`<div class="eyebrow">Year 2 outcomes</div><h2>Year 2 stops being quiet.</h2><p class="lede">First the weather turns. Then the market does.</p>
   ${o?`<div class="events" style="grid-template-columns:1fr">${first}${S.year2Event>=1?second:''}</div>`:notice('Outcome not loaded. Return to Year 2 and recommit.',true)}
+  ${cum?runningHTML(cum,'Cumulative portfolio'):''}
   ${S.year2Event<1
     ? nav({backOk:false,nextLabel:'Continue to the second event'})
     : nav({backOk:false,nextLabel:'Go to Year 3'})}`);
@@ -534,7 +588,7 @@ function renderYear3(){
   const o=S.allOutcomes?.year3;
   const cum=o?.cumulative||(S.year1&&S.year2?runningTotals(S.year1,S.year2):null);
   shell(`<div class="eyebrow">Year 3</div><h2>The CEO asks whether Midland can predict a failure before the truck rolls.</h2>
-  <p class="lede">The request is now on the table. The architecture underneath it is the one built over the previous two years.</p>
+  <p class="year3-status">Year 3 is a reveal only. There is no allocation.</p>
   ${cum?runningHTML(cum,'Cumulative portfolio'):''}
   <section class="year3-stage">
     <div class="eyebrow">Your opening view</div><div class="year3-opening">“${esc(S.strategicView||'—')}”</div>
@@ -552,7 +606,7 @@ function renderBuyers(){
   <div class="buyer-close">${esc(b.closing||C.buyers?.closing||'')}</div>
   ${nav({backOk:false,nextLabel:'Continue to close'})}`);wireNav(next,false);
 }
-function closingLessonHTML(){const d=S.closingLesson;if(!d)return '';const ps=Array.isArray(d.paragraphs)?d.paragraphs:[];const run=Array.isArray(d.yourRun)?d.yourRun:[];return `<div class="result-section" id="closingLesson"><div class="eyebrow">${esc(d.title||'What this run was teaching you')}</div><div class="closing-lesson"><div class="closing-lesson-inner">${ps.map(p=>`<p>${esc(p)}</p>`).join('')}${run.length?`<div class="closing-run"><h3>In your run</h3>${run.map(p=>`<p>${esc(p)}</p>`).join('')}</div>`:''}<div class="closing-carry">${esc(d.carryOut||'')}</div></div></div></div>`}
+function closingLessonHTML(){const d=S.closingLesson;if(!d)return '';const ps=Array.isArray(d.paragraphs)?d.paragraphs:[];const run=Array.isArray(d.yourRun)?d.yourRun:[];return `<div class="result-section" id="closingLesson"><div class="eyebrow">${esc(d.title||'What this run was teaching you')}</div><div class="closing-lesson"><div class="closing-lesson-inner">${ps.map(p=>`<p>${esc(p)}</p>`).join('')}${run.length?`<div class="closing-run"><h3>In your run</h3>${run.map(p=>`<p>${esc(p)}</p>`).join('')}${Array.isArray(d.otherConsequences)&&d.otherConsequences.length?`<details class="closing-details"><summary>The other consequences</summary>${d.otherConsequences.map(x=>`<p><b>${esc(x.title)}.</b> ${esc(x.text)}</p>`).join('')}</details>`:''}</div>`:''}<div class="closing-carry">${esc(d.carryOut||'')}</div></div></div></div>`}
 function renderClose(){
   if(S.finished){
     const y1o=S.allOutcomes?.year1||S.year1Outcome||null;
@@ -585,7 +639,7 @@ function renderClose(){
       <div class="card"><p>${esc(S.strategicView||'—')}</p></div>
     </div>
     <div class="result-section"><div class="eyebrow">Your reflections</div>
-      <div class="card"><h3>${esc(C.reflectionPrompts[0])}</h3><p style="white-space:pre-wrap">${esc(S.reflection1||'—')}</p></div>
+      ${reflectionResultHTML()}
       <div class="card" style="margin-top:12px"><h3>${esc(C.reflectionPrompts[1])}</h3><p style="white-space:pre-wrap">${esc(S.reflection2||'—')}</p></div>
     </div>
     ${closingLessonHTML()}
@@ -594,11 +648,10 @@ function renderClose(){
     document.getElementById('printBtn').onclick=()=>window.print();
     return;
   }
-  shell(`<div class="eyebrow">Close</div><h2>The decisions are over. What changed your mind?</h2>
+  shell(`<div class="eyebrow">Close</div><h2>The decisions are over. Which would you revisit?</h2>
   <div class="summary"><div class="card"><h3>Your opening view</h3><p>${esc(S.strategicView||'—')}</p></div>
   <div class="card"><h3>Your Year 1 allocation</h3>${S.year1?miniAlloc(S.year1):'<p>—</p>'}</div></div>
-  <div class="field"><label>${esc(C.reflectionPrompts[0])}</label><textarea id="r1" maxlength="1500">${esc(S.reflection1)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
-  <div class="field"><label>${esc(C.reflectionPrompts[1])}</label><textarea id="r2" maxlength="1500">${esc(S.reflection2)}</textarea><div class="hint reflection-note">Your instructor can see this response and may read it aloud in the debrief. It is not scored.</div></div>
+  ${reflectionFields()}
   <div class="actions"><button class="btn pri" id="finishBtn">Complete run</button></div>`);
   document.getElementById('finishBtn').onclick=finish;
 }
@@ -632,7 +685,8 @@ function overallOutcomeText(){
   return [a,b,c,d].filter(Boolean).join(' ');
 }
 async function finish(){
-  S.reflection1=document.getElementById('r1').value.trim();S.reflection2=document.getElementById('r2').value.trim();
+  S.reflection1=readFirstReflection();S.reflection2=document.getElementById('r2').value.trim();
+  if(S.reflection1.length>1500){alert('Keep the first two answers within 1,500 characters together. Your answers have not been submitted.');return}
   try{
     if(S.session)await saveRun({reflection1:S.reflection1,reflection2:S.reflection2,done:true});
     const done=await request('/api/finish',{runnerRevision:S.runnerRevision,year1:S.year1,year2:S.year2,strategicView:S.strategicView,reflection1:S.reflection1,reflection2:S.reflection2,sessionCode:S.sessionCode,participantId:S.participantId});
@@ -642,7 +696,7 @@ async function finish(){
 }
 
 document.addEventListener('input',e=>{
-  if(e.target.id==='r1'){S.reflection1=e.target.value;S.reflectionDirty=true}
+  if(e.target.id==='r1'||e.target.id==='r1followup'){S.reflection1=readFirstReflection();S.reflectionDirty=true}
   if(e.target.id==='r2'){S.reflection2=e.target.value;S.reflectionDirty=true}
   if(e.target.id==='viewText'&&!S.viewCommitted)S.strategicView=e.target.value;
 });

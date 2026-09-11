@@ -6,7 +6,7 @@ on:
       - 'sim03/**'
       - '.github/workflows/sim03-browser-checks.yml'
   push:
-    branches: [main]
+    branches: [main, review/midland-increment-3]
     paths:
       - 'sim03/**'
       - '.github/workflows/sim03-browser-checks.yml'
@@ -40,6 +40,8 @@ jobs:
       - name: Full simulation build and regression checks
         working-directory: sim03
         run: npm run build
+      - name: Platform integration contract
+        run: node platform/tools/check-sim03-integration.js
       - name: Three student browsers, instructor, and real Redis
         env:
           TEST_REDIS_URL: redis://127.0.0.1:6379
@@ -48,6 +50,10 @@ jobs:
           export NODE_PATH="$RUNNER_TEMP/sim03-browser/node_modules"
           export AGENT_BROWSER_BIN="$RUNNER_TEMP/sim03-browser/node_modules/.bin/agent-browser"
           node sim03/tools/team-runner-browser-check.js
+      - name: Midland Increment 3 laptop and mobile regression
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/sim03-browser/node_modules"
+          node sim03/tools/increment3-browser-check.js
       - name: Upload screenshots, browser traces, and test results
         if: always()
         uses: actions/upload-artifact@v4

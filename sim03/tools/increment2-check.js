@@ -9,9 +9,9 @@ const cfg=S.publicConfig();
 assert.equal(S.META.minutes,30);
 assert.ok(S.META.detail.sessionShape.includes('thirty minutes'));
 assert.ok(cfg.lines.find(x=>x.id==='capacity').description.includes('Nobody asks for this')===false);
-assert.ok(cfg.lines.find(x=>x.id==='uptime').description.includes('Renata'));
-assert.ok(cfg.lines.find(x=>x.id==='connect').description.includes('Sam'));
-assert.ok(cfg.lines.find(x=>x.id==='features').description.includes('Tom'));
+assert.ok(cfg.lines.find(x=>x.id==='uptime').advocate.name.includes('Renata'));
+assert.ok(cfg.lines.find(x=>x.id==='connect').advocate.name.includes('Sam'));
+assert.ok(cfg.lines.find(x=>x.id==='features').advocate.name.includes('Tom'));
 assert.ok(cfg.reflectionPrompts[0].includes('Dale') && cfg.reflectionPrompts[0].includes('Sam'));
 assert.ok(cfg.reflectionDisclosure.includes('class debrief'));
 assert.ok(cfg.viewPrompt.includes('___'));
@@ -59,8 +59,8 @@ const lesson=buildClosingLesson(midA,midB,S.evaluateAll(midA,midB),S.DEFAULT_THR
 const text=[...lesson.paragraphs,...lesson.yourRun].join(' ');
 for(const name of ['Dale','Renata','Tom','Sam']) assert.ok(text.includes(name));
 assert.equal(text.includes('That imbalance was intentional'),false);
-assert.ok(text.includes('more in Connect would have let Midland match the competitor outright'));
-assert.ok(/less in Uptime|more in Uptime/.test(text));
+assert.ok(text.includes('could have made predictive service available at scale'));
+assert.ok(lesson.otherConsequences.some(x=>x.title==='The heat wave'));
 
 const html=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
 assert.ok(html.includes("const STEPS=['Brief','Room','Position','View'"));

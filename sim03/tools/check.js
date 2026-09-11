@@ -92,7 +92,7 @@ assert.equal(S.META.detail.cast.some(x => x.line === 'Capacity'), false);
 const inc1 = S.publicConfig();
 assert.equal(inc1.room.cast.length, 4);
 assert.equal(inc1.lines.find(x => x.id === 'capacity').description, 'Headroom for growth and for anything that needs to compute.');
-assert.equal(inc1.lines.find(x => x.id === 'connect').description.includes('Sam'), true);
+assert.equal(inc1.lines.find(x => x.id === 'connect').advocate.name.includes('Sam'), true);
 assert.equal(inc1.lines.find(x => x.id === 'run').advocate.name, 'Dale Brenner');
 assert.equal(inc1.lines.find(x => x.id === 'uptime').advocate.name, 'Renata Oyelaran');
 assert.equal(inc1.lines.find(x => x.id === 'connect').advocate.name, 'Sam Achterberg');
