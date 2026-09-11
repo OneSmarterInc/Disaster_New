@@ -87,12 +87,28 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   assert.match(snapshot.stdout,/Create account and join/i);checks++;
   await exec(process.env.AGENT_BROWSER_BIN,['--session','account-entry-check','close']);
   browser=await chromium.launch({headless:true});
-  // Faculty creates exactly the Team session from the UI, then copies its link.
+  // A direct/stale instructor URL must not be able to fire an anonymous
+  // create request. This is the screenshot failure mode we are guarding.
+  const noAuth=await page('teacher-no-auth');
+  await noAuth.goto(platform+'/sim03/instructor.html');
+  await noAuth.locator('[data-mode="team"]').click();
+  equal(await noAuth.locator('#create').isDisabled(),true,'direct instructor page cannot create without faculty authorization');
+  equal((await noAuth.locator('body').innerText()).includes('opened without RapidSims faculty authorization'),true,'direct instructor page explains how to recover');
+
+  // Exercise the exact real user path: faculty first opens Midland as a normal
+  // play launch, then clicks Run a facilitated session inside the simulation.
+  // That click must return through the platform to mint a fresh session-mode
+  // token before the instructor creates a Team session.
   const teacher=await page('teacher');await signIn(teacher,'teacher@example.test');
-  const launched=await teacher.context().request.get(platform+'/api/launch?sim='+f.sim.id+'&course=course-a&mode=session&format=json');
-  const launchData=await launched.json();
-  equal(launched.status(),200,'faculty cookie authorizes session launch: '+JSON.stringify(launchData.error||''));
-  await teacher.goto(launchData.url);
+  const playLaunch=await teacher.context().request.get(platform+'/api/launch?sim='+f.sim.id+'&course=course-a&format=json');
+  const playData=await playLaunch.json();
+  equal(playLaunch.status(),200,'faculty cookie authorizes ordinary Midland launch: '+JSON.stringify(playData.error||''));
+  await teacher.goto(playData.url);
+  await teacher.locator('#runSessionEntry').click();
+  await teacher.locator('[data-mode="team"]').waitFor();
+  equal(new URL(teacher.url()).pathname.endsWith('/instructor.html'),true,'in-sim Run a facilitated session reaches instructor surface');
+  equal(await teacher.locator('#fc').count(),0,'fresh platform session launch carries faculty authorization');
+  equal((await teacher.locator('body').innerText()).includes('faculty_authorization_required'),false,'raw faculty authorization error is not shown');
   await teacher.locator('[data-mode="team"]').click();
   await teacher.locator('#create').click();
   await teacher.waitForFunction(()=>document.getElementById('join')?.value.includes('/session.html'));
