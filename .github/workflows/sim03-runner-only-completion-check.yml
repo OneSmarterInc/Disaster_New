@@ -33,6 +33,16 @@ jobs:
       - name: Apply runner-only team completion patch
         run: |
           python tools/patch-sim03-runner-only-completion.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('sim03/tools/team-handler-check.js')
+          s=p.read_text()
+          old="check((await invoke({ sessionCode: code, participantId: members[0], reflection1: `${members[0]} one`, reflection2: `${members[0]} two`, done: true }, finish)).body.error, 'runner_only');"
+          new="check((await invoke({ sessionCode: code, participantId: members[0], reflection1: `${members[0]} one`, reflection2: `${members[0]} two`, done: true }, finish)).status, 200, 'member completion endpoint is idempotent after runner submits');"
+          if old not in s:
+            raise SystemExit('member idempotency test replacement point not found')
+          p.write_text(s.replace(old,new,1))
+          PY
           git diff --check
           node <<'JS'
           const fs=require('fs'),assert=require('assert');
@@ -41,12 +51,14 @@ jobs:
           const student=fs.readFileSync('sim03/public/index.html','utf8');
           const instructor=fs.readFileSync('sim03/public/instructor.html','utf8');
           const browser=fs.readFileSync('sim03/tools/team-runner-browser-check.js','utf8');
+          const handler=fs.readFileSync('sim03/tools/team-handler-check.js','utf8');
           for (const [name,hay,markers] of [
             ['session',session,['visibleFacultyRuns','completedByName','Only the selected simulation runner can complete the shared team run','run.done = !!rawRun.done || Number(rawRun.phase || 0) >= 3']],
             ['finish',finish,['teamSubjects','completedFor','beforeRun?.done']],
             ['student',student,['Team submission','same team result will appear here','The selected runner submitted this shared result for the whole team']],
             ['instructor',instructor,['stablePeople','min-height:54px','r.reflections?.[r.completedBy]']],
-            ['browser-test',browser,['Member is not asked for a separate final reflection','All team members see the same overall result','Shared run completes when the runner submits']]
+            ['browser-test',browser,['Member is not asked for a separate final reflection','All team members see the same overall result','Shared run completes when the runner submits']],
+            ['handler-test',handler,['member completion endpoint is idempotent after runner submits']]
           ]) for (const m of markers) assert(hay.includes(m), `${name} missing ${m}`);
           assert(!student.includes('Your individual reflection will appear here after the runner completes the shared run.'));
           console.log('Static runner-only completion assertions passed.');
