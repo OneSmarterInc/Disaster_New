@@ -16,6 +16,16 @@ jobs:
           node-version: 20
       - name: Apply Increment 3
         run: python .github/scripts/sim03_increment3.py
+      - name: Normalize generated closing header
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('sim03/lib/closingLesson.js')
+          s=p.read_text()
+          if s.startswith("use strict\\';"):
+              s="'use strict';"+s[len("use strict\\';"):]
+          p.write_text(s)
+          PY
       - name: Assert calibration, instructor and team engine untouched
         run: |
           git diff --exit-code HEAD -- \
