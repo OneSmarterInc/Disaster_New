@@ -44,7 +44,7 @@ jobs:
           for (const [name,hay,markers] of [
             ['session',session,['visibleFacultyRuns','completedByName','Only the selected simulation runner can complete the shared team run','run.done = !!rawRun.done || Number(rawRun.phase || 0) >= 3']],
             ['finish',finish,['teamSubjects','completedFor','beforeRun?.done']],
-            ['student',student,['Team submission','same team result will appear here','Member is not asked','The selected runner submitted this shared result for the whole team']],
+            ['student',student,['Team submission','same team result will appear here','The selected runner submitted this shared result for the whole team']],
             ['instructor',instructor,['stablePeople','min-height:54px','r.reflections?.[r.completedBy]']],
             ['browser-test',browser,['Member is not asked for a separate final reflection','All team members see the same overall result','Shared run completes when the runner submits']]
           ]) for (const m of markers) assert(hay.includes(m), `${name} missing ${m}`);
