@@ -100,10 +100,20 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   equal(new URL(invite).origin,platform,'generated invite uses platform account origin');
   equal(new URL(invite).searchParams.get('course'),'course-a','generated invite carries class');
   equal(new URL(invite).hash,'','no teacher token copied');await shot(teacher,'01-faculty-session-link');
+  await teacher.locator('[data-enrolled-id="platform:pending"]').filter({hasText:'Waiting for access release'}).waitFor();
+  equal((await teacher.locator('#courseAccess').getAttribute('href')).includes('course=course-a'),true,'faculty release link targets the current course');
+  // Selecting the read-only share link must not freeze the live participant UI.
+  await teacher.locator('#join').focus();
+
   const alice=await page('alice');await signIn(alice,'alice@example.test');
   await alice.goto(invite);await joined(alice,'platform:alice');
   equal(await alice.evaluate(()=>S.sessionCode),code,'already signed-in student reaches original session');
   await shot(alice,'02-signed-in-student');
+  await teacher.waitForFunction(()=>document.querySelector('.kpi b')?.textContent==='1');
+  await teacher.locator('[data-enrolled-id="platform:alice"]').filter({hasText:'In this session'}).waitFor();checks++;
+  // A read-only enrolment refresh must not wipe an unfinished team name.
+  await teacher.locator('#newTeamName').fill('My unfinished team');
+
   await alice.reload();await joined(alice,'platform:alice');
   equal(Object.keys(f.participants.get(code)).length,1,'reload does not create duplicate participant');
   const loggedOut=await page('logged-out');await loggedOut.goto(invite);
@@ -124,8 +134,16 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   await shot(fresh,'04-awaiting-release');
   const user=[...f.users.values()].find(u=>u.email==='fresh@example.test');
   equal(!!user,true,'existing signup API created a real hashed account in test DB');
+  await teacher.locator('[data-enrolled-id="platform:'+user.id+'"]').filter({hasText:'Waiting for access release'}).waitFor();
+  equal(await teacher.locator('#newTeamName').inputValue(),'My unfinished team','new enrolment becomes visible without losing the focused team draft');
+  equal(!!f.participants.get(code)['platform:'+user.id],false,'roster visibility does not bypass launch authorization');
+  await shot(teacher,'05-faculty-enrolment-before-release');
   f.enrolments.find(e=>e.student_id===user.id).paid=true;
-  await fresh.locator('#retry').click();await joined(fresh,'platform:'+user.id);
+  // No refresh or Check again click: the waiting page resumes on its own.
+  await joined(fresh,'platform:'+user.id);
+  await teacher.locator('[data-enrolled-id="platform:'+user.id+'"]').filter({hasText:'In this session'}).waitFor();
+  checks++;
+
   equal(await fresh.evaluate(()=>S.sessionCode),code,'after faculty release newcomer enters same session');
   // An old direct simulator URL still works, on both root and platform prefix.
   await alice.goto(simulation+'/launch.html?session='+code);await joined(alice,'platform:alice');

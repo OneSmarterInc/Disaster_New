@@ -35,6 +35,15 @@ const query = async (strings, ...v) => {
   if (q.startsWith('SELECT id FROM enrolments')) return enrolments.filter(e => e.course_id === v[0] && e.student_id === v[1]);
   if (q.startsWith('INSERT INTO enrolments ')) { enrolments.push({id:v[0], course_id:v[1], student_id:v[2], paid:false, dropped:false}); return []; }
   if (q.startsWith('UPDATE enrolments SET dropped')) { enrolments.find(e => e.id === v[0]).dropped=false; return []; }
+  if (q.startsWith('SELECT id, role, disabled FROM users WHERE id')) return users.has(v[0]) ? [users.get(v[0])] : [];
+  if (q.startsWith('SELECT id, faculty_id, archived FROM courses WHERE id')) return courses.has(v[0]) ? [courses.get(v[0])] : [];
+  if (q.startsWith('SELECT 1 FROM course_sims WHERE')) return courses.has(v[0]) && v[1] === sim.id && !sim.detached ? [{one:1}] : [];
+  if (q.startsWith('SELECT u.id AS student_id, u.name, e.paid FROM enrolments')) {
+    return enrolments.filter(e => e.course_id === v[0] && !e.dropped).flatMap(e => {
+      const u=users.get(e.student_id);
+      return u && !u.disabled && u.role === 'student' ? [{student_id:u.id,name:u.name,paid:e.paid}] : [];
+    });
+  }
   if (q.startsWith('SELECT * FROM sims WHERE id')) return v[0] === sim.id ? [sim] : [];
   if (q.startsWith('SELECT 1 FROM course_sims cs')) {
     const c = q.includes('cs.course_id =') ? courses.get(v[0]) : courses.get('course-a');
@@ -70,6 +79,7 @@ store.getParticipants = async code => structuredClone(participants.get(code) || 
 store.addParticipant = store.setParticipant = async (code,id,value) => { const p=participants.get(code)||{};p[id]=structuredClone(value);participants.set(code,p); };
 store.getRuns = async () => ({});
 const handlers = {
+  'session-enrolments':require('../api/session-enrolments.js'),
   auth:require('../api/auth.js'), student:require('../api/student.js'), launch:require('../api/launch.js'),
   join:require('../../sim03/api/join.js'), session:require('../../sim03/api/session.js'),
   config:require('../../sim03/api/config.js'), outcome:require('../../sim03/api/outcome.js'), finish:require('../../sim03/api/finish.js')
@@ -95,3 +105,14 @@ async function createClass() {
 process.env.LAUNCH_SECRET = 'local-fixture-secret-never-production';
 process.env.ACCESS_CODE = 'standalone-secret-not-shared';
 module.exports = {call,signin,cookie,createClass,handlers,users,cookies,courses,enrolments,sessions,participants,sim,seed,auth,launches};
+
+// The sim-to-platform roster bridge uses the real read-only handler with the
+// same test SQL adapter. No production network or student records are used.
+const nativeFetch = global.fetch;
+global.fetch = async (url, options) => {
+  if (String(url).endsWith('/api/session-enrolments')) {
+    const r = await call('session-enrolments', JSON.parse(options.body), {headers:options.headers});
+    return new Response(JSON.stringify(r.payload), {status:r.statusCode,headers:{'content-type':'application/json'}});
+  }
+  return nativeFetch(url, options);
+};

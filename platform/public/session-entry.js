@@ -9,6 +9,8 @@
   const session = (q.get('session') || '').trim().toUpperCase();
   const courseId = q.get('course') || '';
   let course = null, joinCode = '', me = null;
+  let releaseTimer = null, entering = false;
+  function stopReleaseCheck() { clearTimeout(releaseTimer); releaseTimer = null; }
   async function api(path, payload) {
     const response = await fetch(path, payload === undefined ? { credentials: 'same-origin' } : {
       method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
@@ -26,21 +28,34 @@
       <p class="lede">${course ? esc(course.title) + ' · ' : ''}Session ${esc(session)}</p>`;
   }
   function showError(error) {
+    stopReleaseCheck();
     app.innerHTML = heading() + `<div class="card"><h2>${esc(error.data?.title || 'Unable to open this session')}</h2>
       <p>${esc(error.message)}</p><button class="btn pri" id="retry">Try again</button>
       <p><a href="/student.html">Back to my courses</a></p></div>`;
     document.getElementById('retry').onclick = start;
   }
-  async function enter() {
+  function waitForRelease(error) {
+    app.innerHTML = heading() + `<div class="card" id="waiting-release"><h2>Waiting on your instructor</h2>
+      <p>Your enrolment is confirmed. Your name is listed under Course enrolment on the faculty session screen.</p>
+      <p>Your instructor must release your course access before you can join the simulation. This page will continue automatically once access is released.</p>
+      <button class="btn pri" id="retry">Check again</button><p class="tiny dim">No simulation access code is needed.</p></div>`;
+    document.getElementById('retry').onclick = () => enter();
+    releaseTimer = setTimeout(() => enter(true), 5000);
+  }
+  async function enter(silent = false) {
+    if (entering) return;
+    entering = true;
+    stopReleaseCheck();
     const params = new URLSearchParams({ sim, session, format:'json' });
     if (courseId) params.set('course', courseId);
-    app.innerHTML = heading() + '<p class="lede">Opening your session…</p>';
+    if (!silent) app.innerHTML = heading() + '<p class="lede">Opening your session…</p>';
     try {
       const data = await api('/api/launch?' + params);
       // Destination comes from the server's registered simulation, not a return
       // URL supplied by a caller. Never accept arbitrary redirect parameters.
       location.replace(data.url);
     } catch (error) {
+      if (error.status === 403 && error.data?.title === 'Waiting on your instructor') return waitForRelease(error);
       if (error.status === 401) { me = null; return accountForm('signin'); }
       if (error.status === 403 && error.data?.title === 'Not enrolled' && joinCode) {
         app.innerHTML = heading() + `<div class="card"><p>You're signed in as <b>${esc(me.name)}</b>.
@@ -54,9 +69,10 @@
         return;
       }
       showError(error);
-    }
+    } finally { entering = false; }
   }
   function accountForm(mode = 'signup') {
+    stopReleaseCheck();
     const signup = mode === 'signup';
     app.innerHTML = heading() + `<p class="lede">${signup ? 'Create your student account to join this session.' : 'Sign in with your existing RapidSims account.'}</p>
       <form class="card" id="account-form">
@@ -114,5 +130,6 @@
       accountForm();
     } catch (error) { showError(error); }
   }
+  window.addEventListener('pagehide', stopReleaseCheck);
   start();
 })();

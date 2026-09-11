@@ -747,7 +747,9 @@ function wireCommon() {
       (me.user.role === 'admin' ? ' · administrator, teaching view' : ' · facilitator');
     if (me.user.role === 'admin') document.getElementById('adminlink').style.display = '';
   } catch (e) { location.href = '/signin.html'; return; }
-  loadHome();
+  const requestedCourse = new URLSearchParams(location.search).get('course');
+  if (requestedCourse) await openCourse(requestedCourse);
+  else loadHome();
 })();
 </script>
 </body>

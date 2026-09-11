@@ -1,4 +1,5 @@
 const { body } = require('../lib/guard.js');
+const { courseEnrolments } = require('../lib/course-enrolments.js');
 const store = require('../lib/store.js');
 const { verifyLaunch } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
@@ -173,6 +174,19 @@ module.exports = async (req, res) => {
           you: who.name,
           defaultThresholds: S.DEFAULT_THRESHOLDS
         });
+      }
+
+      case 'faculty_enrolments': {
+        const who = whoIsFaculty(req, b);
+        if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
+        const sess = await store.getSession(code);
+        if (!sess) return res.status(404).json({ error: 'no_such_session' });
+        if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
+        try { return res.status(200).json(await courseEnrolments(req, b, sess)); }
+        catch (error) {
+          return res.status(error.status || 503).json({ error: 'course_roster_unavailable',
+            message: error.message || 'Course enrolment could not be refreshed.' });
+        }
       }
 
       case 'calibrate': {
