@@ -164,4 +164,6 @@ execFileSync(process.execPath, [path.join(__dirname, 'tools', 'browser-preflight
 
 execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-runner-ui-check.js')], { stdio: 'inherit' });
 
+execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-entry-url-check.js')], { stdio: 'inherit' });
+
 console.log('RapidSim 03 build guards passed.');

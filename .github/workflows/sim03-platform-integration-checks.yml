@@ -29,3 +29,5 @@ jobs:
         run: node platform/tools/check-sim03-integration.js
       - name: Verify full Sim03 platform lifecycle
         run: node platform/tools/sim03-lifecycle-check.js
+      - name: Verify session account entry and identity boundaries
+        run: node platform/tools/sim03-account-entry-check.js

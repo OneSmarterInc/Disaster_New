@@ -2,6 +2,7 @@ const { checkAccess, body } = require('../lib/guard.js');
 const S = require('../lib/scenario.js');
 const store = require('../lib/store.js');
 const { runnerOf } = require('../lib/team-runner.js');
+const { participantError } = require('../lib/session-entry.js');
 
 function evaluate(stage, y1, y2, thresholds) {
   if (stage === 'year1') return { outcome: S.evaluateYear1(y1, thresholds) };
@@ -10,7 +11,7 @@ function evaluate(stage, y1, y2, thresholds) {
   return null;
 }
 
-async function fromSession(b, res) {
+async function fromSession(req, b, res) {
   const code = String(b.sessionCode || '').toUpperCase().trim();
   const pid = String(b.participantId || '');
   // A remembered participant ID without a session code is a standalone run.
@@ -21,6 +22,8 @@ async function fromSession(b, res) {
   if (!store.configured()) return reject(503, 'no_store');
   const sess = await store.getSession(code);
   if (!sess) return reject(404, 'no_such_session');
+  const denied = participantError(req, b, sess, pid);
+  if (denied) return reject(denied.status, denied.error);
   const participants = await store.getParticipants(code);
   const me = participants[pid];
   if (!me) return reject(403, 'not_joined');
@@ -45,7 +48,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const b = body(req);
   try {
-    if (await fromSession(b, res)) return;
+    if (await fromSession(req, b, res)) return;
   } catch (e) {
     console.error('session outcome lookup failed', e.message);
     return res.status(500).json({ error: 'server_error' });

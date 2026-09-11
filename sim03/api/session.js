@@ -2,6 +2,7 @@ const { body } = require('../lib/guard.js');
 const store = require('../lib/store.js');
 const { verifyLaunch } = require('../lib/launch.js');
 const S = require('../lib/scenario.js');
+const { accountJoinUrl, participantLaunch, participantError } = require('../lib/session-entry.js');
 const { leadOf, runnerOf, revisionOf, screenOf } = require('../lib/team-runner.js');
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -24,7 +25,7 @@ function whoIsFaculty(req, b) {
   if (lt) {
     const p = verifyLaunch(String(lt));
     if (p && p.sim === S.META.id && (p.role === 'faculty' || p.role === 'faculty_preview')) {
-      return { name: p.name || 'Facilitator' };
+      return { name: p.name || 'Facilitator', platformAuth: true, courseId: p.course || null };
     }
   }
 
@@ -118,6 +119,13 @@ module.exports = async (req, res) => {
   const code = String(b.code || '').toUpperCase().trim();
 
   try {
+    if (['join', 'state', 'submit', 'set_runner'].includes(action)) {
+      const sess = await store.getSession(code);
+      if (sess) {
+        const error = participantError(req, b, sess, action === 'join' ? null : String(b.participantId || ''));
+        if (error) return res.status(error.status).json({ error: error.error });
+      }
+    }
     for (let attempt = 0; attempt < 5; attempt++) {
     switch (action) {
       case 'create': {
@@ -133,6 +141,8 @@ module.exports = async (req, res) => {
         const sess = {
           code: c,
           owner: who.name,
+          platformAuth: !!who.platformAuth,
+          courseId: who.courseId || null,
           name: String(b.name || 'Midland Equipment').slice(0, 80),
           mode,
           state: 'lobby',
@@ -157,7 +167,7 @@ module.exports = async (req, res) => {
           store.getRuns(code)
         ]);
         return res.status(200).json({
-          session: sess,
+          session: { ...sess, joinUrl: sess.platformAuth ? accountJoinUrl(sess) : null },
           participants,
           runs,
           you: who.name,
@@ -348,16 +358,24 @@ module.exports = async (req, res) => {
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (sess.state === 'closed') return res.status(410).json({ error: 'session_closed' });
 
-        const name = String(b.name || '').slice(0, 60).trim();
+        const launched = participantLaunch(req, b);
+        if ((req.headers['x-launch-token'] || b.launchToken) && !launched) {
+          return res.status(401).json({ error: 'launch_token_invalid' });
+        }
+        if (launched && sess.courseId && launched.course !== sess.courseId) {
+          return res.status(403).json({ error: 'session_course_mismatch' });
+        }
+        const name = String(launched ? launched.name || '' : b.name || '').slice(0, 60).trim();
         if (!name) return res.status(400).json({ error: 'name_required' });
         const all = await store.getParticipants(code);
         const key = x => String(x || '').trim().toLowerCase();
-        const lt = req.headers['x-launch-token'] || b.launchToken;
-        const launched = lt ? verifyLaunch(String(lt)) : null;
-        let id = launched && launched.sub ? `platform:${launched.sub}` : String(b.participantId || '').trim();
-        if (!id || !all[id]) {
-          const match = Object.values(all).find(p => p && key(p.name) === key(name));
+        let id = launched ? `platform:${launched.sub}` : String(b.participantId || '').trim();
+        if (!launched && (!id || !all[id])) {
+          const match = Object.values(all).find(p => p && !p.id.startsWith('platform:') && key(p.name) === key(name));
           id = match ? match.id : (id || newId());
+        }
+        if (!launched && id.startsWith('platform:')) {
+          return res.status(401).json({ error: 'platform_signin_required' });
         }
         const existing = all[id];
 

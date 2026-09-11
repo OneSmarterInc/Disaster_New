@@ -19,10 +19,16 @@ module.exports = async (req, res) => {
       // Returns nothing beyond the title and who teaches it.
       case 'course_lookup': {
         const code = String(b.joinCode || '').toUpperCase().trim();
-        const rows = await s`
-          SELECT c.title, c.term, c.join_code, u.name AS faculty_name, u.institution
-          FROM courses c JOIN users u ON u.id = c.faculty_id
-          WHERE c.join_code = ${code} AND c.archived = false`;
+        const rows = !code && b.courseId && b.simId === 'rapid-03-midland'
+          ? await s`
+              SELECT c.title, c.term, c.join_code, u.name AS faculty_name, u.institution
+              FROM courses c JOIN users u ON u.id = c.faculty_id
+              JOIN course_sims cs ON cs.course_id = c.id
+              WHERE c.id = ${String(b.courseId)} AND cs.sim_id = ${String(b.simId)} AND c.archived = false`
+          : await s`
+              SELECT c.title, c.term, c.join_code, u.name AS faculty_name, u.institution
+              FROM courses c JOIN users u ON u.id = c.faculty_id
+              WHERE c.join_code = ${code} AND c.archived = false`;
         if (!rows.length) return res.status(404).json({ error: 'no_such_course' });
         return res.status(200).json({ course: rows[0] });
       }

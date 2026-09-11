@@ -23,6 +23,11 @@ module.exports = async (req, res) => {
   const wants = q.format === 'json' ? 'json' : 'html';
   const simId = String(q.sim || '');
   const courseId = String(q.course || '') || null;
+  const session = String(q.session || '').trim().toUpperCase();
+  if (session && (simId !== 'rapid-03-midland' || !/^[A-Z2-9]{5}$/.test(session))) {
+    return res.status(400).json({ error: 'invalid_session_invite' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
   // Why they are going: to play it, or to run a session with a class. A
   // facilitator wants both at different moments, and guessing gets it wrong
   // half the time.
@@ -31,6 +36,11 @@ module.exports = async (req, res) => {
   const me = await A.currentUser(req);
   if (!me) {
     if (wants === 'json') return res.status(401).json({ error: 'not_signed_in' });
+    if (session) {
+      const entry = new URLSearchParams({ sim: simId, session });
+      if (courseId) entry.set('course', courseId);
+      return res.redirect(302, '/session.html?' + entry.toString());
+    }
     return res.redirect(302, '/');
   }
 
@@ -142,7 +152,13 @@ module.exports = async (req, res) => {
     // through landed on a 404 while the sim itself was healthy. Both forms are
     // routed now, but emitting the canonical one means a future sim does not
     // depend on someone having added the extra rule.
-    const url = sim.launch_url.replace(/\/+$/, '') + '#lt=' + encodeURIComponent(token);
+    let url = sim.launch_url.replace(/\/+$/, '') + '#lt=' + encodeURIComponent(token);
+    if (session) {
+      const target = new URL(sim.launch_url.replace(/\/+$/, ''));
+      target.searchParams.set('session', session);
+      target.hash = 'lt=' + encodeURIComponent(token);
+      url = target.href;
+    }
     if (wants === 'json') return res.status(200).json({ url });
     return res.redirect(302, url);
 

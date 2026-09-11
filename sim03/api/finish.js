@@ -4,6 +4,7 @@ const S = require('../lib/scenario.js');
 const { buildClosingLesson } = require('../lib/closingLesson.js');
 const store = require('../lib/store.js');
 const submitSession = require('./session.js');
+const { participantError } = require('../lib/session-entry.js');
 
 async function sessionRun(req, b) {
   const code = String(b.sessionCode || '').toUpperCase().trim();
@@ -16,6 +17,8 @@ async function sessionRun(req, b) {
   if (!store.configured()) reject(503, 'no_store');
   const beforeSession = await store.getSession(code);
   if (!beforeSession) reject(404, 'no_such_session');
+  const denied = participantError(req, b, beforeSession, pid);
+  if (denied) reject(denied.status, denied.error);
   const beforeParticipants = await store.getParticipants(code);
   const beforeMe = beforeParticipants[pid];
   if (!beforeMe) reject(403, 'not_joined');

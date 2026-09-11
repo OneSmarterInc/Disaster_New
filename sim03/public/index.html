@@ -70,9 +70,10 @@ const app=document.getElementById('app');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
 
-let ACCESS_CODE=(function(){const m=(location.hash+location.search).match(/code=([^&]+)/);return m?decodeURIComponent(m[1]):(sessionStorage.getItem('m03-access')||null)})();
+function entryParam(key){return new URLSearchParams(location.hash.slice(1)).get(key)||new URLSearchParams(location.search).get(key)}
+let ACCESS_CODE=entryParam('code')||sessionStorage.getItem('m03-access')||null;
 if(ACCESS_CODE)sessionStorage.setItem('m03-access',ACCESS_CODE);
-let LAUNCH_TOKEN=(function(){const m=(location.hash+location.search).match(/lt=([^&]+)/);return m?decodeURIComponent(m[1]):null})();
+let LAUNCH_TOKEN=entryParam('lt')||null;
 let LAUNCH=null;
 if(LAUNCH_TOKEN){try{LAUNCH=JSON.parse(atob(LAUNCH_TOKEN.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')))}catch{}}
 if(LAUNCH_TOKEN&&LAUNCH&&(LAUNCH.role==='faculty'||LAUNCH.role==='faculty_preview'))sessionStorage.setItem('m03-faculty-lt',LAUNCH_TOKEN);
@@ -171,6 +172,9 @@ function safeToRerender(){if(document.getElementById('briefingPacketModal')?.cla
 async function init(){
   try{C=await request('/api/config',null,'GET')}
   catch(e){
+    if(INITIAL_SESSION&&['access_code_required','access_code_not_configured','launch_token_invalid'].includes(e.code)){
+      location.replace(BASE+'/api/join?session='+encodeURIComponent(INITIAL_SESSION));return;
+    }
     if(e.code==='access_code_required'&&!LAUNCH_TOKEN){
       sessionStorage.removeItem('m03-access');
       app.innerHTML=`<main class="page">${notice('An access code is required to open Midland Equipment.',true)}<div class="actions"><button class="btn pri" id="accessBtn">Enter access code</button></div></main>`;
@@ -179,6 +183,15 @@ async function init(){
     }
     app.innerHTML=`<main class="page">${notice(e.message,true)}<div class="actions"><button class="btn pri" onclick="location.reload()">Try again</button></div></main>`;
     return;
+  }
+  if(INITIAL_SESSION&&LAUNCH?.sub){
+    // Always bind to the signed account; a shared browser may remember another
+    // student's participant ID. The server reuses this account's existing place.
+    try{
+      const d=await sessionApi({action:'join',code:INITIAL_SESSION});
+      S.participantId=d.participantId;S.session=d.session;S.me=d.me;
+      localStorage.setItem('m03-pid',S.participantId);
+    }catch(e){S.error=e.message;renderJoin();return}
   }
   if(INITIAL_SESSION&&!S.participantId){renderJoin();return}
   if(INITIAL_SESSION&&S.participantId){
@@ -192,7 +205,7 @@ async function init(){
 function renderJoin(){
   shell(`<section class="joinbox"><div class="eyebrow">Facilitated session</div><h2>Join Midland Equipment</h2><p class="lede">Enter your name and the session code shown by your instructor. Your instructor will place you on a team if this is a team session.</p>
   ${S.error?notice(S.error,true):''}
-  <div class="field"><label>Name</label><input id="joinName" autocomplete="name" placeholder="Your name"></div>
+  <div class="field"><label>Name</label><input id="joinName" autocomplete="name" value="${esc(LAUNCH?.name||'')}" ${LAUNCH?.sub?'readonly':''} placeholder="Your name"></div>
   <div class="field"><label>Session code</label><input id="joinCode" class="mono" maxlength="5" value="${esc(S.sessionCode)}" placeholder="ABCDE"></div>
   <div class="actions"><button class="btn pri" id="joinBtn">Join session</button></div></section>`);
   document.getElementById('joinBtn').onclick=joinSession;
