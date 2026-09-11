@@ -44,6 +44,24 @@ const query = async (strings, ...v) => {
       return u && !u.disabled && u.role === 'student' ? [{student_id:u.id,name:u.name,paid:e.paid}] : [];
     });
   }
+  // Real faculty course and release handlers, backed only by disposable data.
+  if (q.startsWith('SELECT c.*, (SELECT count(*) FROM enrolments')) return [...courses.values()]
+    .filter(c=>c.faculty_id===v[0]&&!c.archived).map(c=>({...c,
+      enrolled:enrolments.filter(e=>e.course_id===c.id&&!e.dropped).length,
+      paid:enrolments.filter(e=>e.course_id===c.id&&!e.dropped&&e.paid).length,sims:1}));
+  if (q.startsWith('SELECT * FROM sims si')) return [sim];
+  if (q.startsWith('SELECT * FROM previews WHERE')) return [];
+  if (q.startsWith('SELECT * FROM courses WHERE id')) return [...courses.values()].filter(c=>c.id===v[0]&&c.faculty_id===v[1]);
+  if (q.startsWith('SELECT cs.*, si.number')) return [{sim_id:sim.id,number:3,title:'Midland Equipment',started:0,finished:0,started_runs:0,finished_runs:0}];
+  if (q.startsWith('SELECT e.id AS enrolment_id')) return enrolments.filter(e=>e.course_id===v[0]).map(e=>({
+    ...e,enrolment_id:e.id,student_id:e.student_id,name:users.get(e.student_id).name,
+    email:users.get(e.student_id).email,started:0,finished:0}));
+  if (q.startsWith('UPDATE enrolments SET paid = true')) {
+    for(const e of enrolments) if(e.course_id===v[2]&&(v[3]?v[3].includes(e.id):!e.dropped&&!e.paid)) {
+      e.paid=true;e.paid_by=v[0];e.paid_note=v[1];
+    }
+    return [];
+  }
   if (q.startsWith('SELECT * FROM sims WHERE id')) return v[0] === sim.id ? [sim] : [];
   if (q.startsWith('SELECT 1 FROM course_sims cs')) {
     const c = q.includes('cs.course_id =') ? courses.get(v[0]) : courses.get('course-a');
@@ -80,6 +98,7 @@ store.addParticipant = store.setParticipant = async (code,id,value) => { const p
 store.getRuns = async () => ({});
 const handlers = {
   'session-enrolments':require('../api/session-enrolments.js'),
+  faculty:require('../api/faculty.js'),
   auth:require('../api/auth.js'), student:require('../api/student.js'), launch:require('../api/launch.js'),
   join:require('../../sim03/api/join.js'), session:require('../../sim03/api/session.js'),
   config:require('../../sim03/api/config.js'), outcome:require('../../sim03/api/outcome.js'), finish:require('../../sim03/api/finish.js')

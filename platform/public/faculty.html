@@ -748,8 +748,9 @@ function wireCommon() {
     if (me.user.role === 'admin') document.getElementById('adminlink').style.display = '';
   } catch (e) { location.href = '/signin.html'; return; }
   const requestedCourse = new URLSearchParams(location.search).get('course');
-  if (requestedCourse) await openCourse(requestedCourse);
-  else loadHome();
+  // render() needs the overview before it can display any course.
+  await loadHome();
+  if (requestedCourse && F.data) await openCourse(requestedCourse);
 })();
 </script>
 </body>

@@ -73,7 +73,7 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
     if(url.pathname.startsWith('/sim03'))return simRoute(req,res,url);
     if(url.pathname==='/api/register'){res.writeHead(200,{'content-type':'application/json'});return res.end('{}');}
     if(url.pathname.startsWith('/api/'))return invoke(url.pathname.slice(5),req,res,url);
-    if(['/session.html','/session-entry.js','/app.css'].includes(url.pathname))return file(res,'platform/public'+url.pathname);
+    if(['/session.html','/session-entry.js','/app.css','/faculty.html','/sim-detail.css','/sim-detail.js','/render-transcript.js'].includes(url.pathname))return file(res,'platform/public'+url.pathname);
     res.writeHead(404);res.end('Not found');
   };
   platform=await listen(platformRoute);
@@ -138,7 +138,22 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
   equal(await teacher.locator('#newTeamName').inputValue(),'My unfinished team','new enrolment becomes visible without losing the focused team draft');
   equal(!!f.participants.get(code)['platform:'+user.id],false,'roster visibility does not bypass launch authorization');
   await shot(teacher,'05-faculty-enrolment-before-release');
-  f.enrolments.find(e=>e.student_id===user.id).paid=true;
+  // Follow the actual course shortcut and release through the real faculty UI
+  // and API, not a fixture assignment. This catches incomplete page bootstrap.
+  const popupPromise=teacher.waitForEvent('popup');
+  await teacher.locator('#courseAccess').click();
+  const coursePage=await popupPromise;
+  coursePage.on('pageerror',error=>failures.push('course-shortcut: '+error.stack));
+  await coursePage.getByRole('heading',{name:'Test course',exact:true}).waitFor();
+  equal(new URL(coursePage.url()).searchParams.get('course'),'course-a','course shortcut renders the correct course, not a loading screen');
+  await shot(coursePage,'06-course-access-controls');
+  const enrollment=f.enrolments.find(e=>e.student_id===user.id);
+  const released=coursePage.waitForResponse(r=>r.url().endsWith('/api/faculty')&&r.request().postDataJSON()?.action==='set_paid');
+  await coursePage.locator('[data-give="'+enrollment.id+'"]').click();
+  equal((await released).status(),200,'Give access succeeds through the real faculty handler');
+  equal(enrollment.paid,true,'faculty action releases only the chosen enrollment');
+  equal(f.enrolments.find(e=>e.student_id==='pending').paid,false,'another waiting student is not released');
+  await coursePage.close();
   // No refresh or Check again click: the waiting page resumes on its own.
   await joined(fresh,'platform:'+user.id);
   await teacher.locator('[data-enrolled-id="platform:'+user.id+'"]').filter({hasText:'In this session'}).waitFor();
