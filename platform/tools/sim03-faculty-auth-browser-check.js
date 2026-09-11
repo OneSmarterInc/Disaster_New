@@ -154,6 +154,28 @@ async function sessionCode(p) {
   equal(roster.statusCode,200,'recovered shortcut authorizes the course roster');
   equal(roster.payload.students.some(p=>p.name==='Alex Student'),true,'recovered shortcut returns real enrolled student names');
   equal(f.sessions.get(shortcutCode).courseId,'course-a','shortcut keeps its original course');
+  await shortcut.waitForFunction(() => document.querySelector('#course-enrolments')?.textContent.includes('not in team list yet'));
+  equal((await shortcut.locator('#course-enrolments').textContent()).includes('Only students marked In this session can be assigned to teams'),true,'course roster explains access vs joined students');
+  equal((await shortcut.locator('.joined-panel').textContent()).includes('0'),true,'team setup starts from joined students only');
+  const now=Date.now();
+  f.seed('third','third@example.test','student',true,'Third Student');
+  f.seed('fourth','fourth@example.test','student',true,'Fourth Student');
+  f.participants.set(shortcutCode,{
+    'platform:alice':{id:'platform:alice',name:'Alex Student A',joinedAt:now,groupId:null,teamLabel:'',isCaptain:false},
+    'platform:bob':{id:'platform:bob',name:'Alex Student B',joinedAt:now+1,groupId:null,teamLabel:'',isCaptain:false},
+    'platform:third':{id:'platform:third',name:'Third Student',joinedAt:now+2,groupId:null,teamLabel:'',isCaptain:false},
+    'platform:fourth':{id:'platform:fourth',name:'Fourth Student',joinedAt:now+3,groupId:null,teamLabel:'',isCaptain:false}
+  });
+  await shortcut.evaluate(() => refresh());
+  await shortcut.locator('#teamCount').waitFor();
+  equal(await shortcut.locator('#teamCount').inputValue(),'2','four joined students default to two teams');
+  equal((await shortcut.locator('.joined-panel').textContent()).includes('Alex Student A'),true,'joined roster lists available team members');
+  await shortcut.locator('#autoSplit').click();
+  await shortcut.waitForFunction(() => document.querySelectorAll('.team-card').length === 2);
+  equal(await shortcut.locator('.team-card').count(),2,'auto split creates two visible team cards');
+  equal(await shortcut.locator('.team-lead').first().locator('option').count(),2,'team runner dropdown contains the members of that team');
+  equal((await shortcut.locator('.result-guide').textContent()).includes('Where faculty sees results'),true,'instructor console points faculty to group results');
+  equal(await shortcut.locator('details.advanced').count(),1,'advanced calibration is collapsed away from the main team flow');
   await shortcut.screenshot({path:path.join(artifacts,'02-faculty-shortcut-roster.png'),fullPage:true});
   equal(errors,[],'no browser or server errors');
   await fs.writeFile(path.join(artifacts,'results.json'),JSON.stringify({ok:true,checks,productionDataTouched:false},null,2));

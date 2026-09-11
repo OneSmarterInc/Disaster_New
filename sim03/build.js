@@ -107,7 +107,8 @@ if (index.includes('id=\"teamName\"')) refuse('student team-name input returned;
 for (const marker of ['m03-faculty-lt','Faculty authorization received from RapidSims.','async function renewFaculty()','captureDraft()','facultyRecovery']) if (!instructor.includes(marker)) refuse('faculty authorization persistence marker missing: ' + marker);
 if (!launcher.includes("sessionStorage.setItem('m03-faculty-lt',token)")) refuse('launch router does not persist faculty authorization');
 if (!index.includes("sessionStorage.setItem('m03-faculty-lt',LAUNCH_TOKEN)")) refuse('faculty play surface does not persist faculty authorization');
-for (const marker of ['Resume session code','Auto split teams','Unassigned students','Team lead',"action:'set_captain'","action:'rename_team'",'function startPresent()','dotcount','the annual cap is the wall'])
+for (const marker of ['Resume session code','Auto split teams','Unassigned students','Team lead',"action:'set_captain'","action:'rename_team'",'function startPresent()','dotcount','the annual cap is the wall',
+  'Run the class in five steps','Only students marked In this session can be assigned to teams','Access released — waiting to join (not in team list yet)','Joined students available for teams','Where faculty sees results','Advanced settings and instructor notes'])
   if (!instructor.includes(marker)) refuse('team/projector instructor marker missing: ' + marker);
 if (index.includes('Valuation pending authored rule')) refuse('unauthored buyer placeholder reached the student bundle');
 if (index.includes('authored calibration does not yet define')) refuse('Year 3 calibration scaffolding reached the student bundle');
