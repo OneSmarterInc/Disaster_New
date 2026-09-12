@@ -38,26 +38,14 @@ module.exports = async (req, res) => {
 
   const s = sql();
   try {
-    // Remove an unused temporary catalogue identity created during a scenario
-    // replacement. Never delete an alias that already has course, launch,
-    // completion, preview or access history attached.
-    const aliasesRemoved = [];
-    const aliases = Array.isArray(p.replaces)
-      ? p.replaces.map(x => clip(x, 200)).filter(x => x && x !== p.sim).slice(0, 5)
+    // Registration is not a destructive migration. Legacy identities may have
+    // mixed scenario history, including transcripts with cascading foreign keys.
+    // Retain them even if a deployment sends an old `replaces` announcement.
+    // Audit and approve any eventual migration outside this request handler.
+    const aliasesRemoved = []; // Retain the existing response contract.
+    const aliasesRetained = Array.isArray(p.replaces)
+      ? [...new Set(p.replaces.map(x => clip(x, 200)).filter(x => x && x !== p.sim))].slice(0, 5)
       : [];
-    for (const alias of aliases) {
-      const usage = (await s`
-        SELECT
-          (SELECT count(*) FROM course_sims WHERE sim_id = ${alias}) +
-          (SELECT count(*) FROM launches WHERE sim_id = ${alias}) +
-          (SELECT count(*) FROM completions WHERE sim_id = ${alias}) +
-          (SELECT count(*) FROM previews WHERE sim_id = ${alias}) +
-          (SELECT count(*) FROM sim_access WHERE sim_id = ${alias}) AS n`)[0];
-      if (usage && Number(usage.n) === 0) {
-        await s`DELETE FROM sims WHERE id = ${alias}`;
-        aliasesRemoved.push(alias);
-      }
-    }
 
     const existing = (await s`SELECT * FROM sims WHERE id = ${p.sim}`)[0];
     const minutes = Number.isFinite(+p.minutes) ? Math.max(1, Math.min(600, Math.round(+p.minutes))) : null;
@@ -76,7 +64,7 @@ module.exports = async (req, res) => {
               VALUES (${p.sim}, ${n}, ${clip(p.title, 200) || p.sim}, ${clip(p.tagline, 300)},
                       ${clip(p.description, 4000)}, ${minutes}, ${clip(p.launchUrl, 500)}, false,
                       ${initialDetail ? JSON.stringify(initialDetail).slice(0, 12000) : null})`;
-      return res.status(200).json({ ok: true, created: true, number: n, aliasesRemoved });
+      return res.status(200).json({ ok: true, created: true, number: n, aliasesRemoved, aliasesRetained });
     }
 
     // A scenario replacement may deliberately keep the established catalogue
@@ -121,7 +109,7 @@ module.exports = async (req, res) => {
       if (p.description) await s`UPDATE sims SET description = ${clip(p.description, 4000)} WHERE id = ${p.sim}`;
     }
 
-    return res.status(200).json({ ok: true, created: false, catalogueRefreshed: replacingScenario, aliasesRemoved });
+    return res.status(200).json({ ok: true, created: false, catalogueRefreshed: replacingScenario, aliasesRemoved, aliasesRetained });
   } catch (e) {
     if (e.code === 'NO_SECRET') return res.status(500).json({ error: 'no_secret' });
     if (e.code === 'NO_DB') return res.status(503).json({ error: 'no_db' });

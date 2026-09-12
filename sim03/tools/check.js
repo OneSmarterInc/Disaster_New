@@ -1,8 +1,9 @@
+// Historical floor-3 fixtures intentionally preserve the authored narrative/buyer regressions.
 const assert = require('assert');
 const S = require('../lib/scenario.js');
 
 const valid = (x) => {
-  const v = S.validateAllocation(x);
+  const v = S.validateAllocation(x, S.LEGACY_THRESHOLDS);
   assert.equal(v.ok, true, JSON.stringify(v));
   return v.allocation;
 };
@@ -83,7 +84,7 @@ for (const key of Object.keys(S.DEFAULT_THRESHOLDS)) {
   assert.equal(publicText.includes(key), false, `public config leaked threshold key ${key}`);
 }
 assert.equal(S.META.id, 'rapid-03-midland');
-assert.deepEqual(S.META.replaces, ['rapid-03-bench']);
+assert.deepEqual(S.META.replaces, []);
 assert.equal(S.META.detail.roomIntro, 'Four people want four different things from the same nine million dollars. None of them is wrong, and none of them is going to tell you what to do.');
 assert.equal(S.META.detail.cast.length, 4);
 assert.deepEqual(S.META.detail.cast.map(x => x.name), ['Dale Brenner','Renata Oyelaran','Tom Vasquez','Sam Achterberg']);

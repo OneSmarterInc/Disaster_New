@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Registration contract, including a one-time scenario catalogue replacement.
+// Registration contract, including non-destructive identity transitions and copy revisions.
 const assert = require('assert/strict');
 const path = require('path');
 const P = x => path.join(__dirname, '../..', x);
 process.env.LAUNCH_SECRET = 'shared';
-const DB = { sims:[], course_sims:[], launches:[], completions:[], previews:[], sim_access:[] };
+const DB = { sims:[], course_sims:[], launches:[], completions:[], previews:[], sim_access:[], transcripts:[] };
 const row = id => DB.sims.find(s => s.id === id);
 require.cache[require.resolve(P('platform/lib/db.js'))] = { exports:{
   sql:() => (strings, ...v) => {
@@ -13,7 +13,7 @@ require.cache[require.resolve(P('platform/lib/db.js'))] = { exports:{
       const n = ['course_sims','launches','completions','previews','sim_access'].reduce((sum, table) => sum + DB[table].filter(x => x.sim_id === v[0]).length, 0);
       return Promise.resolve([{ n }]);
     }
-    if (q.startsWith('DELETE FROM sims WHERE id')) { DB.sims = DB.sims.filter(s => s.id !== v[0]); return Promise.resolve([]); }
+    if (/^DELETE|^UPDATE.*sim_id/i.test(q)) throw new Error('Registration must not migrate or delete history');
     if (q.startsWith('SELECT * FROM sims WHERE id')) return Promise.resolve(DB.sims.filter(s => s.id === v[0]));
     if (q.includes('number IS NOT NULL')) return Promise.resolve(DB.sims.filter(s => s.number));
     if (q.startsWith('INSERT INTO sims')) {
@@ -51,27 +51,40 @@ const announce = data => signBack(Object.assign({ kind:'register', exp:Date.now(
 
   DB.sims.push({ id:'rapid-03-bench', number:3, title:'The Bench Is Clear', tagline:'Old scenario', description:'Old Harlow content', minutes:45, launch_url:'https://old.test', published:true, detail:{ _edited:['title'], cast:[{name:'Harlow'}] } });
   DB.sims.push({ id:'rapid-sim-03', number:4, title:'Temporary duplicate', published:false, detail:{} });
-  const replacement = { sim:'rapid-03-bench', catalogueRevision:'claims-interview-v1', replaces:['rapid-sim-03'], title:"Why Don't They Have Any Patience?", tagline:'Three interviews.', description:'Document a dental-claims intake process.', minutes:90, launchUrl:'https://sim3.test', detail:{ cast:[{name:'Ray Duffy'}], tryIt:'Play the complete sequence.' } };
+  const bench = structuredClone(row('rapid-03-bench'));
+  DB.transcripts.push({ sim_id:'rapid-03-bench', envelope:{ simId:'rapid-03-bench' } });
+  const replacement = { sim:'rapidsimplus-01', catalogueRevision:'claims-interview-v1', replaces:['rapid-03-bench','rapid-sim-03'], title:"Why Don't They Have Any Patience?", tagline:'Three interviews.', description:'Document a dental-claims intake process.', minutes:180, launchUrl:'https://simplus.test', detail:{ cast:[{name:'Ray Duffy'}], tryIt:'Play the complete sequence.' } };
   result = await call({ token:announce(replacement) });
-  assert.equal(result.body.catalogueRefreshed, true);
-  assert.deepEqual(result.body.aliasesRemoved, ['rapid-sim-03']);
-  assert.equal(row('rapid-sim-03'), undefined);
-  assert.equal(row('rapid-03-bench').title, replacement.title);
-  assert.equal(row('rapid-03-bench').published, true);
-  assert.equal(row('rapid-03-bench').detail.cast[0].name, 'Ray Duffy');
-  assert.equal(row('rapid-03-bench').detail._source_revision, 'claims-interview-v1');
+  assert.equal(result.body.created, true);
+  assert.deepEqual(result.body.aliasesRemoved, []);
+  assert.deepEqual(result.body.aliasesRetained, ['rapid-03-bench','rapid-sim-03']);
+  assert.ok(row('rapid-sim-03'), 'even an empty alias needs a deliberate migration');
+  assert.deepEqual(row('rapid-03-bench'), bench, 'old metadata and publication state must not be overwritten');
+  assert.equal(DB.transcripts.length, 1, 'transcript-only history must survive registration');
+  assert.equal(row('rapidsimplus-01').title, replacement.title);
+  assert.equal(row('rapidsimplus-01').published, false, 'a new identity requires administrator publication');
+  assert.equal(row('rapidsimplus-01').detail.cast[0].name, 'Ray Duffy');
+  assert.equal(row('rapidsimplus-01').detail._source_revision, 'claims-interview-v1');
 
-  row('rapid-03-bench').title = 'Faculty-facing title';
-  row('rapid-03-bench').detail._edited = ['title'];
+  row('rapidsimplus-01').title = 'Faculty-facing title';
+  row('rapidsimplus-01').detail._edited = ['title'];
   result = await call({ token:announce(replacement) });
   assert.equal(result.body.catalogueRefreshed, false);
-  assert.equal(row('rapid-03-bench').title, 'Faculty-facing title');
+  assert.equal(row('rapidsimplus-01').title, 'Faculty-facing title');
+  result = await call({token:announce({...replacement,catalogueRevision:'claims-interview-v2'})});
+  assert.equal(result.body.catalogueRefreshed, true, 'intentional copy revisions still work within the same identity');
 
-  DB.sims.push({ id:'used-alias', number:5, title:'Used', published:false, detail:{} });
-  DB.course_sims.push({ sim_id:'used-alias' });
-  result = await call({ token:announce(Object.assign({}, replacement, { replaces:['used-alias'] })) });
-  assert.ok(row('used-alias'));
-  assert.deepEqual(result.body.aliasesRemoved, []);
+  for (const table of ['course_sims','launches','completions','previews','sim_access','transcripts']) {
+    const alias = `used-${table}`;
+    DB.sims.push({id:alias,number:20+DB.sims.length,title:'Historical',published:false,detail:{}});
+    DB[table].push({sim_id:alias});
+    result=await call({token:announce({...replacement,replaces:[alias]})});
+    assert.ok(row(alias), `${table} history must be retained`);
+    assert.deepEqual(result.body.aliasesRemoved, []);
+  }
+  // An older still-running Midland deployment may keep announcing this alias.
+  result=await call({token:announce({sim:'rapid-03-midland',replaces:['rapid-03-bench'],launchUrl:'https://midland.test'})});
+  assert.deepEqual(row('rapid-03-bench'),bench);
   assert.equal((await call({ token:'forged.nonsense' })).status, 401);
   assert.equal((await call({ token:announce({ sim:'x', launchUrl:'not-a-url' }) })).status, 400);
   console.log('registration contract: all checks passed');

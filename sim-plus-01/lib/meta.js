@@ -1,12 +1,11 @@
 'use strict';
 
 const META = {
-  // Keep the established catalogue identity. Courses, approvals, launches and
-  // completions all reference this id; changing it creates a second sim rather
-  // than replacing Sim 03.
-  id: 'rapid-03-bench',
+  // New catalogue identity. Legacy launches remain supported by the guard;
+  // historical rows are never renamed or deleted by registration.
+  id: 'rapidsimplus-01',
   catalogueRevision: 'claims-interview-v1',
-  replaces: ['rapid-sim-03'],
+  replaces: [],
   title: 'Why Don\'t They Have Any Patience?',
   tagline: 'Three interviews. Fifteen minutes each. Every question has a cost.',
   description: 'Document a dental-claims intake process by interviewing three people who each hold one part of the same problem.',
@@ -37,4 +36,8 @@ const META = {
   }
 };
 
-module.exports = { META };
+// These IDs were used by Wexford deployments. Compatibility here preserves
+// course links; it does not assert that every historical row belongs to Wexford.
+const LEGACY_LAUNCH_IDS = Object.freeze(['rapid-03-bench', 'rapid-sim-03']);
+const acceptsLaunchId = id => id === META.id || LEGACY_LAUNCH_IDS.includes(id);
+module.exports = { META, LEGACY_LAUNCH_IDS, acceptsLaunchId };

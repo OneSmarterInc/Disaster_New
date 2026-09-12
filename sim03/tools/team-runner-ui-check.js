@@ -35,7 +35,7 @@ function data({ runner = 'ann', lead = 'ann', pid = 'ann', revision = 0, state =
     me: { ...mates.find(m => m.id === pid), groupId: 'team:alpha', teamLabel: 'Alpha' }, mates,
     canSubmit: pid === runner, canAssignRunner: pid === lead, runnerId: runner, runnerRevision: revision, run: shared };
 }
-run("C={lines:['run','uptime','capacity','connect','features'].map(id=>({id,label:id})),coldOpen:['Fixture company'],reflectionPrompts:['First reflection','Second reflection'],buyers:{authored:true}}; S.participantId='ann';");
+run("C={annualBudget:9,runMinimum:3,lineMaximum:3,lines:['run','uptime','capacity','connect','features'].map(id=>({id,label:id})),coldOpen:['Fixture company'],reflectionPrompts:['First reflection','Second reflection'],buyers:{authored:true}}; S.participantId='ann';");
 (async () => {
   response = data({ state: 'lobby' }); await run('pollSession(true)');
   assert(html.includes('Who will run the simulation for your team?'));
@@ -99,5 +99,14 @@ run("C={lines:['run','uptime','capacity','connect','features'].map(id=>({id,labe
   assert(!html.includes('id="memberFinishBtn"'));
   assert(!html.includes('id="nextBtn"'));
   assert.equal(alerts.length, 0);
+  // An existing session supplies its rules, overriding newly deployed defaults.
+  response=data({runner:'ben',pid:'ben',shared});
+  response.session.allocationRules={annualBudget:10,runMinimum:5,lineMaximum:3,position:'Custom session rules'};
+  await run('pollSession(true)');
+  assert.equal(run('C.annualBudget'),10);assert.equal(run('C.runMinimum'),5);
+  assert.deepEqual(clone(run('defaultAlloc()')),{run:5,uptime:0,capacity:0,connect:0,features:0});
+  assert.deepEqual(clone(run('S.year1')),y1,'a rules refresh must never erase a committed year');
+  assert(html.includes('same $10 million'),'rendered budget follows the saved session');
+  assert.equal(run('validateClient({run:5,uptime:2,capacity:1,connect:2,features:0})'),'');
   console.log('RapidSim 03 runner UI checks passed (selection, observer gating, handoff/reload, focus revocation, stale polls, runner-only completion).');
 })().catch(error => { console.error(error); process.exitCode = 1; });

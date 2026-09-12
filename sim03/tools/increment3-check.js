@@ -10,7 +10,7 @@ for(const name of ['Dale Brenner','Renata Oyelaran','Tom Vasquez','Sam Achterber
 assert.ok(packet.includes('thirty minutes')&&packet.includes('two annual $9 million allocations')&&packet.includes('third year'));
 assert.ok(packet.includes('Nineteen percent of our visits find nothing wrong')&&packet.includes('$290'));
 assert.equal(cfg.meta.minutes,30);
-assert.ok(cfg.position.includes('Run has a $3M minimum')&&cfg.position.includes('$3M maximum per year'));
+assert.ok(cfg.position.includes('Run has a $4M minimum')&&cfg.position.includes('$3M maximum per year'));
 assert.equal(cfg.reflectionPrompts[0],'Which of Dale, Renata, Tom, or Sam did you overrule most?');
 assert.ok(cfg.reflectionFollowups[0].includes('After seeing Year 3'));
 const y1={run:3,uptime:2,capacity:2,connect:0,features:2};
@@ -66,7 +66,7 @@ function inOrder(text,needles,label){
 const brief=display('renderBrief()');
 inOrder(brief,['Midland sells and services','The main office system','class="brief-profit"','Selling equipment brings in most of the revenue','You are about to take over technology'], 'Brief story');
 const position=display('renderPosition()');
-assert.ok(position.includes('Run has a $3M minimum'));
+assert.ok(position.includes('Run has a $4M minimum'));
 assert.ok(position.includes('$3M maximum per year')&&position.includes('cannot borrow from next year'));
 const capacityRow=position.split('data-line="capacity"')[1]?.split('data-line="connect"')[0]||'';
 assert.ok(capacityRow.includes('No one in the room speaks for this line.'),'Position Capacity row must name its deliberate absence');

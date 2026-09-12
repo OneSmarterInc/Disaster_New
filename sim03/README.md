@@ -17,32 +17,35 @@ The deployment uses the same platform contract as the existing RapidSims:
 - `ACCESS_CODE` is an optional standalone fallback.
 - Upstash/Vercel KV stores facilitated sessions, teams and instructor-view data.
 
-The sim self-registers as `rapid-03-midland`. Registration also declares
-`rapid-03-bench` as a replaceable temporary alias. The platform will remove that
-alias only when it has **zero** course, launch, completion, preview or access history;
-otherwise it is left alone.
+The sim self-registers as `rapid-03-midland`. It does not replace or delete any
+other simulation identity. Wexford registers separately as `rapidsimplus-01`;
+legacy catalogue history is retained for a reviewed migration.
 
 ## Play modes
 
 Faculty must choose **Individual** or **Team** when creating a facilitated session.
 
 - Individual: each participant owns one run.
-- Team: faculty assign participants to teams. One captain per team can commit;
-  every team member can see the committed team state.
+- Team: faculty assign participants to teams. The team lead selects one runner (the lead or a teammate);
+  only that runner commits, while teammates see the shared state and result.
 
 Direct platform launches remain supported and run as an individual entitlement unless
 a future platform token supplies a session/mode.
 
 ## Calibration
 
-Outcome thresholds are server-side. A faculty member can edit them in the session
-console while the session is still in the lobby. The chosen calibration is stored
-with that session, so thresholds can be changed between class sections without a
-deploy.
+Budget, Run minimum, caps and outcome thresholds are defined in
+`config/thresholds.json`. The provisional defaults are **9 / 4 / 3**. Faculty may
+edit a session's copy in the lobby without a deployment. Validation checks the
+complete legal-run space before saving, including all four Year 3 outcomes.
+Once the session starts, its settings are locked; concurrent start/edit requests
+use an atomic comparison so neither can overwrite the other's state.
 
-For the first classroom section, keep the Year 3 strong Connect threshold at **5**.
-If a later section intentionally lowers it to **4**, Year 3 pilot maximum must also
-move from **4** to **3** before the calibration can be saved.
+Existing sessions without the three budget keys retain the immutable settings in
+`config/legacy-thresholds.json`. Pre-pilot standalone pages without a calibration
+ID retain their original rules. New standalone pages send a configuration ID;
+an unknown ID is rejected rather than silently changing the rules.
+See [CALIBRATION.md](CALIBRATION.md) for the pilot results and limitations.
 
 ## Authored Year 3 and buyer content
 
@@ -63,15 +66,14 @@ configuration is present; this rehearsal confirms that the whole path actually w
 Post the briefing packet about a week before class. The app gives students a reference
 copy, but the teaching design still assumes they arrive having read it.
 
-For a run that clears every event, do not say the team necessarily "shipped nothing."
-The stronger debrief is that almost all discretionary investment had to go into
-connectivity, resilience and capacity; at most $2M could have gone into visible
-Features. The architecture worked, but much of what made it work was difficult for
-the CEO to see until the later consequences arrived.
+A rare all-top-outcome portfolio is not a correct answer or a grade. Ask what
+students could justify from the briefing and which priorities they protected.
+The complete allocation-space distribution is not a forecast of classroom
+choices. The pilot needs a facilitated debrief and observation before retuning.
 
 ## Endpoints
 
-- `GET /api/health` — deployment/configuration diagnostics and catalogue announce
+- `GET /api/health` — public liveness; protected diagnostics with `x-health-key`
 - `GET /api/config` — public, non-outcome UI copy and metadata
 - `POST /api/outcome` — server-side deterministic outcome evaluation
 - `POST /api/session` — facilitated session/team/instructor state
@@ -87,7 +89,10 @@ handler, including invalid signatures, expired tokens, other simulations, and
 student roles. Full platform-to-sim compatibility is also checked separately in
 the monorepo's platform integration job.
 
-`npm run test:browser` is a separate, optional integration check. It uses the real
+`npm test` discovers all dependency-free check tools, including the calibration
+guards. `npm run build` also keeps those checks.
+
+`npm run test:browser` is a separate, required integration check. It uses the real
 HTML, API handlers and Redis Lua scripts, not a mocked Redis implementation. It
 requires Playwright, Redis's Node client, Chromium, an agent-browser CLI, and a
 **disposable test Redis service**. Install the same isolated tools used by CI:
@@ -98,14 +103,14 @@ npm install --prefix /tmp/midland-browser --no-audit --no-fund playwright@1 redi
 export NODE_PATH=/tmp/midland-browser/node_modules
 export AGENT_BROWSER_BIN=/tmp/midland-browser/node_modules/.bin/agent-browser
 export TEST_REDIS_URL=redis://127.0.0.1:6379
-npm run test:browser -- --required
+npm run test:browser
 ```
 
 These shell commands are for Linux/macOS; on Windows use equivalent paths and
 PowerShell environment assignments. Never point TEST_REDIS_URL at production.
-Without the prerequisites, the optional command prints **SKIP / NOT RUN**, gives
-the missing requirements, and exits cleanly. `--required` (or
-`SIM03_BROWSER_REQUIRED=1`) instead fails. Missing prerequisites are never reported
+Without prerequisites, `npm run test:browser` fails with **FAIL / NOT RUN**.
+Only directly invoking `node tools/team-runner-browser-check.js` without
+`--required` permits an explicitly reported optional skip. Missing prerequisites are never reported
 as a passing browser test. Connection attempts to an absent Redis stop rather
 than retrying indefinitely.
 

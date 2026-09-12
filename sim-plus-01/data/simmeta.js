@@ -8,7 +8,7 @@
 // five live here so the platform never has to know anything about
 // claims administration.
 
-const SIM_ID = 'rapid-03-bench';
+const SIM_ID = require('../lib/meta').META.id;
 
 /** Phase labels. The platform groups the timeline by these. */
 function phaseLabel(phaseId, path) {

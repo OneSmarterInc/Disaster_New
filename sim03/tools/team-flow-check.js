@@ -13,7 +13,7 @@ assert(outcome.includes("'runner_only'"));
 assert(outcome.includes('runnerOf('));
 for(const marker of ['Join a facilitated session', 'Waiting for team assignment', 'your team can decide which one student will run the simulation', 'Who will run the simulation for your team?', 'Assign runner', 'Team mode · read-only', 'same team result will appear here', 'safeToRerender', 'viewCommitted', 'expectedRunnerId', 'runnerRevision']) assert(student.includes(marker), marker);
 assert(!student.includes('I will run this team'), 'ordinary members must not silently change team leadership');
-for(const marker of ['Resume session code', 'startPresent', "classList.contains('present')", 'dotcount', 'const savedCode=', 'Classroom readiness', 'First-section baseline: keep 5', 'Perfect-run debrief', 'one real facilitated Team-mode rehearsal']) assert(instructor.includes(marker), marker);
+for(const marker of ['Resume session code', 'startPresent', "classList.contains('present')", 'dotcount', 'const savedCode=', 'Classroom readiness', 'Pilot calibration and debrief notes', 'not a correct answer or a grade', 'rehearse one Team-mode run']) assert(instructor.includes(marker), marker);
 const workspace=fs.readFileSync(path.join(root,'public','faculty-workspace.js'),'utf8');
 for(const marker of ['Auto split teams','Create team','Unassigned students','Team lead',"action:'rename_team'",'r.reflections?.[r.completedBy]','Start session →','recordsFrom(cfg.state)']) assert(workspace.includes(marker),marker);
 assert(!instructor.includes('Only students marked In this session can be assigned to teams'),'obsolete joined-only workflow removed');

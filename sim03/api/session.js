@@ -59,7 +59,8 @@ function publicSession(sess) {
     state: sess.state,
     paused: !!sess.paused,
     createdAt: sess.createdAt,
-    startedAt: sess.startedAt || null
+    startedAt: sess.startedAt || null,
+    allocationRules: S.publicRules(S.sessionThresholds(sess))
   };
 }
 
@@ -184,7 +185,7 @@ module.exports = async (req, res) => {
           store.getRuns(code)
         ]);
         return res.status(200).json({
-          session: { ...sess, joinUrl: sess.platformAuth ? accountJoinUrl(sess) : null },
+          session: { ...sess, thresholds: S.sessionThresholds(sess), joinUrl: sess.platformAuth ? accountJoinUrl(sess) : null },
           participants,
           runs: visibleFacultyRuns(sess, runs),
           you: who.name,
@@ -219,11 +220,14 @@ module.exports = async (req, res) => {
         if (sess.state !== 'lobby') {
           return res.status(409).json({ error: 'session_already_started', message: 'Calibration is locked once the session starts.' });
         }
-        const thresholdCheck = S.validateThresholds(b.thresholds);
+        if (b.thresholds != null && (typeof b.thresholds !== 'object' || Array.isArray(b.thresholds))) {
+          return res.status(400).json({ error: 'invalid_thresholds', errors: ['Calibration must be an object.'] });
+        }
+        const thresholdCheck = S.validateThresholds({ ...S.sessionThresholds(sess), ...(b.thresholds || {}) });
         if (!thresholdCheck.ok) return res.status(400).json(thresholdCheck);
-        sess.thresholds = thresholdCheck.thresholds;
-        await store.putSession(code, sess);
-        return res.status(200).json({ session: sess });
+        const next = { ...sess, thresholds: thresholdCheck.thresholds };
+        if (!await store.compareAndSetSession(code, sess, next)) continue;
+        return res.status(200).json({ session: next });
       }
 
       case 'group': {
@@ -369,6 +373,7 @@ module.exports = async (req, res) => {
         if (!sess) return res.status(404).json({ error: 'no_such_session' });
         if (!ownsSession(who, sess)) return res.status(403).json({ error: 'not_your_session' });
 
+        const previousSession = structuredClone(sess);
         if (b.set === 'start' && sess.state !== 'lobby') {
           return res.status(409).json({ error: 'session_already_started', message: 'This session has already started. Use Resume for a paused session.' });
         }
@@ -406,7 +411,7 @@ module.exports = async (req, res) => {
         if (b.set === 'pause') sess.paused = true;
         if (b.set === 'resume') sess.paused = false;
         if (b.set === 'close') sess.state = 'closed';
-        await store.putSession(code, sess);
+        if (!await store.compareAndSetSession(code, previousSession, sess)) continue;
         return res.status(200).json({ session: sess });
       }
 
@@ -538,7 +543,7 @@ module.exports = async (req, res) => {
           if (!current.strategicView) next.screen = 4;
         }
         if (b.year1 !== undefined) {
-          const v = S.validateAllocation(b.year1);
+          const v = S.validateAllocation(b.year1, S.sessionThresholds(sess));
           if (!v.ok) return res.status(400).json(v);
           if (current.year1 && !sameAllocation(current.year1, v.allocation)) {
             return res.status(409).json({ error: 'year1_locked' });
@@ -549,7 +554,7 @@ module.exports = async (req, res) => {
         }
         if (b.year2 !== undefined) {
           if (!next.year1) return res.status(409).json({ error: 'year1_required' });
-          const v = S.validateAllocation(b.year2);
+          const v = S.validateAllocation(b.year2, S.sessionThresholds(sess));
           if (!v.ok) return res.status(400).json(v);
           if (current.year2 && !sameAllocation(current.year2, v.allocation)) {
             return res.status(409).json({ error: 'year2_locked' });
@@ -588,9 +593,9 @@ module.exports = async (req, res) => {
           next.year2Event = b.year2Event;
         }
         if (next.year1 && next.year2) {
-          next.outcomes = S.evaluateAll(next.year1, next.year2, sess.thresholds);
+          next.outcomes = S.evaluateAll(next.year1, next.year2, S.sessionThresholds(sess));
         } else if (next.year1) {
-          next.outcomes = { year1: S.evaluateYear1(next.year1, sess.thresholds) };
+          next.outcomes = { year1: S.evaluateYear1(next.year1, S.sessionThresholds(sess)) };
         }
         if (b.done) {
           if (!next.year1 || !next.year2) return res.status(409).json({ error: 'allocations_incomplete' });

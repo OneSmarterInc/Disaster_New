@@ -1,7 +1,8 @@
+// Historical floor-3 fixtures intentionally preserve the authored narrative/buyer regressions.
 const assert = require('assert');
 const S = require('../lib/scenario.js');
 const { buildClosingLesson } = require('../lib/closingLesson.js');
-const valid=x=>{const v=S.validateAllocation(x);assert.equal(v.ok,true,JSON.stringify(v));return v.allocation;};
+const valid=x=>{const v=S.validateAllocation(x, S.LEGACY_THRESHOLDS);assert.equal(v.ok,true,JSON.stringify(v));return v.allocation;};
 const noRoomA=valid({run:3,uptime:3,capacity:0,connect:3,features:0});
 const noRoomB=valid({run:3,uptime:0,capacity:0,connect:3,features:3});
 const noRoomOutcomes=S.evaluateAll(noRoomA,noRoomB);

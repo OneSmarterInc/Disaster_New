@@ -212,7 +212,7 @@ async function snapshot(name, page) {
   await snapshot('06-brief-order', ben);
   await next(ben, 1); await next(ben, 2);
   const rules = await ben.locator('#position-rules').innerText();
-  check(rules.includes('Run has a $3M minimum') && rules.includes('$3M maximum per year') && rules.includes('cannot borrow from next year'), true,
+  check(rules.includes('Run has a $4M minimum') && rules.includes('$3M maximum per year') && rules.includes('cannot borrow from next year'), true,
     'Position states the Run minimum, other-line caps, and no-borrow rule before allocation');
   check(await ben.locator('.line-guide-row[data-line="capacity"]').innerText().then(t => t.includes('No one in the room speaks for this line.')), true,
     'Position explains Capacity silence in its own table row');
@@ -220,13 +220,13 @@ async function snapshot(name, page) {
   await next(ben, 3);
   await ben.locator('#viewText').fill('Build a resilient service platform for Midland customers.');
   await next(ben, 4);
-  await allocate(ben, { uptime: 2, capacity: 1, connect: 2, features: 1 });
+  await allocate(ben, { uptime: 2, capacity: 1, connect: 2, features: 0 });
   await next(ben, 5);
   check(await ben.locator('.outcome').evaluate(box => !!(box.compareDocumentPosition(document.querySelector('.running')) & Node.DOCUMENT_POSITION_FOLLOWING)), true,
     'Year 1 story precedes portfolio reference numbers');
   await snapshot('08-year1-story-first', ben);
   const y1 = await ben.evaluate(() => S.year1);
-  check(y1, { run: 3, uptime: 2, capacity: 1, connect: 2, features: 1 }, 'Runner commits Year 1 through browser controls');
+  check(y1, { run: 4, uptime: 2, capacity: 1, connect: 2, features: 0 }, 'Runner commits Year 1 through browser controls');
   await ann.waitForFunction(() => !!S.teamRun?.year1);
   check(await ann.locator('.step').count(), 0, 'Observer sees the allocation without editable controls');
   check(await ann.locator('#app').textContent().then(t => t.includes('Shared Year 1 allocation')), true, 'Observer receives shared submitted decisions');
@@ -241,7 +241,7 @@ async function snapshot(name, page) {
   check((await api({ action: 'submit', code, participantId: benId, runnerRevision: revision, year2: y1 })).body.error, 'runner_only', 'Previous runner cannot submit after handoff');
   check((await api({ sessionCode: code, participantId: benId, stage: 'year1' }, 'outcome')).body.error, 'runner_only', 'Previous runner cannot request independent outcomes');
   await snapshot('03-handoff-resumes-year2', ann);
-  await allocate(ann, { uptime: 1, capacity: 1, connect: 2, features: 2 });
+  await allocate(ann, { uptime: 1, capacity: 1, connect: 2, features: 1 });
   check(await ann.locator('#nextBtn').isEnabled(), true, 'Complete Year 2 allocation can be submitted before pause');
   await control(code, 'pause');
   await ann.waitForFunction(() => !!S.session.paused);

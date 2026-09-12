@@ -70,7 +70,7 @@ function tradeSentence(c,t){
     return `Tom’s Features line received $${c.features}M while Sam’s Connect line received $${c.connect}M. Midland bought more that people could point at and less of the field visibility needed to respond later.`;
   }
   if(c.run>=8){
-    return `Dale’s Run line received $${c.run}M of the two-year $18M total. Keeping today’s systems funded that heavily left correspondingly less room for capabilities that only paid off when later events arrived.`;
+    return `Dale’s Run line received $${c.run}M of the two-year $${2 * Number(t.budgetPerYear ?? 9)}M total. Keeping today’s systems funded that heavily left correspondingly less room for capabilities that only paid off when later events arrived.`;
   }
   const hi=ORDER.reduce((a,k)=>c[k]>c[a]?k:a,ORDER[0]);
   const lo=ORDER.reduce((a,k)=>c[k]<c[a]?k:a,ORDER[0]);

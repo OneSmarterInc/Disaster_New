@@ -1,7 +1,7 @@
 'use strict';
 
 const { verifyLaunch, announce } = require('./launch');
-const { META } = require('./meta');
+const { META, acceptsLaunchId } = require('./meta');
 
 function announceOnce(req) {
   try {
@@ -16,7 +16,12 @@ function checkAccess(req, res) {
   const token = req.headers['x-launch-token'];
   if (token) {
     const launch = verifyLaunch(String(token));
-    if (launch) { req.launch = launch; return true; }
+    if (launch) {
+      if (!acceptsLaunchId(launch.sim)) {
+        res.status(403).json({ error: 'launch_token_wrong_sim' }); return false;
+      }
+      req.launch = launch; return true;
+    }
     res.status(401).json({ error: 'launch_token_invalid' });
     return false;
   }

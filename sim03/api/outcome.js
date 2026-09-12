@@ -37,7 +37,7 @@ async function fromSession(req, b, res) {
   const stage = String(b.stage || '');
   if (!run.year1) return reject(409, 'year1_not_committed');
   if (stage !== 'year1' && !run.year2) return reject(409, 'year2_not_committed');
-  const result = evaluate(stage, run.year1, run.year2, sess.thresholds);
+  const result = evaluate(stage, run.year1, run.year2, S.sessionThresholds(sess));
   if (!result) return reject(400, 'unknown_stage');
   res.status(200).json(result);
   return true;
@@ -55,12 +55,15 @@ module.exports = async (req, res) => {
   }
   if (!checkAccess(req, res)) return;
   const stage = String(b.stage || '');
-  const v1 = S.validateAllocation(b.year1);
+  let thresholds;
+  try { thresholds = S.standaloneThresholds(b.calibrationId); }
+  catch (e) { return res.status(e.status).json({ error: e.code, message: e.message }); }
+  const v1 = S.validateAllocation(b.year1, thresholds);
   if (!v1.ok) return res.status(400).json(v1);
-  if (stage === 'year1') return res.status(200).json(evaluate(stage, v1.allocation, null, S.DEFAULT_THRESHOLDS));
-  const v2 = S.validateAllocation(b.year2);
+  if (stage === 'year1') return res.status(200).json(evaluate(stage, v1.allocation, null, thresholds));
+  const v2 = S.validateAllocation(b.year2, thresholds);
   if (!v2.ok) return res.status(400).json(v2);
-  const result = evaluate(stage, v1.allocation, v2.allocation, S.DEFAULT_THRESHOLDS);
+  const result = evaluate(stage, v1.allocation, v2.allocation, thresholds);
   if (!result) return res.status(400).json({ error: 'unknown_stage' });
   return res.status(200).json(result);
 };

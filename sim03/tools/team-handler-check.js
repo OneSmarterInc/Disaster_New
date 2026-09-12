@@ -36,8 +36,8 @@ async function invoke(body, endpoint = handler, headers = {}) {
   return { status: res.statusCode, body: res.payload };
 }
 const faculty = { facultyCode: 'faculty-secret' };
-const y1 = { run: 3, uptime: 2, capacity: 1, connect: 2, features: 1 };
-const y2 = { run: 3, uptime: 1, capacity: 1, connect: 2, features: 2 };
+const y1 = { run: 4, uptime: 2, capacity: 1, connect: 2, features: 0 };
+const y2 = { run: 4, uptime: 1, capacity: 1, connect: 2, features: 1 };
 let code;
 const state = async id => (await invoke({ action: 'state', code, participantId: id })).body;
 const submit = (id, patch, revision) => invoke({ action: 'submit', code, participantId: id, runnerRevision: revision, ...patch });
