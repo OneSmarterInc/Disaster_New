@@ -7,6 +7,7 @@ on:
       - '.github/workflows/sim03-checks.yml'
   push:
     branches:
+      - main
       - 'feature/sim-03-midland'
     paths:
       - 'sim03/**'
