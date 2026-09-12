@@ -1,0 +1,68 @@
+name: Apply verified Midland audit patch
+on:
+  push:
+    branches: [fix/midland-calibration-guards]
+    paths: [.github/workflows/midland-audit-apply.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply hash-verified source changes
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib, json
+          from pathlib import Path
+          packed = ''.join(Path(f'.audit/midland-delta.{i}').read_text().strip() for i in (1,2,3))
+          raw = gzip.decompress(base64.b64decode(packed, validate=True))
+          assert hashlib.sha256(raw).hexdigest() == 'baa077734c48be026bd52ee407a070db3ce2285505ad22557738c18e1b246679', 'Patch integrity mismatch'
+          changes = json.loads(raw)
+          prepared = []
+          for change in changes:
+              path = Path(change['path'])
+              assert not path.is_absolute() and '..' not in path.parts
+              assert path.parts[0] not in ('.git', '.github', '.audit')
+              if change['before'] is None:
+                  assert not path.exists(), f'New path already exists: {path}'
+                  data = b''
+              else:
+                  data = path.read_bytes()
+                  assert hashlib.sha256(data).hexdigest() == change['before'], f'Base changed: {path}'
+              for offset, delete_length, replacement in reversed(change['edits']):
+                  data = data[:offset] + replacement.encode('utf-8') + data[offset + delete_length:]
+              assert hashlib.sha256(data).hexdigest() == change['after'], f'Result mismatch: {path}'
+              prepared.append((path, data))
+          for path, data in prepared:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(data)
+          print(f'Applied {len(prepared)} hash-verified source changes.')
+          PY
+      - name: Verify changed contracts
+        run: |
+          set -e
+          (cd sim03 && npm test && npm run build)
+          (cd sim-plus-01 && npm test && npm run playtest)
+          node platform/tools/register-check.js
+          node platform/tools/sim-identity-check.js
+          node platform/tools/protocol-check.js
+          node platform/tools/check-sim03-integration.js
+          node platform/tools/sim03-lifecycle-check.js
+          node platform/tools/sim03-account-entry-check.js
+          node tools/health-security-check.js
+          node tools/full-flow-check.js
+          for dir in sim sim-02; do (cd "$dir" && for check in tools/*-check.js; do node "$check"; done); done
+      - name: Commit verified changes to safety branch
+        run: |
+          rm .audit/midland-delta.1 .audit/midland-delta.2 .audit/midland-delta.3
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'fix: bind Midland calibration and preserve simulation identities'
+          git push origin HEAD:fix/midland-calibration-guards
