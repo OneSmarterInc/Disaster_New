@@ -1,0 +1,21 @@
+name: Midland audit source snapshot
+on:
+  push:
+    branches: [fix/midland-calibration-guards]
+    paths: [.github/workflows/midland-audit-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Package source for isolated regression checks
+        run: tar --exclude=.git --exclude=node_modules --exclude=.env --exclude='.env.local' -czf "$RUNNER_TEMP/disaster-source.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: midland-audit-source
+          path: ${{ runner.temp }}/disaster-source.tar.gz
+          retention-days: 1
