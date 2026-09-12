@@ -85,7 +85,7 @@ module.exports = async (req, res) => {
     if (sr) {
       y1 = sr.run.year1;
       y2 = sr.run.year2;
-      lessonThresholds = sr.sess.thresholds || S.DEFAULT_THRESHOLDS;
+      lessonThresholds = S.sessionThresholds(sr.sess);
       outcomes = sr.run.outcomes || S.evaluateAll(y1, y2, lessonThresholds);
       const mine = sr.sess.mode === 'team'
         ? { reflection1: sr.run.reflection1 || '', reflection2: sr.run.reflection2 || '' }
@@ -100,11 +100,12 @@ module.exports = async (req, res) => {
       };
     } else {
       if (!checkAccess(req, res)) return;
-      const v1 = S.validateAllocation(b.year1);
-      const v2 = S.validateAllocation(b.year2);
+      const standalone = S.standaloneThresholds(b.calibrationId);
+      const v1 = S.validateAllocation(b.year1, standalone);
+      const v2 = S.validateAllocation(b.year2, standalone);
       if (!v1.ok || !v2.ok) return res.status(400).json({ error: 'invalid_allocations' });
       y1 = v1.allocation; y2 = v2.allocation;
-      lessonThresholds = S.DEFAULT_THRESHOLDS;
+      lessonThresholds = standalone;
       outcomes = S.evaluateAll(y1, y2, lessonThresholds);
       summary = {
         strategicView: String(b.strategicView || '').slice(0, 500),
@@ -115,7 +116,7 @@ module.exports = async (req, res) => {
       };
     }
   } catch (e) {
-    return res.status(e.status || 500).json({ error: e.message || 'server_error' });
+    return res.status(e.status || 500).json({ error: e.code || e.message || 'server_error', message: e.message });
   }
   const closingLesson = buildClosingLesson(y1, y2, outcomes, lessonThresholds);
   summary.result = {

@@ -1,6 +1,6 @@
 {
   "budgetPerYear": 9,
-  "runFloor": 4,
+  "runFloor": 3,
   "perLineCap": 3,
   "year1ConnectStrong": 2,
   "heatUptimeStrong": 3,

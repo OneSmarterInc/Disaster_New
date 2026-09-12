@@ -6,7 +6,7 @@ const path = require('path');
 const cases = [
   ['sim/api/health.js', 'rapid-01-disaster'],
   ['sim-02/api/health.js', 'rapid-02-relay'],
-  ['sim-plus-01/api/health.js', 'rapid-03-bench'],
+  ['sim-plus-01/api/health.js', 'rapidsimplus-01'],
   ['sim03/api/health.js', 'rapid-03-midland']
 ];
 

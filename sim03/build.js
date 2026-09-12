@@ -21,7 +21,7 @@ function refuse(message) {
   process.exit(1);
 }
 
-const leaked = Object.keys(S.DEFAULT_THRESHOLDS).filter(k => index.includes(k));
+const leaked = S.OUTCOME_KEYS.filter(k => index.includes(k));
 if (leaked.length) refuse('outcome threshold names reached the student bundle: ' + leaked.join(', '));
 
 for (const narrative of [
@@ -135,7 +135,7 @@ if (index.includes('That imbalance was intentional')) refuse('simulation-design 
 if (index.includes('calibrationGap') || index.includes('unresolved_calibration')) refuse('resolved Year 3 calibration scaffolding remains in the student UI');
 if (!instructor.includes('Data without room to run it')) refuse('instructor Year 3 distribution is missing data_no_room label');
 if (!instructor.includes('Corven high / Ridge Hollow low')) refuse('instructor buyer debate finder is missing');
-for (const marker of ['MAX $3M / YEAR','The business model','function year2BreakdownHTML(','Year 1 + Year 2 split','advocate-reminder','may read it aloud in the debrief'])
+for (const marker of ['MAX $${C.lineMaximum}M / YEAR','The business model','function year2BreakdownHTML(','Year 1 + Year 2 split','advocate-reminder','may read it aloud in the debrief'])
   if (!index.includes(marker)) refuse('Increment 2 visibility follow-up marker missing: ' + marker);
 for (const marker of ['Year 2 stops being quiet.','The CEO asks whether Midland can predict a failure before the truck rolls.','The decisions are over. Explain what you would defend or change.'])
   if (!index.includes(marker)) refuse('situation heading missing: ' + marker);
@@ -156,21 +156,7 @@ try {
   refuse('browser JavaScript does not parse: ' + e.message);
 }
 
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-auth-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-commit-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'access-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-flow-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-handler-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'closing-lesson-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'increment2-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'increment3-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'browser-preflight-check.js')], { stdio: 'inherit' });
-
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'team-runner-ui-check.js')], { stdio: 'inherit' });
-
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'session-entry-url-check.js')], { stdio: 'inherit' });
-
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'faculty-workspace-check.js')], { stdio: 'inherit' });
-execFileSync(process.execPath, [path.join(__dirname, 'tools', 'course-roster-check.js')], { stdio: 'inherit' });
+if (!process.argv.includes('--static-only')) {
+  execFileSync(process.execPath, [path.join(__dirname, 'tools', 'run-checks.js'), '--checks-only'], { stdio: 'inherit' });
+}
 console.log('RapidSim 03 build guards passed.');

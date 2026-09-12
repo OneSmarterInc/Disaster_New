@@ -90,8 +90,18 @@ end
 return 1
 `;
 
+const CAS_SESSION = `
+if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1] then return 0 end
+redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+return 1
+`;
+
 module.exports = {
   configured,
+  async compareAndSetSession(code, previous, next) {
+    return Number(await cmd(['EVAL', CAS_SESSION, '1', `m03:sess:${code}`,
+      JSON.stringify(previous), JSON.stringify(next), String(TTL)])) === 1;
+  },
   async compareAndSetRoster(code, previous, next, session) {
     const entries = Object.entries(previous);
     return Number(await cmd(['EVAL', CAS_ROSTER, '2',

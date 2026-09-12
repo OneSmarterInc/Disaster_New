@@ -184,7 +184,7 @@ async function sessionCode(p) {
   await shortcut.screenshot({path:path.join(artifacts,'02-faculty-shortcut-roster.png'),fullPage:true});
   const rosterPeople=Object.values(f.participants.get(shortcutCode));
   const teamIds=[...new Set(rosterPeople.map(p=>p.groupId))];
-  const allocations=[{run:3,uptime:2,capacity:1,connect:3,features:0},{run:4,uptime:1,capacity:1,connect:1,features:2}];
+  const allocations=[{run:4,uptime:2,capacity:1,connect:2,features:0},{run:4,uptime:1,capacity:1,connect:1,features:2}];
   for(const [i,groupId] of teamIds.entries()){
     const lead=rosterPeople.find(p=>p.groupId===groupId&&p.isCaptain);
     const user=f.users.get(lead.id.slice(9));

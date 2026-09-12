@@ -21,7 +21,8 @@ const path = require('path');
 const SIMS = [
   { dir: 'sim',    name: 'RapidSim 01' },
   { dir: 'sim-02', name: 'RapidSim 02' },
-  { dir: 'sim-03', name: 'RapidSim 03' }
+  { dir: 'sim03', name: 'RapidSim 03 — Midland' },
+  { dir: 'sim-plus-01', name: 'RapidSim+ 01 — Wexford' }
 ];
 
 const root = path.join(__dirname, '..', '..');
@@ -36,7 +37,7 @@ for (const { dir, name } of SIMS) {
   process.env.LAUNCH_SECRET = 'shared-test-secret';
   const platform = fresh(path.join(root, 'platform', 'lib', 'launch.js'));
   const sim = fresh(path.join(root, dir, 'lib', 'launch.js'));
-  const S = require(path.join(root, dir, 'lib', 'scenario.js'));
+  const S = require(path.join(root, dir, 'lib', dir === 'sim-plus-01' ? 'meta.js' : 'scenario.js'));
 
   // 1. Registration — how it reaches the catalogue and the admin list at all.
   const reg = sim.signBack({
@@ -81,7 +82,7 @@ for (const { dir, name } of SIMS) {
 // students to a 404 on the platform's own domain.
 console.log('\nrouting');
 const cfg = require(path.join(root, 'platform', 'vercel.json'));
-for (const n of ['sim01', 'sim02', 'sim03']) {
+for (const n of ['sim01', 'sim02', 'sim03', 'simplus01']) {
   const routed = cfg.rewrites.filter(r => r.source.startsWith('/' + n));
   ok(routed.length >= 2, `/${n} is routed`);
   // A registered address ending in "/" produces launch links at /simNN/ ,

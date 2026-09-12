@@ -1,6 +1,10 @@
 const copy = x => x == null ? x : structuredClone(x);
 const same = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
 function installRosterTransactions(store, sessions, participants) {
+  store.compareAndSetSession = async (code, previous, next) => {
+    if (!same(sessions.get(code), previous)) return false;
+    sessions.set(code, copy(next)); return true;
+  };
   store.ensureParticipants = async (code, people, session) => {
     if (!same(sessions.get(code), session)) return -1;
     const all = participants.get(code) || {}; let added = 0;

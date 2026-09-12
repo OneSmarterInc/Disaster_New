@@ -4,7 +4,7 @@
 
 const META = {
   id: 'rapid-03-midland',
-  replaces: ['rapid-03-bench'],
+  replaces: [], // Midland is not an alias of the retired Bench / reused Wexford ID.
   catalogueRevision: 'midland-v1-2026-09',
   title: 'Midland Equipment',
   tagline: 'Two years to choose. The third year tells you what those choices bought.',
@@ -107,7 +107,8 @@ const LINE_DESCRIPTIONS = Object.freeze({
 // First-draft calibration lives in data rather than engine code. Facilitated
 // sessions copy these defaults and may edit their own copy while still in the
 // lobby, so thresholds can change between sections without a deploy.
-const DEFAULT_THRESHOLDS = Object.freeze(require('../config/thresholds.json'));
+const { DEFAULT_THRESHOLDS, LEGACY_THRESHOLDS, CALIBRATION_ID, OUTCOME_KEYS,
+  sanitizeThresholds, validateThresholds, sessionThresholds, standaloneThresholds, publicRules } = require('./calibration.js');
 
 const COPY = Object.freeze({
   year1: {
@@ -173,7 +174,8 @@ function integer(v) {
   return Number.isInteger(n) ? n : null;
 }
 
-function validateAllocation(a) {
+function validateAllocation(a, thresholds = DEFAULT_THRESHOLDS) {
+  const t = sanitizeThresholds(thresholds);
   if (!a || typeof a !== 'object') return { ok: false, error: 'allocation_required' };
   const out = {};
   for (const line of LINES) {
@@ -182,10 +184,10 @@ function validateAllocation(a) {
     out[line] = n;
   }
   const total = LINES.reduce((s, k) => s + out[k], 0);
-  if (total !== 9) return { ok: false, error: 'budget_must_equal_9', total };
-  if (out.run < 3) return { ok: false, error: 'run_minimum_3' };
+  if (total !== t.budgetPerYear) return { ok: false, error: `budget_must_equal_${t.budgetPerYear}`, total };
+  if (out.run < t.runFloor) return { ok: false, error: `run_minimum_${t.runFloor}` };
   for (const k of ['uptime', 'capacity', 'connect', 'features']) {
-    if (out[k] > 3) return { ok: false, error: `${k}_maximum_3` };
+    if (out[k] > t.perLineCap) return { ok: false, error: `${k}_maximum_${t.perLineCap}` };
   }
   return { ok: true, allocation: out };
 }
@@ -194,46 +196,6 @@ function cumulative(y1, y2) {
   const out = {};
   for (const k of LINES) out[k] = (y1[k] || 0) + (y2[k] || 0);
   return out;
-}
-
-function sanitizeThresholds(input) {
-  const d = { ...DEFAULT_THRESHOLDS };
-  if (!input || typeof input !== 'object') return d;
-  for (const k of Object.keys(d)) {
-    const n = integer(input[k]);
-    if (n !== null && n >= 0 && n <= 6) d[k] = n;
-  }
-  return d;
-}
-
-// Faculty may retune between sections, but a saved calibration must still tile
-// the authored bands without silently turning an in-between value into "weak".
-function validateThresholds(input) {
-  const t = sanitizeThresholds(input);
-  const errors = [];
-
-  if (t.year1ConnectStrong < 1 || t.year1ConnectStrong > 3) {
-    errors.push('Year 1 strong Connect must be between 1 and 3.');
-  }
-  if (t.heatUptimeMiddle >= t.heatUptimeStrong) {
-    errors.push('Heat-wave middle must start below the strong threshold.');
-  }
-  if (t.competitorConnectPilotMin > t.competitorConnectPilotMax) {
-    errors.push('Competitor pilot minimum cannot exceed its maximum.');
-  }
-  if (t.competitorConnectPilotMax !== t.competitorConnectStrong - 1) {
-    errors.push('Competitor pilot maximum must sit immediately below the strong threshold.');
-  }
-  if (t.year3ConnectPilotMin > t.year3ConnectPilotMax) {
-    errors.push('Year 3 pilot minimum cannot exceed its maximum.');
-  }
-  if (t.year3ConnectPilotMax !== t.year3ConnectStrong - 1) {
-    errors.push('Year 3 pilot maximum must sit immediately below the strong Connect threshold.');
-  }
-
-  return errors.length
-    ? { ok: false, error: 'invalid_thresholds', errors, thresholds: t }
-    : { ok: true, thresholds: t };
 }
 
 function year1AllocationNotes(y1, t, band) {
@@ -251,7 +213,7 @@ function year1AllocationNotes(y1, t, band) {
   const delta = baseline - run;
   const daleNote = delta > 0
     ? `Dale started from last year’s $6.1M Run bill. Holding Run at $${run}M freed $${delta.toFixed(1)}M versus last year for the other four lines.`
-    : `Dale started from last year’s $6.1M Run bill. At $${run}M, Run used at least as much of the fixed $9M as last year, leaving less room for new capability.`;
+    : `Dale started from last year’s $6.1M Run bill. At $${run}M, Run used at least as much of the fixed $${t.budgetPerYear}M as last year, leaving less room for new capability.`;
   return [connectNote, daleNote];
 }
 
@@ -271,12 +233,12 @@ function evaluateYear1(y1, thresholds) {
   const t = sanitizeThresholds(thresholds);
   const c = y1.connect;
   if (c >= t.year1ConnectStrong) {
-    return { band: 'strong', title: 'The school district asks for a performance report', narrative: COPY.year1.strong, allocationNotes: year1AllocationNotes(y1, t, 'strong'), year2Intro: YEAR2_INTRO.strong };
+    return { band: 'strong', title: 'The school district asks for a performance report', narrative: COPY.year1.strong, allocationNotes: year1AllocationNotes(y1, t, 'strong'), year2Intro: YEAR2_INTRO.strong.replace('$9 million', `$${t.budgetPerYear} million`) };
   }
   if (c > 0) {
-    return { band: 'middle', title: 'The school district asks for a performance report', narrative: COPY.year1.middle, allocationNotes: year1AllocationNotes(y1, t, 'middle'), year2Intro: YEAR2_INTRO.middle };
+    return { band: 'middle', title: 'The school district asks for a performance report', narrative: COPY.year1.middle, allocationNotes: year1AllocationNotes(y1, t, 'middle'), year2Intro: YEAR2_INTRO.middle.replace('$9 million', `$${t.budgetPerYear} million`) };
   }
-  return { band: 'weak', title: 'The school district asks for a performance report', narrative: COPY.year1.weak, allocationNotes: year1AllocationNotes(y1, t, 'weak'), year2Intro: YEAR2_INTRO.weak };
+  return { band: 'weak', title: 'The school district asks for a performance report', narrative: COPY.year1.weak, allocationNotes: year1AllocationNotes(y1, t, 'weak'), year2Intro: YEAR2_INTRO.weak.replace('$9 million', `$${t.budgetPerYear} million`) };
 }
 
 function evaluateYear2(y1, y2, thresholds) {
@@ -359,8 +321,10 @@ function evaluateAll(y1, y2, thresholds) {
   };
 }
 
-function publicConfig() {
+function publicConfig(thresholds = DEFAULT_THRESHOLDS) {
+  const rules = publicRules(thresholds);
   return {
+    calibrationId: CALIBRATION_ID,
     meta: {
       id: META.id,
       title: META.title,
@@ -378,18 +342,16 @@ function publicConfig() {
       };
     }),
     room: {
-      intro: META.detail.roomIntro,
+      intro: META.detail.roomIntro.replace('nine million dollars', `${rules.annualBudget} million dollars`),
       cast: META.detail.cast.map(({ name, role, line, stake, quote }) => ({ name, role, line, stake, quote }))
     },
-    annualBudget: 9,
-    runMinimum: 3,
-    lineMaximum: 3,
+    ...rules,
     briefing: {
       title: 'Midland Equipment — Briefing & exhibits',
       note: 'In-app briefing packet. It is collapsed during play so you can reopen facts without rereading the whole setup.',
       intro: [
         'Read this before the session. It is the briefing built into the simulation.',
-        'You are about to take over technology decisions at Midland Equipment. In about thirty minutes you will make two annual $9 million allocations, then see what the third year reveals after the decision window has closed. The simulation can be played individually or as a team. This briefing should take about six minutes.'
+        `You are about to take over technology decisions at Midland Equipment. In about thirty minutes you will make two annual $${rules.annualBudget} million allocations, then see what the third year reveals after the decision window has closed. The simulation can be played individually or as a team. This briefing should take about six minutes.`
       ],
       company: [
         'Midland sells and services commercial HVAC systems — the large rooftop units that heat and cool schools, hospitals, and office buildings. The company operates in Ohio, Indiana, and Michigan, and has roughly 4,000 of its units installed in customers’ buildings. Revenue comes from two places: selling equipment, and a service department that bills by the visit. Sixty-two field technicians drive to those buildings all day, every day.',
@@ -447,7 +409,7 @@ function publicConfig() {
       people: META.detail.cast.map(({ name, role, quote }) => ({ name, role, quote })),
       peopleNote: 'All four of them are reasonable. None of them is going to tell you the answer, and if you ask any of them what you should do, you will get a confident reply shaped by the part of the company they are responsible for.',
       whatHappens: [
-        'You make two annual $9 million allocations across five lines. Year 1 reveals the first consequence; after the second allocation, two Year 2 events resolve; Year 3 is then revealed with no further allocation.',
+        `You make two annual $${rules.annualBudget} million allocations across five lines. Year 1 reveals the first consequence; after the second allocation, two Year 2 events resolve; Year 3 is then revealed with no further allocation.`,
         'In individual mode you commit your own choices. In team mode the group works from one shared run. In either mode, you cannot save money or borrow from the next year.',
         'Come with a view about what this company should become. You will be asked for it early, in one sentence.'
       ]
@@ -458,8 +420,7 @@ function publicConfig() {
       'Selling equipment brings in most of the revenue. Servicing it brings in most of the profit.',
       'You are about to take over technology decisions here.'
     ],
-    position:
-      'You have $9 million to allocate this year across five lines. Spend all $9M; you cannot borrow from next year. Run has a $3M minimum. Each other line — Uptime, Capacity, Connect, and Features — has a $3M maximum per year.',
+    position: rules.position,
     viewPrompt: 'Midland should become a company that can ___ for customers by ___.',
     viewDisclosure: 'Your instructor can see this sentence in the instructor view. It is not scored, and it will come back to you at the close.',
     reflectionPrompts: [
@@ -481,7 +442,8 @@ function publicConfig() {
 }
 
 module.exports = {
-  META, LINES, LABELS, DEFAULT_THRESHOLDS, sanitizeThresholds, validateThresholds,
+  META, LINES, LABELS, DEFAULT_THRESHOLDS, LEGACY_THRESHOLDS, CALIBRATION_ID, OUTCOME_KEYS,
+  sanitizeThresholds, validateThresholds, sessionThresholds, standaloneThresholds, publicRules,
   validateAllocation, cumulative, evaluateYear1, evaluateYear2, evaluateYear3,
   evaluateBuyers, evaluateAll, publicConfig
 };

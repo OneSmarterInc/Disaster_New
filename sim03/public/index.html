@@ -113,6 +113,9 @@ function friendlyError(code,status){
     team_run_not_complete:'Wait for your team runner to reach the close before submitting your reflection.',
     not_joined:'Rejoin the session before continuing.'
   };
+  if(/^budget_must_equal_\d+$/.test(code))return `The allocation must equal exactly $${code.split('_').pop()}M.`;
+  if(/^run_minimum_\d+$/.test(code))return `Run cannot be below $${code.split('_').pop()}M.`;
+  if(/^(uptime|capacity|connect|features)_maximum_\d+$/.test(code))return `That line cannot exceed $${code.split('_').pop()}M per year.`;
   return m[code]||'';
 }
 
@@ -121,7 +124,7 @@ async function request(path,payload,method='POST'){
   if(LAUNCH_TOKEN)headers['x-launch-token']=LAUNCH_TOKEN;
   else if(ACCESS_CODE)headers['x-access-code']=ACCESS_CODE;
   const opt={method,headers};
-  if(method!=='GET')opt.body=JSON.stringify(payload||{});
+  if(method!=='GET')opt.body=JSON.stringify({...payload,calibrationId:C?.calibrationId});
   const r=await fetch(BASE+path,opt);
   let d={};try{d=await r.json()}catch{}
   if(!r.ok){const e=new Error(d.message||friendlyError(d.error,r.status)||`Server error ${r.status}`);e.code=d.error;throw e}
@@ -230,16 +233,26 @@ async function pollSession(redraw){
   const d=await sessionApi({action:'state',code:S.sessionCode,participantId:S.participantId});
   if(seq<S.stateApplied)return;
   S.stateApplied=seq;
+  const rulesChanged=JSON.stringify(S.session?.allocationRules)!==JSON.stringify(d.session?.allocationRules);
   const groupChanged=S.me?.groupId!==d.me?.groupId;
   const controlChanged=groupChanged||S.canSubmit!==!!d.canSubmit||S.runnerId!==d.runnerId||S.runnerRevision!==(d.runnerRevision||0);
   const gateChanged=S.session?.state!==d.session?.state||S.session?.paused!==d.session?.paused;
   const restore=!S.hasSessionState||groupChanged||(controlChanged&&d.canSubmit);
   const changed=JSON.stringify([S.session,S.me,S.mates,S.teamRun])!==JSON.stringify([d.session,d.me,d.mates,d.run]);
   S.session=d.session;S.me=d.me;S.mates=d.mates||[];S.canSubmit=!!d.canSubmit;S.teamRun=d.run||null;
+  if(C&&S.session?.allocationRules){
+    Object.assign(C,S.session.allocationRules);
+    if(C.room?.intro)C.room.intro=C.room.intro.replace(/(?:nine|\d+) million dollars/,`${C.annualBudget} million dollars`);
+    for(const key of ['intro','whatHappens'])if(C.briefing?.[key])C.briefing[key]=C.briefing[key].map(text=>text.replace(/two annual \$\d+ million allocations/g,`two annual $${C.annualBudget} million allocations`));
+  }
   S.runnerId=d.runnerId||null;S.runnerRevision=d.runnerRevision||0;S.canAssignRunner=!!d.canAssignRunner;S.hasSessionState=true;
   if(controlChanged)S.runnerChoice='';
   if(groupChanged){S.reflectionDirty=false;S.reflection1='';S.reflection2=''}
   const r=S.teamRun;
+  if(rulesChanged){
+    if(!r?.year1&&!S.year1Outcome)S.year1=null;
+    if(!r?.year2&&!S.year2Outcome)S.year2=null;
+  }
   if(restore&&S.session?.mode==='team'){
     S.step=r?.screen??(r?.phase>=3?10:r?.year2?7:r?.year1?5:r?.strategicView?4:0);
     S.year2Event=r?.year2Event||0;
@@ -456,7 +469,7 @@ function renderRoom(){
   ${nav({nextLabel:'Take the seat'})}`);wireNav(next);
 }
 function usefulOpeningView(v){const words=String(v||'').trim().split(/\s+/).filter(Boolean);return String(v||'').trim().length>=20&&words.length>=4}
-function allocationCap(line){return line.id==='run'?'MIN $3M':'MAX $3M / YEAR'}
+function allocationCap(line){return line.id==='run'?`MIN $${C.runMinimum}M`:`MAX $${C.lineMaximum}M / YEAR`}
 function lineAdvocate(line,year=1){const a=line?.advocate;if(!a)return `<div class="advocate-reminder capacity-silence"><b>No advocate · ${esc(line.label)}</b><span>${esc(CAPACITY_SILENCE)}</span></div>`;const text=year===2?(a.shortWant||a.want):a.want;return `<div class="advocate-reminder"><b>${esc(a.name)} · speaks for ${esc(line.label)}</b><span>${esc(text)}</span></div>`}
 function year2BreakdownHTML(y1,y2,year2Label='Year 2 draft'){
   if(!y1||!y2)return '';
@@ -477,7 +490,7 @@ function renderView(){
     try{if(S.canSubmit)await saveRun({strategicView:v});S.viewCommitted=true;next()}catch(e){alert(e.message)}
   });
 }
-function defaultAlloc(){return {run:3,uptime:0,capacity:0,connect:0,features:0}}
+function defaultAlloc(){return {run:C.runMinimum,uptime:0,capacity:0,connect:0,features:0}}
 function briefingPanel(){
   const b=C?.briefing;if(!b)return '';
   const exhibits=(b.exhibits||[]).map(ex=>{
@@ -490,20 +503,20 @@ function briefingPanel(){
 function renderAllocation(year){
   const key=year===1?'year1':'year2';
   const teamReadOnly=!S.canSubmit&&S.session?.mode==='team';
-  const heading=year===1?'The first $9 million is yours.':'A year later, the same $9 million is back on the table.';
+  const heading=year===1?`The first $${C.annualBudget} million is yours.`:`A year later, the same $${C.annualBudget} million is back on the table.`;
   const intro=year===1
     ? 'The ERP is fourteen years old, the service operation is profitable, and every line has a constituency. This is the first portfolio you set before anyone knows which problem arrives first.'
     : (S.year1Outcome?.year2Intro||'A year has passed. The first consequence is now part of Midland’s history, and the same five lines are competing for the same budget again.');
   if(teamReadOnly)return renderTeamMemberWaiting();
   if(!S[key])S[key]=defaultAlloc();
-  const a=S[key],used=Object.values(a).reduce((x,y)=>x+y,0),left=9-used;
+  const a=S[key],used=Object.values(a).reduce((x,y)=>x+y,0),left=C.annualBudget-used;
   const running=year===2&&S.year1?runningTotals(S.year1,a):null;
   shell(`<div class="eyebrow">Year ${year} allocation</div><h2>${heading}</h2><p class="lede">${esc(intro)}</p>
   ${briefingPanel()}
   ${year===2&&S.year1?year2BreakdownHTML(S.year1,a,'Year 2 draft'):''}
   <div class="alloc-wrap"><div class="allocs">${C.lines.map(l=>allocRow(l,a,year)).join('')}</div>
-  <aside class="budget"><div class="n">${left}</div><div class="lab">$M remaining</div><div class="total">Allocated: <b>$${used}M</b> of $9M<br>Submit unlocks only at exactly $9M.</div></aside></div>
-  ${nav({backOk:year===1,nextLabel:left===0?`Commit Year ${year}`:'Allocate all $9M',disabled:blocked()||left!==0})}`);
+  <aside class="budget"><div class="n">${left}</div><div class="lab">$M remaining</div><div class="total">Allocated: <b>$${used}M</b> of $${C.annualBudget}M<br>Submit unlocks only at exactly $${C.annualBudget}M.</div></aside></div>
+  ${nav({backOk:year===1,nextLabel:left===0?`Commit Year ${year}`:`Allocate all $${C.annualBudget}M`,disabled:blocked()||left!==0})}`);
   document.querySelectorAll('.step').forEach(b=>b.onclick=()=>changeAlloc(key,b.dataset.line,Number(b.dataset.delta)));
   wireNav(async()=>{
     const v=validateClient(S[key]);if(v)return alert(v);
@@ -518,11 +531,11 @@ function renderAllocation(year){
 }
 function readOnlyAllocationHTML(a,label,year=1){return `<div class="eyebrow" style="margin-top:24px">${esc(label)}</div><div class="allocs">${C.lines.map(l=>`<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div>${lineAdvocate(l,year)}</div><div class="amount">${a[l.id]}<small> M</small></div></div>`).join('')}</div>`}
 function allocRow(l,a,key){
-  const n=a[l.id],min=l.id==='run'?3:0,max=l.id==='run'?9:3,used=Object.values(a).reduce((x,y)=>x+y,0);
+  const n=a[l.id],min=l.id==='run'?C.runMinimum:0,max=l.id==='run'?C.annualBudget:C.lineMaximum,used=Object.values(a).reduce((x,y)=>x+y,0);
   const readOnly=!S.canSubmit&&S.session?.mode==='team';
-  const minusDisabled=readOnly||n<=min,plusDisabled=readOnly||n>=max||used>=9;
-  const minusTitle=readOnly?'Read-only team allocation':n<=min?(l.id==='run'?'Run has a $3M minimum':'Already at $0M'):'Remove $1M';
-  const plusTitle=readOnly?'Read-only team allocation':n>=max&&l.id!=='run'?'$3M annual ceiling reached':used>=9?'All $9M is already allocated':'Add $1M';
+  const minusDisabled=readOnly||n<=min,plusDisabled=readOnly||n>=max||used>=C.annualBudget;
+  const minusTitle=readOnly?'Read-only team allocation':n<=min?(l.id==='run'?`Run has a $${C.runMinimum}M minimum`:'Already at $0M'):'Remove $1M';
+  const plusTitle=readOnly?'Read-only team allocation':n>=max&&l.id!=='run'?`$${C.lineMaximum}M annual ceiling reached`:used>=C.annualBudget?`All $${C.annualBudget}M is already allocated`:'Add $1M';
   return `<div class="alloc"><div><div class="alloc-title-row"><h3>${esc(l.label)}</h3><span class="alloc-cap">${esc(allocationCap(l))}</span></div>${lineAdvocate(l,key)}</div><div class="stepper">
     <button class="step" title="${esc(minusTitle)}" data-line="${l.id}" data-delta="-1" ${minusDisabled?'disabled':''}>−</button>
     <div class="amount">${n}<small> M</small></div>
@@ -530,17 +543,17 @@ function allocRow(l,a,key){
 }
 function changeAlloc(key,line,delta){
   if(blocked()||(S.session?.mode==='team'&&!S.canSubmit))return;
-  const a=S[key],min=line==='run'?3:0,max=line==='run'?9:3,nextv=a[line]+delta;
+  const a=S[key],min=line==='run'?C.runMinimum:0,max=line==='run'?C.annualBudget:C.lineMaximum,nextv=a[line]+delta;
   if(nextv<min||nextv>max)return;
   const used=Object.values(a).reduce((x,y)=>x+y,0);
-  if(delta>0&&used>=9)return;
+  if(delta>0&&used>=C.annualBudget)return;
   a[line]=nextv;render();
 }
 function validateClient(a){
   const total=Object.values(a).reduce((x,y)=>x+y,0);
-  if(total!==9)return 'The allocation must equal exactly $9M.';
-  if(a.run<3)return 'Run cannot be below $3M.';
-  if(['uptime','capacity','connect','features'].some(k=>a[k]>3))return 'Uptime, Capacity, Connect and Features cannot exceed $3M in a year.';
+  if(total!==C.annualBudget)return `The allocation must equal exactly $${C.annualBudget}M.`;
+  if(a.run<C.runMinimum)return `Run cannot be below $${C.runMinimum}M.`;
+  if(['uptime','capacity','connect','features'].some(k=>a[k]>C.lineMaximum))return `Uptime, Capacity, Connect and Features cannot exceed $${C.lineMaximum}M in a year.`;
   return '';
 }
 function runningTotals(a,b){const o={};C.lines.forEach(l=>o[l.id]=(a[l.id]||0)+(b[l.id]||0));return o}

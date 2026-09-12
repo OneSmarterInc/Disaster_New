@@ -71,7 +71,7 @@ async function reportTranscript({ launch, envelope }) {
   try {
     const r = await fetch(base + '/api/transcript', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token, envelope }), signal: AbortSignal.timeout(8000)
+      body: JSON.stringify({ token, envelope: { ...envelope, simId: launch.sim } }), signal: AbortSignal.timeout(8000)
     });
     if (!r.ok) console.error('transcript refused', r.status, await r.text().catch(() => ''));
   } catch (e) { console.error('transcript report failed', e.message); }
