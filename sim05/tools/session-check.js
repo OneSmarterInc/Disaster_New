@@ -1,0 +1,205 @@
+#!/usr/bin/env node
+// Exercises the real /api/session and /api/finish handlers against an in-memory
+// store that honours the same compare-and-set contract as the Redis scripts.
+const assert = require('node:assert/strict');
+const { createHmac } = require('node:crypto');
+const store = require('../lib/store.js');
+const C = require('../config/content.js');
+
+process.env.LAUNCH_SECRET = 'test-secret-not-real';
+process.env.FACULTY_CODES = 'Tester:fac-code';
+delete process.env.ACCESS_CODE;
+delete process.env.PLATFORM_URL;
+
+let clockMs = 1_800_000_000_000;
+Date.now = () => clockMs;
+const advance = (s) => { clockMs += s * 1000; };
+
+const sessions = new Map(), people = new Map();
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+store.configured = () => true;
+store.putSession = async (c, v) => { sessions.set(c, structuredClone(v)); return v; };
+store.getSession = async (c) => structuredClone(sessions.get(c) || null);
+store.getParticipants = async (c) => structuredClone(people.get(c) || {});
+store.addParticipant = async (c, id, v) => { const m = people.get(c) || {}; m[id] = structuredClone(v); people.set(c, m); };
+store.compareAndSetSession = async (c, prev, next) => {
+  if (!same(sessions.get(c), prev)) return false; sessions.set(c, structuredClone(next)); return true;
+};
+store.compareAndSetParticipant = async (c, id, prev, next, sess) => {
+  if (!same(sessions.get(c), sess)) return false;
+  const m = people.get(c) || {};
+  if (!same(m[id], prev)) return false;
+  m[id] = structuredClone(next); people.set(c, m); return true;
+};
+store.compareAndSetRoster = async (c, prev, next, sess) => {
+  if (!same(sessions.get(c), sess) || !same(people.get(c) || {}, prev)) return false;
+  people.set(c, structuredClone(next)); return true;
+};
+
+const session = require('../api/session.js');
+const finish = require('../api/finish.js');
+
+function token({ sub, name = 'Student', role = 'student', mode = 'play', course = null, sim = C.META.id }) {
+  const p = { sub, name, role, sim, mode, course, iat: Date.now(), exp: Date.now() + 3600e3 };
+  const body = Buffer.from(JSON.stringify(p)).toString('base64url');
+  return body + '.' + createHmac('sha256', process.env.LAUNCH_SECRET).update(body).digest('base64url');
+}
+
+async function call(handler, body, headers = {}) {
+  const res = { statusCode: 200, payload: null, headers: {},
+    setHeader(k, v) { this.headers[k] = v; }, status(n) { this.statusCode = n; return this; },
+    json(v) { this.payload = v; return this; }, end() { return this; } };
+  await handler({ method: 'POST', headers, body }, res);
+  return { status: res.statusCode, body: res.payload };
+}
+const api = (b, h) => call(session, b, h);
+const fac = { 'x-faculty-code': 'fac-code' };
+let n = 0;
+const eq = (a, b, m) => { assert.deepEqual(a, b, m); n++; };
+const ok = (c, m) => { assert.ok(c, m); n++; };
+const leaks = (obj, text, m) => ok(!JSON.stringify(obj).includes(text), m);
+
+(async () => {
+  // Authorisation and required choices.
+  eq((await api({ action: 'create', mode: 'individual' })).status, 401, 'anonymous create refused');
+  eq((await api({ action: 'create' }, fac)).status, 400, 'mode has no default');
+  eq((await api({ action: 'create', mode: 'individual', intensity: 'extreme' }, fac)).status, 400, 'unknown intensity refused');
+  eq((await api({ action: 'create', mode: 'individual' }, { 'x-launch-token': token({ sub: 's1' }) })).status, 401, 'student token cannot create');
+
+  // Individual room.
+  const created = await api({ action: 'create', mode: 'individual' }, fac);
+  eq(created.status, 200, 'faculty create');
+  const code = created.body.session.code;
+  const j1 = await api({ action: 'join', code, name: 'Ana' });
+  const j2 = await api({ action: 'join', code, name: 'Ben' });
+  const a = j1.body.participantId, bn = j2.body.participantId;
+  let s = await api({ action: 'state', code, participantId: a });
+  eq(s.body.view.clock.phase, 'lobby', 'lobby before start');
+  eq(s.body.view.rounds.length, 0, 'no rounds before start');
+  eq((await api({ action: 'control', code, set: 'start' })).status, 401, 'student cannot start');
+  eq((await api({ action: 'control', code, set: 'start' }, fac)).status, 200, 'faculty start');
+
+  s = await api({ action: 'state', code, participantId: a });
+  eq(s.body.view.clock.phase, 'briefing', 'briefing first');
+  eq(s.body.view.rounds.length, 0, 'no round content during briefing');
+  eq((await api({ action: 'vote', code, participantId: a, round: 1, decision: 'approve' })).status, 409, 'no voting in briefing');
+
+  advance(240);
+  s = await api({ action: 'state', code, participantId: a });
+  eq(s.body.view.clock, { phase: 'decide', round: 1, remaining: 180, closedRounds: 0, openedRounds: 1, paused: false }, 'round 1 open');
+  eq(s.body.view.rounds.length, 1, 'only round 1 sent');
+  for (const r of C.ROUNDS.slice(1)) leaks(s.body, r.title, `round ${r.n} title not leaked early`);
+  for (const inf of C.INFERENCES) for (const l of inf.levels) leaks(s.body, l.text, 'no reveal text before the round closes');
+  ok(s.body.view.canVote, 'can vote');
+
+  eq((await api({ action: 'vote', code, participantId: a, round: 1, decision: 'maybe' })).status, 400, 'invalid decision');
+  eq((await api({ action: 'vote', code, participantId: a, round: 2, decision: 'approve' })).status, 409, 'future round refused');
+  const v = await api({ action: 'vote', code, participantId: a, round: 1, decision: 'decline' });
+  eq(v.status, 200, 'vote recorded');
+  eq(v.body.view.rounds[0].result, undefined, 'no result until the round closes');
+  eq((await api({ action: 'vote', code, participantId: a, round: 1, decision: 'approve' })).status, 409, 'votes are final');
+
+  let f = await api({ action: 'faculty_state', code }, fac);
+  eq(f.body.projector.live, { round: 1, decided: 1, of: 2 }, 'projector shows how many decided');
+  leaks(f.body.projector, '"approve":1', 'projector never shows the split during a decision window');
+  eq(f.body.projector.rounds, [], 'no round bars before close');
+
+  // Pause freezes the clock and blocks votes.
+  eq((await api({ action: 'control', code, set: 'pause' }, fac)).status, 200, 'pause');
+  advance(600);
+  s = await api({ action: 'state', code, participantId: bn });
+  eq(s.body.view.clock.remaining, 180, 'clock frozen while paused');
+  eq((await api({ action: 'vote', code, participantId: bn, round: 1, decision: 'approve' })).status, 409, 'no votes while paused');
+  eq((await api({ action: 'control', code, set: 'resume' }, fac)).status, 200, 'resume');
+  s = await api({ action: 'state', code, participantId: bn });
+  eq(s.body.view.clock.remaining, 180, 'resume picks up where it stopped');
+
+  // Ben never votes: his round 1 is a timeout, and it ships.
+  advance(180);
+  s = await api({ action: 'state', code, participantId: bn });
+  eq(s.body.view.clock.phase, 'reveal', 'reveal after the window');
+  eq(s.body.view.rounds[0].result.decision, 'timeout', 'silence is a timeout');
+  ok(s.body.view.rounds[0].result.picture.some(p => p.id === 'routine'), 'a timeout ships the data');
+  const sa = await api({ action: 'state', code, participantId: a });
+  eq(sa.body.view.rounds[0].result.cost, C.ROUNDS[0].cost, 'decline shows its cost line');
+  eq(sa.body.view.rounds[0].result.picture, [], 'decline shows the unchanged picture');
+  leaks(sa.body, 'Ben', 'a student never sees another student');
+  f = await api({ action: 'faculty_state', code }, fac);
+  eq(f.body.projector.rounds[0].timeout, 1, 'timeout counted separately');
+  eq(f.body.projector.rounds[0].decline, 1, 'decline counted');
+  eq(f.body.projector.rounds[0].approve, 0, 'timeouts never merge into approvals');
+
+  // A late joiner plays but stays out of the totals.
+  const late = await api({ action: 'join', code, name: 'Cai' });
+  f = await api({ action: 'faculty_state', code }, fac);
+  eq(f.body.projector.late, 1, 'late joiner flagged');
+  eq(f.body.projector.rounds[0].approve + f.body.projector.rounds[0].decline + f.body.projector.rounds[0].timeout, 2, 'late joiner not in totals');
+
+  // Play out rounds 2 to 5: Ana approves everything left, Ben declines everything.
+  advance(60);
+  for (let r = 2; r <= 5; r++) {
+    eq((await api({ action: 'vote', code, participantId: a, round: r, decision: 'approve' })).status, 200, `Ana round ${r}`);
+    eq((await api({ action: 'vote', code, participantId: bn, round: r, decision: 'decline' })).status, 200, `Ben round ${r}`);
+    advance(240);
+  }
+  const endA = (await api({ action: 'state', code, participantId: a })).body.view;
+  eq(endA.clock.phase, 'ending', 'ending reached');
+  ok(endA.ending.knows.some(k => k.id === 'health' && k.level === 'moderate'), 'Ana declined round 1 only: moderate estimate via sleep and grocery');
+  eq(endA.ending.missing, [C.ROUNDS[0].missing], 'Ana missing column');
+  const endB = (await api({ action: 'state', code, participantId: bn })).body.view;
+  eq(endB.ending.knows.map(k => k.id), ['routine'], 'Ben: only the timeout shipped');
+  f = await api({ action: 'faculty_state', code }, fac);
+  eq(f.body.projector.headline, '1 of 2 reached a reasonable or better pregnancy estimate. 1 of them declined at least one request.', 'projector headline');
+  ok(f.body.projector.endings.length === 6, 'six ending groups on the projector');
+  ok(late.status === 200, 'late join accepted');
+
+  // Finish: only platform launches report, once.
+  eq((await call(finish, { code, participantId: a })).body.reported, false, 'standalone runs are not reported');
+
+  // Team room: private votes, majority, tie ships, teams fixed at start.
+  const tc = (await api({ action: 'create', mode: 'team', intensity: 'lighter' }, fac)).body.session.code;
+  const ids = [];
+  for (const name of ['P1', 'P2', 'P3', 'P4']) ids.push((await api({ action: 'join', code: tc, name })).body.participantId);
+  eq((await api({ action: 'control', code: tc, set: 'start' }, fac)).status, 409, 'cannot start with unassigned students');
+  eq((await api({ action: 'group', code: tc, assign: Object.fromEntries(ids.map(i => [i, 'Red'])) }, fac)).status, 200, 'assign team');
+  eq((await api({ action: 'control', code: tc, set: 'start' }, fac)).status, 200, 'team start');
+  eq((await api({ action: 'group', code: tc, assign: { [ids[0]]: 'Blue' } }, fac)).status, 409, 'teams fixed after start');
+  eq((await api({ action: 'join', code: tc, name: 'P5' })).status, 409, 'no new members after a team session starts');
+  advance(240);
+  await api({ action: 'vote', code: tc, participantId: ids[0], round: 1, decision: 'approve' });
+  await api({ action: 'vote', code: tc, participantId: ids[1], round: 1, decision: 'approve' });
+  await api({ action: 'vote', code: tc, participantId: ids[2], round: 1, decision: 'decline' });
+  await api({ action: 'vote', code: tc, participantId: ids[3], round: 1, decision: 'decline' });
+  advance(180);
+  const t3 = (await api({ action: 'state', code: tc, participantId: ids[2] })).body;
+  eq(t3.view.rounds[0].result.decision, 'approve', 'a tie ships');
+  eq(t3.view.rounds[0].myVote, 'decline', 'student sees their own vote beside the team result');
+  leaks(t3, 'P1', 'team members never see each other');
+  leaks(t3, '"split"', 'students never see whether the team split');
+  f = await api({ action: 'faculty_state', code: tc }, fac);
+  eq(f.body.projector.rounds[0].splitTeams, 1, 'projector counts split teams');
+  eq(f.body.projector.debrief.teamPrompt, C.DEBRIEF.teamPrompt, 'team debrief prompt');
+  advance(60 + 4 * 240);
+  const tEnd = (await api({ action: 'state', code: tc, participantId: ids[0] })).body;
+  ok(!/pregnan/i.test(JSON.stringify(tEnd)), 'lighter session never names pregnancy');
+  ok(/health-change/.test((await api({ action: 'faculty_state', code: tc }, fac)).body.projector.headline), 'lighter headline');
+
+  // Solo runs from a direct launch.
+  eq((await api({ action: 'solo' })).status, 503, 'standalone solo closed without an access code');
+  const solo = await api({ action: 'solo' }, { 'x-launch-token': token({ sub: 'u9', name: 'Dee' }) });
+  eq(solo.status, 200, 'solo run from a launch');
+  eq((await api({ action: 'state', code: solo.body.code, participantId: solo.body.participantId }, { 'x-launch-token': token({ sub: 'u9' }) })).body.view.clock.phase, 'briefing', 'solo starts immediately');
+  eq((await api({ action: 'state', code: solo.body.code, participantId: solo.body.participantId }, { 'x-launch-token': token({ sub: 'other' }) })).status, 403, 'another account cannot read a solo run');
+  ok([401, 403].includes((await api({ action: 'join', code: solo.body.code, name: 'Eve' })).status), 'nobody joins a solo run');
+  eq((await api({ action: 'solo' }, { 'x-launch-token': token({ sub: 'u9', mode: 'session' }) })).status, 409, 'session launches use the session');
+  eq((await api({ action: 'solo' }, { 'x-launch-token': token({ sub: 'u9', sim: 'rapid-03-midland' }) })).status, 403, 'another sim token refused');
+
+  const soloTok = { 'x-launch-token': token({ sub: 'u9' }) };
+  eq((await call(finish, { code: solo.body.code, participantId: solo.body.participantId }, soloTok)).status, 409, 'cannot finish before the ending');
+  advance(240 + 5 * 240);
+  const fin = await call(finish, { code: solo.body.code, participantId: solo.body.participantId }, soloTok);
+  eq(fin.status, 200, 'finish at the ending');
+  eq((await call(finish, { code: solo.body.code, participantId: solo.body.participantId }, soloTok)).body.already, true, 'reported once only');
+
+  console.log(`PASS session-check: ${n} assertions`);
+})().catch(e => { console.error(e); process.exit(1); });

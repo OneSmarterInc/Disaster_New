@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Do We Switch?</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root{--n:#0E1524;--p:#161E2E;--p2:#1D2637;--l:#2B3548;--l2:#3A4659;--b:#E8E4DA;--d:#8C95A8;--dd:#616B7E;--a:#F0A63C;--g:#75A98C;--r:#CE7C8D;--x:#6FA8D6;--s:'Newsreader',Georgia,serif;--m:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--n);color:var(--b);font-family:var(--s);line-height:1.55}
+button,input,textarea{font:inherit;color:inherit}button{cursor:pointer;background:none}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--l);background:rgba(14,21,36,.96)}
+header h1{font-size:18px;font-weight:500;margin:0 auto 0 0}
+.m{font:10px var(--m);letter-spacing:.13em;text-transform:uppercase;color:var(--dd)}
+.ey{font:10px var(--m);letter-spacing:.14em;text-transform:uppercase;color:var(--a);margin-bottom:8px}
+.clock{font:600 20px var(--m);color:var(--b)}.tick{font:600 20px var(--m);color:var(--r)}
+.page{width:min(1100px,calc(100% - 32px));margin:auto;padding:28px 0 80px}
+.grid{display:grid;grid-template-columns:1.25fr .9fr;gap:18px}@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{border:1px solid var(--l);background:var(--p);padding:18px;margin-bottom:16px}
+h2{font-size:30px;font-weight:400;line-height:1.15;margin:0 0 12px}h3{font-size:20px;font-weight:400;margin:4px 0 10px}
+p{margin:0 0 12px}.muted{color:var(--d)}
+.btn{border:1px solid var(--l2);padding:10px 14px;font:11px var(--m);letter-spacing:.1em;text-transform:uppercase;color:var(--d)}
+.btn:hover{border-color:var(--b);color:var(--b)}.pri{background:var(--a);border-color:var(--a);color:#191206;font-weight:600}
+.btn:disabled{opacity:.35;cursor:not-allowed}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.field{margin-top:12px}.field label{display:block;font:10px var(--m);letter-spacing:.11em;text-transform:uppercase;color:var(--dd);margin-bottom:6px}
+.field input,textarea{width:100%;background:var(--n);border:1px solid var(--l2);padding:10px}
+textarea{min-height:70px;resize:vertical}
+.rep{border-left:2px solid var(--l2);padding:8px 0 8px 12px;margin-bottom:10px}.rep.new{border-left-color:var(--a);animation:f 1.2s}
+@keyframes f{from{background:rgba(240,166,60,.12)}to{background:transparent}}
+.rep .src{font:10px var(--m);letter-spacing:.09em;text-transform:uppercase;color:var(--dd)}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice button{border:1px solid var(--l2);padding:14px;text-align:left;background:var(--p2)}
+.choice button:hover{border-color:var(--a)}.choice b{display:block;font-weight:500;font-size:17px}.choice span{font-size:13px;color:var(--d)}
+.notice{border-left:2px solid var(--a);background:rgba(240,166,60,.06);padding:10px 13px;margin:10px 0;color:#cbc8c0}
+.bad{border-left-color:var(--r);color:#e1afba}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(6,10,18,.8);display:grid;place-items:center;padding:16px}
+.doc{width:min(720px,100%);max-height:88vh;overflow:auto;background:#F4F1EA;color:#1d1d1d;padding:26px 28px;font-family:Georgia,serif}
+.doc h4{margin:14px 0 4px;font-size:15px}.doc .sub{font-style:italic;color:#555;margin-bottom:12px}
+.doc p{font-size:15px}.doc mark{background:#F6D38E}
+.close{float:right;font:11px var(--m);letter-spacing:.1em;text-transform:uppercase;color:#555}
+svg text{font-family:var(--m)}
+.kv{display:flex;justify-content:space-between;border-bottom:1px solid var(--l);padding:7px 0}.kv b{font:600 16px var(--m);color:var(--a)}
+</style>
+</head>
+<body>
+<header><h1>Do We Switch?</h1><span class="m" id="phase"></span><span class="clock" id="clock"></span><span class="tick" id="tick"></span></header>
+<main class="page" id="app"><p class="muted">Loading…</p></main>
+<div id="modal"></div>
+<script>
+const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
+const app=document.getElementById('app'),modal=document.getElementById('modal');
+function esc(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML}
+const hashLT=new URLSearchParams(location.hash.slice(1)).get('lt');
+if(hashLT){sessionStorage.setItem('m06-lt',hashLT);history.replaceState(null,'',location.pathname+location.search)}
+const LT=sessionStorage.getItem('m06-lt')||null;
+const ACCESS=sessionStorage.getItem('m06-access')||'';
+function tokenInfo(t){try{return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(t.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))))}catch{return null}}
+const launch=LT?tokenInfo(LT):null;
+let CODE=(new URLSearchParams(location.search).get('session')||launch?.session||'').toUpperCase();
+let CFG=null,PID=null,state=null,seen=0,pending=null,revealed=null,poll=null,err='';
+const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
+function headers(){const h={'Content-Type':'application/json'};if(LT)h['x-launch-token']=LT;else if(ACCESS)h['x-access-code']=ACCESS;return h}
+async function api(action,extra={}){
+  const r=await fetch(BASE+'/api/session',{method:'POST',headers:headers(),body:JSON.stringify({action,code:CODE,participantId:PID,launchToken:LT,...extra})});
+  let d={};try{d=await r.json()}catch{}
+  if(!r.ok){const e=new Error(d.message||d.error||'Request failed');e.data=d;e.status=r.status;throw e}
+  return d;
+}
+function pidKey(){return 'm06-pid-'+CODE}
+async function boot(){
+  const r=await fetch(BASE+'/api/config',{headers:headers()});
+  if(!r.ok){location.replace(BASE+'/launch.html'+location.search);return}
+  CFG=await r.json();
+  PID=localStorage.getItem(pidKey());
+  if(CODE&&(PID||launch))return join();
+  renderEntry();
+}
+function renderEntry(){
+  const platform=!!launch;
+  app.innerHTML=`<div class="card" style="max-width:560px"><div class="ey">Join your class session</div><h2>${esc(CFG.sim.title)}</h2>
+  <p class="muted">${esc(CFG.sim.cardLine)}</p>
+  <div class="field"><label>Session code</label><input id="code" value="${esc(CODE)}" maxlength="5" autocomplete="off"></div>
+  ${platform?'':'<div class="field"><label>Your name</label><input id="nm" maxlength="60"></div>'}
+  <div class="field" id="teamf" hidden><label>Team name (everyone in your team types the same name)</label><input id="team" maxlength="40"></div>
+  <div class="row"><button class="btn pri" id="go">Join</button></div>${err?`<div class="notice bad">${esc(err)}</div>`:''}</div>`;
+  document.getElementById('go').onclick=async()=>{CODE=document.getElementById('code').value.trim().toUpperCase();PID=localStorage.getItem(pidKey());await join({name:document.getElementById('nm')?.value,teamName:document.getElementById('team').value})};
+}
+async function join(extra={}){
+  try{
+    const d=await api('join',{name:extra.name,teamName:extra.teamName});
+    PID=d.participantId;localStorage.setItem(pidKey(),PID);err='';
+    await refresh();clearInterval(poll);poll=setInterval(refresh,1500);
+  }catch(e){
+    err={team_name_required:'This is a team session. Enter your team name.',name_required:'Enter your name.',no_such_session:'No session with that code.',session_closed:'That session has closed.'}[e.data?.error]||e.message;
+    renderEntry();if(e.data?.error==='team_name_required')document.getElementById('teamf').hidden=false;
+  }
+}
+async function refresh(){
+  if(pending)return; // never repaint under someone typing a reason
+  try{state=await api('state')}catch(e){if(e.status===403){localStorage.removeItem(pidKey());PID=null;clearInterval(poll);renderEntry()}return}
+  const s=state.session,v=state.view;
+  document.getElementById('phase').textContent=s.phase==='lobby'?'Briefing':s.phase==='playing'?'Live':'Ended';
+  document.getElementById('clock').textContent=s.phase==='lobby'?'':v.storyTime;
+  document.getElementById('tick').textContent=s.phase==='lobby'?'':'Card sales lost '+fmt(v.lost);
+  if(s.phase==='ended'){clearInterval(poll);return showReveal()}
+  render();
+}
+function docButtons(){return CFG.documents.map(d=>`<button class="btn" data-doc="${esc(d.id)}">${esc(d.title)}</button>`).join('')}
+function wireDocs(){app.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.doc))}
+function docHtml(d,highlight){return `<h3 style="margin:0">${esc(d.title)}</h3><div class="sub">${esc(d.subtitle)}</div>`+d.blocks.map(bl=>`${bl.heading?`<h4>${esc(bl.heading)}</h4>`:''}<p>${highlight&&bl.revealHighlight?`<mark>${esc(bl.text)}</mark>`:esc(bl.text)}</p>`).join('')}
+function openDoc(id,docs=CFG.documents,highlight=false){
+  const d=docs.find(x=>x.id===id);if(!d)return;
+  modal.innerHTML=`<div class="modal"><div class="doc"><button class="close" id="cx">Close</button>${docHtml(d,highlight)}</div></div>`;
+  document.getElementById('cx').onclick=()=>modal.innerHTML='';
+  if(!highlight)api('open_doc',{docId:id}).catch(()=>{});
+}
+function render(){
+  const s=state.session,v=state.view,me=state.me;
+  const who=me.team?`<p class="m">Team ${esc(me.team)} · ${me.mates} joined</p>`:'';
+  if(s.phase==='lobby'){
+    app.innerHTML=`<div class="grid"><div><div class="card"><div class="ey">Briefing</div>${CFG.briefing.map(p=>`<p>${esc(p)}</p>`).join('')}${who}</div></div>
+    <div><div class="card"><div class="ey">Documents</div><p class="muted">Open them now or during play.</p><div class="row">${docButtons()}</div></div>
+    <div class="notice">Waiting for your instructor to start the clock. Every report arrives at the same moment for the whole room.</div></div></div>`;
+    return wireDocs();
+  }
+  const fresh=v.reports.length>seen;seen=v.reports.length;
+  const reps=[...v.reports].reverse().map((r,i)=>`<div class="rep ${i===0&&fresh?'new':''}"><div class="src">Report ${r.n} · ${esc(r.source)}</div>${esc(r.text)}</div>`).join('');
+  let panel;
+  if(v.decision){
+    const what=v.decision.choice==='switch'?'switched to ClearPath':'committed to staying on Northline';
+    const by=v.decision.by?` (${esc(v.decision.by)} pressed)`:'';
+    const st=v.status?.kind==='switching'?'<div class="notice">Terminals re-registering. No store can take a card until this finishes.</div>':v.status?.text?`<div class="notice">${esc(v.status.text)}</div>`:'';
+    panel=`<div class="card"><div class="ey">Your decision</div><p>${me.team?'Your team':'You'} ${what} at report ${v.decision.atReport}${by}. It can't be undone.</p>${st}<p class="muted">Reports keep arriving until the clock ends.</p></div>`;
+  }else{
+    panel=`<div class="card"><div class="ey">Decide</div><div class="choice">
+      <button data-c="switch"><b>Switch to ClearPath</b><span>About eight minutes with no card payments while terminals re-register.</span></button>
+      <button data-c="stay"><b>Stay on Northline</b><span>Commit to holding on the primary provider.</span></button></div>
+      <p class="muted" style="margin-top:10px">You can also do neither. When the clock ends, that's recorded as no decision.</p></div>`;
+  }
+  app.innerHTML=`<div class="grid"><div><div class="card"><div class="ey">Reports</div>${reps}</div></div>
+  <div>${panel}<div class="card"><div class="ey">Documents</div><div class="row">${docButtons()}</div></div>
+  <div class="card"><div class="ey">Briefing</div>${CFG.briefing.map(p=>`<p class="muted">${esc(p)}</p>`).join('')}${who}</div></div></div>`;
+  wireDocs();
+  app.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>askReason(b.dataset.c));
+}
+function askReason(choice){
+  pending=choice;
+  const label=choice==='switch'?'Switch to ClearPath':'Stay on Northline';
+  modal.innerHTML=`<div class="modal"><div class="card" style="width:min(520px,100%)"><div class="ey">${label}</div>
+  <p>In one line, why?</p><textarea id="why" maxlength="${CFG.reasonMaxLength}"></textarea>
+  <div class="row"><button class="btn pri" id="ok">${label}</button><button class="btn" id="no">Not yet</button></div><div id="me"></div></div></div>`;
+  const ta=document.getElementById('why');ta.focus();
+  document.getElementById('no').onclick=()=>{pending=null;modal.innerHTML='';refresh()};
+  document.getElementById('ok').onclick=async()=>{
+    const reason=ta.value.trim();if(!reason){document.getElementById('me').innerHTML='<div class="notice bad">A one-line reason is required.</div>';return}
+    try{await api('decide',{choice,reason})}
+    catch(e){
+      if(e.data?.error!=='decision_already_made'){document.getElementById('me').innerHTML=`<div class="notice bad">${esc(e.data?.message||e.message)}</div>`;return}
+    }
+    pending=null;modal.innerHTML='';refresh();
+  };
+}
+function mapSvg(map){
+  const pos={stores:[170,30],northline:[70,120],clearpath:[270,120],meridian:[170,210],processor:[170,300]};
+  const edges=map.edges.map(([a,b])=>`<line x1="${pos[a][0]}" y1="${pos[a][1]+18}" x2="${pos[b][0]}" y2="${pos[b][1]-18}" stroke="#3A4659" stroke-width="2"/>`).join('');
+  const nodes=map.nodes.map(n=>{const [x,y]=pos[n.id];const f=n.fault;return `<g><rect x="${x-95}" y="${y-18}" width="190" height="36" fill="${f?'rgba(206,124,141,.15)':'#1D2637'}" stroke="${f?'#CE7C8D':'#3A4659'}" stroke-width="${f?2:1}"/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="10" fill="${f?'#E3B9C2':'#E8E4DA'}">${esc(n.label)}</text></g>`}).join('');
+  return `<svg viewBox="0 0 340 330" style="width:100%;max-width:460px;display:block;margin:auto">${edges}${nodes}</svg>`;
+}
+async function showReveal(){
+  if(!revealed){try{revealed=(await api('reveal')).reveal}catch(e){app.innerHTML=`<div class="notice bad">${esc(e.message)}</div>`;return}}
+  const r=revealed;
+  const reading=CFG.documents.map(d=>`<div class="kv"><span>${esc(d.title)}</span><b>${r.reading[d.id]?'Yes':'No'}</b></div>`).join('');
+  const win=r.switchWindow?`<p class="muted">Includes the switch window, ${esc(r.switchWindow.fromStory)} to ${esc(r.switchWindow.toStory)}, when no store could take a card.</p>`:'';
+  app.innerHTML=`<div class="grid"><div><div class="card"><div class="ey">What was underneath</div>${mapSvg(r.map)}<p class="notice">${esc(r.map.faultNote)}</p><p>${esc(r.caption)}</p></div></div>
+  <div><div class="card"><div class="ey">Your decision</div><p>${esc(r.decisionLine)}</p></div>
+  <div class="card"><div class="ey">${esc(r.readingLabel)}</div>${reading}</div>
+  <div class="card"><div class="ey">Card sales lost by 12:05</div><h2>${fmt(r.lostTotal)}</h2>${win}</div>
+  <div class="card"><div class="ey">The documents again</div><div class="row">${r.documents.map(d=>`<button class="btn" data-rdoc="${esc(d.id)}">${esc(d.title)}</button>`).join('')}</div></div></div></div>`;
+  app.querySelectorAll('[data-rdoc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.rdoc,r.documents,true));
+}
+boot();
+</script>
+</body>
+</html>

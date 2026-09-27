@@ -6,6 +6,11 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const q = new URLSearchParams(location.search);
   const sim = q.get('sim') || '';
+  const sessionTitles = {
+    'rapid-03-midland': 'Midland Equipment',
+    'rapid-05-approve': 'Would You Approve This?',
+    'rapid-06-switch': 'Do We Switch?'
+  };
   const session = (q.get('session') || '').trim().toUpperCase();
   const courseId = q.get('course') || '';
   let course = null, joinCode = '', me = null;
@@ -24,7 +29,7 @@
   }
   function heading() {
     return `<div class="eyebrow" style="margin-top:40px">Flexee RapidSims · class session</div>
-      <h1>Join <em>Midland Equipment</em></h1>
+      <h1>Join <em>${esc(sessionTitles[sim] || 'this simulation')}</em></h1>
       <p class="lede">${course ? esc(course.title) + ' · ' : ''}Session ${esc(session)}</p>`;
   }
   function showError(error) {
@@ -117,7 +122,7 @@
     };
   }
   async function start() {
-    if (sim !== 'rapid-03-midland' || !/^[A-Z2-9]{5}$/.test(session)) {
+    if (!Object.hasOwn(sessionTitles, sim) || !/^[A-Z2-9]{5}$/.test(session)) {
       app.innerHTML = '<h1>Invalid session link</h1><p>Ask your instructor to copy the session link again.</p>'; return;
     }
     try {
