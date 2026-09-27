@@ -50,14 +50,17 @@ svg text{font-family:var(--m)}
 const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
 const app=document.getElementById('app'),modal=document.getElementById('modal');
 function esc(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML}
-const hashLT=new URLSearchParams(location.hash.slice(1)).get('lt');
-if(hashLT){sessionStorage.setItem('m06-lt',hashLT);history.replaceState(null,'',location.pathname+location.search)}
-const LT=sessionStorage.getItem('m06-lt')||null;
+const INITIAL_SESSION=(new URLSearchParams(location.search).get('session')||'').trim().toUpperCase();
+const tokenKey='m06-lt:'+(INITIAL_SESSION||'solo');
+const hashLT=new URLSearchParams(location.hash.slice(1)).get('lt')||new URLSearchParams(location.search).get('lt');
+if(hashLT){sessionStorage.setItem(tokenKey,hashLT);const q=new URLSearchParams(location.search);q.delete('lt');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:''))}
+const LT=sessionStorage.getItem(tokenKey)||null;
 const ACCESS=sessionStorage.getItem('m06-access')||'';
 function tokenInfo(t){try{return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(t.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))))}catch{return null}}
 const launch=LT?tokenInfo(LT):null;
-let CODE=(new URLSearchParams(location.search).get('session')||launch?.session||'').toUpperCase();
-let CFG=null,PID=null,state=null,seen=0,pending=null,revealed=null,poll=null,err='';
+let CODE=INITIAL_SESSION;
+let CFG=null,PID=null,state=null,seen=0,pending=null,revealed=null,poll=null,err='',entryName='',entryTeam='',completionTimer=null;
+const soloKey='m06-solo'+(launch?.sub?':'+launch.sub:'');
 const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
 function headers(){const h={'Content-Type':'application/json'};if(LT)h['x-launch-token']=LT;else if(ACCESS)h['x-access-code']=ACCESS;return h}
 async function api(action,extra={}){
@@ -68,28 +71,59 @@ async function api(action,extra={}){
 }
 function pidKey(){return 'm06-pid-'+CODE}
 async function boot(){
-  const r=await fetch(BASE+'/api/config',{headers:headers()});
-  if(!r.ok){location.replace(BASE+'/launch.html'+location.search);return}
-  CFG=await r.json();
-  PID=localStorage.getItem(pidKey());
-  if(CODE&&(PID||launch))return join();
-  renderEntry();
+  try{
+    const r=await fetch(BASE+'/api/config'+(INITIAL_SESSION?'?session='+encodeURIComponent(INITIAL_SESSION):''),{headers:headers()});
+    const data=await r.json();
+    if(!r.ok){
+      if(INITIAL_SESSION&&['platform_signin_required','launch_token_invalid','access_code_required'].includes(data.error)){
+        sessionStorage.removeItem(tokenKey);location.replace(BASE+'/api/join?session='+encodeURIComponent(INITIAL_SESSION));return;
+      }
+      if(!INITIAL_SESSION&&!LT&&data.error==='access_code_required'){location.replace(BASE+'/launch.html');return}
+      throw new Error(data.message||data.error||'Unable to open the simulation.');
+    }
+    CFG=data;
+    if(INITIAL_SESSION){
+      PID=localStorage.getItem(pidKey());
+      if(launch)return join();
+      if(PID){try{await api('state');await refresh();startPoll();return}catch{PID=null;localStorage.removeItem(pidKey())}}
+    }else{
+      let saved=null;try{saved=JSON.parse(sessionStorage.getItem(soloKey)||'null')}catch{}
+      if(saved){
+        CODE=saved.code;PID=saved.pid;
+        try{await api('state');await refresh();startPoll();return}catch{sessionStorage.removeItem(soloKey);CODE='';PID=null}
+      }
+      if(launch?.sub)return solo();
+    }
+    renderEntry();
+  }catch(e){app.innerHTML=`<div class="notice bad">${esc(e.message)}</div><button class="btn" onclick="location.reload()">Try again</button>`}
 }
+function startPoll(){clearInterval(poll);if(state?.session.phase!=='ended')poll=setInterval(refresh,1500)}
 function renderEntry(){
-  const platform=!!launch;
-  app.innerHTML=`<div class="card" style="max-width:560px"><div class="ey">Join your class session</div><h2>${esc(CFG.sim.title)}</h2>
+  const classLink=!!INITIAL_SESSION;
+  app.innerHTML=`<div class="card" style="max-width:560px"><div class="ey">${classLink?'Join your class session':'Play on your own'}</div><h2>${esc(CFG.sim.title)}</h2>
   <p class="muted">${esc(CFG.sim.cardLine)}</p>
-  <div class="field"><label>Session code</label><input id="code" value="${esc(CODE)}" maxlength="5" autocomplete="off"></div>
-  ${platform?'':'<div class="field"><label>Your name</label><input id="nm" maxlength="60"></div>'}
-  <div class="field" id="teamf" hidden><label>Team name (everyone in your team types the same name)</label><input id="team" maxlength="40"></div>
-  <div class="row"><button class="btn pri" id="go">Join</button></div>${err?`<div class="notice bad">${esc(err)}</div>`:''}</div>`;
-  document.getElementById('go').onclick=async()=>{CODE=document.getElementById('code').value.trim().toUpperCase();PID=localStorage.getItem(pidKey());await join({name:document.getElementById('nm')?.value,teamName:document.getElementById('team').value})};
+  ${launch?'':`<div class="field"><label for="nm">Your name</label><input id="nm" maxlength="60" autocomplete="name" value="${esc(entryName)}"></div>`}
+  ${classLink?`<div class="field" id="teamf" hidden><label for="team">Team name (everyone in your team types the same name)</label><input id="team" maxlength="40" value="${esc(entryTeam)}"></div>`:''}
+  <div class="row"><button class="btn pri" id="go">${classLink?'Join session':'Open briefing'}</button></div>${err?`<div class="notice bad">${esc(err)}</div>`:''}</div>`;
+  document.getElementById('go').onclick=async()=>{
+    entryName=document.getElementById('nm')?.value.trim()||entryName;
+    entryTeam=document.getElementById('team')?.value.trim()||entryTeam;
+    document.getElementById('go').disabled=true;
+    if(classLink)await join({name:entryName,teamName:entryTeam});else await solo(entryName);
+  };
+}
+async function solo(name){
+  try{
+    const d=await api('solo',{name});CODE=d.session.code;PID=d.participantId;
+    sessionStorage.setItem(soloKey,JSON.stringify({code:CODE,pid:PID}));err='';
+    await refresh();startPoll();
+  }catch(e){err=e.data?.error==='name_required'?'Enter your name.':e.message;renderEntry()}
 }
 async function join(extra={}){
   try{
     const d=await api('join',{name:extra.name,teamName:extra.teamName});
     PID=d.participantId;localStorage.setItem(pidKey(),PID);err='';
-    await refresh();clearInterval(poll);poll=setInterval(refresh,1500);
+    await refresh();startPoll();
   }catch(e){
     err={team_name_required:'This is a team session. Enter your team name.',name_required:'Enter your name.',no_such_session:'No session with that code.',session_closed:'That session has closed.'}[e.data?.error]||e.message;
     renderEntry();if(e.data?.error==='team_name_required')document.getElementById('teamf').hidden=false;
@@ -120,8 +154,13 @@ function render(){
   if(s.phase==='lobby'){
     app.innerHTML=`<div class="grid"><div><div class="card"><div class="ey">Briefing</div>${CFG.briefing.map(p=>`<p>${esc(p)}</p>`).join('')}${who}</div></div>
     <div><div class="card"><div class="ey">Documents</div><p class="muted">Open them now or during play.</p><div class="row">${docButtons()}</div></div>
-    <div class="notice">Waiting for your instructor to start the clock. Every report arrives at the same moment for the whole room.</div></div></div>`;
-    return wireDocs();
+    ${s.solo?'<div class="notice">Read the briefing and documents, then start your ten-minute run.</div><button class="btn pri" id="begin">Start simulation</button><div id="begin-error"></div>':'<div class="notice">Waiting for your instructor to start the clock. Every report arrives at the same moment for the whole room.</div>'}</div></div>`;
+    wireDocs();
+    if(s.solo)document.getElementById('begin').onclick=async()=>{
+      document.getElementById('begin').disabled=true;
+      try{await api('start_solo');await refresh()}catch(e){document.getElementById('begin-error').textContent=e.message;document.getElementById('begin').disabled=false}
+    };
+    return;
   }
   const fresh=v.reports.length>seen;seen=v.reports.length;
   const reps=[...v.reports].reverse().map((r,i)=>`<div class="rep ${i===0&&fresh?'new':''}"><div class="src">Report ${r.n} · ${esc(r.source)}</div>${esc(r.text)}</div>`).join('');
@@ -167,7 +206,11 @@ function mapSvg(map){
   return `<svg viewBox="0 0 340 330" style="width:100%;max-width:460px;display:block;margin:auto">${edges}${nodes}</svg>`;
 }
 async function showReveal(){
-  if(!revealed){try{revealed=(await api('reveal')).reveal}catch(e){app.innerHTML=`<div class="notice bad">${esc(e.message)}</div>`;return}}
+  if(!revealed){try{
+    const data=await api('reveal');revealed=data.reveal;
+    clearTimeout(completionTimer);
+    if(data.completionRequired&&!data.completionReported)completionTimer=setTimeout(()=>{revealed=null;showReveal()},5000);
+  }catch(e){app.innerHTML=`<div class="notice bad">${esc(e.message)}</div><button class="btn" onclick="showReveal()">Try again</button>`;return}}
   const r=revealed;
   const reading=CFG.documents.map(d=>`<div class="kv"><span>${esc(d.title)}</span><b>${r.reading[d.id]?'Yes':'No'}</b></div>`).join('');
   const win=r.switchWindow?`<p class="muted">Includes the switch window, ${esc(r.switchWindow.fromStory)} to ${esc(r.switchWindow.toStory)}, when no store could take a card.</p>`:'';
@@ -178,6 +221,7 @@ async function showReveal(){
   <div class="card"><div class="ey">The documents again</div><div class="row">${r.documents.map(d=>`<button class="btn" data-rdoc="${esc(d.id)}">${esc(d.title)}</button>`).join('')}</div></div></div></div>`;
   app.querySelectorAll('[data-rdoc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.rdoc,r.documents,true));
 }
+window.addEventListener('pagehide',()=>{clearInterval(poll);clearTimeout(completionTimer)});
 boot();
 </script>
 </body>

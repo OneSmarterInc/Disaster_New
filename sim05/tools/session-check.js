@@ -197,9 +197,45 @@ const leaks = (obj, text, m) => ok(!JSON.stringify(obj).includes(text), m);
   const soloTok = { 'x-launch-token': token({ sub: 'u9' }) };
   eq((await call(finish, { code: solo.body.code, participantId: solo.body.participantId }, soloTok)).status, 409, 'cannot finish before the ending');
   advance(240 + 5 * 240);
+  process.env.PLATFORM_URL = 'https://platform.test';
+  let callbackOk = false, callbacks = 0;
+  global.fetch = async url => {
+    if (url.endsWith('/api/complete')) { callbacks++; return { ok: callbackOk, status: callbackOk ? 200 : 503, json: async () => ({}) }; }
+    return { ok: true };
+  };
   const fin = await call(finish, { code: solo.body.code, participantId: solo.body.participantId }, soloTok);
   eq(fin.status, 200, 'finish at the ending');
+  eq(fin.body.reported, false, 'failed callback stays unreported');
+  callbackOk = true;
+  eq((await call(finish, { code: solo.body.code, participantId: solo.body.participantId }, soloTok)).body.reported, true, 'failed callback retries successfully');
   eq((await call(finish, { code: solo.body.code, participantId: solo.body.participantId }, soloTok)).body.already, true, 'reported once only');
+  eq(callbacks, 2, 'one failed attempt and one successful callback');
+
+  const config = require('../api/config.js');
+  const guestRoom = (await api({ action: 'create', mode: 'individual' }, fac)).body.session.code;
+  eq((await call(config, { session: guestRoom })).status, 200, 'faculty code session link bypasses standalone gate');
+  eq((await call(config, { session: 'ZZZZZ' })).status, 404, 'invalid room cannot bypass gate');
+  const pf = { 'x-launch-token': token({ sub: 'faculty1', role: 'faculty', mode: 'session', course: 'class1' }) };
+  const ps = { 'x-launch-token': token({ sub: 'student1', course: 'class1' }) };
+  const classRoom = (await api({ action: 'create', mode: 'individual' }, pf)).body.session.code;
+  eq((await call(config, { session: classRoom })).body.error, 'platform_signin_required', 'account session still requires signed account');
+  eq((await call(config, { session: classRoom }, ps)).status, 200, 'signed class link needs no access code');
+  const joined = await api({ action: 'join', code: classRoom }, ps);
+  eq(joined.body.participantId, 'platform:student1', 'class link binds the student account');
+  await api({ action: 'control', code: classRoom, set: 'start' }, pf);
+  advance(240 + 5 * 240);
+  eq((await call(finish, { code: classRoom, participantId: joined.body.participantId }, ps)).body.reported, true, 'class result reaches platform');
+  eq((await api({ action: 'faculty_state', code: classRoom }, pf)).body.roster.length, 1, 'faculty sees the session participant');
+
+  process.env.ACCESS_CODE = 'standalone-test';
+  eq((await api({ action: 'solo', name: 'Guest' })).status, 401, 'direct solo requires access code');
+  const direct = await api({ action: 'solo', name: 'Guest' }, { 'x-access-code': 'standalone-test' });
+  eq(direct.status, 200, 'access code alone starts solo');
+  eq((await call(config, { session: direct.body.code })).status, 403, 'private solo code cannot become class invitation');
+  advance(240 + 5 * 240);
+  const before = callbacks;
+  eq((await call(finish, { code: direct.body.code, participantId: direct.body.participantId }, ps)).body.reason, 'standalone', 'standalone cannot be attached to faculty by adding a token');
+  eq(callbacks, before, 'standalone never sends faculty completion');
 
   console.log(`PASS session-check: ${n} assertions`);
 })().catch(e => { console.error(e); process.exit(1); });

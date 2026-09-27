@@ -10,8 +10,9 @@ module.exports = async (req, res) => {
   try {
     const sess = await store.getSession(code);
     if (!sess) return res.status(404).json({ error: 'no_such_session' });
+    if (sess.solo) return res.status(403).json({ error: 'private_session' });
     if (sess.state === 'closed') return res.status(410).json({ error: 'session_closed' });
-    return res.redirect(302, accountJoinUrl(sess));
+    return res.redirect(302, sess.platformAuth ? accountJoinUrl(sess) : '../index.html?session=' + encodeURIComponent(code));
   } catch (e) {
     console.error('session entry failed', e.message);
     return res.status(503).json({ error: 'session_entry_unavailable' });

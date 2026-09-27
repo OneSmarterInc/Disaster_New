@@ -1,5 +1,6 @@
 'use strict';
-const { body, announceOnce } = require('../lib/guard.js');
+const { body, announceOnce, checkAccess } = require('../lib/guard.js');
+const { randomBytes } = require('node:crypto');
 const store = require('../lib/store.js');
 const { verifyLaunch, reportCompletion } = require('../lib/launch.js');
 const { META } = require('../lib/meta.js');
@@ -9,7 +10,7 @@ const { accountJoinUrl, participantLaunch, participantError } = require('../lib/
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
-const newId = () => Math.random().toString(36).slice(2, 10);
+const newId = () => randomBytes(16).toString('hex');
 const now = () => (typeof module.exports._now === 'function' ? module.exports._now() : Date.now());
 
 function facultyRoster() {
@@ -39,7 +40,7 @@ function whoIsFaculty(req, b) {
 }
 
 function ownsSession(who, sess) {
-  if (!who) return false;
+  if (!who || sess.solo) return false;
   if (sess.platformAuth) {
     if (!who.platformAuth) return false;
     if (sess.courseId && sess.courseId !== who.courseId) return false;
@@ -73,7 +74,7 @@ function phaseOf(sess, t) {
 
 function publicSession(sess, t) {
   return { code: sess.code, mode: sess.mode, state: sess.state, phase: phaseOf(sess, t),
-    startedAt: sess.startedAt || null, serverNow: t, playMs: E.PLAY_MS };
+    solo: !!sess.solo, startedAt: sess.startedAt || null, serverNow: t, playMs: E.PLAY_MS };
 }
 
 async function ensureRun(code, runId, label) {
@@ -100,6 +101,7 @@ function summaryOf(run) {
 async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   if (!store.configured()) return res.status(503).json({ error: 'no_store', message: 'Session storage is not configured for this deployment.' });
   announceOnce(req);
 
@@ -108,7 +110,7 @@ async function handler(req, res) {
   const code = String(b.code || '').toUpperCase().trim();
 
   try {
-    if (['join', 'state', 'open_doc', 'decide', 'reveal'].includes(action)) {
+    if (['join', 'state', 'open_doc', 'decide', 'reveal', 'start_solo'].includes(action)) {
       const sess = await store.getSession(code);
       if (sess) {
         const err = participantError(req, b, sess, action === 'join' ? null : String(b.participantId || ''));
@@ -119,6 +121,39 @@ async function handler(req, res) {
     for (let attempt = 0; attempt < 5; attempt++) {
       const t = now();
       switch (action) {
+        case 'solo': {
+          if (!checkAccess(req, res)) return;
+          const launched = req.launch || null;
+          if (launched && (!participantLaunch(req, b) || launched.mode === 'session')) {
+            return res.status(403).json({ error: 'use_session' });
+          }
+          const name = String(launched ? launched.name || 'Participant' : b.name || '').trim().slice(0, 60);
+          if (!name) return res.status(400).json({ error: 'name_required' });
+          const c = newCode(), id = launched ? `platform:${launched.sub}` : newId();
+          const runId = `individual:${id}`;
+          const sess = { code: c, solo: true, owner: id, ownerId: launched?.sub || null,
+            platformAuth: !!launched, courseId: launched?.course || null,
+            mode: 'individual', state: 'open', startedAt: null, createdAt: t };
+          await store.putSession(c, sess);
+          const me = { id, name, runId, teamLabel: name, joinedAt: t };
+          if (!await store.compareAndSetParticipant(c, id, null, me)) throw new Error('solo participant write failed');
+          await ensureRun(c, runId, name);
+          return res.status(200).json({ participantId: id, session: publicSession(sess, t) });
+        }
+
+        case 'start_solo': {
+          const sess = await store.getSession(code);
+          if (!sess) return res.status(404).json({ error: 'no_such_session' });
+          if (!sess.solo || sess.owner !== String(b.participantId || '')) {
+            return res.status(403).json({ error: 'not_your_session' });
+          }
+          if (sess.state === 'closed') return res.status(410).json({ error: 'session_closed' });
+          if (sess.startedAt) return res.status(200).json({ session: publicSession(sess, t) });
+          const next = { ...sess, startedAt: t };
+          if (!await store.compareAndSetSession(code, sess, next)) continue;
+          return res.status(200).json({ session: publicSession(next, t) });
+        }
+
         case 'create': {
           const who = whoIsFaculty(req, b);
           if (!who) return res.status(401).json({ error: 'faculty_authorization_required' });
@@ -168,6 +203,7 @@ async function handler(req, res) {
         case 'join': {
           const sess = await store.getSession(code);
           if (!sess) return res.status(404).json({ error: 'no_such_session' });
+          if (sess.solo) return res.status(403).json({ error: 'private_session' });
           if (sess.state === 'closed') return res.status(410).json({ error: 'session_closed' });
           const launched = participantLaunch(req, b);
           if ((req.headers['x-launch-token'] || b.launchToken) && !launched) return res.status(401).json({ error: 'launch_token_invalid' });
@@ -241,18 +277,21 @@ async function handler(req, res) {
           if (phaseOf(sess, t) !== 'ended') return res.status(409).json({ error: 'not_ended' });
           const out = E.reveal(engineState(sess, run), t);
           if (sess.mode === 'team' && run.decision?.by) out.decisionLine += ` (${run.decision.by} pressed for the team.)`;
-          if (!me.completedAt) {
-            const next = { ...me, completedAt: t };
-            if (await store.compareAndSetParticipant(code, me.id, me, next)) {
-              const launched = participantLaunch(req, b);
-              if (launched) {
-                const openedBoth = cfg.documents.every(d => out.reading[d.id]);
-                await reportCompletion({ launch: launched, summary: summaryOf(run),
-                  metrics: { choice: run.decision?.choice || 'none', atReport: run.decision?.atReport || null, openedBoth } });
-              }
-            }
+          const launched = sess.platformAuth ? participantLaunch(req, b) : null;
+          let reported = !!me.reportedAt;
+          if (!launched) {
+            if (!me.completedAt) await store.compareAndSetParticipant(code, me.id, me, { ...me, completedAt: t });
+          } else if (!reported && (!me.reportingAt || t - me.reportingAt > 30000)) {
+            const next = { ...me, completedAt: me.completedAt || t, reportingAt: t };
+            if (!await store.compareAndSetParticipant(code, me.id, me, next)) continue;
+            const openedBoth = cfg.documents.every(d => out.reading[d.id]);
+            const result = await reportCompletion({ launch: launched, summary: summaryOf(run),
+              metrics: { choice: run.decision?.choice || 'none', atReport: run.decision?.atReport || null, openedBoth } });
+            const saved = { ...next, reportingAt: null, ...(result.ok ? { reportedAt: t } : {}) };
+            reported = result.ok && await store.compareAndSetParticipant(code, me.id, next, saved);
+            if (!result.ok) await store.compareAndSetParticipant(code, me.id, next, saved);
           }
-          return res.status(200).json({ reveal: out });
+          return res.status(200).json({ reveal: out, completionReported: reported, completionRequired: !!launched });
         }
 
         default:

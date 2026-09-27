@@ -116,10 +116,13 @@ const fill=(t,v)=>String(t).replace(/\{(\w+)\}/g,(_,k)=>k in v?v[k]:'');
 function entryParam(k){return new URLSearchParams(location.hash.slice(1)).get(k)||new URLSearchParams(location.search).get(k)}
 let ACCESS_CODE=entryParam('code')||sessionStorage.getItem('m05-access')||null;
 if(ACCESS_CODE)sessionStorage.setItem('m05-access',ACCESS_CODE);
-const LAUNCH_TOKEN=entryParam('lt')||null;
+const INITIAL_SESSION=(new URLSearchParams(location.search).get('session')||'').trim().toUpperCase();
+const tokenKey='m05-lt:'+(INITIAL_SESSION||'solo');
+const incomingToken=entryParam('lt');
+if(incomingToken)sessionStorage.setItem(tokenKey,incomingToken);
+const LAUNCH_TOKEN=incomingToken||sessionStorage.getItem(tokenKey)||null;
 let LAUNCH=null;
-if(LAUNCH_TOKEN){try{LAUNCH=JSON.parse(atob(LAUNCH_TOKEN.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')))}catch{}}
-const INITIAL_SESSION=(new URLSearchParams(location.search).get('session')||'').toUpperCase();
+if(LAUNCH_TOKEN){try{LAUNCH=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(LAUNCH_TOKEN.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))))}catch{}}
 if(LAUNCH_TOKEN||entryParam('code')){
   const keep=new URLSearchParams(location.search);keep.delete('lt');keep.delete('code');
   history.replaceState(null,'',location.pathname+(keep.toString()?'?'+keep.toString():''));
@@ -150,9 +153,10 @@ async function request(path,payload,method='POST'){
 const sessionApi=p=>request('/api/session',p);
 
 async function init(){
-  try{CFG=await request('/api/config',null,'GET')}
+  try{CFG=await request('/api/config'+(INITIAL_SESSION?'?session='+encodeURIComponent(INITIAL_SESSION):''),null,'GET')}
   catch(e){
-    if(INITIAL_SESSION&&['access_code_required','access_code_not_configured','launch_token_invalid'].includes(e.code)){
+    if(INITIAL_SESSION&&['access_code_required','access_code_not_configured','launch_token_invalid','platform_signin_required'].includes(e.code)){
+      sessionStorage.removeItem(tokenKey);
       location.replace(BASE+'/api/join?session='+encodeURIComponent(INITIAL_SESSION));return;
     }
     if(e.code==='access_code_required'&&!LAUNCH_TOKEN){
@@ -164,13 +168,13 @@ async function init(){
   }
   if(S.code){
     if(LAUNCH?.sub){
-      try{const d=await sessionApi({action:'join',code:S.code});S.pid=d.participantId;localStorage.setItem('m05-pid',S.pid)}
+      try{const d=await sessionApi({action:'join',code:S.code});S.pid=d.participantId;localStorage.setItem('m05-pid-'+S.code,S.pid)}
       catch(e){S.error=e.message;return renderJoin()}
     }else{
-      S.pid=localStorage.getItem('m05-pid')||'';
+      S.pid=localStorage.getItem('m05-pid-'+S.code)||'';
       if(!S.pid)return renderJoin();
     }
-    try{await poll()}catch{S.pid='';localStorage.removeItem('m05-pid');return renderJoin()}
+    try{await poll()}catch{S.pid='';localStorage.removeItem('m05-pid-'+S.code);return renderJoin()}
   }else{
     // Direct launch: one private run with its own clock, resumed on refresh.
     const soloKey='m05-solo'+(LAUNCH?.sub?':'+LAUNCH.sub:'');
@@ -178,6 +182,7 @@ async function init(){
     S.solo=true;
     if(saved){S.code=saved.code;S.pid=saved.pid;try{await poll()}catch{saved=null}}
     if(!saved){
+      if(!LAUNCH?.sub)return renderSolo();
       try{const d=await sessionApi({action:'solo'});S.code=d.code;S.pid=d.participantId;sessionStorage.setItem(soloKey,JSON.stringify({code:S.code,pid:S.pid}));await poll()}
       catch(e){app.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;return}
     }
@@ -186,20 +191,36 @@ async function init(){
   S.tick=setInterval(tickClock,250);
 }
 
+function renderSolo(){
+  app.innerHTML=`<section class="join"><h2>Play on your own</h2><p class="body">Enter your name to start a private run.</p>
+    <div class="field"><label for="sn">Your name</label><input id="sn" maxlength="60" autocomplete="name"></div>
+    <div class="decide" style="margin-top:20px"><button class="btn pri" id="sb">Start simulation</button></div><div id="solo-error"></div></section>`;
+  document.getElementById('sb').onclick=async()=>{
+    const name=document.getElementById('sn').value.trim();
+    if(!name){document.getElementById('solo-error').textContent='Enter your name.';return}
+    document.getElementById('sb').disabled=true;
+    try{
+      const d=await sessionApi({action:'solo',name});S.code=d.code;S.pid=d.participantId;S.solo=true;
+      sessionStorage.setItem('m05-solo',JSON.stringify({code:S.code,pid:S.pid}));
+      await poll();S.poll=setInterval(()=>poll().catch(()=>{}),2000);S.tick=setInterval(tickClock,250);
+    }catch(e){document.getElementById('solo-error').textContent=e.message;document.getElementById('sb').disabled=false}
+  };
+}
+
 function renderJoin(){
   app.innerHTML=`<section class="join"><h2>Join the session</h2>
-  <p class="body">Enter your name and the code on your instructor's screen.</p>
+  <p class="body">${INITIAL_SESSION?'Enter your name to join your instructor’s session.':'Enter your name and the code on your instructor’s screen.'}</p>
   ${S.error?`<div class="note bad">${esc(S.error)}</div>`:''}
   <div class="field"><label for="jn">Name</label><input id="jn" autocomplete="name" value="${esc(LAUNCH?.name||'')}" ${LAUNCH?.sub?'readonly':''}></div>
-  <div class="field"><label for="jc">Session code</label><input id="jc" maxlength="5" autocomplete="off" value="${esc(S.code)}"></div>
+  <div class="field" ${INITIAL_SESSION?'hidden':''}><label for="jc">Session code</label><input id="jc" maxlength="5" autocomplete="off" value="${esc(S.code)}"></div>
   <div class="decide" style="margin-top:20px"><button class="btn pri" id="jb">Join session</button></div></section>`;
   document.getElementById('jb').onclick=join;
 }
 async function join(){
   const name=document.getElementById('jn').value.trim(),code=document.getElementById('jc').value.trim().toUpperCase();
   try{
-    const d=await sessionApi({action:'join',code,name,participantId:localStorage.getItem('m05-pid')||undefined});
-    S.code=code;S.pid=d.participantId;localStorage.setItem('m05-pid',S.pid);S.error='';
+    const d=await sessionApi({action:'join',code,name,participantId:localStorage.getItem('m05-pid-'+code)||undefined});
+    S.code=code;S.pid=d.participantId;localStorage.setItem('m05-pid-'+S.code,S.pid);S.error='';
     const q=new URLSearchParams(location.search);q.set('session',code);history.replaceState(null,'',location.pathname+'?'+q);
     await poll();clearInterval(S.poll);S.poll=setInterval(()=>poll().catch(()=>{}),2000);clearInterval(S.tick);S.tick=setInterval(tickClock,250);
   }catch(e){S.error=e.message;renderJoin()}
@@ -210,7 +231,7 @@ async function poll(){
   S.session=d.session;S.view=d.view;S.syncedAt=performance.now();S.remaining=d.view.clock.remaining;
   const key=JSON.stringify([d.session.state,d.session.paused,d.view.clock.phase,d.view.clock.round,d.view.rounds,d.view.ending,d.view.canVote,d.view.team]);
   if(key!==S.shown){S.shown=key;if(!d.view.canVote)S.confirming=null;render()}
-  if(d.view.ending&&LAUNCH_TOKEN&&!S.reported){S.reported=true;request('/api/finish',{code:S.code,participantId:S.pid}).catch(()=>{S.reported=false})}
+  if(d.view.ending&&LAUNCH_TOKEN&&!S.reported){S.reported=true;request('/api/finish',{code:S.code,participantId:S.pid}).then(d=>{S.reported=!!d.reported}).catch(()=>{S.reported=false})}
 }
 
 function tickClock(){

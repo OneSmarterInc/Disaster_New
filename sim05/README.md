@@ -39,6 +39,12 @@ shows how many have decided while a round is open, never the split.
 Students who join after round 1 closes play, but stay out of the room totals.
 A direct launch with no session gets a private solo run with its own clock.
 
+Direct visitors use `ACCESS_CODE` and enter a name; those private runs do not send
+faculty completion records. Faculty invitation links bypass that access-code gate.
+Platform class links still require the student's signed account and matching
+course, and completion callbacks retry if the platform temporarily cannot accept
+the result. Refreshing the student page retains the scoped launch token and run.
+
 The lighter setting, chosen at creation, never names pregnancy anywhere.
 
 ## Checks

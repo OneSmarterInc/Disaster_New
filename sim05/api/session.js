@@ -1,4 +1,5 @@
 const { body, checkAccess } = require('../lib/guard.js');
+const { randomBytes } = require('node:crypto');
 const { syncCourseRoster, approvedIds } = require('../lib/session-roster.js');
 const store = require('../lib/store.js');
 const { verifyLaunch } = require('../lib/launch.js');
@@ -8,7 +9,7 @@ const { accountJoinUrl, participantLaunch, participantError } = require('../lib/
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
-const newId = () => Math.random().toString(36).slice(2, 10);
+const newId = () => randomBytes(16).toString('hex');
 
 function facultyRoster() {
   const raw = process.env.FACULTY_CODES || '';
@@ -39,7 +40,7 @@ function whoIsFaculty(req, b) {
 }
 
 function ownsSession(who, sess) {
-  if (!who) return false;
+  if (!who || sess.solo) return false;
   if (sess.platformAuth) {
     if (!who.platformAuth) return false;
     if (sess.courseId && sess.courseId !== who.courseId) return false;
@@ -182,6 +183,7 @@ module.exports = async (req, res) => {
         case 'solo': {
           if (!checkAccess(req, res)) return;
           const launch = req.launch || null;
+          if (launch && !participantLaunch(req, b)) return res.status(401).json({ error: 'launch_token_invalid' });
           if (launch && launch.mode === 'session') return res.status(409).json({ error: 'use_session' });
           const c = newCode();
           const id = launch ? `platform:${launch.sub}` : newId();

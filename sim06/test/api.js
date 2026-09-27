@@ -35,7 +35,8 @@ require.cache[path.resolve(__dirname, '../lib/store.js')] = { id: 'store', filen
 // Capture completion reports instead of posting them.
 const launchMod = require('../lib/launch.js');
 const reports = [];
-launchMod.reportCompletion = async x => { reports.push(x); return { ok: true }; };
+let reportOk = true;
+launchMod.reportCompletion = async x => { reports.push(x); return { ok: reportOk }; };
 
 const handler = require('../api/session.js');
 const cfgHandler = require('../api/config.js');
@@ -198,6 +199,55 @@ async function t(name, fn) { try { await fn(); pass++; } catch (e) { fail++; con
     assert.ok(!s.includes(cfg.reports[0].text));
     assert.ok(!s.includes(cfg.reveal.caption));
     assert.ok(s.includes('Meridian Transit Networks')); // the fine print is still there to find
+  });
+
+  await t('standalone access code creates a private run with a student-controlled start', async () => {
+    assert.strictEqual((await post({ action: 'solo', name: 'Guest' })).status, 401);
+    const direct = await post({ action: 'solo', name: 'Guest' }, { 'x-access-code': 'open' });
+    assert.strictEqual(direct.status, 200);
+    const c = direct.body.session.code, pid = direct.body.participantId;
+    assert.strictEqual(direct.body.session.solo, true);
+    assert.strictEqual(direct.body.session.phase, 'lobby');
+    assert.strictEqual((await post({ action: 'join', code: c, name: 'Stranger' })).status, 403);
+    assert.strictEqual((await post({ action: 'start_solo', code: c, participantId: 'wrong' })).status, 403);
+    assert.strictEqual((await post({ action: 'start_solo', code: c, participantId: pid })).body.session.phase, 'playing');
+    assert.strictEqual((await post({ action: 'start_solo', code, participantId: a })).status, 403);
+    assert.strictEqual((await call(cfgHandler, { session: c })).status, 403);
+    clock += 30_000;
+    assert.strictEqual((await post({ action: 'decide', code: c, participantId: pid, choice: 'stay', reason: 'Read both documents' })).status, 200);
+    clock += 700_000;
+    const before = reports.length;
+    const withToken = tok({ sub: 'unrelated', role: 'student', sim: cfg.sim.id });
+    const end = await post({ action: 'reveal', code: c, participantId: pid, launchToken: withToken });
+    assert.strictEqual(end.status, 200);
+    assert.strictEqual(end.body.completionRequired, false);
+    assert.strictEqual(reports.length, before);
+    assert.strictEqual((await post({ action: 'faculty_state', code: c, facultyCode: 'fac123' })).status, 403);
+  });
+
+  await t('class links bypass access code while preserving account and course checks', async () => {
+    const guest = (await post({ action: 'create', mode: 'individual', facultyCode: 'fac123' })).body.session.code;
+    delete process.env.ACCESS_CODE;
+    assert.strictEqual((await call(cfgHandler, { session: guest })).status, 200);
+    assert.strictEqual((await call(cfgHandler, { session: 'ZZZZZ' })).status, 404);
+    const fac = tok({ sub: 'f2', role: 'faculty', sim: cfg.sim.id, course: 'c2', mode: 'session', name: 'Faculty' });
+    const pc = (await post({ action: 'create', mode: 'individual', launchToken: fac })).body.session.code;
+    const stu = tok({ sub: 's2', role: 'student', sim: cfg.sim.id, course: 'c2', name: 'Student' });
+    const wrong = tok({ sub: 's2', role: 'student', sim: cfg.sim.id, course: 'wrong' });
+    assert.strictEqual((await call(cfgHandler, { session: pc })).body.error, 'platform_signin_required');
+    assert.strictEqual((await call(cfgHandler, { session: pc }, { 'x-launch-token': wrong })).status, 403);
+    assert.strictEqual((await call(cfgHandler, { session: pc }, { 'x-launch-token': stu })).status, 200);
+    const pid = (await post({ action: 'join', code: pc, launchToken: stu })).body.participantId;
+    await post({ action: 'control', code: pc, set: 'start', launchToken: fac });
+    clock += 700_000;
+    reportOk = false;
+    assert.strictEqual((await post({ action: 'reveal', code: pc, participantId: pid, launchToken: stu })).body.completionReported, false);
+    reportOk = true;
+    const before = reports.length;
+    assert.strictEqual((await post({ action: 'reveal', code: pc, participantId: pid, launchToken: stu })).body.completionReported, true);
+    await post({ action: 'reveal', code: pc, participantId: pid, launchToken: stu });
+    assert.strictEqual(reports.length, before + 1);
+    assert.strictEqual(reports.at(-1).launch.course, 'c2');
   });
 
   console.log(`${pass} passed, ${fail} failed`);

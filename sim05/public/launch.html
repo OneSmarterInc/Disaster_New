@@ -26,11 +26,13 @@ const params=new URLSearchParams(location.search);params.delete('lt');const q=pa
 function goWithToken(){const target=faculty?'/instructor.html':'/index.html';location.replace(BASE+target+(q?'?'+q:'')+'#lt='+encodeURIComponent(token))}
 if(token){goWithToken()}
 else if(params.get('session')){
+  sessionStorage.removeItem('m05-lt:'+params.get('session').trim().toUpperCase());
   document.getElementById('gate').hidden=true;
   document.getElementById('message').textContent='Opening your class session…';
   location.replace(BASE+'/api/join?session='+encodeURIComponent(params.get('session')));
 }
 else{
+  sessionStorage.removeItem('m05-lt:solo');
   const input=document.getElementById('code'),button=document.getElementById('open'),err=document.getElementById('err');
   const remembered=sessionStorage.getItem('m05-access')||'';if(remembered)input.value=remembered;
   async function verify(){

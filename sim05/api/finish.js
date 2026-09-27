@@ -22,6 +22,7 @@ module.exports = async (req, res) => {
     for (let attempt = 0; attempt < 5; attempt++) {
       const sess = await store.getSession(code);
       if (!sess) return res.status(404).json({ error: 'no_such_session' });
+      if (!sess.platformAuth) return res.status(200).json({ ok: true, reported: false, reason: 'standalone' });
       const denied = participantError(req, b, sess, pid);
       if (denied) return res.status(denied.status).json({ error: denied.error });
       const participants = await store.getParticipants(code);
@@ -30,10 +31,13 @@ module.exports = async (req, res) => {
       if (me.reportedAt) return res.status(200).json({ ok: true, reported: true, already: true });
       const done = R.completionSummary(sess, participants, pid, now);
       if (!done) return res.status(409).json({ error: 'not_finished' });
-      const next = { ...me, reportedAt: now };
+      if (me.reportingAt && now - me.reportingAt < 30000) return res.status(200).json({ ok: true, reported: false, pending: true });
+      const next = { ...me, reportingAt: now };
       if (!await store.compareAndSetParticipant(code, pid, me, next, sess)) continue;
       const r = await reportCompletion({ launch, summary: done.summary, metrics: done.metrics });
-      return res.status(200).json({ ok: true, reported: !!r.ok });
+      const saved = { ...next, reportingAt: null, ...(r.ok ? { reportedAt: now } : {}) };
+      const persisted = await store.compareAndSetParticipant(code, pid, next, saved, sess);
+      return res.status(200).json({ ok: true, reported: !!r.ok && persisted });
     }
     return res.status(409).json({ error: 'busy_retry' });
   } catch (e) {
