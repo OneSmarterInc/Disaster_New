@@ -90,7 +90,7 @@ async function boot(){
       let saved=null;try{saved=JSON.parse(sessionStorage.getItem(soloKey)||'null')}catch{}
       if(saved){
         CODE=saved.code;PID=saved.pid;
-        try{await api('state');await refresh();startPoll();return}catch{sessionStorage.removeItem(soloKey);CODE='';PID=null}
+        try{state=await api('state');renderResume();return}catch{sessionStorage.removeItem(soloKey);CODE='';PID=null}
       }
       if(launch?.sub)return solo();
     }
@@ -98,6 +98,25 @@ async function boot(){
   }catch(e){app.innerHTML=`<div class="notice bad">${esc(e.message)}</div><button class="btn" onclick="location.reload()">Try again</button>`}
 }
 function startPoll(){clearInterval(poll);if(state?.session.phase!=='ended')poll=setInterval(refresh,1500)}
+function renderResume(){
+  const s=state.session,v=state.view;
+  const status=s.phase==='ended'?'This run has ended. You can read its explanation.':s.phase==='lobby'?'Your briefing is ready. The clock has not started.':'You have an earlier run in progress. Its clock continues while this page is closed.';
+  const decision=v.decision?`<p>Your recorded decision: <b>${v.decision.choice==='switch'?'Switch to ClearPath':'Stay on Northline'}</b>. It is final for this run.</p>`:'';
+  app.innerHTML=`<div class="card" style="max-width:680px"><div class="ey">Your previous run</div><h2>${esc(CFG.sim.title)}</h2><p>${status}</p>${decision}
+  <div class="row"><button class="btn pri" id="continue-run">${s.phase==='ended'?'View explanation':s.phase==='lobby'?'Open briefing':'Continue run'}</button><button class="btn" id="new-run">Start a new run</button></div>
+  <p class="muted" style="margin-top:12px">A new run opens the briefing and gives you a separate attempt.</p><div id="resume-error"></div></div>`;
+  document.getElementById('continue-run').onclick=async()=>{await refresh();startPoll()};
+  document.getElementById('new-run').onclick=async()=>{
+    document.getElementById('new-run').disabled=true;
+    const name=state.me?.name||entryName;
+    try{
+      const d=await api('solo',{name});CODE=d.session.code;PID=d.participantId;
+      sessionStorage.setItem(soloKey,JSON.stringify({code:CODE,pid:PID}));
+      seen=0;pending=null;revealed=null;err='';clearTimeout(completionTimer);
+      await refresh();startPoll();
+    }catch(e){document.getElementById('resume-error').textContent=e.message;document.getElementById('new-run').disabled=false}
+  };
+}
 function renderEntry(){
   const classLink=!!INITIAL_SESSION;
   app.innerHTML=`<div class="card" style="max-width:560px"><div class="ey">${classLink?'Join your class session':'Play on your own'}</div><h2>${esc(CFG.sim.title)}</h2>
@@ -152,7 +171,9 @@ function render(){
   const s=state.session,v=state.view,me=state.me;
   const who=me.team?`<p class="m">Team ${esc(me.team)} · ${me.mates} joined</p>`:'';
   if(s.phase==='lobby'){
-    app.innerHTML=`<div class="grid"><div><div class="card"><div class="ey">Briefing</div>${CFG.briefing.map(p=>`<p>${esc(p)}</p>`).join('')}${who}</div></div>
+    app.innerHTML=`<div class="card"><div class="ey">How to play</div><h2>Read first. Then decide whether to switch.</h2>
+    <ol><li>Read the briefing and open both provider documents.</li><li>During the ten-minute run, new reports arrive automatically. You can wait and gather more information.</li><li>Choose whether to switch to ClearPath or stay on Northline, write one line explaining why, then confirm. Your confirmed decision is final for that run.</li><li>Keep reading until the clock ends. The explanation opens automatically.</li></ol></div>
+    <div class="grid"><div><div class="card"><div class="ey">Briefing</div>${CFG.briefing.map(p=>`<p>${esc(p)}</p>`).join('')}${who}</div></div>
     <div><div class="card"><div class="ey">Documents</div><p class="muted">Open them now or during play.</p><div class="row">${docButtons()}</div></div>
     ${s.solo?'<div class="notice">Read the briefing and documents, then start your ten-minute run.</div><button class="btn pri" id="begin">Start simulation</button><div id="begin-error"></div>':'<div class="notice">Waiting for your instructor to start the clock. Every report arrives at the same moment for the whole room.</div>'}</div></div>`;
     wireDocs();
@@ -169,12 +190,13 @@ function render(){
     const what=v.decision.choice==='switch'?'switched to ClearPath':'committed to staying on Northline';
     const by=v.decision.by?` (${esc(v.decision.by)} pressed)`:'';
     const st=v.status?.kind==='switching'?'<div class="notice">Terminals re-registering. No store can take a card until this finishes.</div>':v.status?.text?`<div class="notice">${esc(v.status.text)}</div>`:'';
-    panel=`<div class="card"><div class="ey">Your decision</div><p>${me.team?'Your team':'You'} ${what} at report ${v.decision.atReport}${by}. It can't be undone.</p>${st}<p class="muted">Reports keep arriving until the clock ends.</p></div>`;
+    panel=`<div class="card"><div class="ey">Your decision</div><p>${me.team?'Your team':'You'} ${what} at report ${v.decision.atReport}${by}. It can't be undone.</p>${st}
+    <h3>What to do next</h3><p class="muted">Read new reports as they appear and open the two documents below. Your decision is recorded, so there is nothing else to submit. Stay until the clock ends to see what happened and the explanation.</p></div>`;
   }else{
     panel=`<div class="card"><div class="ey">Decide</div><div class="choice">
       <button data-c="switch"><b>Switch to ClearPath</b><span>About eight minutes with no card payments while terminals re-register.</span></button>
       <button data-c="stay"><b>Stay on Northline</b><span>Commit to holding on the primary provider.</span></button></div>
-      <p class="muted" style="margin-top:10px">You can also do neither. When the clock ends, that's recorded as no decision.</p></div>`;
+      <p class="muted" style="margin-top:10px">Read the reports and both documents before deciding. New reports arrive automatically; you can wait. A confirmed choice is final for this run. If you make no choice before the clock ends, that is recorded as no decision.</p></div>`;
   }
   app.innerHTML=`<div class="grid"><div><div class="card"><div class="ey">Reports</div>${reps}</div></div>
   <div>${panel}<div class="card"><div class="ey">Documents</div><div class="row">${docButtons()}</div></div>
@@ -186,8 +208,8 @@ function askReason(choice){
   pending=choice;
   const label=choice==='switch'?'Switch to ClearPath':'Stay on Northline';
   modal.innerHTML=`<div class="modal"><div class="card" style="width:min(520px,100%)"><div class="ey">${label}</div>
-  <p>In one line, why?</p><textarea id="why" maxlength="${CFG.reasonMaxLength}"></textarea>
-  <div class="row"><button class="btn pri" id="ok">${label}</button><button class="btn" id="no">Not yet</button></div><div id="me"></div></div></div>`;
+  <p>This decision is final for this run. Choose “Not yet” to keep reading.</p><p>In one line, why?</p><textarea id="why" maxlength="${CFG.reasonMaxLength}"></textarea>
+  <div class="row"><button class="btn pri" id="ok">Confirm: ${label}</button><button class="btn" id="no">Not yet</button></div><div id="me"></div></div></div>`;
   const ta=document.getElementById('why');ta.focus();
   document.getElementById('no').onclick=()=>{pending=null;modal.innerHTML='';refresh()};
   document.getElementById('ok').onclick=async()=>{
