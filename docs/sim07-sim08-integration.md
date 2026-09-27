@@ -17,11 +17,10 @@ creates unpublished catalogue records; it does not publish a simulation.
    `npm run build` and the static output directory `public`; Vercel also bundles
    each project's `api` functions.
 2. Set the variables below for Production, then deploy both projects.
-3. Copy each project's stable production URL from **Settings → Domains**.
-   These domains are not yet confirmed. Do not substitute guessed project names.
-4. Add the six rewrites below to `platform/vercel.json` using those actual
-   domains. Copy the `/sim05/(.*)` noindex/no-store header block for `/sim07/(.*)`
-   and `/sim08/(.*)`.
+3. The confirmed production domains are `https://sim07.vercel.app` and
+   `https://sim08.vercel.app`.
+4. The six rewrites and noindex/no-store headers are configured in
+   `platform/vercel.json` for those domains.
 5. Push and redeploy **disaster-new** (Root Directory `platform`). Deploying only
    the sim projects does not update the platform routes. Keep the simulations
    unpublished until the canonical routes have been verified.
@@ -52,15 +51,16 @@ Sim08 needs Redis for private solo play as well as class sessions. Sim07's
 standalone decision runs locally; its facilitated sessions use Redis. The two
 sims use different Redis key prefixes and can share one Redis database.
 
-### Routes to fill after deployment
+### Configured routes
 
-- `/sim07` and `/sim07/` → `https://<actual-sim07-domain>/launch.html`
-- `/sim07/:path*` → `https://<actual-sim07-domain>/:path*`
-- `/sim08` and `/sim08/` → `https://<actual-sim08-domain>/launch.html`
-- `/sim08/:path*` → `https://<actual-sim08-domain>/:path*`
+- `/sim07` and `/sim07/` → `https://sim07.vercel.app/launch.html`
+- `/sim07/:path*` → `https://sim07.vercel.app/:path*`
+- `/sim08` and `/sim08/` → `https://sim08.vercel.app/launch.html`
+- `/sim08/:path*` → `https://sim08.vercel.app/:path*`
 
-These are instructions, not active placeholder rewrites. The platform's live
-Sim05/Sim06 routes stay configured to their confirmed domains.
+The canonical roots open each sim's launch page. Wildcard routes proxy its
+assets and API functions. The platform must deploy this configuration for the
+canonical URLs to become available.
 
 ## Entry and results
 
