@@ -8,17 +8,17 @@ and registration creates new catalogue records as unpublished.
 Before traffic or publication, create the Vercel projects and configure each
 project's `LAUNCH_SECRET` (the same value as the platform), `PLATFORM_URL`,
 `SIM_URL` (`https://rapidsims.flexee.org/sim05` or `/sim06`), and Upstash REST
-credentials. Use the actual stable project aliases from Vercel Settings →
-Domains for the platform rewrites:
+credentials. The platform rewrites use the confirmed production domains:
 
-- `/sim05`, `/sim05/` -> `https://<sim05 alias>/launch.html`
-- `/sim05/:path*` -> `https://<sim05 alias>/:path*`
-- `/sim06`, `/sim06/` -> `https://<sim06 alias>/launch.html`
-- `/sim06/:path*` -> `https://<sim06 alias>/:path*`
+- `/sim05`, `/sim05/` -> `https://sim05.vercel.app/launch.html`
+- `/sim05/:path*` -> `https://sim05.vercel.app/:path*`
+- `/sim06`, `/sim06/` -> `https://sim06.vercel.app/launch.html`
+- `/sim06/:path*` -> `https://sim06.vercel.app/:path*`
 
-Copy the `/sim03/(.*)` noindex/no-store header block for both prefixes.
-Do not guess these aliases. The platform routes are intentionally deferred
-until the actual project domains exist.
+Both prefixes have noindex/no-store response headers. Deploy the platform
+project (`disaster-new`, Root Directory `platform`) after changing these
+rewrites; deploying only the sim projects does not update platform routes.
+Keep each `SIM_URL` on the canonical `rapidsims.flexee.org` URL above.
 
 Check each `/api/health` with the health key, confirm the shared launch-secret
 fingerprint and canonical `registersAs` URL, and confirm each record appears

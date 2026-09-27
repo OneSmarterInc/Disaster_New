@@ -91,6 +91,30 @@
     {
       "source": "/sim03/:path*",
       "destination": "https://sim-03-midland.vercel.app/:path*"
+    },
+    {
+      "source": "/sim05",
+      "destination": "https://sim05.vercel.app/launch.html"
+    },
+    {
+      "source": "/sim05/",
+      "destination": "https://sim05.vercel.app/launch.html"
+    },
+    {
+      "source": "/sim05/:path*",
+      "destination": "https://sim05.vercel.app/:path*"
+    },
+    {
+      "source": "/sim06",
+      "destination": "https://sim06.vercel.app/launch.html"
+    },
+    {
+      "source": "/sim06/",
+      "destination": "https://sim06.vercel.app/launch.html"
+    },
+    {
+      "source": "/sim06/:path*",
+      "destination": "https://sim06.vercel.app/:path*"
     }
   ],
   "headers": [
@@ -140,6 +164,32 @@
     },
     {
       "source": "/sim03/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/sim05/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/sim06/(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",
