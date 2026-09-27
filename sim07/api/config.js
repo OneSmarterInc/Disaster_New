@@ -1,4 +1,5 @@
 const { checkConfigAccess } = require('../lib/session-entry.js');
+const { announceOnce } = require('../lib/guard.js');
 const { META, SETTINGS, PRE_REVEAL } = require('../data/config.js');
 
 // Pre-reveal copy only. Reveal stages are never part of this payload.
@@ -22,6 +23,9 @@ function publicConfig() {
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'GET or POST only' });
+  // Keep registration inside the request lifetime, including code-entry probes.
+  // Failure remains non-blocking for access and is retried on the next request.
+  await announceOnce(req);
   if (!await checkConfigAccess(req, res)) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   return res.status(200).json({ ...publicConfig(), platformUrl: process.env.PLATFORM_URL || 'https://rapidsims.flexee.org' });

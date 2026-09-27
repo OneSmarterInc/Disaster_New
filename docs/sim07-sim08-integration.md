@@ -26,7 +26,9 @@ creates unpublished catalogue records; it does not publish a simulation.
    unpublished until the canonical routes have been verified.
 6. Visit each canonical `/sim07/api/config` or `/sim08/api/config` endpoint to
    trigger its signed catalogue announcement. An unsigned request can return
-   401 while still announcing the sim. `/api/health` is read-only and does not
+   401 after attempting to announce the sim. The config handler waits for the
+   registration attempt before responding; a failed attempt is retried on the
+   next request. `/api/health` is read-only and does not
    register anything.
 7. Test the student Play button and a faculty invitation through the platform,
    including account sign-in, access release, an individual session, a team
@@ -83,6 +85,7 @@ canonical URLs to become available.
 (cd sim08 && npm test)
 node platform/tools/session-sims-check.js
 node platform/tools/new-sims-entry-check.js
+node platform/tools/new-sims-registration-check.js
 ```
 
 The client check executes the real inline page scripts with real handlers and

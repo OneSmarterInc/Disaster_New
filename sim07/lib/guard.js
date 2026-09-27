@@ -9,8 +9,16 @@ function canonicalUrl(req) {
   return host ? `${proto}://${host}` : '';
 }
 
+const announcement = Symbol('catalogueAnnouncement');
 function announceOnce(req) {
-  try { announce(S.META, canonicalUrl(req)); } catch {}
+  // Share this request's attempt so a failed registration is retried by the
+  // next request, rather than restarted after config has already awaited it.
+  if (!req[announcement]) {
+    req[announcement] = Promise.resolve()
+      .then(() => announce(S.META, canonicalUrl(req)))
+      .catch(() => {});
+  }
+  return req[announcement];
 }
 
 function checkAccess(req, res) {

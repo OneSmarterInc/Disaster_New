@@ -10,6 +10,7 @@ on:
       - 'platform/public/session-entry.js'
       - 'platform/tools/session-sims-check.js'
       - 'platform/tools/new-sims-entry-*.js'
+      - 'platform/tools/new-sims-registration-check.js'
       - 'sim07/**'
       - 'sim08/**'
       - '.github/workflows/session-sims-checks.yml'
@@ -23,6 +24,7 @@ on:
       - 'platform/public/session-entry.js'
       - 'platform/tools/session-sims-check.js'
       - 'platform/tools/new-sims-entry-*.js'
+      - 'platform/tools/new-sims-registration-check.js'
       - 'sim07/**'
       - 'sim08/**'
       - '.github/workflows/session-sims-checks.yml'
@@ -42,3 +44,5 @@ jobs:
         run: node platform/tools/session-sims-check.js
       - name: Sim07 and Sim08 client entry and completion
         run: node platform/tools/new-sims-entry-check.js
+      - name: Sim07 and Sim08 catalogue registration lifetime
+        run: node platform/tools/new-sims-registration-check.js
