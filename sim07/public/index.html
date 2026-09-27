@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Would You Have Bought It?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#0E1524;--panel:#151D2D;--line:#27324A;--ink:#E8E4DA;--dim:#98A0B3;--amber:#F0A63C;--paper:#EFE9DC;--paper-ink:#23201A;--serif:'Newsreader',Georgia,serif;--mono:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:18px/1.6 var(--serif)}
+a{color:var(--amber)}
+button,input,textarea{font:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.bar{position:sticky;top:0;z-index:2;display:flex;gap:18px;align-items:center;justify-content:space-between;padding:12px clamp(16px,4vw,40px);background:rgba(14,21,36,.94);border-bottom:1px solid var(--line);font:13px var(--mono)}
+.bar nav{display:flex;gap:4px;flex-wrap:wrap}
+.bar nav button{background:none;border:1px solid transparent;color:var(--dim);padding:5px 9px;cursor:pointer;font:13px var(--mono)}
+.bar nav button[aria-current="page"]{color:var(--ink);border-color:var(--line)}
+.bar nav button:disabled{opacity:.35;cursor:default}
+.clock{color:var(--amber);white-space:nowrap}
+.clock.low{color:#FF8A6B}
+main{max-width:720px;margin:0 auto;padding:clamp(24px,5vw,56px) clamp(16px,4vw,24px) 80px}
+h1{font-weight:400;font-size:clamp(30px,5vw,44px);line-height:1.15;margin:0 0 18px;letter-spacing:-.01em}
+h2{font-weight:500;font-size:22px;margin:34px 0 10px}
+.dim{color:var(--dim)}
+.date{font:14px var(--mono);color:var(--amber);margin-bottom:10px}
+.note{border-left:2px solid var(--amber);padding:4px 0 4px 16px;color:var(--ink);font-style:italic;margin:26px 0}
+table{width:100%;border-collapse:collapse;font-size:16px}
+th,td{text-align:left;vertical-align:top;padding:9px 0;border-bottom:1px solid var(--line)}
+th{width:36%;padding-right:18px;font-weight:400;color:var(--dim)}
+.small{font-size:14px}
+.adviser{border-top:1px solid var(--line);padding:22px 0}
+.adviser header{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
+.adviser b{font-weight:500}
+.adviser .role{color:var(--dim);font-size:15px}
+.adviser .pos{font:13px var(--mono);color:var(--amber)}
+.adviser p{margin:10px 0 0}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.choice{padding:18px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;text-align:left}
+.choice b{display:block;font-size:22px;font-weight:500}
+.choice span{color:var(--dim);font-size:15px}
+.choice[aria-pressed="true"]{border-color:var(--amber);box-shadow:inset 0 0 0 1px var(--amber)}
+textarea,input[type=text]{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:12px 14px;font-size:17px}
+textarea{min-height:130px;resize:vertical;line-height:1.5}
+.count{font:13px var(--mono);color:var(--dim);margin-top:6px}
+.btn{display:inline-block;margin-top:18px;background:var(--amber);color:#1A1206;border:0;padding:12px 18px;font:500 14px var(--mono);cursor:pointer}
+.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.err{color:#FFB4A0;margin-top:12px;min-height:1em}
+.confirm{margin-top:18px;padding:16px;border:1px solid var(--amber)}
+/* The one memorable element: the student's own words, on paper, held above the decade that follows. */
+.memo{background:var(--paper);color:var(--paper-ink);padding:22px 24px 20px;margin:0 0 34px;box-shadow:0 18px 40px rgba(0,0,0,.35);transform:rotate(-.4deg)}
+.memo .head{font:13px var(--mono);display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(35,32,26,.25);padding-bottom:8px;margin-bottom:12px}
+.memo q{display:block;font-size:20px;line-height:1.5;quotes:none}
+.memo .who{font:13px var(--mono);margin-top:12px;opacity:.7}
+.stage{border-top:1px solid var(--line);padding:26px 0 8px}
+.stage .yr{font:15px var(--mono);color:var(--amber)}
+.stage h2{margin-top:6px}
+.stage.past{opacity:.62}
+.stage.current{animation:arrive .9s ease-out}
+.names{font-size:clamp(24px,4vw,30px);line-height:1.3;margin:22px 0 6px;padding:16px 0;border-top:1px solid var(--amber);border-bottom:1px solid var(--amber)}
+.echo{margin:14px 0 18px;padding:14px 18px;background:var(--paper);color:var(--paper-ink);font-size:19px;line-height:1.5}
+.waiting{font:14px var(--mono);color:var(--dim);margin-top:26px}
+@keyframes arrive{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.stage.current{animation:none}}
+@media (max-width:560px){.choices{grid-template-columns:1fr}th{width:42%}.bar{flex-direction:column;align-items:flex-start;gap:6px}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar" hidden><nav id="nav" aria-label="Sections"></nav><span class="clock" id="clock" aria-live="off"></span></div>
+<main id="app"><p class="dim">Loading…</p></main>
+<script>
+const app=document.getElementById('app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
+function entryParam(k){return new URLSearchParams(location.hash.slice(1)).get(k)||new URLSearchParams(location.search).get(k)}
+let ACCESS_CODE=sessionStorage.getItem('w07-access')||null;
+const SESSION_CODE=(new URLSearchParams(location.search).get('session')||'').trim().toUpperCase();
+const tokenKey='w07-lt:'+(SESSION_CODE||'solo');
+let LAUNCH_TOKEN=entryParam('lt')||sessionStorage.getItem(tokenKey)||null;
+let LAUNCH=null;
+if(LAUNCH_TOKEN){try{LAUNCH=JSON.parse(atob(LAUNCH_TOKEN.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')))}catch{}}
+if(LAUNCH_TOKEN){sessionStorage.setItem(tokenKey,LAUNCH_TOKEN);if(LAUNCH&&(LAUNCH.role==='faculty'||LAUNCH.role==='faculty_preview'))sessionStorage.setItem('w07-faculty-lt',LAUNCH_TOKEN)}
+if(entryParam('lt')){const keep=new URLSearchParams(location.search);keep.delete('lt');history.replaceState(null,'',location.pathname+(keep.toString()?'?'+keep:''))}
+
+const ERR={offer_lapsed:'The clock ran out before your decision arrived. The offer lapsed.',decision_locked:'Your decision is already recorded and cannot be changed.',justification_too_short:'Write a little more: at least one full sentence.',lapse_line_too_short:'Write one sentence.',session_not_running:'Your instructor has not started the session yet.',session_closed:'This session has been closed.',no_such_session:'That session code was not found.',not_joined:'Join the session again.',team_not_assigned:'Wait for your instructor to put you in a team.',access_code_required:'Enter the access code from your instructor.',platform_signin_required:'Open this session from RapidSims.',launch_token_invalid:'Your launch link has expired. Open the simulation again from RapidSims.'};
+const friendly=(d,s)=>ERR[d?.error]||d?.message||`Something went wrong (${s}).`;
+
+async function call(path,opts={}){
+  const h={'Content-Type':'application/json'};if(LAUNCH_TOKEN)h['x-launch-token']=LAUNCH_TOKEN;if(ACCESS_CODE)h['x-access-code']=ACCESS_CODE;
+  const r=await fetch(BASE+path,{...opts,headers:h});let d={};try{d=await r.json()}catch{}
+  if(!r.ok){const e=new Error(friendly(d,r.status));e.code=d.error;e.status=r.status;throw e}
+  return d;
+}
+const sessionApi=x=>call('/api/session',{method:'POST',body:JSON.stringify({...x,launchToken:LAUNCH_TOKEN})});
+
+let C=null;
+const S={view:'setting',choice:null,text:'',confirming:false,lapseText:'',error:'',
+  // session
+  code:SESSION_CODE,pid:localStorage.getItem('w07-pid:'+SESSION_CODE)||'',state:null,skew:0,poll:null,
+  // standalone
+  solo:!SESSION_CODE,soloClosesAt:null,soloRecord:null,soloStages:[],soloStage:0,soloTimer:null,reported:false,
+  order:null};
+
+function shuffled(list){const a=list.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const words=s=>String(s||'').trim().split(/\s+/).filter(Boolean).length;
+const nowServer=()=>Date.now()+S.skew;
+
+// ---- derived state ----
+function record(){if(S.solo)return S.soloRecord;const m=S.state?.me;return m&&m.choice?{choice:m.choice,lapsed:m.lapsed,justification:m.justification,recognised:m.recognised}:null}
+function closesAt(){return S.solo?S.soloClosesAt:S.state?.closesAt}
+function decisionOpen(){if(S.solo)return !S.soloRecord&&S.soloClosesAt&&Date.now()<S.soloClosesAt;return !!S.state?.acceptsDecision&&!record()}
+function needsLapse(){if(S.solo)return !S.soloRecord&&S.soloClosesAt&&Date.now()>=S.soloClosesAt;return !!S.state?.needsLapseLine}
+function stages(){return S.solo?S.soloStages:(S.state?.stages||[])}
+function stageNo(){return S.solo?S.soloStage:(S.state?.stage||0)}
+
+// ---- chrome ----
+const SECTIONS=[['setting','The offer'],['briefing','Briefing'],['advisers','Advisers'],['decision','Decide']];
+function renderBar(){
+  const bar=document.getElementById('bar'),nav=document.getElementById('nav');
+  const pre=!record();bar.hidden=!(C&&(S.solo||S.state?.phase&&S.state.phase!=='lobby'));
+  nav.innerHTML=pre?SECTIONS.map(([k,l])=>`<button data-v="${k}" ${S.view===k?'aria-current="page"':''}>${esc(l)}</button>`).join(''):'<span class="dim">Decision recorded</span>';
+  nav.querySelectorAll('button[data-v]').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;render();scrollTo(0,0)});
+  tick();
+}
+function tick(){
+  const el=document.getElementById('clock');if(!el)return;const c=closesAt();
+  if(!c||record()){el.textContent='';return}
+  const left=Math.max(0,Math.round(((S.solo?Date.now():nowServer())-c)/-1000));
+  el.textContent=left>0?`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')} to decide`:'Offer lapsed';
+  el.classList.toggle('low',left<=60);
+  if(left===0&&!record()&&S.view!=='lapse'){S.view='lapse';render()}
+}
+setInterval(()=>{tick();if(S.solo)soloTick()},1000);
+
+// ---- screens ----
+function viewSetting(){const s=C.setting;return `<div class="date">${esc(s.eyebrow)}</div><h1>${esc(s.title)}</h1>${s.body.map(p=>`<p>${esc(p)}</p>`).join('')}<p class="note">${esc(s.recognition)}</p><button class="btn" data-go="briefing">Read the briefing</button>`}
+function viewBriefing(){return `<h1>What your team put together</h1>`+C.briefing.sections.map(sec=>`<h2>${esc(sec.title)}</h2>${sec.note?`<p class="dim small">${esc(sec.note)}</p>`:''}<table>${sec.rows.map(([k,v])=>`<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>`).join('')+`<button class="btn" data-go="advisers">Hear from your advisers</button>`}
+function viewAdvisers(){S.order||=shuffled(C.advisers);return `<h1>Four people you trust</h1><p class="dim">Each of them runs part of the business. Read them in any order.</p>`+S.order.map(a=>`<article class="adviser"><header><div><b>${esc(a.name)}</b> <span class="role">${esc(a.role)}</span></div><span class="pos">${esc(a.position)}</span></header>${a.text.map(p=>`<p>${esc(p)}</p>`).join('')}</article>`).join('')+`<button class="btn" data-go="decision">Make your decision</button>`}
+function viewDecision(){
+  const d=C.decision,min=C.settings.justificationMinWords,n=words(S.text),ok=S.choice&&n>=min;
+  return `<h1>${esc(d.title)}</h1><p>${esc(d.prompt)}</p>
+  <div class="choices" role="group" aria-label="Your decision">
+   <button class="choice" data-choice="buy" aria-pressed="${S.choice==='buy'}"><b>Buy</b><span>Pay $50 million for the company</span></button>
+   <button class="choice" data-choice="decline" aria-pressed="${S.choice==='decline'}"><b>Decline</b><span>Turn the offer down</span></button>
+  </div>
+  <label for="why">${esc(d.justificationPrompt)}</label>
+  <textarea id="why" maxlength="1200">${esc(S.text)}</textarea>
+  <div class="count" id="count">${n} word${n===1?'':'s'}${n<min?` · at least ${min}`:''}</div>
+  ${S.confirming&&ok?`<div class="confirm"><p>${esc(d.confirm)}</p><div class="row"><button class="btn" id="submit">Submit: ${S.choice==='buy'?'buy':'decline'}</button><button class="btn ghost" id="back">Go back</button></div></div>`:`<button class="btn" id="review" ${ok?'':'disabled'}>Review and submit</button>`}
+  <div class="err" role="alert">${esc(S.error)}</div>`;
+}
+function viewLapse(){const d=C.decision,n=words(S.lapseText),min=C.settings.lapseMinWords;return `<h1>${esc(d.lapsedTitle)}</h1><p>${esc(d.lapsedPrompt)}</p><textarea id="lapse" maxlength="600">${esc(S.lapseText)}</textarea><div class="count" id="count">${n} word${n===1?'':'s'}</div><button class="btn" id="lapseSubmit" ${n>=min?'':'disabled'}>Record my answer</button><div class="err" role="alert">${esc(S.error)}</div>`}
+function viewRecognition(){const d=C.decision;return `<h1>One more question</h1><p>${esc(d.recognitionPrompt)}</p><div class="row">${d.recognitionOptions.map(([v,l])=>`<button class="btn ghost" data-rec="${v}">${esc(l)}</button>`).join('')}</div><div class="err" role="alert">${esc(S.error)}</div>`}
+function memo(){const r=record();const label=r.lapsed?'The offer lapsed':r.choice==='buy'?'You bought':'You declined';return `<div class="memo"><div class="head"><span>Autumn 2000</span><span>${esc(label)}</span></div><q>${esc(r.justification)}</q><div class="who">Your reasoning, as you wrote it</div></div>`}
+function teamLine(){const t=S.state?.team;if(!t)return '';const verb=t.outcome==='buy'?'bought':'declined';return `<p class="dim">${esc(t.label)} ${verb}${t.tie?' on a tie, which counts as declining':''} (${t.buy} buy, ${t.decline} decline).</p>`}
+function viewReveal(){
+  const st=stages(),n=stageNo();
+  let html=memo()+teamLine();
+  if(!st.length)html+=`<p class="waiting">${esc(C.decision.hold)}</p>`;
+  st.forEach(s=>{html+=`<section class="stage ${s.n===n?'current':'past'}"><div class="yr">${esc(s.year)}</div><h2>${esc(s.title)}</h2>${s.body.map(p=>`<p>${esc(p)}</p>`).join('')}${s.names?`<p class="names">${esc(s.names)}</p>`:''}</section>`});
+  const close=st.find(s=>s.close)?.close;
+  if(close)html+=`<section class="stage"><h2>${esc(close.title)}</h2><blockquote class="echo">${esc(record().justification)}</blockquote><p>${esc(close.body)}</p><p>${esc(close.handoff)}</p></section>`;
+  else if(st.length)html+=`<p class="waiting">${S.solo?'The next part arrives shortly.':'Wait for your instructor to continue.'}</p>`;
+  return html;
+}
+function viewLobby(){return `<div class="date">Waiting to start</div><h1>You're in.</h1><p>${esc(S.state?.me?.name||'')}, your instructor will start the session shortly.${S.state?.session?.mode==='team'&&S.state?.me?.team?` You are in ${esc(S.state.me.team)}.`:''}</p><p class="waiting">This page updates on its own.</p>`}
+function viewJoin(){return `<h1>Join your class session</h1><p class="dim">Session ${esc(S.code)}</p><label for="nm">Your name</label><input id="nm" type="text" maxlength="60" autocomplete="name"><button class="btn" id="join">Join</button><div class="err" role="alert">${esc(S.error)}</div>`}
+
+function currentView(){
+  if(!S.solo){
+    if(!S.pid||!S.state)return 'join';
+    if(S.state.phase==='lobby')return 'lobby';
+  }
+  const r=record();
+  if(r){if(!r.recognised)return 'recognition';return 'reveal'}
+  if(needsLapse())return 'lapse';
+  return S.view;
+}
+function render(){
+  if(!C)return;
+  const v=currentView();
+  const map={setting:viewSetting,briefing:viewBriefing,advisers:viewAdvisers,decision:viewDecision,lapse:viewLapse,recognition:viewRecognition,reveal:viewReveal,lobby:viewLobby,join:viewJoin};
+  const active=document.activeElement&&document.activeElement.tagName==='TEXTAREA'?document.activeElement.id:'';
+  if((v==='decision'&&active==='why')||(v==='lapse'&&active==='lapse')){renderBar();return}
+  app.innerHTML=(map[v]||viewSetting)();renderBar();wire();
+}
+function wire(){
+  app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{S.view=b.dataset.go;render();scrollTo(0,0)});
+  app.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{S.choice=b.dataset.choice;S.confirming=false;render()});
+  const why=document.getElementById('why');if(why)why.oninput=()=>{S.text=why.value;S.confirming=false;const n=words(S.text),min=C.settings.justificationMinWords;document.getElementById('count').textContent=`${n} word${n===1?'':'s'}${n<min?` · at least ${min}`:''}`;const rv=document.getElementById('review');if(rv)rv.disabled=!(S.choice&&n>=min)};
+
+  const rv=document.getElementById('review');if(rv)rv.onclick=()=>{S.confirming=true;render()};
+  const back=document.getElementById('back');if(back)back.onclick=()=>{S.confirming=false;render()};
+  const sb=document.getElementById('submit');if(sb)sb.onclick=()=>submitDecision(sb);
+  const lp=document.getElementById('lapse');if(lp){lp.oninput=()=>{S.lapseText=lp.value;const n=words(S.lapseText);document.getElementById('count').textContent=`${n} word${n===1?'':'s'}`;document.getElementById('lapseSubmit').disabled=n<C.settings.lapseMinWords}}
+  const ls=document.getElementById('lapseSubmit');if(ls)ls.onclick=()=>submitLapse(ls);
+  app.querySelectorAll('[data-rec]').forEach(b=>b.onclick=()=>submitRecognition(b.dataset.rec));
+  const jn=document.getElementById('join');if(jn)jn.onclick=()=>join(document.getElementById('nm').value);
+}
+
+// ---- actions ----
+async function submitDecision(btn){
+  btn.disabled=true;S.error='';
+  if(S.solo){S.soloRecord={choice:S.choice,lapsed:false,justification:S.text.trim(),recognised:null};render();return}
+  try{applyState(await sessionApi({action:'decide',code:S.code,participantId:S.pid,choice:S.choice,justification:S.text}))}
+  catch(e){S.error=e.message;S.confirming=false;if(e.code==='offer_lapsed')S.view='lapse';await refresh()}
+  render();
+}
+async function submitLapse(btn){
+  btn.disabled=true;S.error='';
+  if(S.solo){S.soloRecord={choice:'decline',lapsed:true,justification:S.lapseText.trim(),recognised:null};render();return}
+  try{applyState(await sessionApi({action:'lapse',code:S.code,participantId:S.pid,justification:S.lapseText}))}catch(e){S.error=e.message}
+  render();
+}
+async function submitRecognition(answer){
+  S.error='';
+  if(S.solo){S.soloRecord.recognised=answer;await soloStageAdvance(1);return}
+  try{applyState(await sessionApi({action:'recognise',code:S.code,participantId:S.pid,answer}))}catch(e){S.error=e.message}
+  render();
+}
+let finishTimer=null,reporting=false;
+async function finishOnce(){
+  if(S.reported||reporting||!LAUNCH_TOKEN)return;
+  clearTimeout(finishTimer);reporting=true;
+  const r=record();
+  try{const d=await call('/api/finish',{method:'POST',body:JSON.stringify(S.solo?{choice:r.choice,lapsed:r.lapsed}:{sessionCode:S.code,participantId:S.pid,launchToken:LAUNCH_TOKEN})});S.reported=!!d.reported||!!d.reason}catch{}
+  finally{reporting=false;if(!S.reported)finishTimer=setTimeout(finishOnce,5000)}
+}
+window.addEventListener('pagehide',()=>{clearTimeout(finishTimer);clearInterval(S.poll)});
+
+// ---- standalone flow ----
+async function soloStageAdvance(n){
+  const r=S.soloRecord;
+  try{const d=await call('/api/reveal',{method:'POST',body:JSON.stringify({choice:r.choice,lapsed:r.lapsed,justification:r.justification,recognised:r.recognised,stage:n})});S.soloStages=d.stages;S.soloStage=d.stage;S.soloNextAt=Date.now()+C.settings.autoAdvanceSeconds*1000}
+  catch(e){S.error=e.message}
+  render();scrollToLatest();if(S.soloStage>=3)finishOnce();
+}
+function soloTick(){if(S.soloStage>0&&S.soloStage<3&&S.soloNextAt&&Date.now()>=S.soloNextAt){S.soloNextAt=null;soloStageAdvance(S.soloStage+1)}}
+function scrollToLatest(){const el=app.querySelector('.stage.current');if(el)el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}
+
+// ---- session flow ----
+function applyState(d){
+  const prevStage=stageNo();
+  S.state=d;S.skew=(d.now||Date.now())-Date.now();
+  if(stageNo()>prevStage){setTimeout(scrollToLatest,50)}
+  if(stageNo()>=3)finishOnce();
+}
+async function refresh(){try{applyState(await sessionApi({action:'state',code:S.code,participantId:S.pid}))}catch(e){if(e.code==='not_joined'){S.pid='';S.state=null}S.error=e.message}}
+async function join(name){
+  S.error='';
+  try{const d=await sessionApi({action:'join',code:S.code,name,participantId:S.pid});S.pid=d.participantId;localStorage.setItem('w07-pid:'+S.code,S.pid);await refresh();startPoll()}
+  catch(e){S.error=e.message}
+  render();
+}
+function startPoll(){clearInterval(S.poll);S.poll=setInterval(async()=>{await refresh();render()},3000)}
+
+// ---- boot ----
+(async()=>{
+  try{C=await call('/api/config'+(SESSION_CODE?'?session='+encodeURIComponent(SESSION_CODE):''))}
+  catch(e){
+    if(SESSION_CODE&&['platform_signin_required','launch_token_invalid'].includes(e.code)){
+      sessionStorage.removeItem(tokenKey);location.replace(BASE+'/api/join?session='+encodeURIComponent(SESSION_CODE));return;
+    }
+    app.innerHTML=`<h1>Unable to open the simulation</h1><p>${esc(e.message)}</p><a class="btn" href="#" onclick="location.assign(BASE+'/launch.html');return false">Enter access code</a>`;return;
+  }
+  if(S.solo){
+    if(LAUNCH&&(LAUNCH.role==='faculty'||LAUNCH.role==='faculty_preview')){
+      const platform=(C.platformUrl||'https://rapidsims.flexee.org').replace(/\/$/,'');
+      const q=new URLSearchParams({sim:C.meta.id,mode:'session'});if(LAUNCH.course)q.set('course',LAUNCH.course);
+      app.innerHTML=`<div class="date">Faculty</div><h1>${esc(C.meta.title)}</h1><p>${esc(C.meta.tagline)}</p><div class="row"><a class="btn" href="${esc(platform+'/api/launch?'+q)}">Run a class session</a><button class="btn ghost" id="preview">Play it yourself</button></div>`;
+      document.getElementById('preview').onclick=startSolo;return;
+    }
+    startSolo();return;
+  }
+  if(LAUNCH?.sub){await join('')}
+  else if(S.pid){await refresh();startPoll()}
+  render();
+})();
+function startSolo(){S.soloClosesAt=Date.now()+C.settings.decisionMinutes*60000;render()}
+</script>
+</body>
+</html>

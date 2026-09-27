@@ -1,0 +1,44 @@
+name: session-sims-checks
+
+on:
+  pull_request:
+    paths:
+      - 'platform/api/launch.js'
+      - 'platform/api/student.js'
+      - 'platform/api/session-enrolments.js'
+      - 'platform/lib/**'
+      - 'platform/public/session-entry.js'
+      - 'platform/tools/session-sims-check.js'
+      - 'platform/tools/new-sims-entry-*.js'
+      - 'sim07/**'
+      - 'sim08/**'
+      - '.github/workflows/session-sims-checks.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'platform/api/launch.js'
+      - 'platform/api/student.js'
+      - 'platform/api/session-enrolments.js'
+      - 'platform/lib/**'
+      - 'platform/public/session-entry.js'
+      - 'platform/tools/session-sims-check.js'
+      - 'platform/tools/new-sims-entry-*.js'
+      - 'sim07/**'
+      - 'sim08/**'
+      - '.github/workflows/session-sims-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Platform launch, course lookup and faculty roster
+        run: node platform/tools/session-sims-check.js
+      - name: Sim07 and Sim08 client entry and completion
+        run: node platform/tools/new-sims-entry-check.js

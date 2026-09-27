@@ -1,5 +1,6 @@
 const { sql, id } = require('../lib/db.js');
 const A = require('../lib/auth.js');
+const { SESSION_SIMS } = require('../lib/session-sims.js');
 
 function body(req) {
   let b = req.body;
@@ -19,7 +20,7 @@ module.exports = async (req, res) => {
       // Returns nothing beyond the title and who teaches it.
       case 'course_lookup': {
         const code = String(b.joinCode || '').toUpperCase().trim();
-        const rows = !code && b.courseId && b.simId === 'rapid-03-midland'
+        const rows = !code && b.courseId && SESSION_SIMS.has(b.simId)
           ? await s`
               SELECT c.title, c.term, c.join_code, u.name AS faculty_name, u.institution
               FROM courses c JOIN users u ON u.id = c.faculty_id

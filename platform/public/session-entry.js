@@ -9,7 +9,9 @@
   const sessionTitles = {
     'rapid-03-midland': 'Midland Equipment',
     'rapid-05-approve': 'Would You Approve This?',
-    'rapid-06-switch': 'Do We Switch?'
+    'rapid-06-switch': 'Do We Switch?',
+    'rapid-07-bought': 'Would You Have Bought It?',
+    'rapid-08-later': 'Eighteen Months Later'
   };
   const session = (q.get('session') || '').trim().toUpperCase();
   const courseId = q.get('course') || '';

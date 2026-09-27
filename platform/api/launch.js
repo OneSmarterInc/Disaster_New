@@ -18,7 +18,7 @@ function deny(res, wants, title, message) {
     </div></body></html>`);
 }
 
-const SESSION_SIMS = new Set(['rapid-03-midland', 'rapid-05-approve', 'rapid-06-switch']);
+const { SESSION_SIMS } = require('../lib/session-sims.js');
 
 module.exports = async (req, res) => {
   const q = req.query || {};

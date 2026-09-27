@@ -1,8 +1,8 @@
-// Read-only course roster for a facilitator's live Sim03 console. Enrollment
+// Read-only course roster for a facilitator's live simulation console. Enrollment
 // visibility is not permission to play; /api/launch still enforces access release.
 const { sql } = require('../lib/db.js');
 const { verify } = require('../lib/launch.js');
-const SIM_ID = 'rapid-03-midland';
+const { SESSION_SIMS } = require('../lib/session-sims.js');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
   if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = null; } }
   const courseId = String(b?.courseId || '');
   const p = verify(String(req.headers?.['x-launch-token'] || ''));
-  if (!p || p.sim !== SIM_ID || p.role !== 'faculty' || !p.sub || p.mode !== 'session') {
+  if (!p || !SESSION_SIMS.has(p.sim) || p.role !== 'faculty' || !p.sub || p.mode !== 'session') {
     return res.status(401).json({ error: 'faculty_authorization_required' });
   }
   if (!courseId || courseId.length > 200 || p.course !== courseId) {
@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
         !course || course.archived || (user.role !== 'admin' && course.faculty_id !== user.id)) {
       return res.status(403).json({ error: 'course_roster_forbidden' });
     }
-    const attached = await s`SELECT 1 FROM course_sims WHERE course_id = ${courseId} AND sim_id = ${SIM_ID}`;
+    const attached = await s`SELECT 1 FROM course_sims WHERE course_id = ${courseId} AND sim_id = ${p.sim}`;
     if (!attached.length) return res.status(403).json({ error: 'simulation_not_on_course' });
     const rows = await s`
       SELECT u.id AS student_id, u.name, e.paid
