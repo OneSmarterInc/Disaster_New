@@ -18,13 +18,15 @@ function deny(res, wants, title, message) {
     </div></body></html>`);
 }
 
+const SESSION_SIMS = new Set(['rapid-03-midland', 'rapid-05-approve', 'rapid-06-switch']);
+
 module.exports = async (req, res) => {
   const q = req.query || {};
   const wants = q.format === 'json' ? 'json' : 'html';
   const simId = String(q.sim || '');
   let courseId = String(q.course || '') || null;
   const session = String(q.session || '').trim().toUpperCase();
-  if (session && (simId !== 'rapid-03-midland' || !/^[A-Z2-9]{5}$/.test(session))) {
+  if (session && (!SESSION_SIMS.has(simId) || !/^[A-Z2-9]{5}$/.test(session))) {
     return res.status(400).json({ error: 'invalid_session_invite' });
   }
   res.setHeader('Cache-Control', 'no-store');
@@ -55,9 +57,9 @@ module.exports = async (req, res) => {
     if (!sim) return deny(res, wants, 'No such simulation', "That simulation isn't in the catalogue.");
     if (!sim.launch_url) return deny(res, wants, 'Not available yet', 'This simulation has no address set. Ask an administrator.');
 
-    // A recovered Midland instructor tab may have no launch token/course.
+    // A recovered instructor tab may have no launch token/course.
     // Never guess among classes or create an unbound room for a course owner.
-    if (simId === 'rapid-03-midland' && mode === 'session' && !courseId && me.role === 'faculty') {
+    if (SESSION_SIMS.has(simId) && mode === 'session' && !courseId && me.role === 'faculty') {
       const eligible = await s`
         SELECT c.id, c.title FROM course_sims cs JOIN courses c ON c.id = cs.course_id
         WHERE cs.sim_id = ${simId} AND c.faculty_id = ${me.id} AND c.archived = false
@@ -73,11 +75,11 @@ module.exports = async (req, res) => {
     }
     // Explicit class context must be authorized, even when the faculty member
     // has access to this simulation through a different course or a preview.
-    if (simId === 'rapid-03-midland' && mode === 'session' && courseId) {
+    if (SESSION_SIMS.has(simId) && mode === 'session' && courseId) {
       const course = (await s`SELECT id, faculty_id, archived FROM courses WHERE id = ${courseId}`)[0];
       const attached = await s`SELECT 1 FROM course_sims WHERE course_id = ${courseId} AND sim_id = ${simId}`;
       if (!course || course.archived || !attached.length || (me.role !== 'admin' && course.faculty_id !== me.id)) {
-        return deny(res, wants, 'Course not available', 'Open a course you manage that includes Midland Equipment, then choose Run a session.');
+        return deny(res, wants, 'Course not available', 'Open a course you manage that includes this simulation, then choose Run a session.');
       }
     }
 
