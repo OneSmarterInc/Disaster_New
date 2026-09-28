@@ -10,7 +10,7 @@ const { snapshot } = require('./sync-catalogue-source');
 const source = require('../lib/catalogue-source.json');
 const identity = require('../public/sim-identity');
 assert.deepEqual(source, snapshot(), 'refresh the public metadata snapshot after editing a sim');
-assert.equal(Object.keys(source).length, 10);
+assert.equal(Object.keys(source).length, 11);
 const scope = { window: {}, RapidSimsIdentity: identity };
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/sim-detail.js'), 'utf8'), scope);
 const render = scope.window.simDetailHTML;
