@@ -11,7 +11,8 @@
 const META = {
   "id": "rapid-02-relay",
   "title": "What Did It Tell Them?",
-  "tagline": "An AI gave a customer wrong advice. Decide what the company should do next.",
+  "catalogueRevision": "relay-v2-2026-09",
+  "tagline": "Twenty minutes after an AI told a customer the wrong thing.",
   "description": "You lead customer operations at a manufacturer. A customer has acted on incorrect advice from its AI assistant. You question the people responsible, review new information, and decide how the company should respond.",
   "minutes": 20,
   "detail": {
