@@ -10,9 +10,9 @@
 const META = {
   "id": "rapid-07-bought",
   "replaces": [],
-  "catalogueRevision": "bought-v1-2026-09",
+  "catalogueRevision": "bought-v2-2026-09",
   "title": "Would You Have Bought It?",
-  "tagline": "Would you buy the company using only what was known in 2000?",
+  "tagline": "The year 2000, and you can only see what they could see.",
   "description": "You lead a large video rental chain in autumn 2000. A smaller company offers to sell itself for $50 million. Read the proposal, consider four advisers, and make your decision before learning what happened later.",
   "minutes": 20,
   "detail": {
