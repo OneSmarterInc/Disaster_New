@@ -153,6 +153,12 @@ async function go() {
         return;
       }
     }
+    if (info.solo) {
+      sessionStorage.setItem(participantKey(code), info.pid);
+      rememberLaunch(code);
+      location.replace(`play?code=${encodeURIComponent(code)}`);
+      return;
+    }
     if (info.mode === 'team' && !teamField.hidden && !teamEl.value) { err.textContent = 'Choose your team to join.'; return; }
     if (launchToken() || !sessionStorage.getItem(participantKey(code))) {
       const j = await api('POST', 'api/join', { code, team: info.mode === 'team' ? Number(teamEl.value) : undefined });
@@ -178,7 +184,24 @@ async function initEntry() {
     try {
       const session = await api('GET', `api/session?code=${encodeURIComponent(preset)}`);
       if (session.platform) { location.replace(session.joinUrl); return; }
-    } catch (e) { $('#entry-error').textContent = e.message; return; }
+    } catch (e) {
+      if (e.code === 'forbidden' && /private run/i.test(e.message)) {
+        $('#access-gate').hidden = true;
+        $('#entry-status').hidden = false;
+        $('#entry-status').textContent = 'Checking whether your RapidSims account can resume this private run…';
+        const entry = await platformLaunch('rapid-10-bubble', preset);
+        if (entry.status === 'launched') return;
+        $('#entry-status').hidden = false;
+        $('#entry-status').textContent = entry.status === 'signed_out'
+          ? 'Sign in to RapidSims with the account that started this private run, then reopen this link.'
+          : entry.message || e.message;
+        $('#account-link').hidden = false;
+        return;
+      }
+      $('#entry-status').hidden = false; $('#entry-status').textContent = e.message;
+      $('#access-gate').hidden = true;
+      return;
+    }
   }
   const manual = new URLSearchParams(location.search).get('manual') === '1';
   if (!preset && !launchToken() && !manual && /^\/sim10(?:\/|$)/.test(location.pathname)) {

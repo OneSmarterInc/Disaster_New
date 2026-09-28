@@ -126,7 +126,14 @@ function createApp({ store: injectedStore, clock = () => Date.now() } = {}) {
         }
         case 'GET /api/session': {
           const s = await engine.getSession(store, q('code'));
-          if (s.solo) throw new engine.SimError('forbidden', 'This is a private run. Start your own from RapidSims.');
+          if (s.solo) {
+            if (!launch) throw new engine.SimError('forbidden', 'This is a private run. Sign in to the RapidSims account that started it to resume.');
+            const ownerPid = `platform:${launch.sub}`;
+            if (s.soloPid !== ownerPid || (s.courseId && launch.course !== s.courseId)) {
+              throw new engine.SimError('forbidden', 'This private run belongs to another RapidSims account.');
+            }
+            return send(res, 200, { code: s.code, mode: s.mode, teams: s.teams, cases: s.cases, platform: true, solo: true, pid: ownerPid });
+          }
           return send(res, 200, { code: s.code, mode: s.mode, teams: s.teams, cases: s.cases, platform: s.platformAuth, joinUrl: s.platformAuth ? engine.platformJoinUrl(s) : null });
         }
         case 'POST /api/join': {

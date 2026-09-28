@@ -128,6 +128,24 @@ async function check({ call, tok }) {
       sessionStorage: { getItem: () => null }
     });
     assert.equal(recovery, `./?session=${classCode}`, 'a missing same-tab participant returns to the class-session join path');
+
+    const ownerToken = tok({ sub: 'resume', role: 'student', course: 'c1' });
+    const privateRun = await call('POST', '/sim10/api/solo', { cases: ['A'] }, { 'X-Launch-Token': ownerToken });
+    assert.equal(privateRun.status, 200);
+    const resumedEntry = await page(`https://fixture/sim10/?session=${privateRun.body.code}`, call, storage(), 'index', async (path) => {
+      assert.equal(path, `/api/launch?sim=rapid-10-bubble&format=json&session=${privateRun.body.code}`);
+      return { status: 200, body: { url: `https://fixture/sim10/?session=${privateRun.body.code}#lt=${ownerToken}` } };
+    });
+    assert.equal(resumedEntry.target(), `https://fixture/sim10/?session=${privateRun.body.code}#lt=${ownerToken}`,
+      'a signed-in student gets a fresh launch token for the run-code link');
+    const resumed = await page(resumedEntry.target(), call, storage(), 'index');
+    assert.equal(resumed.target(), `https://fixture/sim10/play?code=${privateRun.body.code}`,
+      'the owner returns to the same private run without the lost tab id');
+    assert.equal(resumed.ss.getItem(`s10:${privateRun.body.code}`), 'platform:resume');
+    const resumedPlay = await page(resumed.target(), call, resumed.ss, 'play');
+    const resumedState = await resumedPlay.run(`api('GET', 'api/state?code=${privateRun.body.code}', null, {'X-Pid':sessionStorage.getItem('s10:${privateRun.body.code}')})`);
+    assert.equal(resumedState.phase, 'read', 'the recovered run reconnects to its live state');
+
     const unknown = await page('https://fixture/sim10/?session=ZZZZ2', call, root.ss);
     assert.equal(unknown.run('launchToken()'), null, 'a different invitation does not borrow a prior account token');
 

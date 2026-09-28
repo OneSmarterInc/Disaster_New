@@ -17,10 +17,11 @@ const launchKey = `s10-lt:${launchScope}`;
   history.replaceState(null, '', location.pathname + (q.toString() ? `?${q}` : ''));
 })();
 const launchToken = () => sessionStorage.getItem(launchKey);
-async function platformLaunch(simId) {
+async function platformLaunch(simId, sessionCode = '') {
   if (!/^\/sim10(?:\/|$)/.test(location.pathname)) return { status: 'skip' };
   try {
     const params = new URLSearchParams({ sim: simId, format: 'json' });
+    if (sessionCode) params.set('session', String(sessionCode).toUpperCase());
     const response = await fetch('/api/launch?' + params, {
       credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(8000)
     });

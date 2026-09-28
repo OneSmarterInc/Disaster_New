@@ -1,544 +1,1 @@
-'use strict';
-process.env.DEV_OPEN = '';
-const assert = require('assert');
-const http = require('http');
-const E = require('../lib/engine');
-const content = require('../lib/content');
-const config = require('../data/config');
-const gate = require('../tools/gate');
-const denylist = require('../lib/denylist');
-const { memoryStore } = require('../lib/store');
-const { createApp } = require('../lib/app');
-const L = require('../lib/launch');
-
-const tests = [];
-const test = (name, fn) => tests.push({ name, fn });
-const MIN = 60000;
-const T0 = 1_700_000_000_000;
-const rejects = async (p, code) => { try { await p; } catch (e) { assert.strictEqual(e.code, code, `expected ${code}, got ${e.code}: ${e.message}`); return; } assert.fail(`expected rejection ${code}`); };
-
-async function setup(mode, cases = ['A'], teams = 2) {
-  const store = memoryStore();
-  const s = await E.createSession(store, { mode, cases, teams }, T0);
-  return { store, s, code: s.code, host: s.hostKey };
-}
-const longMind = 'I would need to see like-for-like revenue growing faster than capital spending for two quarters in a row.';
-
-// ---------- gate ----------
-test('gate passes on real content', () => { assert.deepStrictEqual(gate.check(), []); });
-
-test('gate catches a planted company name in the pack', () => {
-  const A = content.buildPack('A'); const B = content.buildPack('B');
-  B.sections[4].text[0].text += ' Equinix said so.';
-  const errs = gate.check({ packs: { A, B } });
-  assert(errs.some((e) => e.startsWith('[denylist]') && e.includes('equinix')), errs.join('\n'));
-});
-
-test('gate catches a planted year, a dollar sign and an era term', () => {
-  const A = content.buildPack('A');
-  A.briefing.push('Figures for 2000 are in $ and the network is fibre.');
-  const errs = gate.check({ packs: { A, B: content.buildPack('B') } });
-  for (const t of ['2000', '$', 'fibre']) assert(errs.some((e) => e.includes(t)), `missed ${t}`);
-});
-
-test('gate catches a leak in public UI text', () => {
-  const pub = gate.publicTexts().concat([{ where: 'planted.js', text: 'Welcome to the Global Crossing case' }]);
-  assert(gate.check({ publicTexts: pub }).some((e) => e.includes('planted.js')));
-});
-
-test('gate text extractor finds leaks inside template literals and inline scripts', () => {
-  const fs = require('fs'); const os = require('os'); const path = require('path');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's10-'));
-  fs.writeFileSync(path.join(dir, 'a.js'), 'el.innerHTML = `<p>${esc(x)} was listed on Nasdaq ${y.map((z) => `<b>${z}</b>`).join("")}</p>`;');
-  fs.writeFileSync(path.join(dir, 'b.html'), '<p>Fine</p><script>alert("the fibre network");</script>');
-  const errs = gate.check({ publicTexts: gate.publicTexts(dir) });
-  assert(errs.some((e) => e.includes('a.js') && e.includes('nasdaq')), 'template literal leak missed');
-  assert(errs.some((e) => e.includes('b.html') && e.includes('fibre')), 'inline script leak missed');
-});
-
-test('gate catches context leaks, placeholders, bad scaling and a retired id', () => {
-  const A = content.buildPack('A');
-  A.briefing.push('See you Tuesday. TODO');
-  A.sections[1].blocks[0].row.values[0] = '1';
-  const errs = gate.check({ packs: { A, B: content.buildPack('B') }, simId: 'rapid-03-midland' });
-  for (const c of ['[context]', '[placeholder]', '[scaling]', '[simid]']) assert(errs.some((e) => e.startsWith(c)), `missed ${c}`);
-});
-
-test('live guard and gate use the same matcher', () => {
-  const text = 'This has to be Global Crossing in 2000';
-  assert.deepStrictEqual(denylist.findHits(text).sort(), ['2000', 'global crossing']);
-  const fake = { runs: { A: { reveal: 0 } } };
-  assert.strictEqual(E.guard(fake, 'A', text), true);
-  fake.runs.A.reveal = 1;
-  assert.strictEqual(E.guard(fake, 'A', text), false, 'guard is off once the company is named');
-});
-
-// ---------- scaling ----------
-test('scaling: every money figure equals source x constant, ratios preserved', () => {
-  for (const cs of ['A', 'B']) {
-    const byTag = content.linesByTag(cs);
-    const k = config.scale[cs];
-    const rev = byTag['is.revenue'];
-    assert.strictEqual(content.scaled(cs, rev.Q1), Math.round(rev.Q1 * k));
-    const ratioSrc = rev.Q2 / rev.Q1; const ratioShown = content.scaled(cs, rev.Q2) / content.scaled(cs, rev.Q1);
-    assert(Math.abs(ratioSrc - ratioShown) < 0.001, `${cs} ratio drift`);
-  }
-  const pack = content.buildPack('A');
-  const growth = pack.sections[0].blocks[1].row;
-  assert.deepStrictEqual(growth.values, ['387%', '332%']);
-});
-
-test('scaling constant is never sent to students', async () => {
-  const { store, code, host } = await setup('individual');
-  const { pid } = await E.join(store, code, {}, T0);
-  await E.startCase(store, code, host, 'A', T0);
-  const view = JSON.stringify(await E.studentState(store, code, pid, T0 + MIN));
-  assert(!view.includes(String(config.scale.A)));
-  assert(!view.includes('Global Crossing') && !view.includes('gc-10q'), 'no names or source refs before reveal');
-});
-
-// ---------- session creation ----------
-test('session creation requires mode and case choice, no defaults', async () => {
-  const store = memoryStore();
-  await rejects(E.createSession(store, {}, T0), 'bad_request');
-  await rejects(E.createSession(store, { mode: 'individual' }, T0), 'bad_request');
-  await rejects(E.createSession(store, { cases: ['A'] }, T0), 'bad_request');
-  await rejects(E.createSession(store, { mode: 'team', cases: ['A'] }, T0), 'bad_request');
-  await rejects(E.createSession(store, { mode: 'individual', cases: ['B'] }, T0), 'bad_request');
-  const s = await E.createSession(store, { mode: 'team', cases: ['A', 'B'], teams: 4 }, T0);
-  assert.deepStrictEqual(s.clock, { read: 5, private: 1, team: 4 });
-});
-
-// ---------- individual state machine ----------
-test('individual: read, verdict, closed; writes only in the verdict window', async () => {
-  const { store, code, host } = await setup('individual');
-  const { pid } = await E.join(store, code, {}, T0);
-  await rejects(E.saveIndividual(store, code, pid, 'A', { call: 'bubble' }, T0), 'closed');
-  await E.startCase(store, code, host, 'A', T0);
-  assert.strictEqual((await E.studentState(store, code, pid, T0 + 11 * MIN)).phase, 'read');
-  await rejects(E.saveIndividual(store, code, pid, 'A', { call: 'bubble' }, T0 + 11 * MIN), 'closed');
-  await E.saveIndividual(store, code, pid, 'A', { call: 'bubble', line: 'recon.deferred_cash' }, T0 + 13 * MIN);
-  await E.saveIndividual(store, code, pid, 'A', { lineWhy: 'Most of the profit measure is cash paid in advance.', mind: longMind }, T0 + 14 * MIN);
-  await rejects(E.saveIndividual(store, code, pid, 'A', { call: 'infra' }, T0 + 18 * MIN), 'closed');
-  const v = await E.studentState(store, code, pid, T0 + 18 * MIN);
-  assert.strictEqual(v.phase, 'closed');
-  assert.deepStrictEqual({ s: v.result.status, c: v.result.call, b: v.result.blanks }, { s: 'recorded', c: 'bubble', b: [] });
-});
-
-test('individual: invalid call and line not in the pack are rejected', async () => {
-  const { store, code, host } = await setup('individual');
-  const { pid } = await E.join(store, code, {}, T0);
-  await E.startCase(store, code, host, 'A', T0);
-  await rejects(E.saveIndividual(store, code, pid, 'A', { call: 'maybe' }, T0 + 13 * MIN), 'bad_request');
-  await rejects(E.saveIndividual(store, code, pid, 'A', { line: 'nt.bond_market_value' }, T0 + 13 * MIN), 'bad_request');
-});
-
-test('timeouts: clock out with no call is no verdict; call with blanks is recorded with blanks marked', async () => {
-  const { store, code, host } = await setup('individual');
-  const a = await E.join(store, code, {}, T0); const b = await E.join(store, code, {}, T0); const c = await E.join(store, code, {}, T0);
-  await E.startCase(store, code, host, 'A', T0);
-  await E.saveIndividual(store, code, b.pid, 'A', { call: 'infra' }, T0 + 13 * MIN);
-  await E.saveIndividual(store, code, c.pid, 'A', { line: 'bs.cash', mind: 'short' }, T0 + 13 * MIN);
-  const at = T0 + 20 * MIN;
-  assert.strictEqual((await E.studentState(store, code, a.pid, at)).result.status, 'no_verdict');
-  const rb = (await E.studentState(store, code, b.pid, at)).result;
-  assert.deepStrictEqual([rb.status, rb.blanks], ['recorded', ['line', 'reason', 'mind']]);
-  assert.strictEqual((await E.studentState(store, code, c.pid, at)).result.status, 'no_verdict', 'line without a call is still no verdict');
-  const con = await E.consoleState(store, code, host, at);
-  assert.deepStrictEqual(con.byCase.A.split, { infra: 1, bubble: 0, noVerdict: 2 });
-});
-
-// ---------- team state machine ----------
-test('team: private call window, shared draft, first commit wins, team isolation', async () => {
-  const { store, code, host } = await setup('team', ['A'], 2);
-  const m1 = await E.join(store, code, { team: 1 }, T0); const m2 = await E.join(store, code, { team: 1 }, T0);
-  const o1 = await E.join(store, code, { team: 2 }, T0);
-  await rejects(E.join(store, code, { team: 3 }, T0), 'bad_request');
-  await E.startCase(store, code, host, 'A', T0);
-  const priv = T0 + 11 * MIN; const team = T0 + 13 * MIN;
-  await rejects(E.saveTeamDraft(store, code, m1.pid, 'A', { call: 'infra' }, priv), 'closed');
-  await E.savePrivate(store, code, m1.pid, 'A', 'infra', priv);
-  await E.savePrivate(store, code, m2.pid, 'A', 'infra', priv);
-  await E.savePrivate(store, code, o1.pid, 'A', 'bubble', priv);
-  await rejects(E.savePrivate(store, code, m1.pid, 'A', 'bubble', team), 'closed');
-  await rejects(E.commitTeam(store, code, m1.pid, 'A', team), 'bad_request');
-  await E.saveTeamDraft(store, code, m1.pid, 'A', { call: 'bubble', line: 'bs.cash' }, team);
-  const seen = await E.studentState(store, code, m2.pid, team);
-  assert.strictEqual(seen.teamDraft.call, 'bubble', 'teammate sees shared draft');
-  assert.strictEqual(seen.mine.private, 'infra');
-  const other = await E.studentState(store, code, o1.pid, team);
-  assert.deepStrictEqual(other.teamDraft, {}, 'other team sees nothing of team 1');
-  await E.commitTeam(store, code, m2.pid, 'A', team);
-  await rejects(E.commitTeam(store, code, m1.pid, 'A', team), 'conflict');
-  await rejects(E.saveTeamDraft(store, code, m1.pid, 'A', { call: 'infra' }, team), 'conflict');
-  const end = T0 + 21 * MIN;
-  const r1 = (await E.studentState(store, code, m1.pid, end)).result;
-  assert.deepStrictEqual([r1.status, r1.call, r1.blanks], ['recorded', 'bubble', ['reason', 'mind']]);
-  assert.strictEqual((await E.studentState(store, code, o1.pid, end)).result.status, 'no_verdict', 'no commit by the clock is no verdict');
-  const con = await E.consoleState(store, code, host, end);
-  assert.deepStrictEqual(con.byCase.A.movement, { moved: 1, held: 0, split: 0, noVerdict: 1 });
-});
-
-// ---------- reveal gating ----------
-test('reveal: gated on the clock, one stage at a time, Case B only after Case A reveal', async () => {
-  const { store, code, host } = await setup('individual', ['A', 'B']);
-  const { pid } = await E.join(store, code, {}, T0);
-  await rejects(E.startCase(store, code, 'wrong-key', 'A', T0), 'forbidden');
-  await E.startCase(store, code, host, 'A', T0);
-  await rejects(E.advanceReveal(store, code, host, 'A', T0 + 5 * MIN), 'conflict');
-  await rejects(E.startCase(store, code, host, 'B', T0 + 5 * MIN), 'conflict');
-  await E.saveIndividual(store, code, pid, 'A', { call: 'bubble', line: 'bs.debt_long' }, T0 + 7 * MIN);
-  const closed = T0 + 11 * MIN;
-  let v = await E.studentState(store, code, pid, closed);
-  assert.strictEqual(v.reveal, null, 'nothing revealed until the host releases stage 1');
-  await E.advanceReveal(store, code, host, 'A', closed);
-  v = await E.studentState(store, code, pid, closed);
-  assert.strictEqual(v.reveal.identity.name, 'Global Crossing Ltd.');
-  assert(!v.reveal.table, 'stage 1 shows identity only');
-  await E.advanceReveal(store, code, host, 'A', closed);
-  v = await E.studentState(store, code, pid, closed);
-  const yours = v.reveal.table.rows.filter((r) => r.yours).map((r) => r.tag);
-  assert.deepStrictEqual(yours, ['bs.debt_total'], 'cited line highlighted through maps_to');
-  assert(!v.reveal.outcome);
-  await rejects(E.startCase(store, code, host, 'B', closed), 'conflict');
-  await E.advanceReveal(store, code, host, 'A', closed);
-  v = await E.studentState(store, code, pid, closed);
-  assert(v.reveal.outcome.length >= 3);
-  await rejects(E.advanceReveal(store, code, host, 'A', closed), 'conflict');
-  v = await E.studentState(store, code, pid, closed);
-  assert.strictEqual(v.caseId, 'A', 'students stay on the Case A outcome until the host starts Case B');
-  await E.startCase(store, code, host, 'B', closed);
-  v = await E.studentState(store, code, pid, closed + MIN);
-  assert.strictEqual(v.pack.caseId, 'B');
-  assert(v.pack.briefing[0].startsWith('A different company, a different period.'));
-});
-
-test('reveal: a cited line outside the trimmed set is appended and marked', () => {
-  const r = content.buildReveal('A', 2, 'bs.goodwill');
-  assert.strictEqual(r.table.extra.tag, 'bs.goodwill');
-  assert(r.table.rows.every((x) => !x.yours));
-});
-
-// ---------- console: pairs, guard, unanimous ----------
-test('pairs: same line, opposite calls; guard holds a response that names the company', async () => {
-  const { store, code, host } = await setup('individual');
-  const ps = [];
-  for (let i = 0; i < 5; i++) ps.push((await E.join(store, code, {}, T0)).pid);
-  await E.startCase(store, code, host, 'A', T0);
-  const t = T0 + 13 * MIN;
-  const save = (pid, call, line, mind = longMind) => E.saveIndividual(store, code, pid, 'A', { call, line, lineWhy: 'This line carries the argument.', mind }, t);
-  await save(ps[0], 'bubble', 'hl.cash_revenue');
-  await save(ps[1], 'infra', 'hl.cash_revenue');
-  await save(ps[2], 'bubble', 'bs.cash');
-  await save(ps[3], 'infra', 'bs.cash', `${longMind} It is obviously Global Crossing.`);
-  await save(ps[4], 'infra', 'tx.asset_lives');
-  const con = await E.consoleState(store, code, host, T0 + 20 * MIN);
-  const c = con.byCase.A;
-  assert.strictEqual(c.heldCount, 1);
-  assert.deepStrictEqual(c.pairs.map((p) => p.line), ['hl.cash_revenue'], 'held response is not paired or projected');
-  assert.strictEqual(c.unanimous, null);
-  await E.project(store, code, host, 'A', { showHeld: true }, T0 + 20 * MIN);
-  const con2 = await E.consoleState(store, code, host, T0 + 20 * MIN);
-  assert.strictEqual(con2.byCase.A.pairs.length, 2, 'host can choose to show held responses');
-});
-
-test('console during play shows a count only', async () => {
-  const { store, code, host } = await setup('individual');
-  const { pid } = await E.join(store, code, {}, T0);
-  await E.startCase(store, code, host, 'A', T0);
-  await E.saveIndividual(store, code, pid, 'A', { call: 'infra' }, T0 + 13 * MIN);
-  const c = (await E.consoleState(store, code, host, T0 + 14 * MIN)).byCase.A;
-  assert.strictEqual(c.submitted, 1);
-  for (const k of ['split', 'pairs', 'linesByCall']) assert(!(k in c), `${k} must not appear during play`);
-});
-
-test('unanimous room: majority mind-changers offered as the opposing case, minority case in notes', async () => {
-  const { store, code, host } = await setup('individual');
-  const a = await E.join(store, code, {}, T0); const b = await E.join(store, code, {}, T0);
-  await E.startCase(store, code, host, 'A', T0);
-  for (const p of [a, b]) await E.saveIndividual(store, code, p.pid, 'A', { call: 'bubble', line: 'bs.cash', lineWhy: 'Cash halves in a quarter.', mind: longMind }, T0 + 13 * MIN);
-  const c = (await E.consoleState(store, code, host, T0 + 20 * MIN)).byCase.A;
-  assert.strictEqual(c.unanimous, 'bubble');
-  assert.strictEqual(c.opposingCandidates.length, 2);
-  assert(c.minorityCase.startsWith('The case for infrastructure'));
-});
-
-test('pair matching is one-to-one per line', () => {
-  const it = (call, line) => ({ call, line });
-  const pairs = E.matchPairs([it('infra', 'x'), it('infra', 'x'), it('bubble', 'x'), it('bubble', 'y')]);
-  assert.strictEqual(pairs.length, 1);
-});
-
-// ---------- platform contract (matches platform/lib/launch.js and sim08) ----------
-const SECRET = 'test-secret';
-const tok = (o) => { process.env.LAUNCH_SECRET = SECRET; return L.signBack({ sim: config.simId, iat: T0, exp: T0 + 3600e3, ...o }); };
-
-test('launch tokens: this sim only, known roles, not expired, correct signature', () => {
-  process.env.LAUNCH_SECRET = SECRET;
-  assert(L.launchFor(tok({ sub: 'u1', role: 'student' }), T0));
-  assert(!L.launchFor(tok({ sub: 'u1', role: 'student', sim: 'rapid-08-later' }), T0), 'token for another sim');
-  assert(!L.launchFor(tok({ sub: 'u1', role: 'admin' }), T0), 'unknown role');
-  assert(!L.launchFor(tok({ sub: 'u1', role: 'student' }), T0 + 7200e3), 'expired');
-  assert(!L.launchFor(tok({ role: 'student' }), T0), 'no person');
-  const t = tok({ sub: 'u1', role: 'student' });
-  assert(!L.launchFor(t.slice(0, -2) + 'xx', T0), 'tampered signature');
-  assert(L.isFaculty(L.launchFor(tok({ sub: 'f', role: 'faculty_preview' }), T0)));
-});
-
-async function withServer(fn, options = {}) {
-  const store = memoryStore();
-  const clock = { now: T0 };
-  const server = http.createServer(createApp({ ...(options.useDefault ? {} : { store }), clock: () => clock.now }));
-  await new Promise((r) => server.listen(0, r));
-  const port = server.address().port;
-  const call = async (method, p, body, headers = {}) => {
-    const res = await fetch(`http://127.0.0.1:${port}${p}`, { method, redirect: 'manual', headers: { 'Content-Type': 'application/json', ...headers }, body: body ? JSON.stringify(body) : undefined });
-    const text = await res.text(); let responseBody;
-    try { responseBody = JSON.parse(text); } catch { responseBody = text; }
-    return { status: res.status, body: responseBody, location: res.headers.get('location') };
-  };
-  try { await fn({ call, clock, store }); } finally { server.close(); }
-}
-
-async function withPlatform(fn) {
-  const got = [];
-  const srv = http.createServer(async (req, res) => {
-    let raw = ''; for await (const c of req) raw += c;
-    const p = L.verifyLaunch(JSON.parse(raw).token);
-    got.push({ path: req.url, payload: p });
-    res.writeHead(p ? 200 : 401, { 'Content-Type': 'application/json' }); res.end('{"ok":true}');
-  });
-  await new Promise((r) => srv.listen(0, r));
-  process.env.PLATFORM_URL = `http://127.0.0.1:${srv.address().port}`;
-  process.env.SIM_URL = 'https://rapidsims.example/sim10';
-  L.resetAnnounce();
-  try { await fn(got); } finally { srv.close(); delete process.env.PLATFORM_URL; delete process.env.SIM_URL; L.resetAnnounce(); }
-}
-
-test('http: faculty token makes a course-bound session; students join by account', async () => {
-  process.env.LAUNCH_SECRET = SECRET; delete process.env.ACCESS_CODE; delete process.env.FACULTY_CODES;
-  await withServer(async ({ call }) => {
-    assert.strictEqual((await call('POST', '/api/session', { mode: 'individual', cases: ['A'] })).status, 401, 'no faculty, no session');
-    const fac = { 'X-Launch-Token': tok({ sub: 'f1', role: 'faculty', course: 'c1', mode: 'session', name: 'V' }) };
-    const created = await call('POST', '/api/session', { mode: 'individual', cases: ['A'] }, fac);
-    assert.strictEqual(created.status, 200);
-    const { code } = created.body;
-    const info = await call('GET', `/api/session?code=${code}`);
-    assert(info.body.platform && info.body.joinUrl.includes(`session=${code}`) && info.body.joinUrl.includes('course=c1'));
-    const entry = await call('GET', `/api/join?session=${code}`);
-    assert.strictEqual(entry.status, 302); assert(entry.location.includes('/session.html'));
-    const a = { 'X-Launch-Token': tok({ sub: 'sA', role: 'student', course: 'c1' }) };
-    const b = { 'X-Launch-Token': tok({ sub: 'sB', role: 'student', course: 'c1' }) };
-    assert.strictEqual((await call('POST', '/api/join', { code })).status, 403, 'no token on a platform session');
-    assert.strictEqual((await call('POST', '/api/join', { code }, { 'X-Launch-Token': tok({ sub: 'sX', role: 'student', course: 'c2' }) })).status, 403, 'other course');
-    assert.strictEqual((await call('POST', '/api/join', { code }, { 'X-Launch-Token': tok({ sub: 'sX', role: 'student', sim: 'rapid-08-later' }) })).status, 401, 'other sim');
-    const j = await call('POST', '/api/join', { code }, a);
-    assert.strictEqual(j.body.pid, 'platform:sA');
-    assert.strictEqual((await call('POST', '/api/join', { code }, a)).body.rejoined, true, 'rejoin is idempotent');
-    await call('POST', '/api/join', { code }, b);
-    assert.strictEqual((await call('GET', `/api/state?code=${code}`, null, { ...b, 'X-Pid': 'platform:sA' })).status, 403, 'cannot act as another student');
-    assert.strictEqual((await call('GET', `/api/state?code=${code}`, null, { 'X-Pid': 'platform:sA' })).status, 401, 'platform participant needs the token');
-    assert.strictEqual((await call('GET', `/api/state?code=${code}`, null, { ...a, 'X-Pid': 'platform:sA' })).status, 200);
-  });
-});
-
-test('http: standalone access fails closed; codes open it; students never see each other', async () => {
-  process.env.LAUNCH_SECRET = SECRET; delete process.env.ACCESS_CODE;
-  process.env.FACULTY_CODES = 'Vikram:fac-123, Chuck:fac-456';
-  await withServer(async ({ call, clock }) => {
-    assert.strictEqual((await call('POST', '/api/session', { mode: 'individual', cases: ['A'] }, { 'X-Faculty-Code': 'nope' })).status, 401);
-    const created = await call('POST', '/api/session', { mode: 'individual', cases: ['A'] }, { 'X-Faculty-Code': 'fac-456' });
-    assert.strictEqual(created.status, 200);
-    const { code, hostKey } = created.body;
-    assert.strictEqual((await call('POST', '/api/join', { code })).status, 503, 'no ACCESS_CODE configured: closed');
-    process.env.ACCESS_CODE = 'class-code';
-    assert.strictEqual((await call('POST', '/api/join', { code }, { 'X-Access-Code': 'wrong' })).status, 401);
-    const acc = { 'X-Access-Code': 'class-code' };
-    const j1 = (await call('POST', '/api/join', { code }, acc)).body; const j2 = (await call('POST', '/api/join', { code }, acc)).body;
-    assert.strictEqual((await call('GET', `/api/console?code=${code}`, null, { 'X-Pid': j1.pid })).status, 403);
-    await call('POST', '/api/host/start', { code, caseId: 'A' }, { 'X-Host-Key': hostKey });
-    clock.now += 13 * MIN;
-    await call('POST', '/api/verdict', { code, caseId: 'A', fields: { call: 'bubble', mind: 'secret reasoning of student one' } }, { 'X-Pid': j1.pid });
-    const s2 = await call('GET', `/api/state?code=${code}`, null, { 'X-Pid': j2.pid });
-    assert.strictEqual(s2.status, 200);
-    assert(!JSON.stringify(s2.body).includes('secret reasoning'));
-    assert.strictEqual((await call('GET', `/api/state?code=${code}`, null, { 'X-Pid': 'made-up' })).status, 403);
-  });
-  delete process.env.ACCESS_CODE; delete process.env.FACULTY_CODES;
-});
-
-test('platform: one catalogue announcement per cold start, signed, with this sim\'s facts', async () => {
-  process.env.LAUNCH_SECRET = SECRET;
-  await withPlatform(async (got) => {
-    await withServer(async ({ call }) => { await call('GET', '/api/manifest'); await call('GET', '/api/manifest'); });
-    const reg = got.filter((g) => g.path === '/api/register');
-    assert.strictEqual(reg.length, 1);
-    const p = reg[0].payload;
-    assert(p && p.kind === 'register' && p.sim === 'rapid-10-bubble' && p.launchUrl === 'https://rapidsims.example/sim10' && p.title === config.title && p.minutes === config.minutes);
-    assert.strictEqual(p.number, 10);
-    assert.strictEqual(p.catalogueRevision, config.catalogueRevision);
-    assert.deepStrictEqual(p.detail, config.detail);
-    assert(p.detail.world && p.detail.seat && p.detail.beats.length === 3, 'catalogue receives the financial-analysis scenario details');
-  });
-});
-
-test('platform: completion reported once, after the last outcome, with calls and reasons', async () => {
-  process.env.LAUNCH_SECRET = SECRET;
-  await withPlatform(async (got) => {
-    await withServer(async ({ call, clock }) => {
-      const fac = { 'X-Launch-Token': tok({ sub: 'f1', role: 'faculty', course: 'c1', mode: 'session' }) };
-      const { code, hostKey } = (await call('POST', '/api/session', { mode: 'individual', cases: ['A'] }, fac)).body;
-      const a = { 'X-Launch-Token': tok({ sub: 'sA', role: 'student', course: 'c1' }), 'X-Pid': 'platform:sA' };
-      await call('POST', '/api/join', { code }, a);
-      const host = { 'X-Host-Key': hostKey };
-      await call('POST', '/api/host/start', { code, caseId: 'A' }, host);
-      clock.now += 13 * MIN;
-      await call('POST', '/api/verdict', { code, caseId: 'A', fields: { call: 'bubble', line: 'bs.cash', lineWhy: 'Cash halves in one quarter.', mind: longMind } }, a);
-      clock.now += 10 * MIN;
-      assert.strictEqual((await call('POST', '/api/finish', { code }, a)).status, 409, 'not finished before the outcome');
-      for (let i = 0; i < 3; i++) await call('POST', '/api/host/reveal', { code, caseId: 'A' }, host);
-      const r1 = await call('POST', '/api/finish', { code }, a);
-      const r2 = await call('POST', '/api/finish', { code }, a);
-      assert.strictEqual(r1.body.reported, true); assert.strictEqual(r2.body.already, true);
-      const comp = got.filter((g) => g.path === '/api/complete');
-      assert.strictEqual(comp.length, 1, 'reported exactly once');
-      const p = comp[0].payload;
-      assert(p && p.sub === 'sA' && p.sim === 'rapid-10-bubble' && p.course === 'c1');
-      const c = p.summary.companies[0];
-      assert.deepStrictEqual([c.company, c.call, c.line, c.status], ['Global Crossing Ltd.', 'bubble', 'Cash and cash equivalents', 'recorded']);
-      assert(JSON.stringify(p.summary).length < 6000, 'fits the platform summary limit');
-    });
-  });
-});
-
-test('solo: platform Play starts a private timed run, with course-bound identity and staged completion', async () => {
-  await withPlatform(async (got) => withServer(async ({ call, clock }) => {
-    const auth = { 'X-Launch-Token': tok({ sub: 'solo', role: 'student', course: 'course-1' }) };
-    const made = await call('POST', '/api/solo', { cases: ['A', 'B'] }, auth);
-    assert.strictEqual(made.status, 200);
-    assert(!made.body.hostKey, 'private host key stays on server');
-    const { code, pid } = made.body;
-    const me = { ...auth, 'X-Pid': pid };
-    const state = () => call('GET', `/api/state?code=${code}`, null, me);
-    assert.strictEqual((await state()).body.phase, 'read');
-    assert((await state()).body.endsAt > clock.now, 'visible reading deadline immediately');
-    assert.strictEqual((await call('POST', '/api/join', { code }, auth)).status, 403);
-    assert.strictEqual((await call('GET', `/api/session?code=${code}`)).status, 403);
-    assert.strictEqual((await call('GET', `/api/join?session=${code}`)).status, 403);
-    const other = { 'X-Launch-Token': tok({ sub: 'other', role: 'student', course: 'course-1' }), 'X-Pid': pid };
-    assert.strictEqual((await call('GET', `/api/state?code=${code}`, null, other)).status, 403);
-    assert.strictEqual((await call('GET', `/api/state?code=${code}`, null, { ...me, 'X-Launch-Token': tok({ sub: 'solo', role: 'student', course: 'course-2' }) })).status, 403);
-    assert.strictEqual((await call('POST', '/api/solo/advance', { code, caseId: 'A', stage: 0 }, me)).status, 409);
-    assert.strictEqual((await call('POST', '/api/solo', { cases: ['A'] }, { 'X-Launch-Token': tok({ sub: 'faculty', role: 'faculty', mode: 'session' }) })).status, 403);
-    for (const caseId of ['A', 'B']) {
-      clock.now += 7 * MIN;
-      assert.strictEqual((await call('POST', '/api/verdict', { code, caseId, fields: { call: 'infra', line: 'bs.cash', lineWhy: 'Cash supports the investment.', mind: longMind } }, me)).status, 200);
-      clock.now += 4 * MIN;
-      assert.strictEqual((await call('POST', '/api/finish', { code }, me)).status, 409);
-      const first = await Promise.all([0, 1].map(() => call('POST', '/api/solo/advance', { code, caseId, stage: 0 }, me)));
-      assert.deepStrictEqual(first.map(r => r.status).sort(), [200, 409], 'duplicate clicks release just one part');
-      for (const stage of [1, 2]) assert.strictEqual((await call('POST', '/api/solo/advance', { code, caseId, stage }, me)).status, 200);
-      if (caseId === 'A') {
-        assert.strictEqual((await call('POST', '/api/finish', { code }, me)).status, 409, 'second company still pending');
-        assert.strictEqual((await call('POST', '/api/solo/advance', { code, caseId, stage: 3 }, me)).status, 200);
-        assert.strictEqual((await state()).body.caseId, 'B');
-        assert.strictEqual((await state()).body.phase, 'read');
-      }
-    }
-    assert.strictEqual((await state()).body.nextPart, null);
-    assert.strictEqual((await call('POST', '/api/finish', { code }, me)).body.reported, true);
-    assert.strictEqual((await call('POST', '/api/finish', { code }, me)).body.already, true);
-    const reports = got.filter(x => x.path === '/api/complete');
-    assert.strictEqual(reports.length, 1);
-    assert.strictEqual(reports[0].payload.course, 'course-1');
-    assert.strictEqual(reports[0].payload.summary.companies.length, 2);
-  }));
-});
-
-test('solo: direct play requires access, guest identity is private, class players cannot advance themselves', async () => {
-  delete process.env.ACCESS_CODE;
-  await withServer(async ({ call }) => {
-    assert.strictEqual((await call('POST', '/api/solo', { cases: ['A'] })).status, 503);
-    process.env.ACCESS_CODE = 'solo-code';
-    assert.strictEqual((await call('POST', '/api/solo', { cases: ['A'] })).status, 401);
-    const r = await call('POST', '/api/solo', { cases: ['A'] }, { 'X-Access-Code': 'solo-code' });
-    assert.strictEqual(r.status, 200);
-    assert.strictEqual((await call('GET', `/api/state?code=${r.body.code}`, null, { 'X-Pid': r.body.pid })).status, 200);
-    assert.strictEqual((await call('GET', `/api/state?code=${r.body.code}`, null, { 'X-Pid': 'wrong' })).status, 403);
-    const fac = { 'X-Launch-Token': tok({ sub: 'fac', role: 'faculty' }) };
-    const s = (await call('POST', '/api/session', { mode: 'individual', cases: ['A'] }, fac)).body;
-    const student = { 'X-Launch-Token': tok({ sub: 'student', role: 'student' }) };
-    const j = (await call('POST', '/api/join', { code: s.code }, student)).body;
-    assert.strictEqual((await call('POST', '/api/solo/advance', { code: s.code, caseId: 'A', stage: 0 }, { ...student, 'X-Pid': j.pid })).status, 403);
-  });
-  delete process.env.ACCESS_CODE;
-});
-
-test('production: missing Redis fails clearly; dev access and accelerated clocks are disabled on Vercel', async () => {
-  const saved = { ...process.env };
-  try {
-    for (const k of ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN']) delete process.env[k];
-    process.env.VERCEL = '1'; process.env.DEV_OPEN = '1'; process.env.SIM10_CLOCK_SCALE = '0.01';
-    await withServer(async ({ call }) => {
-      assert.deepStrictEqual((await call('GET', '/api/health')).body, { ok: true, sim: config.simId });
-      assert.strictEqual((await call('GET', '/api/whoami')).body.faculty, false);
-      const r = await call('POST', '/api/solo', { cases: ['A'] }, { 'X-Launch-Token': tok({ sub: 's', role: 'student' }) });
-      assert.strictEqual(r.status, 503); assert(r.body.message.includes('Redis'));
-    }, { useDefault: true });
-    await withServer(async ({ call }) => {
-      assert.strictEqual((await call('POST', '/api/session', { mode: 'individual', cases: ['A'] })).status, 401);
-      assert.strictEqual((await call('POST', '/api/solo', { cases: ['A'] })).status, 503, 'dev bypass does not enable direct entry');
-    });
-    const { s } = await setup('individual');
-    assert.deepStrictEqual(s.clock, config.clock['1-individual']);
-  } finally {
-    for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
-    Object.assign(process.env, saved);
-  }
-});
-
-test('completion: concurrent callbacks are serialized and a failed callback retries', async () => {
-  const store = memoryStore(); let calls = 0;
-  let release;
-  const blocked = new Promise(resolve => { release = resolve; });
-  const attempt = () => E.markReported(store, 'TEST2', 'p', async () => { calls++; await blocked; return { ok: false }; }, T0);
-  const one = attempt(); const two = attempt();
-  await new Promise(resolve => setImmediate(resolve));
-  assert.strictEqual(calls, 1);
-  release();
-  const results = await Promise.all([one, two]);
-  assert(results.some(x => x.pending));
-  assert.strictEqual((await E.markReported(store, 'TEST2', 'p', async () => ({ ok: true }), T0 + 1)).reported, true);
-  assert.strictEqual((await E.markReported(store, 'TEST2', 'p', () => assert.fail('already reported'), T0 + 2)).already, true);
-});
-
-test('mount path: prefixed pages and APIs work without exposing server content', async () => {
-  process.env.BASE_PATH = '/sim10/';
-  try {
-    await withServer(async ({ call }) => {
-      for (const p of ['/sim10', '/sim10/', '/sim10/play', '/sim10/host', '/sim10/console']) {
-        const r = await call('GET', p);
-        assert.strictEqual(r.status, 200, p);
-        assert(r.body.includes('<base href="/sim10/">'), p);
-      }
-      assert.strictEqual((await call('GET', '/sim10/api/health')).status, 200);
-      assert.strictEqual((await call('GET', '/sim100/api/health')).status, 404);
-      assert.strictEqual((await call('GET', '/sim10/data/config.js')).status, 404);
-      assert.strictEqual((await call('GET', '/sim10/lib/launch.js')).status, 404);
-    });
-  } finally { delete process.env.BASE_PATH; }
-});
-
-test('client: solo entry, signed account rejoin and scoped tokens use the real API', async () => {
-  await withServer(async ({ call }) => require('./client').check({ call, tok, T0 }));
-});
-
-(async () => {
-  let failed = 0;
-  for (const t of tests) {
-    try { await t.fn(); console.log(`  ok   ${t.name}`); }
-    catch (e) { failed++; console.log(`  FAIL ${t.name}\n       ${e.message.split('\n').join('\n       ')}`); }
-  }
-  console.log(`\n${tests.length - failed}/${tests.length} passed`);
-  process.exit(failed ? 1 : 0);
-})();
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×^uÝ:-jZ.¶›­–)Þ³RwW6R7G&–7Bs°§&ö6W72æVçbäDUeôõTâÒrs°¦6öç7B76W'BÒ&WV—&R‚v76W'Br“°¦6öç7B‡GGÒ&WV—&R‚v‡GGr“°¦6öç7BRÒ&WV—&R‚rââöÆ–"öVæv–æRr“°¦6öç7B6öçFVçBÒ&WV—&R‚rââöÆ–"ö6öçFVçBr“°¦6öç7B6öæf–rÒ&WV—&R‚rââöFFö6öæf–rr“°¦6öç7BvFRÒ&WV—&R‚rââ÷FööÇ2övFRr“°¦6öç7BFVç–Æ—7BÒ&WV—&R‚rââöÆ–"öFVç–Æ—7Br“°¦6öç7B²ÖVÖ÷'•7F÷&RÒÒ&WV—&R‚rââöÆ–"÷7F÷&Rr“°¦6öç7B²7&VFTÒÒ&WV—&R‚rââöÆ–"ör“°¦6öç7BÂÒ&WV—&R‚rââöÆ–"öÆVæ6‚r“° ¦6öç7BFW7G2ÒµÓ°¦6öç7BFW7BÒ†æÖRÂfâ’ÓâFW7G2çW6‚‡²æÖRÂfâÒ“°¦6öç7BÔ”âÒc°¦6öç7BCÒósóóó°¦6öç7B&V¦V7G2Ò7–æ2‡Â6öFR’Óâ²G'’²v—B²Ò6F6‚†R’²76W'Bç7G&–7DWVÂ†Ræ6öFRÂ6öFRÂW‡V7FVBG¶6öFWÒÂv÷BG¶Ræ6öFWÓ¢G¶RæÖW76vWÖ“²&WGW&ã²Ò76W'Bæf–Â†W‡V7FVB&V¦V7F–öâG¶6öFWÖ“²Ó° ¦7–æ2gVæ7F–öâ6WGW†ÖöFRÂ66W2Ò²tuÒÂFV×2Ò"’°¢6öç7B7F÷&RÒÖVÖ÷'•7F÷&R‚“°¢6öç7B2Òv—BRæ7&VFU6W76–öâ‡7F÷&RÂ²ÖöFRÂ66W2ÂFV×2ÒÂC“°¢&WGW&â²7F÷&RÂ2Â6öFS¢2æ6öFRÂ†÷7C¢2æ†÷7D¶W’Ó°§Ð¦6öç7BÆöætÖ–æBÒt’v÷VÆBæVVBFò6VRÆ–¶RÖf÷"ÖÆ–¶R&WfVçVRw&÷v–ærf7FW"F†â6—FÂ7VæF–ærf÷"GvòV'FW'2–â&÷râs° ¢òòÒÒÒÒÒÒÒÒÒÒvFRÒÒÒÒÒÒÒÒÒÐ§FW7B‚vvFR76W2öâ&VÂ6öçFVçBrÂ‚’Óâ²76W'BæFVW7G&–7DWVÂ†vFRæ6†V6²‚’ÂµÒ“²Ò“° §FW7B‚vvFR6F6†W2ÆçFVB6ö×ç’æÖR–âF†R6²rÂ‚’Óâ°¢6öç7BÒ6öçFVçBæ'V–ÆE6²‚tr“²6öç7B"Ò6öçFVçBæ'V–ÆE6²‚t"r“°¢"ç6V7F–öç5³EÒçFW‡E³ÒçFW‡B³ÒrWV–æ—‚6–B6òâs°¢6öç7BW''2ÒvFRæ6†V6²‡²6·3¢²Â"ÒÒ“°¢76W'B†W''2ç6öÖR‚†R’ÓâRç7F'G5v—F‚‚u¶FVç–Æ—7EÒr’bbRæ–æ6ÇVFW2‚vWV–æ—‚r’’ÂW''2æ¦ö–â‚uÆâr’“°§Ò“° §FW7B‚vvFR6F6†W2ÆçFVB–V"ÂFöÆÆ"6–vâæBâW&FW&ÒrÂ‚’Óâ°¢6öç7BÒ6öçFVçBæ'V–ÆE6²‚tr“°¢æ'&–Vf–ærçW6‚‚tf–wW&W2f÷"#&R–âBæBF†RæWGv÷&²—2f–'&Râr“°¢6öç7BW''2ÒvFRæ6†V6²‡²6·3¢²Â#¢6öçFVçBæ'V–ÆE6²‚t"r’ÒÒ“°¢f÷"†6öç7BBöb²s#rÂrBrÂvf–'&RuÒ’76W'B†W''2ç6öÖR‚†R’ÓâRæ–æ6ÇVFW2‡B’’ÂÖ—76VBG·GÖ“°§Ò“° §FW7B‚vvFR6F6†W2ÆV²–âV&Æ–2T’FW‡BrÂ‚’Óâ°¢6öç7BV"ÒvFRçV&Æ–5FW‡G2‚’æ6öæ6B…·²v†W&S¢wÆçFVBæ§2rÂFW‡C¢uvVÆ6öÖRFòF†RvÆö&Â7&÷76–ær66RrÕÒ“°¢76W'B†vFRæ6†V6²‡²V&Æ–5FW‡G3¢V"Ò’ç6öÖR‚†R’ÓâRæ–æ6ÇVFW2‚wÆçFVBæ§2r’’“°§Ò“° §FW7B‚vvFRFW‡BW‡G&7F÷"f–æG2ÆV·2–ç6–FRFV×ÆFRÆ—FW&Ç2æB–æÆ–æR67&—G2rÂ‚’Óâ°¢6öç7Bg2Ò&WV—&R‚vg2r“²6öç7B÷2Ò&WV—&R‚v÷2r“²6öç7BF‚Ò&WV—&R‚wF‚r“°¢6öç7BF—"Òg2æÖ¶GFV×7–æ2‡F‚æ¦ö–â†÷2çF×F—"‚’Âw3Òr’“°¢g2çw&—FTf–ÆU7–æ2‡F‚æ¦ö–â†F—"Âvæ§2r’ÂvVÂæ–ææW$…DÔÂÒÇâG¶W62‡‚—Òv2Æ—7FVBöâæ6FG·’æÖ‚‡¢’ÓâÆ#âG·§ÓÂö#æ’æ¦ö–â‚""—ÓÂ÷æ²r“°¢g2çw&—FTf–ÆU7–æ2‡F‚æ¦ö–â†F—"Âv"æ‡FÖÂr’ÂsÇäf–æSÂ÷ãÇ67&—CæÆW'B‚'F†Rf–'&RæWGv÷&²"“³Â÷67&—Câr“°¢6öç7BW''2ÒvFRæ6†V6²‡²V&Æ–5FW‡G3¢vFRçV&Æ–5FW‡G2†F—"’Ò“°¢76W'B†W''2ç6öÖR‚†R’ÓâRæ–æ6ÇVFW2‚væ§2r’bbRæ–æ6ÇVFW2‚væ6Fr’’ÂwFV×ÆFRÆ—FW&ÂÆV²Ö—76VBr“°¢76W'B†W''2ç6öÖR‚†R’ÓâRæ–æ6ÇVFW2‚v"æ‡FÖÂr’bbRæ–æ6ÇVFW2‚vf–'&Rr’’Âv–æÆ–æR67&—BÆV²Ö—76VBr“°§Ò“° §FW7B‚vvFR6F6†W26öçFW‡BÆV·2ÂÆ6V†öÆFW'2Â&B66Æ–æræB&WF—&VB–BrÂ‚’Óâ°¢6öç7BÒ6öçFVçBæ'V–ÆE6²‚tr“°¢æ'&–Vf–ærçW6‚‚u6VR–÷RGVW6F’âDôDòr“°¢ç6V7F–öç5³Òæ&Æö6·5³Òç&÷rçfÇVW5³ÒÒss°¢6öç7BW''2ÒvFRæ6†V6²‡²6·3¢²Â#¢6öçFVçBæ'V–ÆE6²‚t"r’ÒÂ6–Ô–C¢w&–BÓ2ÖÖ–FÆæBrÒ“°¢f÷"†6öç7B2öb²u¶6öçFW‡EÒrÂu·Æ6V†öÆFW%ÒrÂu·66Æ–æuÒrÂu·6–Ö–EÒuÒ’76W'B†W''2ç6öÖR‚†R’ÓâRç7F'G5v—F‚†2’’ÂÖ—76VBG¶7Ö“°§Ò“° §FW7B‚vÆ—fRwV&BæBvFRW6RF†R6ÖRÖF6†W"rÂ‚’Óâ°¢6öç7BFW‡BÒuF†—2†2Fò&RvÆö&Â7&÷76–ær–â#s°¢76W'BæFVW7G&–7DWVÂ†FVç–Æ—7Bæf–æD†—G2‡FW‡B’ç6÷'B‚’Â²s#rÂvvÆö&Â7&÷76–æruÒ“°¢6öç7Bf¶RÒ²'Vç3¢²¢²&WfVÃ¢ÒÒÓ°¢76W'Bç7G&–7DWVÂ„RæwV&B†f¶RÂtrÂFW‡B’ÂG'VR“°¢f¶Rç'Vç2äç&WfVÂÒ°¢76W'Bç7G&–7DWVÂ„RæwV&B†f¶RÂtrÂFW‡B’ÂfÇ6RÂvwV&B—2öfböæ6RF†R6ö×ç’—2æÖVBr“°§Ò“° ¢òòÒÒÒÒÒÒÒÒÒÒ66Æ–ærÒÒÒÒÒÒÒÒÒÐ§FW7B‚w66Æ–æs¢WfW'’ÖöæW’f–wW&RWVÇ26÷W&6R‚6öç7FçBÂ&F–÷2&W6W'fVBrÂ‚’Óâ°¢f÷"†6öç7B72öb²trÂt"uÒ’°¢6öç7B'•FrÒ6öçFVçBæÆ–æW4'•Fr†72“°¢6öç7B²Ò6öæf–rç66ÆU¶75Ó°¢6öç7B&WbÒ'•Fu²v—2ç&WfVçVRuÓ°¢76W'Bç7G&–7DWVÂ†6öçFVçBç66ÆVB†72Â&Wbå’ÂÖF‚ç&÷VæB‡&Wbå¢²’“°¢6öç7B&F–õ7&2Ò&Wbå"ò&Wbå²6öç7B&F–õ6†÷vâÒ6öçFVçBç66ÆVB†72Â&Wbå"’ò6öçFVçBç66ÆVB†72Â&Wbå“°¢76W'B„ÖF‚æ'2‡&F–õ7&2Ò&F–õ6†÷vâ’ÂãÂG¶77Ò&F–òG&–gF“°¢Ð¢6öç7B6²Ò6öçFVçBæ'V–ÆE6²‚tr“°¢6öç7Bw&÷wF‚Ò6²ç6V7F–öç5³Òæ&Æö6·5³Òç&÷s°¢76W'BæFVW7G&–7DWVÂ†w&÷wF‚çfÇVW2Â²s3ƒrRrÂs33"RuÒ“°§Ò“° §FW7B‚w66Æ–ær6öç7FçB—2æWfW"6VçBFò7GVFVçG2rÂ7–æ2‚’Óâ°¢6öç7B²7F÷&RÂ6öFRÂ†÷7BÒÒv—B6WGW‚v–æF—f–GVÂr“°¢6öç7B²–BÒÒv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC“°¢6öç7Bf–WrÒ¥4ôâç7G&–æv–g’†v—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂC²Ô”â’“°¢76W'B‚f–Wræ–æ6ÇVFW2…7G&–ær†6öæf–rç66ÆRä’’“°¢76W'B‚f–Wræ–æ6ÇVFW2‚tvÆö&Â7&÷76–ærr’bbf–Wræ–æ6ÇVFW2‚vv2Ór’ÂvæòæÖW2÷"6÷W&6R&Vg2&Vf÷&R&WfVÂr“°§Ò“° ¢òòÒÒÒÒÒÒÒÒÒÒ6W76–öâ7&VF–öâÒÒÒÒÒÒÒÒÒÐ§FW7B‚w6W76–öâ7&VF–öâ&WV—&W2ÖöFRæB66R6†ö–6RÂæòFVfVÇG2rÂ7–æ2‚’Óâ°¢6öç7B7F÷&RÒÖVÖ÷'•7F÷&R‚“°¢v—B&V¦V7G2„Ræ7&VFU6W76–öâ‡7F÷&RÂ·ÒÂC’Âv&E÷&WVW7Br“°¢v—B&V¦V7G2„Ræ7&VFU6W76–öâ‡7F÷&RÂ²ÖöFS¢v–æF—f–GVÂrÒÂC’Âv&E÷&WVW7Br“°¢v—B&V¦V7G2„Ræ7&VFU6W76–öâ‡7F÷&RÂ²66W3¢²tuÒÒÂC’Âv&E÷&WVW7Br“°¢v—B&V¦V7G2„Ræ7&VFU6W76–öâ‡7F÷&RÂ²ÖöFS¢wFVÒrÂ66W3¢²tuÒÒÂC’Âv&E÷&WVW7Br“°¢v—B&V¦V7G2„Ræ7&VFU6W76–öâ‡7F÷&RÂ²ÖöFS¢v–æF—f–GVÂrÂ66W3¢²t"uÒÒÂC’Âv&E÷&WVW7Br“°¢6öç7B2Òv—BRæ7&VFU6W76–öâ‡7F÷&RÂ²ÖöFS¢wFVÒrÂ66W3¢²trÂt"uÒÂFV×3¢BÒÂC“°¢76W'BæFVW7G&–7DWVÂ‡2æ6Æö6²Â²&VC¢RÂ&—fFS¢ÂFVÓ¢BÒ“°§Ò“° ¢òòÒÒÒÒÒÒÒÒÒÒ–æF—f–GVÂ7FFRÖ6†–æRÒÒÒÒÒÒÒÒÒÐ§FW7B‚v–æF—f–GVÃ¢&VBÂfW&F–7BÂ6Æ÷6VC²w&—FW2öæÇ’–âF†RfW&F–7Bv–æF÷rrÂ7–æ2‚’Óâ°¢6öç7B²7F÷&RÂ6öFRÂ†÷7BÒÒv—B6WGW‚v–æF—f–GVÂr“°¢6öç7B²–BÒÒv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC“°¢v—B&V¦V7G2„Rç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²6ÆÃ¢v'V&&ÆRrÒÂC’Âv6Æ÷6VBr“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC“°¢76W'Bç7G&–7DWVÂ‚†v—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂC²¢Ô”â’’ç†6RÂw&VBr“°¢v—B&V¦V7G2„Rç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²6ÆÃ¢v'V&&ÆRrÒÂC²¢Ô”â’Âv6Æ÷6VBr“°¢v—BRç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²6ÆÃ¢v'V&&ÆRrÂÆ–æS¢w&V6öâæFVfW'&VEö66‚rÒÂC²2¢Ô”â“°¢v—BRç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²Æ–æUv‡“¢tÖ÷7BöbF†R&öf—BÖV7W&R—266‚–B–âGfæ6RârÂÖ–æC¢ÆöætÖ–æBÒÂC²B¢Ô”â“°¢v—B&V¦V7G2„Rç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²6ÆÃ¢v–æg&rÒÂC²‚¢Ô”â’Âv6Æ÷6VBr“°¢6öç7BbÒv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂC²‚¢Ô”â“°¢76W'Bç7G&–7DWVÂ‡bç†6RÂv6Æ÷6VBr“°¢76W'BæFVW7G&–7DWVÂ‡²3¢bç&W7VÇBç7FGW2Â3¢bç&W7VÇBæ6ÆÂÂ#¢bç&W7VÇBæ&Ææ·2ÒÂ²3¢w&V6÷&FVBrÂ3¢v'V&&ÆRrÂ#¢µÒÒ“°§Ò“° §FW7B‚v–æF—f–GVÃ¢–çfÆ–B6ÆÂæBÆ–æRæ÷B–âF†R6²&R&V¦V7FVBrÂ7–æ2‚’Óâ°¢6öç7B²7F÷&RÂ6öFRÂ†÷7BÒÒv—B6WGW‚v–æF—f–GVÂr“°¢6öç7B²–BÒÒv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC“°¢v—B&V¦V7G2„Rç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²6ÆÃ¢vÖ–&RrÒÂC²2¢Ô”â’Âv&E÷&WVW7Br“°¢v—B&V¦V7G2„Rç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²Æ–æS¢vçBæ&öæEöÖ&¶WE÷fÇVRrÒÂC²2¢Ô”â’Âv&E÷&WVW7Br“°§Ò“° §FW7B‚wF–ÖV÷WG3¢6Æö6²÷WBv—F‚æò6ÆÂ—2æòfW&F–7C²6ÆÂv—F‚&Ææ·2—2&V6÷&FVBv—F‚&Ææ·2Ö&¶VBrÂ7–æ2‚’Óâ°¢6öç7B²7F÷&RÂ6öFRÂ†÷7BÒÒv—B6WGW‚v–æF—f–GVÂr“°¢6öç7BÒv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC“²6öç7B"Òv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC“²6öç7B2Òv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC“°¢v—BRç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ"ç–BÂtrÂ²6ÆÃ¢v–æg&rÒÂC²2¢Ô”â“°¢v—BRç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ2ç–BÂtrÂ²Æ–æS¢v'2æ66‚rÂÖ–æC¢w6†÷'BrÒÂC²2¢Ô”â“°¢6öç7BBÒC²#¢Ô”ã°¢76W'Bç7G&–7DWVÂ‚†v—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂç–BÂB’’ç&W7VÇBç7FGW2Âvæõ÷fW&F–7Br“°¢6öç7B&"Ò†v—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ"ç–BÂB’’ç&W7VÇC°¢76W'BæFVW7G&–7DWVÂ…·&"ç7FGW2Â&"æ&Ææ·5ÒÂ²w&V6÷&FVBrÂ²vÆ–æRrÂw&V6öârÂvÖ–æBuÕÒ“°¢76W'Bç7G&–7DWVÂ‚†v—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ2ç–BÂB’’ç&W7VÇBç7FGW2Âvæõ÷fW&F–7BrÂvÆ–æRv—F†÷WB6ÆÂ—27F–ÆÂæòfW&F–7Br“°¢6öç7B6öâÒv—BRæ6öç6öÆU7FFR‡7F÷&RÂ6öFRÂ†÷7BÂB“°¢76W'BæFVW7G&–7DWVÂ†6öâæ'”66Räç7Æ—BÂ²–æg&¢Â'V&&ÆS¢ÂæõfW&F–7C¢"Ò“°§Ò“° ¢òòÒÒÒÒÒÒÒÒÒÒFVÒ7FFRÖ6†–æRÒÒÒÒÒÒÒÒÒÐ§FW7B‚wFVÓ¢&—fFR6ÆÂv–æF÷rÂ6†&VBG&gBÂf—'7B6öÖÖ—Bv–ç2ÂFVÒ—6öÆF–öârÂ7–æ2‚’Óâ°¢6öç7B²7F÷&RÂ6öFRÂ†÷7BÒÒv—B6WGW‚wFVÒrÂ²tuÒÂ"“°¢6öç7BÓÒv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ²FVÓ¢ÒÂC“²6öç7BÓ"Òv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ²FVÓ¢ÒÂC“°¢6öç7BóÒv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ²FVÓ¢"ÒÂC“°¢v—B&V¦V7G2„Ræ¦ö–â‡7F÷&RÂ6öFRÂ²FVÓ¢2ÒÂC’Âv&E÷&WVW7Br“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC“°¢6öç7B&—bÒC²¢Ô”ã²6öç7BFVÒÒC²2¢Ô”ã°¢v—B&V¦V7G2„Rç6fUFVÔG&gB‡7F÷&RÂ6öFRÂÓç–BÂtrÂ²6ÆÃ¢v–æg&rÒÂ&—b’Âv6Æ÷6VBr“°¢v—BRç6fU&—fFR‡7F÷&RÂ6öFRÂÓç–BÂtrÂv–æg&rÂ&—b“°¢v—BRç6fU&—fFR‡7F÷&RÂ6öFRÂÓ"ç–BÂtrÂv–æg&rÂ&—b“°¢v—BRç6fU&—fFR‡7F÷&RÂ6öFRÂóç–BÂtrÂv'V&&ÆRrÂ&—b“°¢v—B&V¦V7G2„Rç6fU&—fFR‡7F÷&RÂ6öFRÂÓç–BÂtrÂv'V&&ÆRrÂFVÒ’Âv6Æ÷6VBr“°¢v—B&V¦V7G2„Ræ6öÖÖ—EFVÒ‡7F÷&RÂ6öFRÂÓç–BÂtrÂFVÒ’Âv&E÷&WVW7Br“°¢v—BRç6fUFVÔG&gB‡7F÷&RÂ6öFRÂÓç–BÂtrÂ²6ÆÃ¢v'V&&ÆRrÂÆ–æS¢v'2æ66‚rÒÂFVÒ“°¢6öç7B6VVâÒv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂÓ"ç–BÂFVÒ“°¢76W'Bç7G&–7DWVÂ‡6VVâçFVÔG&gBæ6ÆÂÂv'V&&ÆRrÂwFVÖÖFR6VW26†&VBG&gBr“°¢76W'Bç7G&–7DWVÂ‡6VVâæÖ–æRç&—fFRÂv–æg&r“°¢6öç7B÷F†W"Òv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂóç–BÂFVÒ“°¢76W'BæFVW7G&–7DWVÂ†÷F†W"çFVÔG&gBÂ·ÒÂv÷F†W"FVÒ6VW2æ÷F†–æröbFVÒr“°¢v—BRæ6öÖÖ—EFVÒ‡7F÷&RÂ6öFRÂÓ"ç–BÂtrÂFVÒ“°¢v—B&V¦V7G2„Ræ6öÖÖ—EFVÒ‡7F÷&RÂ6öFRÂÓç–BÂtrÂFVÒ’Âv6öæfÆ–7Br“°¢v—B&V¦V7G2„Rç6fUFVÔG&gB‡7F÷&RÂ6öFRÂÓç–BÂtrÂ²6ÆÃ¢v–æg&rÒÂFVÒ’Âv6öæfÆ–7Br“°¢6öç7BVæBÒC²#¢Ô”ã°¢6öç7B#Ò†v—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂÓç–BÂVæB’’ç&W7VÇC°¢76W'BæFVW7G&–7DWVÂ…·#ç7FGW2Â#æ6ÆÂÂ#æ&Ææ·5ÒÂ²w&V6÷&FVBrÂv'V&&ÆRrÂ²w&V6öârÂvÖ–æBuÕÒ“°¢76W'Bç7G&–7DWVÂ‚†v—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂóç–BÂVæB’’ç&W7VÇBç7FGW2Âvæõ÷fW&F–7BrÂvæò6öÖÖ—B'’F†R6Æö6²—2æòfW&F–7Br“°¢6öç7B6öâÒv—BRæ6öç6öÆU7FFR‡7F÷&RÂ6öFRÂ†÷7BÂVæB“°¢76W'BæFVW7G&–7DWVÂ†6öâæ'”66RäæÖ÷fVÖVçBÂ²Ö÷fVC¢Â†VÆC¢Â7Æ—C¢ÂæõfW&F–7C¢Ò“°§Ò“° ¢òòÒÒÒÒÒÒÒÒÒÒ&WfVÂvF–ærÒÒÒÒÒÒÒÒÒÐ§FW7B‚w&WfVÃ¢vFVBöâF†R6Æö6²ÂöæR7FvRBF–ÖRÂ66R"öæÇ’gFW"66R&WfVÂrÂ7–æ2‚’Óâ°¢6öç7B²7F÷&RÂ6öFRÂ†÷7BÒÒv—B6WGW‚v–æF—f–GVÂrÂ²trÂt"uÒ“°¢6öç7B²–BÒÒv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC“°¢v—B&V¦V7G2„Rç7F'D66R‡7F÷&RÂ6öFRÂww&öærÖ¶W’rÂtrÂC’Âvf÷&&–FFVâr“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC“°¢v—B&V¦V7G2„RæGfæ6U&WfVÂ‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC²R¢Ô”â’Âv6öæfÆ–7Br“°¢v—B&V¦V7G2„Rç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂt"rÂC²R¢Ô”â’Âv6öæfÆ–7Br“°¢v—BRç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²6ÆÃ¢v'V&&ÆRrÂÆ–æS¢v'2æFV'EöÆöærrÒÂC²r¢Ô”â“°¢6öç7B6Æ÷6VBÒC²¢Ô”ã°¢ÆWBbÒv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂ6Æ÷6VB“°¢76W'Bç7G&–7DWVÂ‡bç&WfVÂÂçVÆÂÂvæ÷F†–ær&WfVÆVBVçF–ÂF†R†÷7B&VÆV6W27FvRr“°¢v—BRæGfæ6U&WfVÂ‡7F÷&RÂ6öFRÂ†÷7BÂtrÂ6Æ÷6VB“°¢bÒv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂ6Æ÷6VB“°¢76W'Bç7G&–7DWVÂ‡bç&WfVÂæ–FVçF—G’ææÖRÂtvÆö&Â7&÷76–ærÇFBâr“°¢76W'B‚bç&WfVÂçF&ÆRÂw7FvR6†÷w2–FVçF—G’öæÇ’r“°¢v—BRæGfæ6U&WfVÂ‡7F÷&RÂ6öFRÂ†÷7BÂtrÂ6Æ÷6VB“°¢bÒv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂ6Æ÷6VB“°¢6öç7B–÷W'2Òbç&WfVÂçF&ÆRç&÷w2æf–ÇFW"‚‡"’Óâ"ç–÷W'2’æÖ‚‡"’Óâ"çFr“°¢76W'BæFVW7G&–7DWVÂ‡–÷W'2Â²v'2æFV'E÷F÷FÂuÒÂv6—FVBÆ–æR†–v†Æ–v‡FVBF‡&÷Vv‚Ö5÷Fòr“°¢76W'B‚bç&WfVÂæ÷WF6öÖR“°¢v—B&V¦V7G2„Rç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂt"rÂ6Æ÷6VB’Âv6öæfÆ–7Br“°¢v—BRæGfæ6U&WfVÂ‡7F÷&RÂ6öFRÂ†÷7BÂtrÂ6Æ÷6VB“°¢bÒv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂ6Æ÷6VB“°¢76W'B‡bç&WfVÂæ÷WF6öÖRæÆVæwF‚ãÒ2“°¢v—B&V¦V7G2„RæGfæ6U&WfVÂ‡7F÷&RÂ6öFRÂ†÷7BÂtrÂ6Æ÷6VB’Âv6öæfÆ–7Br“°¢bÒv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂ6Æ÷6VB“°¢76W'Bç7G&–7DWVÂ‡bæ66T–BÂtrÂw7GVFVçG27F’öâF†R66R÷WF6öÖRVçF–ÂF†R†÷7B7F'G266R"r“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂt"rÂ6Æ÷6VB“°¢bÒv—BRç7GVFVçE7FFR‡7F÷&RÂ6öFRÂ–BÂ6Æ÷6VB²Ô”â“°¢76W'Bç7G&–7DWVÂ‡bç6²æ66T–BÂt"r“°¢76W'B‡bç6²æ'&–Vf–æu³Òç7F'G5v—F‚‚tF–ffW&VçB6ö×ç’ÂF–ffW&VçBW&–öBâr’“°§Ò“° §FW7B‚w&WfVÃ¢6—FVBÆ–æR÷WG6–FRF†RG&–ÖÖVB6WB—2VæFVBæBÖ&¶VBrÂ‚’Óâ°¢6öç7B"Ò6öçFVçBæ'V–ÆE&WfVÂ‚trÂ"Âv'2ævööGv–ÆÂr“°¢76W'Bç7G&–7DWVÂ‡"çF&ÆRæW‡G&çFrÂv'2ævööGv–ÆÂr“°¢76W'B‡"çF&ÆRç&÷w2æWfW'’‚‡‚’Óâ‚ç–÷W'2’“°§Ò“° ¢òòÒÒÒÒÒÒÒÒÒÒ6öç6öÆS¢—'2ÂwV&BÂVææ–Ö÷W2ÒÒÒÒÒÒÒÒÒÐ§FW7B‚w—'3¢6ÖRÆ–æRÂ÷÷6—FR6ÆÇ3²wV&B†öÆG2&W7öç6RF†BæÖW2F†R6ö×ç’rÂ7–æ2‚’Óâ°¢6öç7B²7F÷&RÂ6öFRÂ†÷7BÒÒv—B6WGW‚v–æF—f–GVÂr“°¢6öç7B2ÒµÓ°¢f÷"†ÆWB’Ò²’ÂS²’²²’2çW6‚‚†v—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC’’ç–B“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC“°¢6öç7BBÒC²2¢Ô”ã°¢6öç7B6fRÒ‡–BÂ6ÆÂÂÆ–æRÂÖ–æBÒÆöætÖ–æB’ÓâRç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²6ÆÂÂÆ–æRÂÆ–æUv‡“¢uF†—2Æ–æR6'&–W2F†R&wVÖVçBârÂÖ–æBÒÂB“°¢v—B6fR‡5³ÒÂv'V&&ÆRrÂv†Âæ66…÷&WfVçVRr“°¢v—B6fR‡5³ÒÂv–æg&rÂv†Âæ66…÷&WfVçVRr“°¢v—B6fR‡5³%ÒÂv'V&&ÆRrÂv'2æ66‚r“°¢v—B6fR‡5³5ÒÂv–æg&rÂv'2æ66‚rÂG¶ÆöætÖ–æGÒ—B—2ö'f–÷W6Ç’vÆö&Â7&÷76–æræ“°¢v—B6fR‡5³EÒÂv–æg&rÂwG‚æ76WEöÆ—fW2r“°¢6öç7B6öâÒv—BRæ6öç6öÆU7FFR‡7F÷&RÂ6öFRÂ†÷7BÂC²#¢Ô”â“°¢6öç7B2Ò6öâæ'”66Rä°¢76W'Bç7G&–7DWVÂ†2æ†VÆD6÷VçBÂ“°¢76W'BæFVW7G&–7DWVÂ†2ç—'2æÖ‚‡’ÓâæÆ–æR’Â²v†Âæ66…÷&WfVçVRuÒÂv†VÆB&W7öç6R—2æ÷B—&VB÷"&ö¦V7FVBr“°¢76W'Bç7G&–7DWVÂ†2çVææ–Ö÷W2ÂçVÆÂ“°¢v—BRç&ö¦V7B‡7F÷&RÂ6öFRÂ†÷7BÂtrÂ²6†÷t†VÆC¢G'VRÒÂC²#¢Ô”â“°¢6öç7B6öã"Òv—BRæ6öç6öÆU7FFR‡7F÷&RÂ6öFRÂ†÷7BÂC²#¢Ô”â“°¢76W'Bç7G&–7DWVÂ†6öã"æ'”66Räç—'2æÆVæwF‚Â"Âv†÷7B6â6†ö÷6RFò6†÷r†VÆB&W7öç6W2r“°§Ò“° §FW7B‚v6öç6öÆRGW&–ærÆ’6†÷w26÷VçBöæÇ’rÂ7–æ2‚’Óâ°¢6öç7B²7F÷&RÂ6öFRÂ†÷7BÒÒv—B6WGW‚v–æF—f–GVÂr“°¢6öç7B²–BÒÒv—BRæ¦ö–â‡7F÷&RÂ6öFRÂ·ÒÂC“°¢v—BRç7F'D66R‡7F÷&RÂ6öFRÂ†÷7BÂtrÂC“°¢v—BRç6fT–æF—f–GVÂ‡7F÷&RÂ6öFRÂ–BÂtrÂ²6ÆÃ¢v–æg&rÒÂC²2¢Ô”â“°¢6öç7B2Ò†v—BRæ6öç6öÆU7FFR‡7F÷&RÂ6öFRÂ†÷7BÂC²B¢Ô”â’’æ'”66Rä°¢76W'Bç7G&–7DWVÂ†2ç7V&Ö—GFVBÂ“°¢f÷"†6öç7B²öb²w7Æ—BrÂw—'2rÂvÆ–æW4'”6ÆÂuÒ’76W'B‚†²–â2’ÂG¶·Ò×W7Bæ÷BV"GW&–ærÆ–“°§Ò“° §FW7B‚wVææ–Ö÷W2&ööÓ¢Ö¦÷&—G’Ö–æBÖ6†ævW'2öffW&VMy×{h‘éì¶»§q«^uÍÐ„€ôì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€Íœ°É½±”è€ÍÑÕ‘•¹Ðœ°½ÕÉÍ”è€ŒÄœô¤ôì(€€€½¹ÍÐˆ€ôì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€Íœ°É½±”è€ÍÑÕ‘•¹Ðœ°½ÕÉÍ”è€ŒÄœô¤ôì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ°€¹¼Ñ½­•¸½¸„Á±…Ñ™½É´Í•ÍÍ¥½¸œ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°ì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€Í`œ°É½±”è€ÍÑÕ‘•¹Ðœ°½ÕÉÍ”è€ŒÈœô¤ô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ°€½Ñ¡•È½ÕÉÍ”œ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°ì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€Í`œ°É½±”è€ÍÑÕ‘•¹Ðœ°Í¥´è€É…Á¥´Ààµ±…Ñ•Èœô¤ô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÄ°€½Ñ¡•ÈÍ¥´œ¤ì(€€€½¹ÍÐ¨€ô…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°„¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡¨¹‰½‘ä¹Á¥°€Á±…Ñ™½É´éÍœ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°„¤¤¹‰½‘ä¹É•©½¥¹•°ÑÉÕ”°€É•©½¥¸¥Ì¥‘•µÁ½Ñ•¹Ðœ¤ì(€€€…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°ˆ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘í½‘•õ€°¹Õ±°°ì€¸¸¹ˆ°€`µA¥œè€Á±…Ñ™½É´éÍœô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ°€…¹¹½Ð…Ð…Ì…¹½Ñ¡•ÈÍÑÕ‘•¹Ðœ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘í½‘•õ€°¹Õ±°°ì€`µA¥œè€Á±…Ñ™½É´éÍœô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÄ°€Á±…Ñ™½É´Á…ÉÑ¥¥Á…¹Ð¹••‘ÌÑ¡”Ñ½­•¸œ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘í½‘•õ€°¹Õ±°°ì€¸¸¹„°€`µA¥œè€Á±…Ñ™½É´éÍœô¤¤¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€ô¤ì)ô¤ì()Ñ•ÍÐ ¡ÑÑÀèÍÑ…¹‘…±½¹”…•ÍÌ™…¥±Ì±½Í•ì½‘•Ì½Á•¸¥ÐìÍÑÕ‘•¹ÑÌ¹•Ù•ÈÍ•”•… ½Ñ¡•Èœ°…Íå¹Œ€ ¤€ôøì(€ÁÉ½•ÍÌ¹•¹Ø¹1U9!}MIP€ôMIPì‘•±•Ñ”ÁÉ½•ÍÌ¹•¹Ø¹MM}=ì(€ÁÉ½•ÍÌ¹•¹Ø¹U1Qe}=L€ô€Y¥­É…´é™…Œ´ÄÈÌ°¡Õ¬é™…Œ´ÐÔØœì(€…Ý…¥ÐÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°°±½¬ô¤€ôøì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í•ÍÍ¥½¸œ°ìµ½‘”è€¥¹‘¥Ù¥‘Õ…°œ°…Í•Ìèltô°ì€`µ…Õ±Ñäµ½‘”œè€¹½Á”œô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÄ¤ì(€€€½¹ÍÐÉ•…Ñ•€ô…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í•ÍÍ¥½¸œ°ìµ½‘”è€¥¹‘¥Ù¥‘Õ…°œ°…Í•Ìèltô°ì€`µ…Õ±Ñäµ½‘”œè€™…Œ´ÐÔØœô¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡É•…Ñ•¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€½¹ÍÐì½‘”°¡½ÍÑ-•äô€ôÉ•…Ñ•¹‰½‘äì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô¤¤¹ÍÑ…ÑÕÌ°€ÔÀÌ°€¹¼MM}=½¹™¥ÕÉ•è±½Í•œ¤ì(€€€ÁÉ½•ÍÌ¹•¹Ø¹MM}=€ô€±…ÍÌµ½‘”œì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°ì€`µ•ÍÌµ½‘”œè€ÝÉ½¹œœô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÄ¤ì(€€€½¹ÍÐ…Œ€ôì€`µ•ÍÌµ½‘”œè€±…ÍÌµ½‘”œôì(€€€½¹ÍÐ¨Ä€ô€¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°…Œ¤¤¹‰½‘äì½¹ÍÐ¨È€ô€¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°…Œ¤¤¹‰½‘äì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½½¹Í½±”ý½‘”ô‘í½‘•õ€°¹Õ±°°ì€`µA¥œè¨Ä¹Á¥ô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€€€…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½¡½ÍÐ½ÍÑ…ÉÐœ°ì½‘”°…Í•%è€œô°ì€`µ!½ÍÐµ-•äœè¡½ÍÑ-•äô¤ì(€€€±½¬¹¹½Ü€¬ô€ÄÌ€¨5%8ì(€€€…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Ù•É‘¥Ðœ°ì½‘”°…Í•%è€œ°™¥•±‘Ìèì…±°è€‰Õ‰‰±”œ°µ¥¹è€Í•É•ÐÉ•…Í½¹¥¹œ½˜ÍÑÕ‘•¹Ð½¹”œôô°ì€`µA¥œè¨Ä¹Á¥ô¤ì(€€€½¹ÍÐÌÈ€ô…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘í½‘•õ€°¹Õ±°°ì€`µA¥œè¨È¹Á¥ô¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡ÌÈ¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€…ÍÍ•ÉÐ …)M=8¹ÍÑÉ¥¹¥™ä¡ÌÈ¹‰½‘ä¤¹¥¹±Õ‘•Ì Í•É•ÐÉ•…Í½¹¥¹œœ¤¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘í½‘•õ€°¹Õ±°°ì€`µA¥œè€µ…‘”µÕÀœô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€ô¤ì(€‘•±•Ñ”ÁÉ½•ÍÌ¹•¹Ø¹MM}=ì‘•±•Ñ”ÁÉ½•ÍÌ¹•¹Ø¹U1Qe}=Lì)ô¤ì()Ñ•ÍÐ Á±…Ñ™½É´è½¹”…Ñ…±½Õ”…¹¹½Õ¹•µ•¹ÐÁ•È½±ÍÑ…ÉÐ°Í¥¹•°Ý¥Ñ Ñ¡¥ÌÍ¥µpÌ™…ÑÌœ°…Íå¹Œ€ ¤€ôøì(€ÁÉ½•ÍÌ¹•¹Ø¹1U9!}MIP€ôMIPì(€…Ý…¥ÐÝ¥Ñ¡A±…Ñ™½É´¡…Íå¹Œ€¡½Ð¤€ôøì(€€€…Ý…¥ÐÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°ô¤€ôøì…Ý…¥Ð…±° Pœ°€œ½…Á¤½µ…¹¥™•ÍÐœ¤ì…Ý…¥Ð…±° Pœ°€œ½…Á¤½µ…¹¥™•ÍÐœ¤ìô¤ì(€€€½¹ÍÐÉ•œ€ô½Ð¹™¥±Ñ•È ¡œ¤€ôøœ¹Á…Ñ €ôôô€œ½…Á¤½É•¥ÍÑ•Èœ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡É•œ¹±•¹Ñ °€Ä¤ì(€€€½¹ÍÐÀ€ôÉ•lÁt¹Á…å±½…ì(€€€…ÍÍ•ÉÐ¡À€˜˜À¹­¥¹€ôôô€É•¥ÍÑ•Èœ€˜˜À¹Í¥´€ôôô€É…Á¥´ÄÀµ‰Õ‰‰±”œ€˜˜À¹±…Õ¹¡UÉ°€ôôô€¡ÑÑÁÌè¼½É…Á¥‘Í¥µÌ¹•á…µÁ±”½Í¥´ÄÀœ€˜˜À¹Ñ¥Ñ±”€ôôô½¹™¥œ¹Ñ¥Ñ±”€˜˜À¹µ¥¹ÕÑ•Ì€ôôô½¹™¥œ¹µ¥¹ÕÑ•Ì¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡À¹¹Õµ‰•È°€ÄÀ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡À¹…Ñ…±½Õ•I•Ù¥Í¥½¸°½¹™¥œ¹…Ñ…±½Õ•I•Ù¥Í¥½¸¤ì(€€€…ÍÍ•ÉÐ¹‘••ÁMÑÉ¥ÑÅÕ…°¡À¹‘•Ñ…¥°°½¹™¥œ¹‘•Ñ…¥°¤ì(€€€…ÍÍ•ÉÐ¡À¹‘•Ñ…¥°¹Ý½É±€˜˜À¹‘•Ñ…¥°¹Í•…Ð€˜˜À¹‘•Ñ…¥°¹‰•…ÑÌ¹±•¹Ñ €ôôô€Ì°€…Ñ…±½Õ”É••¥Ù•ÌÑ¡”™¥¹…¹¥…°µ…¹…±åÍ¥ÌÍ•¹…É¥¼‘•Ñ…¥±Ìœ¤ì(€ô¤ì)ô¤ì()Ñ•ÍÐ Á±…Ñ™½É´è½µÁ±•Ñ¥½¸É•Á½ÉÑ•½¹”°…™Ñ•ÈÑ¡”±…ÍÐ½ÕÑ½µ”°Ý¥Ñ …±±Ì…¹É•…Í½¹Ìœ°…Íå¹Œ€ ¤€ôøì(€ÁÉ½•ÍÌ¹•¹Ø¹1U9!}MIP€ôMIPì(€…Ý…¥ÐÝ¥Ñ¡A±…Ñ™½É´¡…Íå¹Œ€¡½Ð¤€ôøì(€€€…Ý…¥ÐÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°°±½¬ô¤€ôøì(€€€€€½¹ÍÐ™…Œ€ôì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€˜Äœ°É½±”è€™…Õ±Ñäœ°½ÕÉÍ”è€ŒÄœ°µ½‘”è€Í•ÍÍ¥½¸œô¤ôì(€€€€€½¹ÍÐì½‘”°¡½ÍÑ-•äô€ô€¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í•ÍÍ¥½¸œ°ìµ½‘”è€¥¹‘¥Ù¥‘Õ…°œ°…Í•Ìèltô°™…Œ¤¤¹‰½‘äì(€€€€€½¹ÍÐ„€ôì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€Íœ°É½±”è€ÍÑÕ‘•¹Ðœ°½ÕÉÍ”è€ŒÄœô¤°€`µA¥œè€Á±…Ñ™½É´éÍœôì(€€€€€…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°„¤ì(€€€€€½¹ÍÐ¡½ÍÐ€ôì€`µ!½ÍÐµ-•äœè¡½ÍÑ-•äôì(€€€€€…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½¡½ÍÐ½ÍÑ…ÉÐœ°ì½‘”°…Í•%è€œô°¡½ÍÐ¤ì(€€€€€±½¬¹¹½Ü€¬ô€ÄÌ€¨5%8ì(€€€€€…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Ù•É‘¥Ðœ°ì½‘”°…Í•%è€œ°™¥•±‘Ìèì…±°è€‰Õ‰‰±”œ°±¥¹”è€‰Ì¹…Í œ°±¥¹•]¡äè€…Í ¡…±Ù•Ì¥¸½¹”ÅÕ…ÉÑ•È¸œ°µ¥¹è±½¹5¥¹ôô°„¤ì(€€€€€±½¬¹¹½Ü€¬ô€ÄÀ€¨5%8ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½™¥¹¥Í œ°ì½‘”ô°„¤¤¹ÍÑ…ÑÕÌ°€ÐÀä°€¹½Ð™¥¹¥Í¡•‰•™½É”Ñ¡”½ÕÑ½µ”œ¤ì(€€€€€™½È€¡±•Ð¤€ô€Àì¤€ð€Ìì¤¬¬¤…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½¡½ÍÐ½É•Ù•…°œ°ì½‘”°…Í•%è€œô°¡½ÍÐ¤ì(€€€€€½¹ÍÐÈÄ€ô…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½™¥¹¥Í œ°ì½‘”ô°„¤ì(€€€€€½¹ÍÐÈÈ€ô…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½™¥¹¥Í œ°ì½‘”ô°„¤ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡ÈÄ¹‰½‘ä¹É•Á½ÉÑ•°ÑÉÕ”¤ì…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡ÈÈ¹‰½‘ä¹…±É•…‘ä°ÑÉÕ”¤ì(€€€€€½¹ÍÐ½µÀ€ô½Ð¹™¥±Ñ•È ¡œ¤€ôøœ¹Á…Ñ €ôôô€œ½…Á¤½½µÁ±•Ñ”œ¤ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡½µÀ¹±•¹Ñ °€Ä°€É•Á½ÉÑ••á…Ñ±ä½¹”œ¤ì(€€€€€½¹ÍÐÀ€ô½µÁlÁt¹Á…å±½…ì(€€€€€…ÍÍ•ÉÐ¡À€˜˜À¹ÍÕˆ€ôôô€Íœ€˜˜À¹Í¥´€ôôô€É…Á¥´ÄÀµ‰Õ‰‰±”œ€˜˜À¹½ÕÉÍ”€ôôô€ŒÄœ¤ì(€€€€€½¹ÍÐŒ€ôÀ¹ÍÕµµ…Éä¹½µÁ…¹¥•ÍlÁtì(€€€€€…ÍÍ•ÉÐ¹‘••ÁMÑÉ¥ÑÅÕ…°¡mŒ¹½µÁ…¹ä°Œ¹…±°°Œ¹±¥¹”°Œ¹ÍÑ…ÑÕÍt°l±½‰…°É½ÍÍ¥¹œ1Ñ¸œ°€‰Õ‰‰±”œ°€…Í …¹…Í •ÅÕ¥Ù…±•¹ÑÌœ°€É•½É‘•t¤ì(€€€€€…ÍÍ•ÉÐ¡)M=8¹ÍÑÉ¥¹¥™ä¡À¹ÍÕµµ…Éä¤¹±•¹Ñ €ð€ØÀÀÀ°€™¥ÑÌÑ¡”Á±…Ñ™½É´ÍÕµµ…Éä±¥µ¥Ðœ¤ì(€€€ô¤ì(€ô¤ì)ô¤ì()Ñ•ÍÐ Í½±¼èÁ±…Ñ™½É´A±…äÍÑ…ÉÑÌ„ÁÉ¥Ù…Ñ”Ñ¥µ•ÉÕ¸°Ý¥Ñ ½ÕÉÍ”µ‰½Õ¹¥‘•¹Ñ¥Ñä…¹ÍÑ…•½µÁ±•Ñ¥½¸œ°…Íå¹Œ€ ¤€ôøì(€…Ý…¥ÐÝ¥Ñ¡A±…Ñ™½É´¡…Íå¹Œ€¡½Ð¤€ôøÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°°±½¬ô¤€ôøì(€€€½¹ÍÐ…ÕÑ €ôì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€Í½±¼œ°É½±”è€ÍÑÕ‘•¹Ðœ°½ÕÉÍ”è€½ÕÉÍ”´Äœô¤ôì(€€€½¹ÍÐµ…‘”€ô…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼œ°ì…Í•Ìèlœ°€tô°…ÕÑ ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡µ…‘”¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€…ÍÍ•ÉÐ …µ…‘”¹‰½‘ä¹¡½ÍÑ-•ä°€ÁÉ¥Ù…Ñ”¡½ÍÐ­•äÍÑ…åÌ½¸Í•ÉÙ•Èœ¤ì(€€€½¹ÍÐì½‘”°Á¥ô€ôµ…‘”¹‰½‘äì(€€€½¹ÍÐµ”€ôì€¸¸¹…ÕÑ °€`µA¥œèÁ¥ôì(€€€½¹ÍÐÍÑ…Ñ”€ô€ ¤€ôø…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘í½‘•õ€°¹Õ±°°µ”¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥ÐÍÑ…Ñ” ¤¤¹‰½‘ä¹Á¡…Í”°€É•…œ¤ì(€€€…ÍÍ•ÉÐ ¡…Ý…¥ÐÍÑ…Ñ” ¤¤¹‰½‘ä¹•¹‘ÍÐ€ø±½¬¹¹½Ü°€Ù¥Í¥‰±”É•…‘¥¹œ‘•…‘±¥¹”¥µµ•‘¥…Ñ•±äœ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”ô°…ÕÑ ¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½Í•ÍÍ¥½¸ý½‘”ô‘í½‘•õ€¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€€€½¹ÍÐÉ•ÍÕµ”€ô…Ý…¥Ð…±° Pœ°€½…Á¤½Í•ÍÍ¥½¸ý½‘”ô‘í½‘•õ€°¹Õ±°°…ÕÑ ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡É•ÍÕµ”¹ÍÑ…ÑÕÌ°€ÈÀÀ°€Ñ¡”Í¥¹•µ¥¸½Ý¹•È…¸É•½Ù•È„ÁÉ¥Ù…Ñ”ÉÕ¸œ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡É•ÍÕµ”¹‰½‘ä¹Á¥°€Á±…Ñ™½É´éÍ½±¼œ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡É•ÍÕµ”¹‰½‘ä¹Í½±¼°ÑÉÕ”¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½Í•ÍÍ¥½¸ý½‘”ô‘í½‘•õ€°¹Õ±°°ì(€€€€€€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€½Ñ¡•Èœ°É½±”è€ÍÑÕ‘•¹Ðœ°½ÕÉÍ”è€½ÕÉÍ”´Äœô¤(€€€ô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ°€…¹½Ñ¡•È…½Õ¹Ð…¹¹½Ð‘¥Í½Ù•È½ÈÉ•½Ù•ÈÑ¡¥ÌÉÕ¸œ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½©½¥¸ýÍ•ÍÍ¥½¸ô‘í½‘•õ€¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€€€½¹ÍÐ½Ñ¡•È€ôì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€½Ñ¡•Èœ°É½±”è€ÍÑÕ‘•¹Ðœ°½ÕÉÍ”è€½ÕÉÍ”´Äœô¤°€`µA¥œèÁ¥ôì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘í½‘•õ€°¹Õ±°°½Ñ¡•È¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘í½‘•õ€°¹Õ±°°ì€¸¸¹µ”°€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€Í½±¼œ°É½±”è€ÍÑÕ‘•¹Ðœ°½ÕÉÍ”è€½ÕÉÍ”´Èœô¤ô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼½…‘Ù…¹”œ°ì½‘”°…Í•%è€œ°ÍÑ…”è€Àô°µ”¤¤¹ÍÑ…ÑÕÌ°€ÐÀä¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼œ°ì…Í•Ìèltô°ì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€™…Õ±Ñäœ°É½±”è€™…Õ±Ñäœ°µ½‘”è€Í•ÍÍ¥½¸œô¤ô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€€€™½È€¡½¹ÍÐ…Í•%½˜lœ°€t¤ì(€€€€€±½¬¹¹½Ü€¬ô€Ü€¨5%8ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Ù•É‘¥Ðœ°ì½‘”°…Í•%°™¥•±‘Ìèì…±°è€¥¹™É„œ°±¥¹”è€‰Ì¹…Í œ°±¥¹•]¡äè€…Í ÍÕÁÁ½ÉÑÌÑ¡”¥¹Ù•ÍÑµ•¹Ð¸œ°µ¥¹è±½¹5¥¹ôô°µ”¤¤¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€€€±½¬¹¹½Ü€¬ô€Ð€¨5%8ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½™¥¹¥Í œ°ì½‘”ô°µ”¤¤¹ÍÑ…ÑÕÌ°€ÐÀä¤ì(€€€€€½¹ÍÐ™¥ÉÍÐ€ô…Ý…¥ÐAÉ½µ¥Í”¹…±°¡lÀ°€Åt¹µ…À  ¤€ôø…±° A=MPœ°€œ½…Á¤½Í½±¼½…‘Ù…¹”œ°ì½‘”°…Í•%°ÍÑ…”è€Àô°µ”¤¤¤ì(€€€€€…ÍÍ•ÉÐ¹‘••ÁMÑÉ¥ÑÅÕ…°¡™¥ÉÍÐ¹µ…À¡È€ôøÈ¹ÍÑ…ÑÕÌ¤¹Í½ÉÐ ¤°lÈÀÀ°€ÐÀåt°€‘ÕÁ±¥…Ñ”±¥­ÌÉ•±•…Í”©ÕÍÐ½¹”Á…ÉÐœ¤ì(€€€€€™½È€¡½¹ÍÐÍÑ…”½˜lÄ°€Ét¤…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼½…‘Ù…¹”œ°ì½‘”°…Í•%°ÍÑ…”ô°µ”¤¤¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€€€¥˜€¡…Í•%€ôôô€œ¤ì(€€€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½™¥¹¥Í œ°ì½‘”ô°µ”¤¤¹ÍÑ…ÑÕÌ°€ÐÀä°€Í•½¹½µÁ…¹äÍÑ¥±°Á•¹‘¥¹œœ¤ì(€€€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼½…‘Ù…¹”œ°ì½‘”°…Í•%°ÍÑ…”è€Ìô°µ”¤¤¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥ÐÍÑ…Ñ” ¤¤¹‰½‘ä¹…Í•%°€œ¤ì(€€€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥ÐÍÑ…Ñ” ¤¤¹‰½‘ä¹Á¡…Í”°€É•…œ¤ì(€€€€€ô(€€€ô(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥ÐÍÑ…Ñ” ¤¤¹‰½‘ä¹¹•áÑA…ÉÐ°¹Õ±°¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½™¥¹¥Í œ°ì½‘”ô°µ”¤¤¹‰½‘ä¹É•Á½ÉÑ•°ÑÉÕ”¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½™¥¹¥Í œ°ì½‘”ô°µ”¤¤¹‰½‘ä¹…±É•…‘ä°ÑÉÕ”¤ì(€€€½¹ÍÐÉ•Á½ÉÑÌ€ô½Ð¹™¥±Ñ•È¡à€ôøà¹Á…Ñ €ôôô€œ½…Á¤½½µÁ±•Ñ”œ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡É•Á½ÉÑÌ¹±•¹Ñ °€Ä¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡É•Á½ÉÑÍlÁt¹Á…å±½…¹½ÕÉÍ”°€½ÕÉÍ”´Äœ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡É•Á½ÉÑÍlÁt¹Á…å±½…¹ÍÕµµ…Éä¹½µÁ…¹¥•Ì¹±•¹Ñ °€È¤ì(€ô¤¤ì)ô¤ì()Ñ•ÍÐ Í½±¼è‘¥É•ÐÁ±…äÉ•ÅÕ¥É•Ì…•ÍÌ°Õ•ÍÐ¥‘•¹Ñ¥Ñä¥ÌÁÉ¥Ù…Ñ”°±…ÍÌÁ±…å•ÉÌ…¹¹½Ð…‘Ù…¹”Ñ¡•µÍ•±Ù•Ìœ°…Íå¹Œ€ ¤€ôøì(€‘•±•Ñ”ÁÉ½•ÍÌ¹•¹Ø¹MM}=ì(€…Ý…¥ÐÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°ô¤€ôøì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼œ°ì…Í•Ìèltô¤¤¹ÍÑ…ÑÕÌ°€ÔÀÌ¤ì(€€€ÁÉ½•ÍÌ¹•¹Ø¹MM}=€ô€Í½±¼µ½‘”œì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼œ°ì…Í•Ìèltô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÄ¤ì(€€€½¹ÍÐÈ€ô…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼œ°ì…Í•Ìèltô°ì€`µ•ÍÌµ½‘”œè€Í½±¼µ½‘”œô¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡È¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘íÈ¹‰½‘ä¹½‘•õ€°¹Õ±°°ì€`µA¥œèÈ¹‰½‘ä¹Á¥ô¤¤¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€½…Á¤½ÍÑ…Ñ”ý½‘”ô‘íÈ¹‰½‘ä¹½‘•õ€°¹Õ±°°ì€`µA¥œè€ÝÉ½¹œœô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€€€½¹ÍÐ™…Œ€ôì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€™…Œœ°É½±”è€™…Õ±Ñäœô¤ôì(€€€½¹ÍÐÌ€ô€¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í•ÍÍ¥½¸œ°ìµ½‘”è€¥¹‘¥Ù¥‘Õ…°œ°…Í•Ìèltô°™…Œ¤¤¹‰½‘äì(€€€½¹ÍÐÍÑÕ‘•¹Ð€ôì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€ÍÑÕ‘•¹Ðœ°É½±”è€ÍÑÕ‘•¹Ðœô¤ôì(€€€½¹ÍÐ¨€ô€¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½©½¥¸œ°ì½‘”èÌ¹½‘”ô°ÍÑÕ‘•¹Ð¤¤¹‰½‘äì(€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼½…‘Ù…¹”œ°ì½‘”èÌ¹½‘”°…Í•%è€œ°ÍÑ…”è€Àô°ì€¸¸¹ÍÑÕ‘•¹Ð°€`µA¥œè¨¹Á¥ô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÌ¤ì(€ô¤ì(€‘•±•Ñ”ÁÉ½•ÍÌ¹•¹Ø¹MM}=ì)ô¤ì()Ñ•ÍÐ ÁÉ½‘ÕÑ¥½¸èµ¥ÍÍ¥¹œI•‘¥Ì™…¥±Ì±•…É±äì‘•Ø…•ÍÌ…¹…•±•É…Ñ•±½­Ì…É”‘¥Í…‰±•½¸Y•É•°œ°…Íå¹Œ€ ¤€ôøì(€½¹ÍÐÍ…Ù•€ôì€¸¸¹ÁÉ½•ÍÌ¹•¹Øôì(€ÑÉäì(€€€™½È€¡½¹ÍÐ¬½˜l-Y}IMQ}A%}UI0œ°€-Y}IMQ}A%}Q=-8œ°€UAMQM!}I%M}IMQ}UI0œ°€UAMQM!}I%M}IMQ}Q=-8t¤‘•±•Ñ”ÁÉ½•ÍÌ¹•¹Ùm­tì(€€€ÁÉ½•ÍÌ¹•¹Ø¹YI0€ô€œÄœìÁÉ½•ÍÌ¹•¹Ø¹Y}=A8€ô€œÄœìÁÉ½•ÍÌ¹•¹Ø¹M%4ÄÁ}1=-}M1€ô€œÀ¸ÀÄœì(€€€…Ý…¥ÐÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°ô¤€ôøì(€€€€€…ÍÍ•ÉÐ¹‘••ÁMÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€œ½…Á¤½¡•…±Ñ œ¤¤¹‰½‘ä°ì½¬èÑÉÕ”°Í¥´è½¹™¥œ¹Í¥µ%ô¤ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€œ½…Á¤½Ý¡½…µ¤œ¤¤¹‰½‘ä¹™…Õ±Ñä°™…±Í”¤ì(€€€€€½¹ÍÐÈ€ô…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼œ°ì…Í•Ìèltô°ì€`µ1…Õ¹ µQ½­•¸œèÑ½¬¡ìÍÕˆè€Ìœ°É½±”è€ÍÑÕ‘•¹Ðœô¤ô¤ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡È¹ÍÑ…ÑÕÌ°€ÔÀÌ¤ì…ÍÍ•ÉÐ¡È¹‰½‘ä¹µ•ÍÍ…”¹¥¹±Õ‘•Ì I•‘¥Ìœ¤¤ì(€€€ô°ìÕÍ••™…Õ±ÐèÑÉÕ”ô¤ì(€€€…Ý…¥ÐÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°ô¤€ôøì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í•ÍÍ¥½¸œ°ìµ½‘”è€¥¹‘¥Ù¥‘Õ…°œ°…Í•Ìèltô¤¤¹ÍÑ…ÑÕÌ°€ÐÀÄ¤ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° A=MPœ°€œ½…Á¤½Í½±¼œ°ì…Í•Ìèltô¤¤¹ÍÑ…ÑÕÌ°€ÔÀÌ°€‘•Ø‰åÁ…ÍÌ‘½•Ì¹½Ð•¹…‰±”‘¥É•Ð•¹ÑÉäœ¤ì(€€€ô¤ì(€€€½¹ÍÐìÌô€ô…Ý…¥ÐÍ•ÑÕÀ ¥¹‘¥Ù¥‘Õ…°œ¤ì(€€€…ÍÍ•ÉÐ¹‘••ÁMÑÉ¥ÑÅÕ…°¡Ì¹±½¬°½¹™¥œ¹±½­lœÄµ¥¹‘¥Ù¥‘Õ…°t¤ì(€ô™¥¹…±±äì(€€€™½È€¡½¹ÍÐ¬½˜=‰©•Ð¹­•åÌ¡ÁÉ½•ÍÌ¹•¹Ø¤¤¥˜€ „¡¬¥¸Í…Ù•¤¤‘•±•Ñ”ÁÉ½•ÍÌ¹•¹Ùm­tì(€€€=‰©•Ð¹…ÍÍ¥¸¡ÁÉ½•ÍÌ¹•¹Ø°Í…Ù•¤ì(€ô)ô¤ì()Ñ•ÍÐ ½µÁ±•Ñ¥½¸è½¹ÕÉÉ•¹Ð…±±‰…­Ì…É”Í•É¥…±¥é•…¹„™…¥±•…±±‰…¬É•ÑÉ¥•Ìœ°…Íå¹Œ€ ¤€ôøì(€½¹ÍÐÍÑ½É”€ôµ•µ½ÉåMÑ½É” ¤ì±•Ð…±±Ì€ô€Àì(€±•ÐÉ•±•…Í”ì(€½¹ÍÐ‰±½­•€ô¹•ÜAÉ½µ¥Í”¡É•Í½±Ù”€ôøìÉ•±•…Í”€ôÉ•Í½±Ù”ìô¤ì(€½¹ÍÐ…ÑÑ•µÁÐ€ô€ ¤€ôø¹µ…É­I•Á½ÉÑ•¡ÍÑ½É”°€QMPÈœ°€Àœ°…Íå¹Œ€ ¤€ôøì…±±Ì¬¬ì…Ý…¥Ð‰±½­•ìÉ•ÑÕÉ¸ì½¬è™…±Í”ôìô°PÀ¤ì(€½¹ÍÐ½¹”€ô…ÑÑ•µÁÐ ¤ì½¹ÍÐÑÝ¼€ô…ÑÑ•µÁÐ ¤ì(€…Ý…¥Ð¹•ÜAÉ½µ¥Í”¡É•Í½±Ù”€ôøÍ•Ñ%µµ•‘¥…Ñ”¡É•Í½±Ù”¤¤ì(€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡…±±Ì°€Ä¤ì(€É•±•…Í” ¤ì(€½¹ÍÐÉ•ÍÕ±ÑÌ€ô…Ý…¥ÐAÉ½µ¥Í”¹…±°¡m½¹”°ÑÝ½t¤ì(€…ÍÍ•ÉÐ¡É•ÍÕ±ÑÌ¹Í½µ”¡à€ôøà¹Á•¹‘¥¹œ¤¤ì(€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð¹µ…É­I•Á½ÉÑ•¡ÍÑ½É”°€QMPÈœ°€Àœ°…Íå¹Œ€ ¤€ôø€¡ì½¬èÑÉÕ”ô¤°PÀ€¬€Ä¤¤¹É•Á½ÉÑ•°ÑÉÕ”¤ì(€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð¹µ…É­I•Á½ÉÑ•¡ÍÑ½É”°€QMPÈœ°€Àœ°€ ¤€ôø…ÍÍ•ÉÐ¹™…¥° …±É•…‘äÉ•Á½ÉÑ•œ¤°PÀ€¬€È¤¤¹…±É•…‘ä°ÑÉÕ”¤ì)ô¤ì()Ñ•ÍÐ µ½Õ¹ÐÁ…Ñ èÁÉ•™¥á•Á…•Ì…¹A%ÌÝ½É¬Ý¥Ñ¡½ÕÐ•áÁ½Í¥¹œÍ•ÉÙ•È½¹Ñ•¹Ðœ°…Íå¹Œ€ ¤€ôøì(€ÁÉ½•ÍÌ¹•¹Ø¹	M}AQ €ô€œ½Í¥´ÄÀ¼œì(€ÑÉäì(€€€…Ý…¥ÐÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°ô¤€ôøì(€€€€€™½È€¡½¹ÍÐÀ½˜lœ½Í¥´ÄÀœ°€œ½Í¥´ÄÀ¼œ°€œ½Í¥´ÄÀ½Á±…äœ°€œ½Í¥´ÄÀ½¡½ÍÐœ°€œ½Í¥´ÄÀ½½¹Í½±”t¤ì(€€€€€€€½¹ÍÐÈ€ô…Ý…¥Ð…±° Pœ°À¤ì(€€€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…°¡È¹ÍÑ…ÑÕÌ°€ÈÀÀ°À¤ì(€€€€€€€…ÍÍ•ÉÐ¡È¹‰½‘ä¹¥¹±Õ‘•Ì œñ‰…Í”¡É•˜ôˆ½Í¥´ÄÀ¼ˆøœ¤°À¤ì(€€€€€ô(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€œ½Í¥´ÄÀ½…Á¤½¡•…±Ñ œ¤¤¹ÍÑ…ÑÕÌ°€ÈÀÀ¤ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€œ½Í¥´ÄÀÀ½…Á¤½¡•…±Ñ œ¤¤¹ÍÑ…ÑÕÌ°€ÐÀÐ¤ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€œ½Í¥´ÄÀ½‘…Ñ„½½¹™¥œ¹©Ìœ¤¤¹ÍÑ…ÑÕÌ°€ÐÀÐ¤ì(€€€€€…ÍÍ•ÉÐ¹ÍÑÉ¥ÑÅÕ…° ¡…Ý…¥Ð…±° Pœ°€œ½Í¥´ÄÀ½±¥ˆ½±…Õ¹ ¹©Ìœ¤¤¹ÍÑ…ÑÕÌ°€ÐÀÐ¤ì(€€€ô¤ì(€ô™¥¹…±±äì‘•±•Ñ”ÁÉ½•ÍÌ¹•¹Ø¹	M}AQ ìô)ô¤ì()Ñ•ÍÐ ±¥•¹ÐèÍ½±¼•¹ÑÉä°Í¥¹•…½Õ¹ÐÉ•©½¥¸…¹Í½Á•Ñ½­•¹ÌÕÍ”Ñ¡”É•…°A$œ°…Íå¹Œ€ ¤€ôøì(€…Ý…¥ÐÝ¥Ñ¡M•ÉÙ•È¡…Íå¹Œ€¡ì…±°ô¤€ôøÉ•ÅÕ¥É” œ¸½±¥•¹Ðœ¤¹¡•¬¡ì…±°°Ñ½¬°PÀô¤¤ì)ô¤ì((¡…Íå¹Œ€ ¤€ôøì(€±•Ð™…¥±•€ô€Àì(€™½È€¡½¹ÍÐÐ½˜Ñ•ÍÑÌ¤ì(€€€ÑÉäì…Ý…¥ÐÐ¹™¸ ¤ì½¹Í½±”¹±½œ¡€€½¬€€€‘íÐ¹¹…µ•õ€¤ìô(€€€…Ñ €¡”¤ì™…¥±•¬¬ì½¹Í½±”¹±½œ¡€€%0€‘íÐ¹¹…µ•õq¸€€€€€€€‘í”¹µ•ÍÍ…”¹ÍÁ±¥Ð q¸œ¤¹©½¥¸ q¸€€€€€€€œ¥õ€¤ìô(€ô(€½¹Í½±”¹±½œ¡q¸‘íÑ•ÍÑÌ¹±•¹Ñ €´™…¥±•‘ô¼‘íÑ•ÍÑÌ¹±•¹Ñ¡ôÁ…ÍÍ•‘€¤ì(€ÁÉ½•ÍÌ¹•á¥Ð¡™…¥±•€ü€Ä€è€À¤ì)ô¤ ¤ì
