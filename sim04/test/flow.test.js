@@ -38,10 +38,11 @@ const token = (sub, role) => signBack({ sub, name: sub, role, sim: config.simId,
   course: 'course-4', mode: role === 'student' ? 'play' : 'session', iat: now, exp: now + 600000 });
 const teacher = token('instructor', 'faculty');
 const students = ['ada', 'ben', 'cy'].map(id => token(id, 'student'));
-async function call(payload, launch = teacher) {
+async function call(payload, launch = teacher, extraHeaders = {}) {
   const result = { status: 200, body: null };
   const res = { setHeader() {}, status(n) { result.status = n; return this; }, json(b) { result.body = b; return this; } };
-  await handler({ method: 'POST', body: payload, headers: launch ? { 'x-launch-token': launch } : {} }, res);
+  await handler({ method: 'POST', body: payload,
+    headers: { ...(launch ? { 'x-launch-token': launch } : {}), ...extraHeaders } }, res);
   return result;
 }
 
@@ -56,6 +57,32 @@ async function call(payload, launch = teacher) {
   });
   const rejected = await call({ action: 'create', mode: 'individual', count: 2 });
   await check('API refuses a two-participant session', () => assert.equal(rejected.status, 400));
+  const studentGate = { 'x-access-code': 'private-student' };
+  await check('student access code cannot unlock instructor controls', async () => {
+    assert.equal((await call({ action: 'faculty_access' }, null, studentGate)).status, 401);
+    assert.equal((await call({ action: 'create', mode: 'team', count: 3 }, null, studentGate)).status, 401);
+    assert.equal((await call({ action: 'faculty_access' }, students[0])).status, 401);
+  });
+  await check('instructor code alone unlocks instructor controls', async () => {
+    assert.equal((await call({ action: 'faculty_access', facultyCode: 'private-instructor' }, null)).status, 200);
+  });
+  const direct = await call({ action: 'create', mode: 'individual', count: 3,
+    facultyCode: 'private-instructor' }, null);
+  assert.equal(direct.status, 200);
+  await check('student code joins a standalone room without instructor code', async () => {
+    const joined = await call({ action: 'join', code: direct.body.session.code, name: 'Solo student' }, null, studentGate);
+    assert.equal(joined.status, 200);
+    assert.equal(joined.body.view.group, 'Participant 1');
+  });
+  await check('standalone invitation returns to the student access gate', async () => {
+    const redirect = {};
+    const res = { setHeader() {}, status(n) { redirect.status = n; return this; },
+      json(b) { redirect.body = b; return this; },
+      redirect(n, path) { redirect.status = n; redirect.path = path; return this; } };
+    await require('../api/join')({ method: 'GET', query: { session: direct.body.session.code } }, res);
+    assert.equal(redirect.status, 302);
+    assert.equal(redirect.path, '../launch.html?session=' + direct.body.session.code + '&standalone=1');
+  });
   const created = await call({ action: 'create', mode: 'team', count: 3, clockMinutes: 1 });
   assert.equal(created.status, 200);
   const code = created.body.session.code;

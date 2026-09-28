@@ -143,7 +143,21 @@ $('advance').onclick = async () => {
 $('retryReport').onclick = async () => { try { const r = await api('report'); $('completionText').textContent = `${r.completion.sent} additional report(s) sent; ${r.completion.failed} failed.`; } catch (e) { say(e.message); } };
 $('copyLink').onclick = async () => { try { await navigator.clipboard.writeText($('joinUrl').value); say('Invitation link copied.', true); } catch { $('joinUrl').select(); say('Select and copy the invitation link.'); } };
 $('compareA').onchange = comparison; $('compareB').onchange = comparison;
-$('saveCode').onclick = () => { facultyCode = $('facultyCode').value.trim(); sessionStorage.setItem('m04-faculty-code', facultyCode); $('signIn').hidden = true; refresh(); };
-if (!token && !facultyCode) $('signIn').hidden = false;
-if (code) { $('roomCode').value = code; refresh(); }
+async function authorize() {
+  try {
+    await api('faculty_access');
+    if (facultyCode) sessionStorage.setItem('m04-faculty-code', facultyCode);
+    $('signIn').hidden = true; $('create').hidden = false; $('reopen').hidden = false;
+    say('');
+    if (code) await refresh();
+  } catch (e) {
+    facultyCode = ''; sessionStorage.removeItem('m04-faculty-code');
+    $('signIn').hidden = false; $('create').hidden = true; $('reopen').hidden = true;
+    say(e.message);
+  }
+}
+$('saveCode').onclick = async () => { facultyCode = $('facultyCode').value.trim(); await authorize(); };
+$('facultyCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('saveCode').click(); });
+if (code) $('roomCode').value = code;
+if (token || facultyCode) authorize(); else $('signIn').hidden = false;
 setInterval(time, 1000); setInterval(refresh, 4000);
