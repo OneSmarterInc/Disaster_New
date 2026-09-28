@@ -8,6 +8,7 @@
   const sim = q.get('sim') || '';
   const sessionTitles = {
     'rapid-03-midland': 'Midland Equipment',
+    'rapid-04-whose-number': 'Whose Number Is Right?',
     'rapid-05-approve': 'Would You Approve This?',
     'rapid-06-switch': 'Do We Switch?',
     'rapid-07-bought': 'Would You Have Bought It?',

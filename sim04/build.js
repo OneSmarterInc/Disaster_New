@@ -8,7 +8,7 @@ const sheets = require('./data/sheets');
 const { META } = require('./lib/meta');
 const root = __dirname;
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const pages = ['public/launch.html', 'public/index.html', 'public/student.js',
+const pages = ['public/launch.html', 'public/platform-launch.js', 'public/index.html', 'public/student.js',
   'public/instructor.html', 'public/instructor.js', 'public/private-check.html', 'public/private-check.js'];
 const word = term => new RegExp('\\b' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
 
@@ -37,7 +37,9 @@ function checkSource(contents = Object.fromEntries(pages.map(p => [p, read(p)]))
   for (const p of config.placeholderPatterns) if (new RegExp(p, 'i').test(publicText)) problems.push(`placeholder in student bundle: ${p}`);
   for (const file of pages) {
     const source = contents[file] || '';
-    if (/fetch\s*\(\s*['"`]\/api\//.test(source)) problems.push(`${file} has an unprefixed API URL`);
+    if (!file.endsWith('public/platform-launch.js') && /fetch\s*\(\s*['"`]\/api\//.test(source)) {
+      problems.push(`${file} has an unprefixed API URL`);
+    }
     if (file.endsWith('.js')) { try { new vm.Script(source, { filename: file }); } catch (e) { problems.push(`${file} does not parse: ${e.message}`); } }
     else for (const [, script] of source.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
       try { new vm.Script(script, { filename: file }); } catch (e) { problems.push(`${file} script does not parse: ${e.message}`); }
@@ -64,6 +66,7 @@ function checkWiring(overrides = {}) {
     if (!rewrite || !alias || !rewrite.destination.startsWith(alias + '/')) problems.push(`platform route missing: ${route}`);
   }
   if (!(overrides.sessionSims ?? read('../platform/lib/session-sims.js')).includes(META.id)) problems.push('platform session launch id missing');
+  if (!(overrides.sessionEntry ?? read('../platform/public/session-entry.js')).includes(META.id)) problems.push('platform student session invite missing');
   if (!(overrides.catalogue || JSON.parse(read('../platform/lib/catalogue-source.json')))[META.id]) problems.push('catalogue detail missing');
   return problems;
 }

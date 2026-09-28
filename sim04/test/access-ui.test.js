@@ -9,17 +9,17 @@ const launch = fs.readFileSync(path.join(__dirname, '../public/launch.html'), 'u
 const instructor = fs.readFileSync(path.join(__dirname, '../public/instructor.js'), 'utf8');
 const student = fs.readFileSync(path.join(__dirname, '../public/student.js'), 'utf8');
 
-function page(source, pathname, search = '') {
+function page(source, pathname, search = '', hash = '') {
   const values = new Map(), calls = [];
   const element = id => {
     if (!values.has(id)) values.set(id, {
-      hidden: ['gate', 'create', 'reopen', 'signIn'].includes(id), value: '', textContent: '',
+      hidden: ['gate', 'course-link', 'standalone-toggle', 'create', 'reopen', 'signIn'].includes(id), value: '', textContent: '',
       classList: { toggle() {} }, addEventListener() {}, focus() {}
     });
     return values.get(id);
   };
   const storage = new Map();
-  const location = { pathname, search, hash: '', replace(url) { this.destination = url; } };
+  const location = { pathname, search, hash, replace(url) { this.destination = url; } };
   const fetch = async (url, options) => {
     calls.push({ url, options });
     const isTeacher = options?.body && JSON.parse(options.body).action === 'faculty_access';
@@ -29,7 +29,8 @@ function page(source, pathname, search = '') {
   };
   vm.runInNewContext(source, { location, fetch, document: { getElementById: element },
     sessionStorage: { getItem: k => storage.get(k) || null, setItem: (k, v) => storage.set(k, v),
-      removeItem: k => storage.delete(k) }, URLSearchParams, setInterval() {} });
+      removeItem: k => storage.delete(k) }, URLSearchParams, setInterval() {},
+    platformLaunch: async () => ({ status: 'skip' }) });
   return { element, location, calls, storage };
 }
 
@@ -50,7 +51,7 @@ function studentEntryHelp(token, search = '') {
   assert.match(studentEntryHelp(studentToken), /student sign-in is valid/i);
   assert.match(studentEntryHelp(studentToken), /do not need a faculty code/i);
 
-  const student = page(launch, '/sim04/launch.html');
+  const student = page(launch, '/sim04/launch.html', '?manual=1');
   assert.equal(student.element('instructorLink').href, '/sim04/instructor.html');
   student.element('code').value = 'student-only';
   await student.element('open').onclick();
@@ -60,6 +61,11 @@ function studentEntryHelp(token, search = '') {
 
   const invitation = page(launch, '/sim04/launch.html', '?session=ABCDE');
   assert.equal(invitation.location.destination, '/sim04/api/join?session=ABCDE');
+  const inviteToken = Buffer.from(JSON.stringify({ role: 'student', mode: 'play' })).toString('base64url') + '.signature';
+  const invitedStudent = page(launch, '/sim04/launch.html', '?session=ABCDE', '#lt=' + encodeURIComponent(inviteToken));
+  assert.equal(invitedStudent.location.destination,
+    '/sim04/index.html?session=ABCDE#lt=' + encodeURIComponent(inviteToken),
+    'a platform session invitation keeps its room code when handing off to the student view');
   const standalone = page(launch, '/sim04/launch.html', '?session=ABCDE&standalone=1');
   assert.equal(standalone.location.destination, undefined);
   standalone.element('code').value = 'student-only';
