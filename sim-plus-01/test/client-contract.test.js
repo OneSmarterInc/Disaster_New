@@ -21,11 +21,11 @@ assert.match(js, /id="j-\$\{r\.id\}"[^>]*minlength="15"/);
 assert.match(js, /meaningful characters/);
 assert.match(js, /form\.requestSubmit\(\)/);
 
-// Generic starters remain participant-safe and stay visible throughout each appointment.
-assert.match(js, /starters=brief\.starters\|\|\[\]/);
+// Generic starters are participant-safe but appear only before the student's first question.
+assert.match(js, /starters=\(state\.windowIndex===0&&state\.conversation\.length===0\)\?\(brief\.starters\|\|\[\]\):\[\]/);
 assert.match(js, /data-starter/);
 assert.match(js, /input\.value=starters\[Number\(btn\.dataset\.starter\)\]/, 'clicking a starter must populate rather than submit');
-assert.doesNotMatch(js, /state\.conversation\.length===0\?brief\.starters:\[\]/);
+assert.doesNotMatch(js, /starters=brief\.starters\|\|\[\]/, 'starters must not remain visible after the first question');
 assert.doesNotMatch(js, /Do providers receive confirmation that a claim arrived/i);
 assert.doesNotMatch(js, /receipt log stopped/i);
 assert.doesNotMatch(js, /Suggestions update as you ask/);
