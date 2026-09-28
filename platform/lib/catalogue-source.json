@@ -81,9 +81,9 @@
           "value": "Individual"
         }
       ],
-      "tryIt": "Try the complete activity before assigning it to students.",
+      "tryIt": "Try the complete simulation before assigning it to students.",
       "momentsIntro": "",
-      "roomIntro": "These are the people whose views you will consider during the activity."
+      "roomIntro": "These are the people whose views you will consider during the simulation."
     }
   },
   "rapid-02-relay": {
@@ -168,9 +168,9 @@
           "value": "Individual"
         }
       ],
-      "tryIt": "Try the complete activity before assigning it to students.",
+      "tryIt": "Try the complete simulation before assigning it to students.",
       "momentsIntro": "",
-      "roomIntro": "These are the people whose views you will consider during the activity."
+      "roomIntro": "These are the people whose views you will consider during the simulation."
     }
   },
   "rapid-03-midland": {
