@@ -6,6 +6,16 @@ let code = (params.get('session') || '').trim().toUpperCase();
 let launch = new URLSearchParams(location.hash.slice(1)).get('lt') || null;
 if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
 else launch = sessionStorage.getItem('m04-lt:' + code);
+function launchClaims() {
+  if (!launch) return null;
+  try {
+    const part = launch.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(part.padEnd(Math.ceil(part.length / 4) * 4, '=')));
+  } catch { return null; }
+}
+if (launch && !code && launchClaims()?.role === 'student') {
+  $('entryHelp').textContent = 'Your RapidSims student sign-in is valid. Sim04 needs an instructor-created room. Enter its five-character room code, or open the class session invitation your instructor shared. You do not need a faculty code.';
+}
 let participantId = sessionStorage.getItem('m04-participant:' + code) || null;
 let config = null, view = null, pollAt = 0, renderedPack = false, renderedCommit = '';
 

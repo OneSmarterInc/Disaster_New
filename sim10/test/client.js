@@ -6,6 +6,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const publicDir = path.join(__dirname, '../public');
+function browserMount(html, pathname, injectedBase) {
+  let base = { href: injectedBase };
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const document = { querySelector: () => base, createElement: () => ({}), head: { appendChild: el => { base = el; } } };
+  vm.runInNewContext(script, { document, location: { pathname } });
+  return base.href;
+}
 const storage = () => {
   const m = new Map();
   return { getItem: k => m.get(k) || null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) };
@@ -66,6 +73,11 @@ async function check({ call, tok }) {
   const previous = process.env.BASE_PATH;
   process.env.BASE_PATH = '/sim10/';
   try {
+    for (const file of ['index.html', 'play.html', 'host.html', 'console.html']) {
+      const html = fs.readFileSync(path.join(publicDir, file), 'utf8');
+      assert.equal(browserMount(html, '/sim10/play', '/'), '/sim10/', `${file} corrects the base behind the platform rewrite`);
+      assert.equal(browserMount(html, '/play', '/sim10/'), '/', `${file} corrects the base on the sim's own domain`);
+    }
     for (const file of fs.readdirSync(publicDir)) {
       const text = fs.readFileSync(path.join(publicDir, file), 'utf8');
       if (file.endsWith('.js')) new vm.Script(text, { filename: file });

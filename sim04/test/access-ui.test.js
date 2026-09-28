@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const launch = fs.readFileSync(path.join(__dirname, '../public/launch.html'), 'utf8')
   .match(/<script>([\s\S]*?)<\/script>/)[1];
 const instructor = fs.readFileSync(path.join(__dirname, '../public/instructor.js'), 'utf8');
+const student = fs.readFileSync(path.join(__dirname, '../public/student.js'), 'utf8');
 
 function page(source, pathname, search = '') {
   const values = new Map(), calls = [];
@@ -32,7 +33,23 @@ function page(source, pathname, search = '') {
   return { element, location, calls, storage };
 }
 
+function studentEntryHelp(token, search = '') {
+  const values = new Map();
+  const source = student.slice(0, student.indexOf('function headers()'));
+  vm.runInNewContext(source, {
+    location: { pathname: '/sim04/index.html', search, hash: token ? '#lt=' + token : '' },
+    document: { getElementById: id => { if (!values.has(id)) values.set(id, { textContent: '' }); return values.get(id); } },
+    sessionStorage: { getItem: () => null, setItem() {} }, URLSearchParams,
+    atob: value => Buffer.from(value, 'base64').toString('binary')
+  });
+  return values.get('entryHelp')?.textContent || '';
+}
+
 (async () => {
+  const studentToken = Buffer.from(JSON.stringify({ role: 'student' })).toString('base64url') + '.signature';
+  assert.match(studentEntryHelp(studentToken), /student sign-in is valid/i);
+  assert.match(studentEntryHelp(studentToken), /do not need a faculty code/i);
+
   const student = page(launch, '/sim04/launch.html');
   assert.equal(student.element('instructorLink').href, '/sim04/instructor.html');
   student.element('code').value = 'student-only';

@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <!--BASE-->
 <script>
-// Static Vercel responses also need the canonical mount before loading assets.
-if (!document.querySelector('base')) {
-  const base = document.createElement('base');
-  base.href = /^\/sim10(?:\/|$)/.test(location.pathname) ? '/sim10/' : '/';
-  document.head.appendChild(base);
-}
+// The browser path is authoritative: a platform rewrite may serve this page
+// with a server-injected base for the sim's own domain, while the visible URL
+// still lives under /sim10/.
+const mount = /^\/sim10(?:\/|$)/.test(location.pathname) ? '/sim10/' : '/';
+let base = document.querySelector('base');
+if (!base) { base = document.createElement('base'); document.head.appendChild(base); }
+base.href = mount;
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Console</title>

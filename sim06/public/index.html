@@ -13,7 +13,7 @@ header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;
 header h1{font-size:18px;font-weight:500;margin:0 auto 0 0}
 .m{font:10px var(--m);letter-spacing:.13em;text-transform:uppercase;color:var(--dd)}
 .ey{font:10px var(--m);letter-spacing:.14em;text-transform:uppercase;color:var(--a);margin-bottom:8px}
-.clock{font:600 20px var(--m);color:var(--b)}.tick{font:600 20px var(--m);color:var(--r)}
+.header-metrics{display:flex;align-items:center;gap:18px}.metric{display:flex;flex-direction:column;gap:2px;white-space:nowrap}.metric .m{font-size:9px}.clock{font:600 17px var(--m);color:var(--b)}.clock.left{color:var(--g)}.tick{font:600 15px var(--m);color:var(--r)}
 .page{width:min(1100px,calc(100% - 32px));margin:auto;padding:28px 0 80px}
 .grid{display:grid;grid-template-columns:1.25fr .9fr;gap:18px}@media(max-width:860px){.grid{grid-template-columns:1fr}}
 .card{border:1px solid var(--l);background:var(--p);padding:18px;margin-bottom:16px}
@@ -33,6 +33,7 @@ textarea{min-height:70px;resize:vertical}
 .choice button:hover{border-color:var(--a)}.choice b{display:block;font-weight:500;font-size:17px}.choice span{font-size:13px;color:var(--d)}
 .notice{border-left:2px solid var(--a);background:rgba(240,166,60,.06);padding:10px 13px;margin:10px 0;color:#cbc8c0}
 .bad{border-left-color:var(--r);color:#e1afba}
+.play-grid{grid-template-areas:"reports actions"}.play-reports{grid-area:reports}.play-actions{grid-area:actions}.status-title{font-size:21px;margin:0 0 8px}.status-box{border-left:3px solid var(--a);background:var(--p2);padding:12px 14px;margin:12px 0}.status-box p:last-child{margin-bottom:0}
 .modal{position:fixed;inset:0;z-index:20;background:rgba(6,10,18,.8);display:grid;place-items:center;padding:16px}
 .doc{width:min(720px,100%);max-height:88vh;overflow:auto;background:#F4F1EA;color:#1d1d1d;padding:26px 28px;font-family:Georgia,serif}
 .doc h4{margin:14px 0 4px;font-size:15px}.doc .sub{font-style:italic;color:#555;margin-bottom:12px}
@@ -40,10 +41,16 @@ textarea{min-height:70px;resize:vertical}
 .close{float:right;font:11px var(--m);letter-spacing:.1em;text-transform:uppercase;color:#555}
 svg text{font-family:var(--m)}
 .kv{display:flex;justify-content:space-between;border-bottom:1px solid var(--l);padding:7px 0}.kv b{font:600 16px var(--m);color:var(--a)}
+@media(max-width:860px){.play-grid{grid-template-columns:1fr;grid-template-areas:"actions" "reports"}}
+@media(max-width:600px){header{gap:8px;padding:10px 14px}header h1{font-size:17px}.header-metrics{width:100%;justify-content:space-between;gap:8px}.metric .m{font-size:8px}.clock{font-size:15px}.tick{font-size:12px}}
 </style>
 </head>
 <body>
-<header><h1>Do We Switch?</h1><span class="m" id="phase"></span><span class="clock" id="clock"></span><span class="tick" id="tick"></span></header>
+<header><h1>Do We Switch?</h1><span class="m" id="phase"></span><div class="header-metrics" id="metrics" hidden>
+  <div class="metric"><span class="m">Simulation time</span><span class="clock" id="clock"></span></div>
+  <div class="metric"><span class="m">Real time left</span><span class="clock left" id="remaining"></span></div>
+  <div class="metric"><span class="m">Card sales lost</span><span class="tick" id="tick"></span></div>
+</div></header>
 <main class="page" id="app"><p class="muted">Loading…</p></main>
 <div id="modal"></div>
 <script>
@@ -59,9 +66,28 @@ const ACCESS=sessionStorage.getItem('m06-access')||'';
 function tokenInfo(t){try{return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(t.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))))}catch{return null}}
 const launch=LT?tokenInfo(LT):null;
 let CODE=INITIAL_SESSION;
-let CFG=null,PID=null,state=null,seen=0,pending=null,revealed=null,poll=null,err='',entryName='',entryTeam='',completionTimer=null;
+let CFG=null,PID=null,state=null,seen=0,pending=null,revealed=null,poll=null,err='',entryName='',entryTeam='',completionTimer=null,metricTimer=null,metricSnapshot=null;
 const soloKey='m06-solo'+(launch?.sub?':'+launch.sub:'');
 const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
+const fmtDuration=ms=>{const sec=Math.max(0,Math.ceil(ms/1000));return `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`};
+function captureMetrics(){
+  if(!state?.session||!state?.view)return;
+  const s=state.session,v=state.view;
+  metricSnapshot={elapsedMs:Number(v.elapsedMs||0),sampledAt:Date.now(),playMs:Number(s.playMs||CFG?.clock?.playSeconds*1000||600000),switchUntilMs:v.status?.kind==='switching'&&Number.isFinite(v.status.untilMs)?v.status.untilMs:null};
+  updateMetrics();
+}
+function updateMetrics(){
+  const metrics=document.getElementById('metrics');
+  if(!metrics)return;
+  if(!state?.session||state.session.phase==='lobby'||!metricSnapshot){metrics.hidden=true;return}
+  metrics.hidden=false;
+  const elapsed=Math.min(metricSnapshot.playMs,metricSnapshot.elapsedMs+Math.max(0,Date.now()-metricSnapshot.sampledAt));
+  const left=Math.max(0,metricSnapshot.playMs-elapsed);
+  document.getElementById('remaining').textContent=fmtDuration(left);
+  document.querySelectorAll('[data-run-remaining]').forEach(el=>el.textContent=fmtDuration(left));
+  const switchLeft=document.getElementById('switch-remaining');
+  if(switchLeft) switchLeft.textContent=fmtDuration(Math.max(0,(metricSnapshot.switchUntilMs??elapsed)-elapsed));
+}
 function headers(){const h={'Content-Type':'application/json'};if(LT)h['x-launch-token']=LT;else if(ACCESS)h['x-access-code']=ACCESS;return h}
 async function api(action,extra={}){
   const r=await fetch(BASE+'/api/session',{method:'POST',headers:headers(),body:JSON.stringify({action,code:CODE,participantId:PID,launchToken:LT,...extra})});
@@ -100,7 +126,7 @@ async function boot(){
 function startPoll(){clearInterval(poll);if(state?.session.phase!=='ended')poll=setInterval(refresh,1500)}
 function renderResume(){
   const s=state.session,v=state.view;
-  const status=s.phase==='ended'?'This run has ended. You can read its explanation.':s.phase==='lobby'?'Your briefing is ready. The clock has not started.':'You have an earlier run in progress. Its clock continues while this page is closed.';
+  const status=s.phase==='ended'?'This run has ended. You can read its explanation.':s.phase==='lobby'?'Your briefing is ready. The clock has not started.':`This run is in progress. The clock continues while this page is closed. Real time left: ${fmtDuration(Math.max(0,s.playMs-v.elapsedMs))}.`;
   const decision=v.decision?`<p>Your recorded decision: <b>${v.decision.choice==='switch'?'Switch to ClearPath':'Stay on Northline'}</b>. It is final for this run.</p>`:'';
   app.innerHTML=`<div class="card" style="max-width:680px"><div class="ey">Your previous run</div><h2>${esc(CFG.sim.title)}</h2><p>${status}</p>${decision}
   <div class="row"><button class="btn pri" id="continue-run">${s.phase==='ended'?'View explanation':s.phase==='lobby'?'Open briefing':'Continue run'}</button><button class="btn" id="new-run">Start a new run</button></div>
@@ -154,7 +180,8 @@ async function refresh(){
   const s=state.session,v=state.view;
   document.getElementById('phase').textContent=s.phase==='lobby'?'Briefing':s.phase==='playing'?'Live':'Ended';
   document.getElementById('clock').textContent=s.phase==='lobby'?'':v.storyTime;
-  document.getElementById('tick').textContent=s.phase==='lobby'?'':'Card sales lost '+fmt(v.lost);
+  document.getElementById('tick').textContent=s.phase==='lobby'?'':fmt(v.lost);
+  captureMetrics();
   if(s.phase==='ended'){clearInterval(poll);return showReveal()}
   render();
 }
@@ -172,7 +199,7 @@ function render(){
   const who=me.team?`<p class="m">Team ${esc(me.team)} · ${me.mates} joined</p>`:'';
   if(s.phase==='lobby'){
     app.innerHTML=`<div class="card"><div class="ey">How to play</div><h2>Read first. Then decide whether to switch.</h2>
-    <ol><li>Read the briefing and open both provider documents.</li><li>During the ten-minute run, new reports arrive automatically. You can wait and gather more information.</li><li>Choose whether to switch to ClearPath or stay on Northline, write one line explaining why, then confirm. Your confirmed decision is final for that run.</li><li>Keep reading until the clock ends. The explanation opens automatically.</li></ol></div>
+    <ol><li>Read the briefing and open both provider documents.</li><li>The run lasts ten real minutes. The story clock moves six times faster, and new reports arrive automatically.</li><li>Choose whether to switch to ClearPath or stay on Northline, write one line explaining why, then confirm. Your confirmed decision is final for that run.</li><li>After deciding, keep reading until the real-time countdown reaches 00:00. The explanation opens automatically. If you do not decide before then, that is recorded as no decision.</li></ol></div>
     <div class="grid"><div><div class="card"><div class="ey">Briefing</div>${CFG.briefing.map(p=>`<p>${esc(p)}</p>`).join('')}${who}</div></div>
     <div><div class="card"><div class="ey">Documents</div><p class="muted">Open them now or during play.</p><div class="row">${docButtons()}</div></div>
     ${s.solo?'<div class="notice">Read the briefing and documents, then start your ten-minute run.</div><button class="btn pri" id="begin">Start simulation</button><div id="begin-error"></div>':'<div class="notice">Waiting for your instructor to start the clock. Every report arrives at the same moment for the whole room.</div>'}</div></div>`;
@@ -189,17 +216,17 @@ function render(){
   if(v.decision){
     const what=v.decision.choice==='switch'?'switched to ClearPath':'committed to staying on Northline';
     const by=v.decision.by?` (${esc(v.decision.by)} pressed)`:'';
-    const st=v.status?.kind==='switching'?'<div class="notice">Terminals re-registering. No store can take a card until this finishes.</div>':v.status?.text?`<div class="notice">${esc(v.status.text)}</div>`:'';
-    panel=`<div class="card"><div class="ey">Your decision</div><p>${me.team?'Your team':'You'} ${what} at report ${v.decision.atReport}${by}. It can't be undone.</p>${st}
-    <h3>What to do next</h3><p class="muted">Read new reports as they appear and open the two documents below. Your decision is recorded, so there is nothing else to submit. Stay until the clock ends to see what happened and the explanation.</p></div>`;
+    const st=v.status?.kind==='switching'?`<div class="status-box" role="status"><h3 class="status-title">Switching is in progress</h3><p>Terminals are re-registering. Stores cannot take card payments during this window.</p><p>About eight simulation minutes, or up to 1 minute 20 seconds in real time, in total. Estimated time left in this window: <strong id="switch-remaining">${fmtDuration(Math.max(0,v.status.untilMs-v.elapsedMs))}</strong>.</p></div>`:v.status?.text?`<div class="status-box" role="status"><h3 class="status-title">The switching window has ended</h3><p>${esc(v.status.text)} Keep reading the reports as the simulation continues.</p></div>`:'';
+    panel=`<div class="card"><div class="ey">Decision recorded</div><p>${me.team?'Your team':'You'} ${what} at report ${v.decision.atReport}${by}. This choice is final for the run.</p>${st}
+    <h3>What to do now</h3><p>Keep reading new reports. Open both provider documents if you have not already. You do not need to submit anything else.</p><p>The run ends when the <strong>real time left</strong> reaches <strong>00:00</strong> (<strong data-run-remaining>${fmtDuration(Math.max(0,s.playMs-v.elapsedMs))}</strong> remaining). The explanation opens automatically.</p></div>`;
   }else{
     panel=`<div class="card"><div class="ey">Decide</div><div class="choice">
-      <button data-c="switch"><b>Switch to ClearPath</b><span>About eight minutes with no card payments while terminals re-register.</span></button>
+      <button data-c="switch"><b>Switch to ClearPath</b><span>About 8 simulation minutes (up to 1:20 in real time) with no card payments while terminals re-register.</span></button>
       <button data-c="stay"><b>Stay on Northline</b><span>Commit to holding on the primary provider.</span></button></div>
-      <p class="muted" style="margin-top:10px">Read the reports and both documents before deciding. New reports arrive automatically; you can wait. A confirmed choice is final for this run. If you make no choice before the clock ends, that is recorded as no decision.</p></div>`;
+      <p class="muted" style="margin-top:10px">Read the reports and both documents before deciding. New reports arrive automatically; you can decide now or keep reading. A confirmed choice is final for this run. If you make no choice before the real-time countdown ends, that is recorded as no decision. The explanation opens automatically at 00:00.</p></div>`;
   }
-  app.innerHTML=`<div class="grid"><div><div class="card"><div class="ey">Reports</div>${reps}</div></div>
-  <div>${panel}<div class="card"><div class="ey">Documents</div><div class="row">${docButtons()}</div></div>
+  app.innerHTML=`<div class="grid play-grid"><div class="play-reports"><div class="card"><div class="ey">Reports</div>${reps}</div></div>
+  <div class="play-actions">${panel}<div class="card"><div class="ey">Documents</div><p class="muted">Open the reports and provider documents while you wait.</p><div class="row">${docButtons()}</div></div>
   <div class="card"><div class="ey">Briefing</div>${CFG.briefing.map(p=>`<p class="muted">${esc(p)}</p>`).join('')}${who}</div></div></div>`;
   wireDocs();
   app.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>askReason(b.dataset.c));
@@ -243,7 +270,8 @@ async function showReveal(){
   <div class="card"><div class="ey">The documents again</div><div class="row">${r.documents.map(d=>`<button class="btn" data-rdoc="${esc(d.id)}">${esc(d.title)}</button>`).join('')}</div></div></div></div>`;
   app.querySelectorAll('[data-rdoc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.rdoc,r.documents,true));
 }
-window.addEventListener('pagehide',()=>{clearInterval(poll);clearTimeout(completionTimer)});
+metricTimer=setInterval(updateMetrics,1000);
+window.addEventListener('pagehide',()=>{clearInterval(poll);clearInterval(metricTimer);clearTimeout(completionTimer)});
 boot();
 </script>
 </body>
