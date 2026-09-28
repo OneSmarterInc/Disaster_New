@@ -6,6 +6,7 @@ const token = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_R
 const TTL = 48 * 3600;
 const key = code => `m04:sess:${code}`;
 const courseKey = courseId => `m04:course:${Buffer.from(String(courseId)).toString('base64url')}`;
+const courseReadyKey = index => `${index}:ready`;
 function configured() { return !!(url() && token()); }
 async function cmd(args) {
   if (!configured()) throw new Error('Session storage is not configured.');
@@ -36,6 +37,30 @@ async function getSession(code) {
   return raw ? JSON.parse(raw) : null;
 }
 
+async function backfillCourseIndex(courseId, index) {
+  let cursor = '0';
+  const found = new Set();
+  do {
+    const page = await cmd(['SCAN', cursor, 'MATCH', 'm04:sess:*', 'COUNT', '500']);
+    if (!Array.isArray(page) || page.length < 2) throw new Error('Session index scan returned an invalid page.');
+    cursor = String(page[0]);
+    const keys = Array.isArray(page[1]) ? page[1] : [];
+    const values = keys.length ? await cmd(['MGET', ...keys]) : [];
+    for (let i = 0; i < keys.length; i++) {
+      if (!values?.[i]) continue;
+      try {
+        const session = JSON.parse(values[i]);
+        if (session.platformAuth && String(session.courseId) === String(courseId) &&
+            session.state !== 'complete' && session.stage < 3) {
+          found.add(keys[i].slice('m04:sess:'.length));
+        }
+      } catch {}
+    }
+  } while (cursor !== '0');
+  if (found.size) await cmd(['SADD', index, ...found]);
+  await cmd(['SET', courseReadyKey(index), '1', 'EX', String(TTL)]);
+}
+
 module.exports = {
   configured,
   getSession,
@@ -48,6 +73,7 @@ module.exports = {
   },
   async courseSessions(courseId) {
     const index = courseKey(courseId);
+    if (!(await cmd(['GET', courseReadyKey(index)]))) await backfillCourseIndex(courseId, index);
     const codes = await cmd(['SMEMBERS', index]) || [];
     const active = [];
     for (const code of Array.isArray(codes) ? codes : []) {
@@ -60,7 +86,10 @@ module.exports = {
       active.push({ code: session.code, name: session.name, mode: session.mode,
         state: session.state, stage: session.stage });
     }
-    if (active.length) await cmd(['EXPIRE', index, String(TTL)]);
+    if (active.length) {
+      await cmd(['EXPIRE', index, String(TTL)]);
+      await cmd(['EXPIRE', courseReadyKey(index), String(TTL)]);
+    }
     return active.sort((a, b) => String(a.name).localeCompare(String(b.name)) || a.code.localeCompare(b.code));
   },
   async compareAndSetSession(code, previous, next) {
