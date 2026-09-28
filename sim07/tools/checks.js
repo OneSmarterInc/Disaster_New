@@ -308,6 +308,45 @@ async function check(name, fn) {
     assert(/^[a-f0-9]{32}$/.test(ids['Asha Patel']));
   });
 
+  await check('demo requires verified faculty access, never a student code or token', async () => {
+    const h = { 'x-demo-mode': '1' };
+    assert.strictEqual((await call(config, {}, h, 'GET')).statusCode, 401);
+    assert.strictEqual((await call(config, {}, { ...h, 'x-access-code': 'open-sesame' }, 'GET')).statusCode, 401);
+    for (const payload of [
+      { sim: META.id, sub: 's1', role: 'student' },
+      { sim: 'rapid-08-later', sub: 'f1', role: 'faculty' },
+      { sim: META.id, role: 'faculty' },
+      { sim: META.id, sub: 'f1', role: 'faculty', exp: clock - 1 }
+    ]) {
+      const r = await call(config, {}, { ...h, 'x-launch-token': token(payload) }, 'GET');
+      assert([401, 403].includes(r.statusCode));
+    }
+    assert.strictEqual((await call(config, {}, { ...h, 'x-faculty-code': 'wrong' }, 'GET')).statusCode, 401);
+  });
+  await check('faculty demo is separate from normal play and class sessions', async () => {
+    for (const credentials of [
+      { 'x-faculty-code': 'fac-123' },
+      { 'x-launch-token': token({ sim: META.id, sub: 'f1', role: 'faculty' }) },
+      { 'x-launch-token': token({ sim: META.id, sub: 'f1', role: 'faculty_preview' }) }
+    ]) {
+      const h = { 'x-demo-mode': '1', ...credentials };
+      const r = await call(config, {}, h, 'GET');
+      assert.strictEqual(r.statusCode, 200); assert.strictEqual(r.body.demo, true);
+      assert.strictEqual((await call(config, {}, h, 'GET', { session: code })).statusCode, 400);
+    }
+    const normal = await call(config, {}, { 'x-access-code': 'open-sesame' }, 'GET');
+    assert.strictEqual(normal.body.demo, false);
+  });
+  await check('demo reveals retain decision validation and skip completion reporting', async () => {
+    const h = { 'x-demo-mode': '1', 'x-faculty-code': 'fac-123' };
+    const b = { choice: 'buy', justification: ashaText, recognised: 'no', stage: 3 };
+    assert.strictEqual((await call(reveal, b, h)).body.stage, 3);
+    assert.strictEqual((await call(reveal, { ...b, justification: 'short' }, h)).statusCode, 400);
+    assert.strictEqual((await call(reveal, b, { 'x-demo-mode': '1', 'x-access-code': 'open-sesame' })).statusCode, 401);
+    const r = await call(finish, b, { 'x-demo-mode': '1', 'x-launch-token': token({ sim: META.id, sub: 'f1', role: 'faculty' }) });
+    assert.strictEqual(r.body.reported, false); assert.strictEqual(r.body.reason, 'faculty_demo');
+  });
+
   Date.now = realNow;
   let failed = 0;
   for (const [s, n] of results) { console.log(`${s}  ${n}`); if (s === 'FAIL') failed++; }

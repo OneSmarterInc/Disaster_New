@@ -1,6 +1,6 @@
 // Report completed platform runs without scoring them. Class decisions come
 // from the stored participant record; failed callbacks remain retryable.
-const { checkAccess, body } = require('../lib/guard.js');
+const { checkAccess, checkDemoAccess, body } = require('../lib/guard.js');
 const { reportCompletion } = require('../lib/launch.js');
 const store = require('../lib/store.js');
 const E = require('../lib/engine.js');
@@ -10,6 +10,10 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
+  if (req.headers['x-demo-mode'] === '1') {
+    if (!checkDemoAccess(req, res)) return;
+    return res.status(200).json({ ok: true, reported: false, reason: 'faculty_demo' });
+  }
   const b = body(req);
   const launch = participantLaunch(req, b);
   if (!launch) return res.status(200).json({ ok: true, reported: false, reason: 'not_platform_launch' });

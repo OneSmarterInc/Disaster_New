@@ -1,14 +1,15 @@
 // Standalone (non-session) play. The reveal is still kept out of the page and
 // the config payload: it is served only after a complete decision is presented.
 // Pacing for standalone play is the auto-advance timing, enforced by the client.
-const { checkAccess, body } = require('../lib/guard.js');
+const { checkAccess, checkDemoAccess, body } = require('../lib/guard.js');
 const { SETTINGS } = require('../data/config.js');
 const E = require('../lib/engine.js');
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-  if (!checkAccess(req, res)) return;
+  if (req.headers['x-demo-mode'] === '1') { if (!checkDemoAccess(req, res)) return; }
+  else if (!checkAccess(req, res)) return;
   const b = body(req);
   const choice = String(b.choice || '');
   const lapsed = !!b.lapsed;

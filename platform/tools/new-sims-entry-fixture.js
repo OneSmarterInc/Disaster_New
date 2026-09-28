@@ -2,7 +2,7 @@
 const fs=require('fs'),path=require('path');
 const root=path.resolve(__dirname,'../..');let clock=Date.now();Date.now=()=>clock;
 process.env.LAUNCH_SECRET='local-browser-fixture-secret';process.env.ACCESS_CODE='entry-test';process.env.FACULTY_CODES='Tester:faculty-test';process.env.PLATFORM_URL='https://platform.test';
-const fixtures={},reports=[];let failNext=false;
+const fixtures={},reports=[];let failNext=false,failReveal=false;
 for(const n of ['07','08']){
  const base=path.join(root,'sim'+n),store=require(base+'/lib/store.js');
  const sessions=new Map(),people=new Map(),runs=new Map(),beats=new Map();const clone=x=>structuredClone(x),same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
@@ -16,8 +16,9 @@ async function invoke(n,body,headers={}){let result={status:200};const res={setH
 
 global.fetch=async()=>{throw new Error('Unexpected network request in client fixture')};
 async function api(n,name,req){
+ if(n==='07'&&name==='reveal'&&failReveal){failReveal=false;return {status:503,body:{error:'reveal_unavailable'}}}
  let result={status:200};
  const res={setHeader(){},status(s){result.status=s;return this},json(v){result.body=v;return this},end(){},redirect(s,url){result.status=s;result.redirect=url}};
  await fixtures[n].handlers[name](req,res);return result;
 }
-module.exports={fixtures,reports,tok,invoke,api,advance:ms=>{clock+=ms},fail:()=>{failNext=true}};
+module.exports={fixtures,reports,tok,invoke,api,advance:ms=>{clock+=ms},fail:()=>{failNext=true},failReveal:()=>{failReveal=true}};

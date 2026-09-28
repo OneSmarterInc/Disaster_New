@@ -19,7 +19,7 @@ async function page(n,kind='index',url='',saved={}){
  let target=new URL(url||`http://fixture/sim${n}/${kind}.html`);let redirect=null;
  const location={get pathname(){return target.pathname},get search(){return target.search},get hash(){return target.hash},replace:u=>{redirect=new URL(u,target).href},assign:u=>{redirect=new URL(u,target).href},reload(){}};
  const ss=saved.ss||storage(),ls=saved.ls||storage();
- const ctx=vm.createContext({document:dom,location,history:{replaceState(_,__,u){target=new URL(u,target)}},sessionStorage:ss,localStorage:ls,TextDecoder,Uint8Array,URLSearchParams,Date,console,scrollTo(){},matchMedia:()=>({matches:false}),performance:{now:()=>0},atob:t=>Buffer.from(t,'base64').toString('binary'),setInterval:f=>{timers.set(++next,f);return next},clearInterval:id=>timers.delete(id),setTimeout:f=>{timeouts.set(++next,f);return next},clearTimeout:id=>timeouts.delete(id)});
+ const ctx=vm.createContext({document:dom,location,history:{replaceState(_,__,u){target=new URL(u,target)}},sessionStorage:ss,localStorage:ls,TextDecoder,Uint8Array,URLSearchParams,Date,AbortSignal,console,scrollTo(){},matchMedia:()=>({matches:false}),performance:{now:()=>0},atob:t=>Buffer.from(t,'base64').toString('binary'),setInterval:f=>{timers.set(++next,f);return next},clearInterval:id=>timers.delete(id),setTimeout:f=>{timeouts.set(++next,f);return next},clearTimeout:id=>timeouts.delete(id)});
  ctx.window={addEventListener(){}};
  ctx.fetch=async(u,opt={})=>{
   const targetURL=new URL(u,target),name=targetURL.pathname.split('/').at(-1);requests.push(targetURL.pathname+targetURL.search);
@@ -41,7 +41,55 @@ async function page(n,kind='index',url='',saved={}){
   let p=await page(n,'index','',gate);
   ok(!p.body().includes('Session code'),`${n}: direct play needs no session code`);
   ok(p.run(n==='07'?'S.solo&&!!S.soloClosesAt':'S.solo&&!!S.view'),`${n}: standalone play starts`);
+  if(n==='07'){
+    p.run("S.choice='buy';S.text='The acquisition gives us an affordable option for a different way of doing business.'");
+    await p.run('submitDecision({disabled:false})');await p.run("submitRecognition('no')");
+    ok(p.run('S.soloStage')===1,'07: solo recognition opens the first reveal');
+    ok(p.elements.get('clock').textContent.includes('1:30'),'07: reveal shows its countdown');
+    F.advance(89000);await p.tick();
+    ok(p.run('S.soloStage')===1,'07: student reveal preserves the reading interval');
+    F.failReveal();F.advance(1000);await p.tick();
+    ok(p.run('S.soloStage')===1&&p.body().includes('Unable to load the next part'),'07: failed reveal keeps current content and shows an error');
+    ok(p.run('S.soloNextAt>Date.now()'),'07: failed reveal schedules another attempt');
+    F.advance(5000);await p.tick();
+    ok(p.run('S.soloStage')===2,'07: failed reveal recovers automatically');
+    F.advance(90000);await p.tick();
+    ok(p.run('S.soloStage')===3&&p.run('S.soloNextAt')===null,'07: solo flow reaches the ending and stops');
+  }
   const student=F.tok(n),faculty=F.tok(n,{sub:'teacher-'+n,role:'faculty',mode:'session'});
+  if(n==='07'){
+    const solo=await page(n,'index',`http://fixture/sim07/index.html#lt=${encodeURIComponent(student)}`);
+    solo.run("S.choice='decline';S.text='The losses make the proposed acquisition too uncertain for our business today.'");
+    await solo.run('submitDecision({disabled:false})');F.failReveal();await solo.run("submitRecognition('no')");
+    ok(solo.run('S.soloStage')===0&&solo.body().includes('Try again now'),'07: first reveal failure is visible and can be retried');
+    await solo.click('reveal-retry');
+    ok(solo.run('S.soloStage')===1,'07: manual retry recovers the first reveal');
+
+    const denied=await page(n,'index',`http://fixture/sim07/demo#lt=${encodeURIComponent(student)}`);
+    ok(!denied.run('S.demo')&&denied.body().includes('Faculty code'),'07: student cannot enter faculty demo');
+    denied.elements.get('demo-code').value='entry-test';await denied.click('demo-open');
+    ok(!denied.run('S.demo')&&denied.body().includes('Enter a valid faculty code'),'07: student access code cannot enter demo');
+    denied.elements.get('demo-code').value='faculty-test';await denied.click('demo-open');
+    ok(denied.run('S.demo')&&denied.run('S.soloClosesAt')===null,'07: faculty code opens an untimed demo');
+    denied.ss.setItem('w07-faculty-lt',F.tok(n,{role:'faculty',exp:Date.now()-1}));
+    const codeRefresh=await page(n,'index','http://fixture/sim07/demo',denied);
+    ok(codeRefresh.run('S.demo'),'07: remembered faculty code survives refresh despite an expired account token');
+
+    const preview=await page(n,'index',`http://fixture/sim07/index.html#lt=${encodeURIComponent(faculty)}`);
+    ok(preview.body().includes('Demo without timers'),'07: faculty preview exposes demo entry');
+    const demo=await page(n,'index','http://fixture/sim07/demo',preview);
+    ok(demo.run('S.demo')&&demo.elements.get('clock').textContent.includes('no timers'),'07: verified faculty token opens demo with a clear label');
+    F.advance(11*60000);await demo.tick();
+    ok(!demo.run('needsLapse()')&&demo.run('decisionOpen()'),'07: demo decision never expires');
+    demo.run("S.choice='buy';S.text='The acquisition gives us an affordable option for a different way of doing business.'");
+    await demo.run('submitDecision({disabled:false})');await demo.run("submitRecognition('no')");
+    ok(demo.run('S.soloStage')===1&&demo.run('S.soloNextAt')===null,'07: demo opens first reveal without starting a waiting timer');
+    F.advance(90000);await demo.tick();
+    ok(demo.run('S.soloStage')===1,'07: demo stays on the part the faculty is presenting');
+    await demo.click('reveal-next');await demo.click('reveal-next');
+    ok(demo.run('S.soloStage')===3,'07: faculty can show both remaining parts immediately');
+    ok(!demo.requests.some(u=>u.endsWith('/finish')),'07: demo never reports a student completion');
+  }
   const router=await page(n,'launch',`http://fixture/sim${n}#lt=${encodeURIComponent(student)}`);
   ok(router.redirect().includes(`/sim${n}/index.html#lt=`),`${n}: signed Play goes directly to student page`);
   const instructor=await page(n,'launch',`http://fixture/sim${n}#lt=${encodeURIComponent(faculty)}`);

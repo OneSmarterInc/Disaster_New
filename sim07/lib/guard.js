@@ -71,4 +71,27 @@ function body(req) {
   return b || {};
 }
 
-module.exports = { checkAccess, body, announceOnce, canonicalUrl };
+// Demo access is separate from the student access code and class invitations.
+function checkDemoAccess(req, res) {
+  if (req.query?.session || req.body?.session) {
+    res.status(400).json({ error: 'demo_is_standalone' });
+    return false;
+  }
+  if (req.headers['x-launch-token']) {
+    if (!checkAccess(req, res)) return false;
+    if (['faculty', 'faculty_preview'].includes(req.launch.role)) return true;
+    res.status(403).json({ error: 'faculty_authorization_required' });
+    return false;
+  }
+  const given = String(req.headers['x-faculty-code'] || '').trim();
+  const codes = String(process.env.FACULTY_CODES || '').split(',').map(entry => {
+    const i = entry.lastIndexOf(':');
+    return i > 0 ? entry.slice(i + 1).trim() : '';
+  }).filter(Boolean);
+  if (process.env.FACULTY_CODE) codes.push(process.env.FACULTY_CODE);
+  if (given && codes.includes(given)) return true;
+  res.status(401).json({ error: 'faculty_authorization_required' });
+  return false;
+}
+
+module.exports = { checkAccess, checkDemoAccess, body, announceOnce, canonicalUrl };
