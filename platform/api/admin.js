@@ -1,10 +1,7 @@
 const crypto = require('crypto');
 const SCHEMA = require('../lib/schema.js');
 
-// A simulation shows its launch fingerprint only to a caller holding the shared
-// secret. The console is one, and it is the field that tells an administrator
-// why a launch is being refused.
-const KEY_HEADER = process.env.LAUNCH_SECRET ? { 'x-health-key': process.env.LAUNCH_SECRET } : {};
+const { healthHeaders, inspectHealth } = require('../lib/sim-health.js');
 const { effective, FIELDS, statesOutcome } = require('../lib/catalogue.js');
 const { sql, id } = require('../lib/db.js');
 const A = require('../lib/auth.js');
@@ -161,8 +158,8 @@ module.exports = async (req, res) => {
         }
         let health;
         try {
-          const r = await fetch(raw + '/api/health', { headers: KEY_HEADER, signal: AbortSignal.timeout(8000) });
-          if (!r.ok) return res.status(502).json({ error: 'no_health',
+          const r = await fetch(raw + '/api/health', { headers: healthHeaders(), signal: AbortSignal.timeout(8000) });
+          if (!r.ok && r.status !== 503) return res.status(502).json({ error: 'no_health',
             message: `That address answered ${r.status}. Is it a simulation, and is it deployed?` });
           health = await r.json();
         } catch (e) {
@@ -174,33 +171,18 @@ module.exports = async (req, res) => {
             message: 'That answered, but not like a simulation. Check the address.' });
         }
 
-        const ours = process.env.LAUNCH_SECRET
-          ? crypto.createHash('sha256').update(String(process.env.LAUNCH_SECRET)).digest('hex').slice(0, 8)
-          : null;
         const already = (await s`SELECT id, number, title FROM sims WHERE id = ${health.sim}`)[0] || null;
         const taken = (await s`SELECT number FROM sims WHERE number IS NOT NULL`).map(r => r.number);
         let suggested = 1;
         while (taken.includes(suggested)) suggested++;
 
-        const problems = [];
-        if (health.characters !== 'configured') problems.push('It has no API key, so the characters will not answer.');
-        if (health.launchSecret !== 'configured') problems.push('It has no launch secret, so it will refuse every student we send.');
-        else if (ours && health.launchSecretFingerprint !== ours) problems.push('Its launch secret does not match ours, so it will refuse every student we send.');
-        if (health.sessions === 'MISSING') problems.push('It has no session store, so the live classroom console will not work. Individual play is unaffected.');
-        {
-          const want = ['launch-token','launch-mode','console-token','self-register','completion-report'];
-          const has = Array.isArray(health.features) ? health.features : [];
-          const missing = want.filter(f => !has.includes(f));
-          if (missing.length) problems.push(`It is running an old build and needs redeploying — it cannot yet: ${missing.join(', ')}.`);
-        }
-        if (!health.platformUrl || health.platformUrl === 'MISSING (completions will not be reported)') {
-          problems.push('It does not know where to report completions, so nobody will show as finished.');
-        }
+        const { problems, state } = inspectHealth(health);
 
         return res.status(200).json({
           id: health.sim,
           launchUrl: raw,
           existing: already,
+          healthState: state,
           suggestedNumber: already && already.number ? already.number : suggested,
           problems
         });
@@ -223,7 +205,7 @@ module.exports = async (req, res) => {
         let refreshed = false;
         try {
           const r = await fetch(String(row.launch_url).replace(/\/+$/, '') + '/api/health',
-            { headers: KEY_HEADER, signal: AbortSignal.timeout(7000) });
+            { headers: healthHeaders(), signal: AbortSignal.timeout(7000) });
           refreshed = r.ok;
         } catch (e) { /* it will announce itself next time it is used */ }
         return res.status(200).json({ ok: true, refreshed });
@@ -445,43 +427,19 @@ module.exports = async (req, res) => {
         // them is running last week's code. So say plainly when they disagree.
         const ourBuild = process.env.VERCEL_GIT_COMMIT_SHA
           ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) : null;
-        const ours = process.env.LAUNCH_SECRET
-          ? crypto.createHash('sha256').update(String(process.env.LAUNCH_SECRET)).digest('hex').slice(0, 8) : null;
         const results = [];
         for (const sim of sims) {
           const base = String(sim.launch_url).replace(/\/+$/, '');
           try {
             const r = await fetch(base + '/api/health', {
-              headers: process.env.LAUNCH_SECRET ? { 'x-health-key': process.env.LAUNCH_SECRET } : {},
+              headers: healthHeaders(),
               signal: AbortSignal.timeout(7000) });
-            if (!r.ok) { results.push({ id: sim.id, title: sim.title, state: 'unreachable',
+            if (!r.ok && r.status !== 503) { results.push({ id: sim.id, title: sim.title, state: 'unreachable',
               detail: `answered ${r.status}` }); continue; }
             const h = await r.json();
-            const problems = [];
-            if (h.sim && h.sim !== sim.id) problems.push(`it says it is ${h.sim}`);
-            if (h.characters !== 'configured') problems.push('no API key');
-            if (h.launchSecret !== 'configured') problems.push('no launch secret');
-            else if (ours && h.launchSecretFingerprint !== ours) problems.push('its launch secret does not match ours');
-            if (!h.platformUrl || /MISSING/.test(String(h.platformUrl))) problems.push('nowhere to report completions');
-            if (h.sessions === 'MISSING') problems.push('no session store, so no live classroom');
-            // A deployment left behind looks identical to a working one until
-            // somebody hits the thing it cannot do.
-            const want = ['launch-token','launch-mode','console-token','self-register','completion-report'];
-            const has = Array.isArray(h.features) ? h.features : [];
-            const missing = want.filter(f => !has.includes(f));
-            if (missing.length) problems.push(`running an old build — redeploy it (missing ${missing.join(', ')})`);
-            const theirs = String(h.build || '').split(' ')[0];
-            if (ourBuild && theirs && theirs !== ourBuild) {
-              problems.push(`on a different build from this platform — it has ${theirs}, we have ${ourBuild}`);
-            }
-            if (h.registersAs && /SIM_URL not set/.test(String(h.registersAs))) {
-              problems.push('no SIM_URL, so it registers whichever address is used — set it to the address students should get');
-            } else if (h.registersAs && sim.launch_url &&
-                       String(h.registersAs).replace(/\/+$/, '') !== String(sim.launch_url).replace(/\/+$/, '')) {
-              problems.push(`it now answers at ${h.registersAs} — press Check all again after it next announces itself`);
-            }
+            const diagnosis = inspectHealth(h, sim);
             results.push({ id: sim.id, title: sim.title, build: h.build || null,
-              state: problems.length ? 'needs attention' : 'ready', detail: problems.join('; ') });
+              state: diagnosis.state, detail: diagnosis.problems.join('; ') });
           } catch (e) {
             results.push({ id: sim.id, title: sim.title, state: 'unreachable',
               detail: 'did not answer' });

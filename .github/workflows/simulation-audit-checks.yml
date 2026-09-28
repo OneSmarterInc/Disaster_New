@@ -6,6 +6,12 @@ on:
       - 'sim/**'
       - 'sim-02/**'
       - 'sim03/**'
+      - 'sim05/**'
+      - 'sim06/**'
+      - 'sim07/**'
+      - 'sim08/**'
+      - 'sim09/**'
+      - 'sim10/**'
       - 'sim-plus-01/**'
       - 'tools/**'
       - '.github/workflows/simulation-audit-checks.yml'
@@ -16,6 +22,12 @@ on:
       - 'sim/**'
       - 'sim-02/**'
       - 'sim03/**'
+      - 'sim05/**'
+      - 'sim06/**'
+      - 'sim07/**'
+      - 'sim08/**'
+      - 'sim09/**'
+      - 'sim10/**'
       - 'sim-plus-01/**'
       - 'tools/**'
       - '.github/workflows/simulation-audit-checks.yml'
@@ -41,3 +53,12 @@ jobs:
           node platform/tools/protocol-check.js
           node tools/full-flow-check.js
           node tools/health-security-check.js
+      - name: Health diagnostics and catalogue presentation
+        run: |
+          node platform/tools/health-contract-check.js
+          node platform/tools/catalogue-number-check.js
+          node platform/tools/deploy-check.js
+          node platform/tools/catalogue-check.js
+          node platform/tools/sim-detail-check.js
+          node platform/tools/address-check.js
+          node platform/tools/contact-check.js

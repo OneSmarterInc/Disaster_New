@@ -57,7 +57,8 @@ module.exports = async (req, res) => {
       // Give it the next free number so it reads sensibly straight away. An
       // administrator can change it; nothing depends on the value.
       const taken = (await s`SELECT number FROM sims WHERE number IS NOT NULL`).map(r => r.number);
-      let n = 1;
+      const wanted = Number(p.number);
+      let n = Number.isSafeInteger(wanted) && wanted > 0 && !taken.includes(wanted) ? wanted : 1;
       while (taken.includes(n)) n++;
 
       await s`INSERT INTO sims (id, number, title, tagline, description, minutes, launch_url, published, detail)

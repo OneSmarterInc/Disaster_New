@@ -2,12 +2,28 @@
 
 const { verifyLaunch, announce } = require('./launch');
 const { META, acceptsLaunchId } = require('./meta');
+const crypto = require('node:crypto');
+
+function canonicalUrl(req) {
+  if (process.env.SIM_URL) return String(process.env.SIM_URL).replace(/\/+$/, '');
+  if (process.env.PLATFORM_URL) return String(process.env.PLATFORM_URL).replace(/\/+$/, '') + '/simplus01';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  return host ? `${proto}://${host}` : '';
+}
+
+function facultyAccess(req) {
+  // Only the verified server-side launch can grant the faculty capability.
+  const p = req.launch;
+  if (p && p.sub && acceptsLaunchId(p.sim) && ['faculty', 'faculty_preview'].includes(p.role)) return true;
+  const want = Buffer.from(String(process.env.FACULTY_CODE || ''));
+  const given = Buffer.from(String(req.headers['x-faculty-code'] || ''));
+  return want.length > 0 && want.length === given.length && crypto.timingSafeEqual(want, given);
+}
 
 function announceOnce(req) {
   try {
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    const proto = req.headers['x-forwarded-proto'] || 'https';
-    announce(META, process.env.SIM_URL || (host ? `${proto}://${host}` : ''));
+    announce(META, canonicalUrl(req));
   } catch (_) {}
 }
 
@@ -36,4 +52,4 @@ function body(req) {
   try { return JSON.parse(req.body); } catch (_) { return {}; }
 }
 
-module.exports = { checkAccess, body };
+module.exports = { checkAccess, body, canonicalUrl, facultyAccess };

@@ -375,6 +375,10 @@ test('platform: one catalogue announcement per cold start, signed, with this sim
     assert.strictEqual(reg.length, 1);
     const p = reg[0].payload;
     assert(p && p.kind === 'register' && p.sim === 'rapid-10-bubble' && p.launchUrl === 'https://rapidsims.example/sim10' && p.title === config.title && p.minutes === config.minutes);
+    assert.strictEqual(p.number, 10);
+    assert.strictEqual(p.catalogueRevision, 'sim10-v2');
+    assert.deepStrictEqual(p.detail, config.detail);
+    assert(p.detail.world && p.detail.seat && p.detail.beats.length === 3, 'catalogue receives the financial-analysis scenario details');
   });
 });
 

@@ -1,20 +1,23 @@
 #!/usr/bin/env node
+global.RapidSimsIdentity = require('../public/sim-identity.js');
 // The catalogue is the front door and is open to everybody. It must render
 // signed out, show what each simulation sent about itself, and never mention
 // groups — these are played individually.
 // what the simulations sent about themselves.
 const fs=require('fs');
 const html=fs.readFileSync(require('path').join(__dirname,'../public/index.html'),'utf8');
-const js=html.slice(html.indexOf('<script>')+8, html.lastIndexOf('</script>'));
+const assert=require('node:assert/strict');
+const js=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).join('\n');
 let LAST='';
 function mk(id){const o={id,innerHTML:'',style:{},dataset:{},textContent:'',
+  addEventListener(){},setAttribute(){},focus(){},
   querySelectorAll:()=>[],querySelector:()=>mk('x')};return o;}
 const app={get innerHTML(){return LAST;},set innerHTML(v){LAST=v;},
   querySelectorAll(sel){const m=sel.match(/\[data-(\w+)\]/);if(!m)return[];
     return [...LAST.matchAll(new RegExp(`data-${m[1]}="([^"]*)"`,'g'))].map(x=>{const e=mk('d');e.dataset[m[1]]=x[1];return e;});},
   querySelector:()=>mk('x')};
 global.window={scrollTo(){}};global.location={href:''};
-global.document={getElementById:id=>id==='app'?app:mk(id),createElement:()=>mk('t'),
+global.document={getElementById:id=>id==='app'?app:mk(id),createElement:()=>mk('t'),addEventListener(){},
   body:{appendChild(){}},querySelector:()=>mk('x'),querySelectorAll:()=>[]};
 
 const SIM = { id:'rapid-01-disaster', number:1, title:'Disaster or Breach?',
@@ -44,4 +47,6 @@ setTimeout(() => {
   console.log('    ' + strip(LAST).slice(0, 300));
   console.log('  mentions groups:', /group/i.test(LAST));
   console.log('  shows what it teaches:', LAST.includes('Sequencing under uncertainty'));
+  assert.ok(LAST.includes(SIM.title), 'signed-out users see the catalogue');
+  assert.ok(LAST.includes('Sequencing under uncertainty'), 'the teaching description renders');
 }, 60);

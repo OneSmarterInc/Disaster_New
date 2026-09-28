@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+global.RapidSimsIdentity = require('../public/sim-identity.js');
 // A facilitator can look at what a simulation is before deciding anything about
 // it — the same page a colleague sees on the public catalogue, opened over the
 // console so they keep their place. The eye belongs wherever a simulation is
@@ -12,7 +13,7 @@ eval(fs.readFileSync(require('path').join(__dirname,'../public/sim-detail.js'),'
 
 let LAST='', BODY='', SHEET=null;
 function mk(id){const o={id,innerHTML:'',style:{},dataset:{},value:'',textContent:'',disabled:false,className:'',
- focus(){},select(){},setSelectionRange(){},remove(){SHEET=null;},classList:{toggle(){},add(){},remove(){}},
+ focus(){},select(){},setAttribute(){},setSelectionRange(){},remove(){SHEET=null;},classList:{toggle(){},add(){},remove(){}},
  querySelectorAll:()=>[],querySelector:()=>mk('x'),closest:()=>mk('x')};return o;}
 const app={get innerHTML(){return LAST;},set innerHTML(v){LAST=v;},
   querySelectorAll(sel){const m=sel.match(/\[data-(\w+)\]/);if(!m)return[];
@@ -22,7 +23,7 @@ const bodyEl={get innerHTML(){return BODY;},set innerHTML(v){BODY=v;},querySelec
 global.location={href:''};
 global.document={getElementById:id=>id==='app'?app:(id==='body'?bodyEl:(SHEET&&id==='lookSheet'?SHEET:mk(id))),
   createElement:()=>{ SHEET=mk('lookSheet'); return SHEET; },
-  body:{appendChild(){}}, addEventListener(){}, removeEventListener(){},
+  body:{...mk('body'),appendChild(){}}, addEventListener(){}, removeEventListener(){},
   querySelector:()=>mk('x'),querySelectorAll:()=>[]};
 global.fetch=async()=>({ok:true,json:async()=>({})});global.navigator={clipboard:{writeText(){}}};
 global.confirm=()=>true;global.setTimeout=()=>0;global.prompt=()=>null;

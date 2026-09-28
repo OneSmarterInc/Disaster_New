@@ -7,7 +7,14 @@ const cases = [
   ['sim/api/health.js', 'rapid-01-disaster'],
   ['sim-02/api/health.js', 'rapid-02-relay'],
   ['sim-plus-01/api/health.js', 'rapidsimplus-01'],
-  ['sim03/api/health.js', 'rapid-03-midland']
+  ['sim03/api/health.js', 'rapid-03-midland'],
+  ['sim05/api/health.js', 'rapid-05-approve'],
+  ['sim06/api/health.js', 'rapid-06-switch'],
+  ['sim07/api/health.js', 'rapid-07-bought'],
+  ['sim08/api/health.js', 'rapid-08-later'],
+  ['sim09/api/health.js', 'rapid-09-money-land'],
+  ['sim10/lib/health.js', 'rapid-10-bubble'],
+  ['platform/api/health.js', 'flexee-platform']
 ];
 
 process.env.HEALTH_SECRET = 'health-secret-for-test';
@@ -28,14 +35,17 @@ function invoke(handler, req) {
     const res = {
       setHeader(k, v) { headers[String(k).toLowerCase()] = v; },
       status(n) { statusCode = n; return this; },
+      writeHead(n, values) { statusCode = n; for (const [k,v] of Object.entries(values)) this.setHeader(k,v); return this; },
       json(body) { resolve({ statusCode, headers, body }); return this; },
-      end() { resolve({ statusCode, headers, body: null }); return this; }
+      end(raw) { resolve({ statusCode, headers, body: raw ? JSON.parse(raw) : null }); return this; }
     };
     Promise.resolve(handler(req, res)).catch(reject);
   });
 }
 
 (async () => {
+  let networkCalls = 0;
+  global.fetch = async () => { networkCalls++; throw new Error('Health must not call external services or register simulations'); };
   for (const [rel, sim] of cases) {
     const abs = path.join(__dirname, '..', rel);
     const source = fs.readFileSync(abs, 'utf8');
@@ -45,21 +55,23 @@ function invoke(handler, req) {
     assert(source.includes("req.headers['x-health-key']"), `${rel}: x-health-key header check missing`);
 
     delete require.cache[require.resolve(abs)];
-    const handler = require(abs);
+    const handler = rel === 'sim10/lib/health.js' ? require('../sim10/lib/app').createApp() : require(abs);
+    const publicBody = rel.startsWith('platform/') ? { ok: true, service: sim } : { ok: true, sim };
+    const request = input => ({ method: 'GET', url: '/api/health', ...input });
 
-    const publicResponse = await invoke(handler, { headers: {}, query: {} });
+    const publicResponse = await invoke(handler, request({ headers: {}, query: {} }));
     assert.equal(publicResponse.statusCode, 200, `${rel}: public health must stay usable for liveness probes`);
-    assert.deepStrictEqual(publicResponse.body, { ok: true, sim }, `${rel}: public response leaks diagnostics`);
+    assert.deepStrictEqual(publicResponse.body, publicBody, `${rel}: public response leaks diagnostics`);
     assert.equal(publicResponse.headers['cache-control'], 'no-store, max-age=0, must-revalidate');
 
-    const queryAttempt = await invoke(handler, { headers: {}, query: { key: process.env.HEALTH_SECRET } });
-    assert.deepStrictEqual(queryAttempt.body, { ok: true, sim }, `${rel}: query-string health key authorized diagnostics`);
+    const queryAttempt = await invoke(handler, request({ url: '/api/health?key=' + encodeURIComponent(process.env.HEALTH_SECRET), headers: {}, query: { key: process.env.HEALTH_SECRET } }));
+    assert.deepStrictEqual(queryAttempt.body, publicBody, `${rel}: query-string health key authorized diagnostics`);
 
-    const launchSecretAttempt = await invoke(handler, { headers: { 'x-health-key': process.env.LAUNCH_SECRET }, query: {} });
-    assert.deepStrictEqual(launchSecretAttempt.body, { ok: true, sim }, `${rel}: LAUNCH_SECRET was reused as health authorization`);
+    const launchSecretAttempt = await invoke(handler, request({ headers: { 'x-health-key': process.env.LAUNCH_SECRET }, query: {} }));
+    assert.deepStrictEqual(launchSecretAttempt.body, publicBody, `${rel}: LAUNCH_SECRET was reused as health authorization`);
 
-    const privateResponse = await invoke(handler, { headers: { 'x-health-key': process.env.HEALTH_SECRET }, query: {} });
-    assert.equal(privateResponse.body.sim, sim);
+    const privateResponse = await invoke(handler, request({ headers: { 'x-health-key': process.env.HEALTH_SECRET }, query: {} }));
+    assert.equal(privateResponse.body.sim || privateResponse.body.service, sim);
     assert.equal(privateResponse.body.diagnostic, true, `${rel}: protected diagnostics unavailable`);
     const serialized = JSON.stringify(privateResponse.body);
     for (const secret of [
@@ -74,7 +86,8 @@ function invoke(handler, req) {
     }
   }
 
-  console.log('All four RapidSim health endpoints are hardened.');
+  assert.equal(networkCalls, 0, 'health probes must be read-only and must not register simulations');
+  console.log('All ten simulation health endpoints and the platform protect diagnostics.');
 })().catch(err => {
   console.error(err);
   process.exit(1);

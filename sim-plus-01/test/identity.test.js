@@ -2,10 +2,18 @@
 const assert = require('node:assert/strict');
 const { META, LEGACY_LAUNCH_IDS, acceptsLaunchId } = require('../lib/meta');
 const { verifyLaunch, signBack, reportCompletion, reportTranscript } = require('../lib/launch');
-const { checkAccess } = require('../lib/guard');
+const { checkAccess, canonicalUrl } = require('../lib/guard');
 const env = { ...process.env }, nativeFetch = global.fetch, requests=[];
 (async()=>{try{
  process.env.LAUNCH_SECRET='identity-test-secret';delete process.env.PLATFORM_URL;
+ delete process.env.SIM_URL;
+ const direct={headers:{host:'preview.test'}};
+ assert.equal(canonicalUrl(direct),'https://preview.test');
+ process.env.PLATFORM_URL='https://platform.test/';
+ assert.equal(canonicalUrl(direct),'https://platform.test/simplus01','platform fallback keeps the simulation path');
+ process.env.SIM_URL='https://platform.test/rapidsims01/';
+ assert.equal(canonicalUrl(direct),'https://platform.test/rapidsims01','explicit legacy aliases remain supported');
+ delete process.env.PLATFORM_URL;delete process.env.SIM_URL;
  assert.equal(META.id,'rapidsimplus-01');assert.deepEqual(META.replaces,[]);
  assert.equal(require('../data/simmeta').SIM_ID,META.id);
  for(const id of [META.id,...LEGACY_LAUNCH_IDS]) {
@@ -33,4 +41,4 @@ const env = { ...process.env }, nativeFetch = global.fetch, requests=[];
    assert.equal(envelope.simId,META.id,'reporting a legacy run must not mutate the authored envelope');
  }
  console.log('Wexford identity checks passed: canonical registration, legacy launches, completion/transcript attribution and wrong-sim rejection.');
-}finally{global.fetch=nativeFetch;for(const k of ['LAUNCH_SECRET','PLATFORM_URL']) {if(env[k]===undefined)delete process.env[k];else process.env[k]=env[k];}}})().catch(e=>{console.error(e);process.exitCode=1;});
+}finally{global.fetch=nativeFetch;for(const k of ['LAUNCH_SECRET','PLATFORM_URL','SIM_URL']) {if(env[k]===undefined)delete process.env[k];else process.env[k]=env[k];}}})().catch(e=>{console.error(e);process.exitCode=1;});

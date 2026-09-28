@@ -1,6 +1,6 @@
 # Configuration
 
-Two Vercel projects from this repository, each with a different Root Directory.
+One platform and ten simulation projects share this repository, each with its own Root Directory. The tables below describe the original platform/Sim01 configuration; see docs/integration-fixes-2026-09-28.md for the current shared diagnostic contract.
 
 ## sim/ — RapidSim 01
 
@@ -23,13 +23,15 @@ Root Directory `platform`.
 |---|---|---|
 | `DATABASE_URL` | yes | Postgres. Set by the Neon integration. |
 | `LAUNCH_SECRET` | yes | Must match every sim it launches into. |
-| `PUBLIC_BASE_URL` | yes | Its own address, used to build invitation and enrolment links. No trailing slash. |
+| `PUBLIC_BASE_URL` | optional | Its own address, used to build invitation and enrolment links. No trailing slash. |
 | `SETUP_KEY` | first run only | Guards `/setup.html`. Delete it once setup is done. |
 | `RAPID_01_URL` | optional | Seeds the catalogue during setup. |
 
 ## Checking a deployment
 
-Both projects answer at `/api/health`, reporting what is configured without revealing it. Each prints an eight-character fingerprint of its launch secret — matching fingerprints mean launches will be trusted, different ones mean they never will.
+All eleven projects answer at `/api/health`. Public responses contain only liveness and service identity. Configure a dedicated `HEALTH_SECRET` with the same value on the platform and every simulation, different from `LAUNCH_SECRET`. Diagnostics require that key in `x-health-key`; query-string secrets are rejected. The protected response includes configuration status and a launch-secret fingerprint. These checks establish configuration, not a complete student playthrough or a live database/model transaction.
+
+Admin → Catalogue → Check all reports `unverified` when diagnostics are unavailable; it does not mistake hidden fields for missing credentials. Different Git revisions are shown for inspection and do not alone indicate a broken simulation.
 
 ## After a release that changes the schema
 

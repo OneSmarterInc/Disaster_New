@@ -15,7 +15,7 @@
   function simDetailHTML(s, opts) {
     const o = opts || {};
     const d = s.detail || {};
-    const num = s.number ? String(s.number).padStart(2, '0') : null;
+    const simLabel = RapidSimsIdentity.label(s);
     const customFacts = Array.isArray(d.catalogueFacts)
       ? d.catalogueFacts.filter(x => x && x.value).slice(0, 6)
       : [];
@@ -34,7 +34,7 @@
 
     return `
     <div class="sim-head">
-      <div class="eyebrow">${num ? 'RapidSim ' + num : 'RapidSim'}${d.world ? ' · ' + esc(d.world) : ''}</div>
+      <div class="eyebrow">${esc(simLabel)}${d.world ? ' · ' + esc(d.world) : ''}</div>
       <h1>${esc(s.title)}</h1>
       ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
       <div class="facts">
@@ -103,6 +103,7 @@
 // and scroll after that render has finished, leaving enough room for the sticky
 // Flexee header.
 (function setupRapidSimsPlusHashNavigation() {
+  if (typeof document === 'undefined') return;
   const targetHash = '#rapidsimPlus';
   let observer = null;
 

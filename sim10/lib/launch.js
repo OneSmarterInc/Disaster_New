@@ -64,8 +64,8 @@ function announce() {
   const selfUrl = (process.env.SIM_URL || '').replace(/\/+$/, '');
   if (!process.env.PLATFORM_URL || !selfUrl) return Promise.resolve();
   announced = post('/api/register', signBack({
-    kind: 'register', sim: config.simId, title: config.title, tagline: config.tagline,
-    description: config.description, minutes: config.minutes, detail: null,
+    kind: 'register', sim: config.simId, number: 10, title: config.title, tagline: config.tagline,
+    description: config.description, minutes: config.minutes, detail: config.detail,
     catalogueRevision: config.catalogueRevision, launchUrl: selfUrl,
     iat: Date.now(), exp: Date.now() + 5 * 60000,
   })).then((r) => { if (!r.ok && !r.skipped) throw new Error('refused'); })

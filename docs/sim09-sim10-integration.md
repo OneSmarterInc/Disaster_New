@@ -31,8 +31,8 @@ platform deployment must include this configuration for the canonical URLs to wo
 3. Check each production origin's `/api/health` response: the
    `sim` field must match the catalogue ID above. These probes are read-only.
 4. Deploy the committed proxy mappings and noindex/no-store headers on **disaster-new**
-   (Root Directory `platform`). No additional platform environment variables or
-   database schema migrations are required for these sims.
+   (Root Directory `platform`). No database schema migration is required. Set the shared diagnostic
+   HEALTH_SECRET on the platform and each simulation to enable configuration checks.
 5. Verify the canonical health, asset and entry routes. Then visit
    `/sim09/api/config` and `/sim10/api/manifest` to trigger awaited signed
    registration. Sim09 may return 401 for the unsigned config probe after the
@@ -58,7 +58,7 @@ platform deployment must include this configuration for the canonical URLs to wo
 | `BASE_PATH` | Not used | `/sim10/` |
 | `ACCESS_CODE` | Optional direct student access | Optional direct student access |
 | `FACULTY_CODES` | Optional direct faculty access: `Name:code,Other:code` | Same format |
-| `HEALTH_SECRET` | Optional private diagnostics key | Not used; health is minimal/public |
+| `HEALTH_SECRET` | Same dedicated diagnostic key as the platform | Same dedicated diagnostic key as the platform |
 
 The `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` pair is an alternative
 to the KV pair. Both sims require Redis for **solo and class play**; prefixes

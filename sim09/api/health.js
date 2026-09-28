@@ -43,6 +43,7 @@ module.exports = async (req, res) => {
     ok: true,
     sim: S.META.id,
     diagnostic: true,
+    needsModelKey: false,
     build: BUILD,
     accessCode: process.env.ACCESS_CODE ? 'configured' : 'not set (standalone access closed)',
     sessions: store.configured() ? 'configured' : 'MISSING',

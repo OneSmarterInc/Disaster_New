@@ -37,7 +37,8 @@ assert.ok(interviewStart >= 0 && composerStart > interviewStart && exitInCompose
   'End interview must be rendered directly in the composer');
 
 // Observation is 1x for participants. Speed controls exist only in explicit faculty/testing mode.
-assert.match(js, /function isFaculty\(\)\{return urlParam\('faculty'\)==='1'\}/);
+assert.match(js, /function isFaculty\(\)\{return brief\?\.faculty===true\}/);
+assert.doesNotMatch(js, /urlParam\('faculty'\)/, 'query parameters must not grant faculty controls');
 assert.match(js, /speedControls=faculty\?/);
 assert.match(js, /if\(faculty\)document\.querySelectorAll\('\[data-observation-speed\]'\)/);
 assert.match(js, /if\(!isFaculty\(\)\|\|!\[1,10,20,50\]\.includes\(next\)\)return/);

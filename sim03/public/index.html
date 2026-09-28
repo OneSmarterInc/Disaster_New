@@ -444,7 +444,7 @@ function renderBrief(){
   <div class="briefing-prep"><div class="briefing-prep-copy"><span class="small">Before you continue</span><b>This sim assumes you have read the briefing packet before starting.</b> If you have not read it yet, open the in-app packet here before continuing.</div><button class="btn" data-open-briefing>Read briefing packet</button></div>
   ${sessionGate()}${!S.session?(LAUNCH&&(LAUNCH.role==='faculty'||LAUNCH.role==='faculty_preview')?'<div class="actions"><button class="btn" id="runSessionEntry">Run a facilitated session</button></div>':'<div class="actions"><button class="btn" id="joinSessionEntry">Join a facilitated session</button></div>'):''}${nav({backOk:false,disabled:blocked()})}</section>`);
   const runEntry=document.getElementById('runSessionEntry');if(runEntry)runEntry.onclick=()=>{
-    const platform=(C?.platformUrl||'https://rapidsims.flexee.org').replace(/\/$/,'');
+    const platform=(C?.platformUrl||location.origin).replace(/\/$/,'');
     const q=new URLSearchParams({sim:C?.meta?.id||'rapid-03-midland',mode:'session'});
     if(LAUNCH?.course)q.set('course',LAUNCH.course);
     location.assign(platform+'/api/launch?'+q.toString());
@@ -644,7 +644,7 @@ function renderClose(){
     </div>
     ${closingLessonHTML()}`}
     <div class="notice run-complete">Run complete. The full outcome, portfolio and reflections are ready to screenshot or print to PDF.</div>
-    <div class="actions"><button class="btn pri" id="printBtn">Print / save PDF</button><a class="btn" id="studentHomeBtn" href="${esc((C.platformUrl||'https://rapidsims.flexee.org').replace(/\/$/,'')+'/student.html')}">Back to student home</a></div>`);
+    <div class="actions"><button class="btn pri" id="printBtn">Print / save PDF</button><a class="btn" id="studentHomeBtn" href="${esc((C.platformUrl||location.origin).replace(/\/$/,'')+'/student.html')}">Back to student home</a></div>`);
     document.getElementById('printBtn').onclick=()=>window.print();
     return;
   }

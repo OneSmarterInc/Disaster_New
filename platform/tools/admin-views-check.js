@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+global.RapidSimsIdentity = require('../public/sim-identity.js');
 // Renders every view of the admin console against a recording DOM and checks
 // each button that appears receives a handler. Syntax and boot checks pass on a
 // button that does nothing, which is how that fault kept shipping.

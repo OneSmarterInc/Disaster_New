@@ -16,7 +16,7 @@ if(['team','individual'].includes(launchPreference))mode=launchPreference;
 const FACULTY_COURSE_KEY='m03-faculty-course';
 const PLATFORM_LAUNCH_PATH='/api/launch';
 function attr(value){return esc(value).replaceAll('"','&quot;')}
-const facultyDashboard=BASE?'/faculty.html':'https://rapidsims.flexee.org/faculty.html';
+let facultyDashboard=BASE?'/faculty.html':'';
 function tokenInfo(token){try{return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(token.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))))}catch{return null}}
 // This metadata only selects a class for reauthorization. The platform checks
 // its signed-in user and course ownership; the sim still verifies the signature.
@@ -24,7 +24,7 @@ let facultyCourse=new URLSearchParams(location.search).get('course')||tokenInfo(
 function rememberCourse(value){facultyCourse=String(value||'');if(facultyCourse)sessionStorage.setItem(FACULTY_COURSE_KEY,facultyCourse);else sessionStorage.removeItem(FACULTY_COURSE_KEY);const u=new URL(location.href);if(facultyCourse)u.searchParams.set('course',facultyCourse);else u.searchParams.delete('course');history.replaceState(null,'',u.pathname+u.search+u.hash)}
 if(incomingLT)rememberCourse(tokenInfo(incomingLT)?.course||'');
 function captureDraft(){draftName=document.getElementById('name')?.value??draftName;draftResume=document.getElementById('resumeCode')?.value??draftResume;facultyCode=document.getElementById('fc')?.value.trim()??facultyCode}
-function recoveryLink(){return `<div class="actions"><a class="btn" id="facultyRecovery" href="${esc(facultyDashboard+(facultyCourse?'?course='+encodeURIComponent(facultyCourse):''))}" target="_blank" rel="noopener">Open faculty dashboard</a></div>`}
+function recoveryLink(){if(!facultyDashboard)return notice('Open your RapidSims faculty dashboard to renew access.');return `<div class="actions"><a class="btn" id="facultyRecovery" href="${esc(facultyDashboard+(facultyCourse?'?course='+encodeURIComponent(facultyCourse):''))}" target="_blank" rel="noopener">Open faculty dashboard</a></div>`}
 async function renewFaculty(){
   if(renewing)return renewing;
   renewing=(async()=>{
@@ -111,7 +111,7 @@ window.addEventListener('focus',()=>{enrolmentFetched=0;refresh()});
 function consoleView(){
   if(!state)return;
   window.MidlandFaculty.render({root:app,state,roster:enrolmentCode===code?enrolmentData:null,rosterError:enrolmentError,
-    courseUrl:state.session.courseId?(enrolmentData?.manageUrl||facultyDashboard+'?course='+encodeURIComponent(state.session.courseId)):'',
+    courseUrl:state.session.courseId?(enrolmentData?.manageUrl||(facultyDashboard?facultyDashboard+'?course='+encodeURIComponent(state.session.courseId):'')):'',
     joinUrl:state.session.joinUrl||location.origin+BASE+'/api/join?session='+encodeURIComponent(code),
     api,refresh,refreshRoster:async()=>{await refreshEnrolments(true);if(enrolmentError)throw new Error(enrolmentError);await refresh()},
     advanced:()=>calibrate(state.session)+readiness(state.session),debrief:()=>analytics(runs()),present:startPresent,
@@ -141,4 +141,10 @@ function sentences(rs){
 }
 function startPresent(){const debrief=document.getElementById('fw-debrief');if(debrief)debrief.open=true;const cards=[...document.querySelectorAll('#app .card')].filter(x=>/Projector view|Year 3 bands|Connect vs Uptime|Buyer interest|Contrasting runs/.test(x.textContent));if(!cards.length)return;document.body.classList.add('present');presentIndex=Math.min(presentIndex,cards.length-1);const show=()=>{cards.forEach((c,i)=>c.classList.toggle('present-on',i===presentIndex))};show();const key=e=>{if(!document.body.classList.contains('present'))return;if(e.key==='Escape'){document.body.classList.remove('present');cards.forEach(c=>c.classList.remove('present-on'));document.removeEventListener('keydown',key);return}if(e.key==='ArrowRight'||e.key==='ArrowDown'){presentIndex=(presentIndex+1)%cards.length;show()}if(e.key==='ArrowLeft'||e.key==='ArrowUp'){presentIndex=(presentIndex-1+cards.length)%cards.length;show()}};document.addEventListener('keydown',key)}
 render();
+if(!BASE)fetch(BASE+'/api/platform').then(r=>r.ok?r.json():null).then(d=>{
+  if(d&&/^https?:\/\//.test(d.platformUrl||'')){
+    facultyDashboard=d.platformUrl.replace(/\/$/,'')+'/faculty.html';
+    if(authProblem)render();
+  }
+}).catch(()=>{});
 </script></body></html>

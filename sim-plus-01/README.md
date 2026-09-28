@@ -187,3 +187,9 @@ Tuesday-to-Thursday gap must not be able to expire a session.
 
 Intro brief and partial chart. Instructor transcript view — that wants
 its own platform spec, since Sims 01 and 02 need it too.
+
+## Faculty playback and deployment diagnostics
+
+Faster observation playback is available only when the server verifies a faculty or faculty-preview launch (including supported legacy launch IDs), or a configured standalone faculty credential is explicitly supplied in `x-faculty-code`. The `faculty=1` URL flag grants no capability. Student playback remains 1×. Current question-starter behavior and the 180-minute catalogue setting are unchanged pending the teaching-format decision.
+
+Set `HEALTH_SECRET` to the platform's dedicated diagnostic key, not its `LAUNCH_SECRET`. Health never registers or changes a run. Keep the current legacy `SIM_URL` alias until its identity migration is reviewed; without an explicit URL, registration uses `PLATFORM_URL + /simplus01`. Follow `../docs/sim-identity-migration.md` before publishing the new canonical catalogue identity.

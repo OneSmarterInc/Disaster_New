@@ -1,5 +1,4 @@
-// Mirror of the sim's health check. Compare launchSecretFingerprint across the
-// two deployments: same eight characters means launches will be trusted.
+// Public liveness is minimal; operator diagnostics require a dedicated HEALTH_SECRET.
 const crypto = require('crypto');
 const { baseUrl } = require('../lib/urls.js');
 
@@ -7,22 +6,20 @@ const fingerprint = (v) => v
   ? crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 8)
   : null;
 
-// This endpoint is deliberately readable. Everything on it is a diagnostic
-// boolean — configured or missing — and knowing that a database is reachable
-// helps nobody attack it. What does not belong in public is anything derived
-// from a secret, so the launch fingerprint is shown only to a caller who
-// already holds the secret it is derived from. That is also the one field
-// nobody can act on without it.
-function holdsTheSecret(req) {
-  const given = String(req.headers['x-health-key'] || (req.query && req.query.key) || '');
-  const want = String(process.env.LAUNCH_SECRET || '');
-  return !!want && given === want;
+function hasHealthAccess(req) {
+  const want = Buffer.from(String(process.env.HEALTH_SECRET || ''));
+  const given = Buffer.from(String(req.headers['x-health-key'] || ''));
+  return want.length > 0 && want.length === given.length && crypto.timingSafeEqual(want, given);
 }
 
 module.exports = async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
+  if (!hasHealthAccess(req)) return res.status(200).json({ ok: true, service: 'flexee-platform' });
   const secret = process.env.LAUNCH_SECRET;
   return res.status(200).json({
+    ok: true,
     service: 'flexee-platform',
+    diagnostic: true,
     build: process.env.VERCEL_GIT_COMMIT_SHA
       ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) +
         (process.env.VERCEL_GIT_COMMIT_REF ? ' on ' + process.env.VERCEL_GIT_COMMIT_REF : '')

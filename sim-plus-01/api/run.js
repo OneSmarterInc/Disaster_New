@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
-const { checkAccess, body } = require('../lib/guard');
+const { checkAccess, body, facultyAccess } = require('../lib/guard');
 const store = require('../lib/store');
 const { Session, SOURCES } = require('../src/engine');
 const { validate, review } = require('../src/report');
@@ -113,6 +113,7 @@ module.exports = async (req, res) => {
   const b = body(req);
   try {
     if (b.action === 'brief') return res.status(200).json({
+      faculty: facultyAccess(req),
       title: 'Why Don\'t They Have Any Patience?',
       organization: 'Wexford Benefit Administrators',
       assignment: 'Document how claims are handled from arrival until adjudication. Verify handoffs, waits, outputs, provider contact, and anything the partial chart cannot establish.',

@@ -5,6 +5,8 @@
 const fs = require('fs');
 const path = require('path');
 const ADDRESS = 'support@flexee.org';
+// The landing page also has an intentional business-enquiry contact.
+const ENQUIRY = 'chuck@theguruofbiz.com';
 const dir = path.join(__dirname, '..', 'public');
 let bad = 0, footers = 0;
 
@@ -12,7 +14,7 @@ for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.html'))) {
   const s = fs.readFileSync(path.join(dir, f), 'utf8');
 
   const others = [...new Set([...s.matchAll(/mailto:([^"?&]+)/g)].map(m => m[1]))]
-    .filter(a => a !== ADDRESS);
+    .filter(a => a !== ADDRESS && !(f === 'index.html' && a === ENQUIRY));
   if (others.length) { bad++; console.log(`  ${f}: a different address — ${others.join(', ')}`); }
 
   const foot = s.match(/foot-note[\s\S]*?<\/div><\/div>/);

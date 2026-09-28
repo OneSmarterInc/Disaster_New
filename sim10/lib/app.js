@@ -5,6 +5,7 @@ const config = require('../data/config');
 const engine = require('./engine');
 const L = require('./launch');
 const { defaultStore } = require('./store');
+const { health } = require('./health');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
@@ -73,7 +74,7 @@ function createApp({ store: injectedStore, clock = () => Date.now() } = {}) {
     if (base !== '/' && (p === base.slice(0, -1) || p.startsWith(base))) p = p.slice(base.length - 1) || '/';
     const now = clock();
     const pid = req.headers['x-pid'];
-    if (req.method === 'GET' && p === '/api/health') return send(res, 200, { ok: true, sim: config.simId });
+    if (req.method === 'GET' && p === '/api/health') return send(res, 200, health(req), { 'Cache-Control': 'no-store, max-age=0, must-revalidate' });
     await L.announce();                                  // once per cold start
     const rawToken = req.headers['x-launch-token'];
     const launch = rawToken ? L.launchFor(String(rawToken), now) : null;

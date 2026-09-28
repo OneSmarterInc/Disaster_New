@@ -80,7 +80,7 @@ async function client() {
   }
   const html=fs.readFileSync(path.join(root,'public/faculty.html'),'utf8');
   for (const m of html.matchAll(/\bid="(app|out|who|adminlink)"/g)) elements.set(m[1],new Element(m[1]));
-  const ctx=vm.createContext({ console, URLSearchParams, Set, Date,
+  const ctx=vm.createContext({ console, URLSearchParams, Set, Date, RapidSimsIdentity: require('../public/sim-identity.js'),
     document: { getElementById: id => elements.get(id) || null, querySelectorAll: () => [] },
     location: { search: '?course=course-a' }, setTimeout: () => {},
     fetch: async (url,opt) => {

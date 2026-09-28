@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+global.RapidSimsIdentity = require('../public/sim-identity.js');
 // Renders every view of the faculty console against a recording DOM and checks
 // each button that appears receives a handler.
 const fs = require('fs');

@@ -13,7 +13,7 @@ const CHART_LABELS={
 };
 function urlParam(name){const m=(location.search+location.hash).match(new RegExp('[?#&]'+name+'=([^&]+)'));return m?decodeURIComponent(m[1]):null}
 function launchToken(){return urlParam('lt')||urlParam('launch')||''}
-function isFaculty(){return urlParam('faculty')==='1'}
+function isFaculty(){return brief?.faculty===true}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function fmt(sec){sec=Math.max(0,Math.round(Number(sec)||0));return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')}
 function human(v){return String(v||'').replaceAll('_',' ')}

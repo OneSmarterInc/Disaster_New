@@ -313,7 +313,7 @@ function demoGate(message=''){
   if(S.solo){
     if(S.demo){startSolo();return}
     if(LAUNCH&&(LAUNCH.role==='faculty'||LAUNCH.role==='faculty_preview')){
-      const platform=(C.platformUrl||'https://rapidsims.flexee.org').replace(/\/$/,'');
+      const platform=(C.platformUrl||location.origin).replace(/\/$/,'');
       const q=new URLSearchParams({sim:C.meta.id,mode:'session'});if(LAUNCH.course)q.set('course',LAUNCH.course);
       app.innerHTML=`<div class="date">Faculty</div><h1>${esc(C.meta.title)}</h1><p>${esc(C.meta.tagline)}</p><div class="row"><a class="btn" href="${esc(platform+'/api/launch?'+q)}">Run a class session</a><button class="btn ghost" id="preview">Play it yourself</button><a class="btn ghost" href="${esc(BASE+'/demo#lt='+encodeURIComponent(LAUNCH_TOKEN))}">Demo without timers</a></div>`;
       document.getElementById('preview').onclick=startSolo;return;

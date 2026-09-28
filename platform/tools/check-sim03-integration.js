@@ -1,3 +1,4 @@
+global.RapidSimsIdentity = require('../public/sim-identity.js');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');

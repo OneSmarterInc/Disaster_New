@@ -20,7 +20,7 @@ const document = {
 };
 const storage = { getItem: () => null, setItem() {}, removeItem() {} };
 const sandbox = { document, localStorage: storage, sessionStorage: storage,
-  location: { pathname: '/sim03/', search: '?session=ABCDE', hash: '' }, history: { replaceState() {} }, URLSearchParams,
+  location: { origin: 'https://platform.test', pathname: '/sim03/', search: '?session=ABCDE', hash: '' }, history: { replaceState() {} }, URLSearchParams,
   setInterval: () => 0, clearInterval() {}, requestAnimationFrame: () => {}, alert: x => alerts.push(x),
   window: { confirm: () => true }, console, atob: value => Buffer.from(value, 'base64').toString(),
   fetch: async (url, options) => { const request = JSON.parse(options.body); calls.push(request); const data = typeof response === 'function' ? await response(request) : response; return { ok: true, json: async () => data }; }

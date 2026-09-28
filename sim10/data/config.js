@@ -7,8 +7,27 @@ module.exports = {
   title: 'Infrastructure or Bubble?',
   tagline: 'Two quarters of a real company. One call: infrastructure or bubble?',
   minutes: 45,
-  catalogueRevision: 'sim10-v1',
+  catalogueRevision: 'sim10-v2',
   description: 'Read two quarters of a real company\'s figures and make one call: infrastructure that will be needed, or inside a bubble. Then see what happened next.',
+  detail: {
+    world: 'Technology infrastructure · financial analysis',
+    seat: 'An analyst evaluating a company',
+    clock: 'Two quarterly reports per case',
+    teaches: 'Financial statement analysis · evidence-based judgment · identifying assumptions',
+    tangle: 'Growth, company-defined measures and funding needs can support different interpretations of the same business.',
+    turn: 'Participants must commit to a verdict, identify evidence that could change it, and revisit that judgment when outcomes are revealed.',
+    after: 'The staged reveal identifies the company and compares the original verdict with later evidence and outcomes.',
+    discussion: 'Compare the figures each participant used, their reasons for trusting them, and what would have changed their judgment.',
+    tryIt: 'Try an individual run before choosing one or two cases for a class session.',
+    sessionShape: 'Choose one or two cases and individual or team mode. Reading and decision windows are timed; the instructor controls the class reveal.',
+    catalogueFacts: [{ label: 'play', value: 'individual or teams' }, { label: 'cases', value: 'one or two' }],
+    atAGlance: [{ label: 'Evidence', value: 'Quarterly financial reports' }, { label: 'Quantitative', value: 'Financial statement analysis' }, { label: 'Format', value: 'Individual or team decisions' }],
+    beats: [
+      { at: 'Read', what: 'Examine the financial statements and management claims.' },
+      { at: 'Decide', what: 'Commit to a verdict and explain the evidence and assumptions behind it.' },
+      { at: 'Reveal', what: 'Compare the judgment with the company identity and subsequent outcomes.' }
+    ]
+  },
 
   // Ids already declared by other sims in OneSmarterInc/Disaster_New (checked
   // 27 Sep 2026), and legacy ids with mixed history that must never be reused.

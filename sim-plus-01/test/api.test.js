@@ -12,8 +12,8 @@ store.getRaw = async (key) => memory.get(key) || null;
 store.putRaw = async (key, value) => { memory.set(key, value); return value; };
 const run = require('../api/run');
 
-async function call(action, extra = {}, launch = null) {
-  const req = { method: 'POST', headers: {}, body: { action, ...extra } };
+async function call(action, extra = {}, launch = null, headers = {}) {
+  const req = { method: 'POST', headers, body: { action, ...extra } };
   if (launch) req.launch = launch;
   let status = 200, payload;
   const res = { status(n) { status = n; return this; }, json(v) { payload = v; return this; }, end() { return this; } };
@@ -24,6 +24,7 @@ async function call(action, extra = {}, launch = null) {
 (async () => {
   let r = await call('brief');
   assert.equal(r.status, 200);
+  assert.equal(r.payload.faculty, false);
   assert.equal(r.payload.orderings.length, 2);
   assert.deepEqual(r.payload.starters, [
     "What happens when something doesn't go the way it should?",
@@ -108,5 +109,24 @@ async function call(action, extra = {}, launch = null) {
   r = await call('resume', { runId });
   assert.equal(r.payload.submitted, true);
   assert.equal(r.payload.state.chartCompleted, true);
+
+  process.env.LAUNCH_SECRET='faculty-capability-test';
+  const { signBack }=require('../lib/launch');
+  const token=(role,extra={})=>signBack({sub:'test-user',sim:'rapidsimplus-01',role,exp:Date.now()+60000,...extra});
+  r=await call('brief',{faculty:true,role:'faculty'},null,{'x-launch-token':token('student')});
+  assert.equal(r.payload.faculty,false,'student input cannot grant playback controls');
+  for(const role of ['faculty','faculty_preview']){
+    r=await call('brief',{},null,{'x-launch-token':token(role)});
+    assert.equal(r.payload.faculty,true,'verified faculty receives playback controls');
+  }
+  r=await call('brief',{},null,{'x-launch-token':token('faculty',{sim:'rapid-03-bench'})});
+  assert.equal(r.payload.faculty,true,'legacy faculty launches still work');
+  assert.equal((await call('brief',{},null,{'x-launch-token':'forged.token'})).status,401);
+  assert.equal((await call('brief',{},null,{'x-launch-token':token('faculty',{sim:'rapid-09-money-land'})})).status,403);
+  assert.equal((await call('brief',{},null,{'x-launch-token':token('faculty',{exp:1})})).status,401);
+  assert.equal((await call('brief',{},null,{'x-faculty-code':'unconfigured'})).payload.faculty,false);
+  process.env.FACULTY_CODE='explicit-faculty-code';
+  assert.equal((await call('brief',{},null,{'x-faculty-code':'wrong'})).payload.faculty,false);
+  assert.equal((await call('brief',{},null,{'x-faculty-code':process.env.FACULTY_CODE})).payload.faculty,true);
   console.log('api integration: passed');
 })().catch((e) => { console.error(e); process.exit(1); });

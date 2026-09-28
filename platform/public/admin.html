@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Administration — Flexee RapidSims</title>
 <link rel="stylesheet" href="/app.css">
+<script src="/sim-identity.js"></script>
 </head>
 <body class="console">
 <div class="top">
@@ -49,7 +50,7 @@ const when = (t) => {
     ? { day:'numeric', month:'short' } : { day:'numeric', month:'short', year:'2-digit' };
   return d.toLocaleDateString(undefined, o);
 };
-const simLabel = (x) => (x.number ? String(x.number).padStart(2,'0') + ' · ' : '') + x.title;
+const simLabel = (x) => RapidSimsIdentity.label(x) + ' · ' + x.title;
 const dot = (k, label) => `<span class="st ${k}">${esc(label)}</span>`;
 
 // Explanations live behind a question mark: reachable when you need them,
@@ -473,7 +474,7 @@ function catTab() {
         <span class="sub">${plus ? 'Longer investigations' : 'Twenty-minute decisions'}</span>
       </div>` : '';
       return lineHead + `<div class="sim">
-        <div class="no">${si.number ? String(si.number).padStart(2,'0') : '··'}</div>
+        <div class="no">${RapidSimsIdentity.number(si)}</div>
         <div class="body">
           <div class="t">${esc(si.title)}</div>
           <div class="tag">${esc(si.tagline || '')}</div>
@@ -481,7 +482,7 @@ function catTab() {
 
           ${D.simEdit === si.id ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
             <div class="field">
-              <div style="flex:0 0 90px;min-width:90px"><label class="f">Number</label><input type="number" min="1" data-sf="number" value="${si.number||''}"></div>
+              <div style="flex:0 0 90px;min-width:90px"><label class="f">Catalogue order</label><input type="number" min="1" data-sf="number" value="${si.number||''}"></div>
               <div><label class="f">Title</label><input data-sf="title" value="${esc(si.title||'')}"></div>
               <div style="flex:0 0 100px;min-width:100px"><label class="f">Minutes</label><input type="number" data-sf="minutes" value="${si.minutes||''}"></div>
             </div>

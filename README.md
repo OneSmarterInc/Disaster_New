@@ -59,5 +59,8 @@ notes.
 One Vercel project per folder, each with its Root Directory set — `sim`,
 `sim-02`, `platform`. Each redeploys only when its own folder changes.
 
-Every sim shares `LAUNCH_SECRET` with the platform. Fingerprints from
-`/api/health` on each deployment must match.
+Every sim shares `LAUNCH_SECRET` with the platform. Operator diagnostics use a
+separate `HEALTH_SECRET`, shared by the platform and all ten sims. Public
+`/api/health` responses report liveness only. Send the diagnostic key in the
+`x-health-key` header; never put it in a URL. See
+[the integration fixes and rollout notes](docs/integration-fixes-2026-09-28.md).

@@ -20,6 +20,7 @@
   .how p{font-size:14.5px;line-height:1.6;margin:0}
   @media (max-width:860px){.split{grid-template-columns:1fr}.hero h1{font-size:36px}.how{grid-template-columns:1fr}}
 </style>
+<script src="/sim-identity.js"></script>
 </head>
 <body>
 <div class="narrow" id="app"></div>
@@ -38,7 +39,7 @@ async function api(path, payload) {
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
 }
-const simLabel = (x) => (x.number ? 'RapidSim ' + String(x.number).padStart(2,'0') + ' — ' : '') + x.title;
+const simLabel = (x) => RapidSimsIdentity.label(x) + ' — ' + x.title;
 const home = r => r === 'admin' ? '/admin.html' : r === 'faculty' ? '/faculty.html' : '/student.html';
 
 function page(msg) {

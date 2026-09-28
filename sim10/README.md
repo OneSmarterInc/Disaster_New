@@ -58,3 +58,9 @@ Launch, registration and completion copy sim08. The sim-id check lists every id 
 ## Before students see it
 
 Chuck blind-reads both packs (join as a student with `DEV_OPEN=1`) and playtests one individual and one team session.
+
+## Catalogue and diagnostics
+
+Registration supplies Sim10-specific financial-analysis catalogue details (revision `sim10-v2`) and requests number 10 for new records. Existing record IDs, publication states and administrator numbering remain intact.
+
+Set `HEALTH_SECRET` to the same dedicated diagnostic key as the platform. Public `/api/health` stays minimal. The `x-health-key` header unlocks build, Redis configuration, launch-secret fingerprint, platform URL and registration address. It does not issue network requests or mutate sessions. Never use `LAUNCH_SECRET` as the diagnostic key.

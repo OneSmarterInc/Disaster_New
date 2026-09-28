@@ -74,6 +74,15 @@ const announce = data => signBack(Object.assign({ kind:'register', exp:Date.now(
   result = await call({token:announce({...replacement,catalogueRevision:'claims-interview-v2'})});
   assert.equal(result.body.catalogueRefreshed, true, 'intentional copy revisions still work within the same identity');
 
+  await call({token:announce({sim:'numbered-sim',number:9,title:'Numbered',launchUrl:'https://numbered.test'})});
+  assert.equal(row('numbered-sim').number,9,'new registration honors an available declared number');
+  await call({token:announce({sim:'occupied-number',number:9,launchUrl:'https://occupied.test'})});
+  assert.notEqual(row('occupied-number').number,9,'a collision must not displace another simulation');
+  await call({token:announce({sim:'numbered-sim',number:10,launchUrl:'https://numbered.test'})});
+  assert.equal(row('numbered-sim').number,9,'registration preserves existing/admin numbering');
+  await call({token:announce({sim:'invalid-number',number:-1,launchUrl:'https://invalid.test'})});
+  assert.ok(row('invalid-number').number>0,'invalid declarations use a free positive number');
+
   for (const table of ['course_sims','launches','completions','previews','sim_access','transcripts']) {
     const alias = `used-${table}`;
     DB.sims.push({id:alias,number:20+DB.sims.length,title:'Historical',published:false,detail:{}});

@@ -6,6 +6,7 @@
 <title>Your courses — Flexee RapidSims</title>
 <link rel="stylesheet" href="/sim-detail.css">
 <link rel="stylesheet" href="/app.css">
+<script src="/sim-identity.js"></script>
 <script src="/sim-detail.js"></script>
 <script src="/render-transcript.js?v=2"></script>
 </head>
@@ -74,7 +75,7 @@ const when = (t) => {
   return d.toLocaleDateString(undefined, o);
 };
 const daysLeft = t => Math.max(0, Math.ceil((new Date(t) - Date.now()) / 86400000));
-const simLabel = x => (x.number ? String(x.number).padStart(2,'0') + ' · ' : '') + x.title;
+const simLabel = x => RapidSimsIdentity.label(x) + ' · ' + x.title;
 const dot = (k, l) => `<span class="st ${k}">${esc(l)}</span>`;
 
 // Look at what a simulation is before deciding anything about it — the same page
@@ -386,7 +387,7 @@ function renderCourse() {
       ${sims.length ? sims.map(x => {
         const runPct = Number(x.started_runs) ? Math.min(100, Math.round(Number(x.finished_runs)/Number(x.started_runs)*100)) : 0;
         return `<div class="sim faculty-sim-card">
-          <div class="no">${x.number ? String(x.number).padStart(2,'0') : '··'}</div>
+          <div class="no">${RapidSimsIdentity.number(x)}</div>
           <div class="body">
             <div class="faculty-sim-title-row"><div class="t">${esc(x.title)}${eye(x.sim_id)}</div></div>
             <div class="faculty-sim-kpis">

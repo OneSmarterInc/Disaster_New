@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+global.RapidSimsIdentity = require('../public/sim-identity.js');
 // The student page in every state a student can be in: not enrolled, waiting,
 // released, part way through, and finished. Each must read as a sentence rather
 // than a status code.

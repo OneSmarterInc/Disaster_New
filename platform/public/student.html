@@ -68,6 +68,7 @@
     .student-course-head,.student-sim-row,.student-result-grid{grid-template-columns:1fr}.student-course-status,.student-sim-side{text-align:left}
   }
 </style>
+<script src="/sim-identity.js"></script>
 </head>
 <body>
 <div class="top">
@@ -257,7 +258,7 @@ async function draw() {
           const so=summaryObject(x), result=so.result||{};
           const resultText=result.overall||bandCopy(so.year3Band||m.year3Band)||'Your completed run is recorded.';
           return `<div class="student-sim-row" data-student-card data-status="${esc(status)}" data-search="${esc(searchText)}">
-            <div class="student-sim-no">${x.number ? String(x.number).padStart(2,'0') : '··'}</div>
+            <div class="student-sim-no">${RapidSimsIdentity.number(x)}</div>
             <div><div class="student-sim-title">${esc(x.title)}</div><div class="student-sim-tag">${esc(x.description || x.tagline || '')}</div>
               <div class="facts" style="margin-top:8px">${x.minutes ? `<span>about <b>${x.minutes} min</b></span>` : ''}<span><b>not marked</b></span></div>
               ${done?`<div class="student-result-preview"><div class="mini">Latest result · ${when(x.completed_at)}</div><p>${esc(resultText)}</p></div>`:''}
