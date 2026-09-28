@@ -2,7 +2,7 @@
 
 const META = {
   "id": "rapidsimplus-01",
-  "catalogueRevision": "claims-interview-v1",
+  "catalogueRevision": "claims-interview-v2",
   "replaces": [],
   "title": "Why Don't They Have Any Patience?",
   "tagline": "Three interviews. Fifteen minutes each. Every question has a cost.",
