@@ -154,6 +154,9 @@ async function check({ call, tok }) {
       const direct = await page('https://fixture/sim10/', call);
       assert.equal(direct.el('access-gate').hidden, false);
       assert.equal(direct.el('entry-options').hidden, true, 'direct visitor sees no play/join choices before code verification');
+      const guest = await page('https://fixture/sim10/?guest=1', call);
+      assert.equal(guest.el('access-gate').hidden, false);
+      assert.equal(guest.el('entry-error').textContent, '', 'a guest is not told the code is invalid before entering one');
       direct.el('entry-code').value = 'wrong'; await direct.submit('access-gate');
       assert.equal(direct.el('entry-options').hidden, true);
       assert.equal(direct.ss.getItem('s10-access'), null, 'wrong code is not remembered');

@@ -217,6 +217,12 @@ async function initEntry() {
     }
   }
   const manual = new URLSearchParams(location.search).get('guest') === '1';
+  if (manual && !sessionStorage.getItem('s10-access')) {
+    $('#access-gate').hidden = false;
+    $('#entry-options').hidden = true;
+    $('#entry-status').hidden = true;
+    return;
+  }
   if (!preset && !launchToken() && !manual && /^\/sim10(?:\/|$)/.test(location.pathname)) {
     $('#access-gate').hidden = true;
     $('#entry-status').hidden = false;
