@@ -8,6 +8,7 @@ const cases = [
   ['sim-02/api/health.js', 'rapid-02-relay'],
   ['sim-plus-01/api/health.js', 'rapidsimplus-01'],
   ['sim03/api/health.js', 'rapid-03-midland'],
+  ['sim04/api/health.js', 'rapid-04-whose-number'],
   ['sim05/api/health.js', 'rapid-05-approve'],
   ['sim06/api/health.js', 'rapid-06-switch'],
   ['sim07/api/health.js', 'rapid-07-bought'],
@@ -87,7 +88,7 @@ function invoke(handler, req) {
   }
 
   assert.equal(networkCalls, 0, 'health probes must be read-only and must not register simulations');
-  console.log('All ten simulation health endpoints and the platform protect diagnostics.');
+  console.log('All eleven simulation health endpoints and the platform protect diagnostics.');
 })().catch(err => {
   console.error(err);
   process.exit(1);
