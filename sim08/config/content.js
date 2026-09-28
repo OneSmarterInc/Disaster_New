@@ -10,9 +10,9 @@
 const META = {
   "id": "rapid-08-later",
   "replaces": [],
-  "catalogueRevision": "later-v1-2026-09",
+  "catalogueRevision": "later-v2-2026-09",
   "title": "Eighteen Months Later",
-  "tagline": "Choose a system and a launch plan. See how the clinics are working eighteen months later.",
+  "tagline": "You choose in twenty minutes. You find out a year and a half later.",
   "description": "You help four veterinary clinics choose a scheduling system. Compare three vendors, spend a total of six questions, and choose a supplier and a plan to start using the system. Then see the result eighteen months later.",
   "minutes": 25,
   "detail": {
