@@ -5,7 +5,9 @@ const SESSION_SIMS = new Set([
   'rapid-05-approve',
   'rapid-06-switch',
   'rapid-07-bought',
-  'rapid-08-later'
+  'rapid-08-later',
+  'rapid-09-money-land',
+  'rapid-10-bubble'
 ]);
 
 module.exports = { SESSION_SIMS };

@@ -11,7 +11,9 @@
     'rapid-05-approve': 'Would You Approve This?',
     'rapid-06-switch': 'Do We Switch?',
     'rapid-07-bought': 'Would You Have Bought It?',
-    'rapid-08-later': 'Eighteen Months Later'
+    'rapid-08-later': 'Eighteen Months Later',
+    'rapid-09-money-land': 'Where Does the Money Land?',
+    'rapid-10-bubble': 'Infrastructure or Bubble?'
   };
   const session = (q.get('session') || '').trim().toUpperCase();
   const courseId = q.get('course') || '';

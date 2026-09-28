@@ -34,13 +34,14 @@ async function page(n,kind='index',url='',saved={}){
 }
 
 (async()=>{
- for(const n of ['07','08']){
-  const key=n==='07'?'w07':'m08';
+ for(const n of ['07','08','09']){
+  const key=n==='07'?'w07':'m'+n;
   const gate=await page(n,'launch');gate.elements.get('code').value='entry-test';await gate.click('open');
   ok(gate.redirect().endsWith('/index.html'),`${n}: access code opens student page`);
   let p=await page(n,'index','',gate);
   ok(!p.body().includes('Session code'),`${n}: direct play needs no session code`);
-  ok(p.run(n==='07'?'S.solo&&!!S.soloClosesAt':'S.solo&&!!S.view'),`${n}: standalone play starts`);
+  if(n==='09'){p.elements.get('sn').value='Solo Student';await p.click('sb')}
+  ok(p.run(n==='07'?'S.solo&&!!S.soloClosesAt':n==='09'?'S.session.solo&&!!S.view':'S.solo&&!!S.view'),`${n}: standalone play starts`);
   if(n==='07'){
     p.run("S.choice='buy';S.text='The acquisition gives us an affordable option for a different way of doing business.'");
     await p.run('submitDecision({disabled:false})');await p.run("submitRecognition('no')");
@@ -57,6 +58,13 @@ async function page(n,kind='index',url='',saved={}){
     ok(p.run('S.soloStage')===3&&p.run('S.soloNextAt')===null,'07: solo flow reaches the ending and stops');
   }
   const student=F.tok(n),faculty=F.tok(n,{sub:'teacher-'+n,role:'faculty',mode:'session'});
+  if(n==='09'){
+    const first=await page(n,'index',`http://fixture/sim09/index.html#lt=${encodeURIComponent(student)}`);
+    const oldCode=first.run('S.code');
+    const changed=await page(n,'index',`http://fixture/sim09/index.html#lt=${encodeURIComponent(F.tok(n,{course:'another-course'}))}`,first);
+    ok(changed.run('S.code')!==oldCode,'09: a different course creates its own solo run');
+    ok((await F.fixtures[n].store.getSession(changed.run('S.code'))).courseId==='another-course','09: solo retains its signed course');
+  }
   if(n==='07'){
     const solo=await page(n,'index',`http://fixture/sim07/index.html#lt=${encodeURIComponent(student)}`);
     solo.run("S.choice='decline';S.text='The losses make the proposed acquisition too uncertain for our business today.'");
@@ -123,7 +131,10 @@ async function page(n,kind='index',url='',saved={}){
     await p.run('submitDecision({disabled:false})');await p.run("submitRecognition('no')");
     await F.invoke(n,{action:'control',set:'end_decisions',code:room,launchToken:faculty});F.advance(21000);
     for(const stage of [1,2,3])await F.invoke(n,{action:'control',set:'release',stage,code:room,launchToken:faculty});
-  }else F.advance(1800000);
+  }else{
+    F.advance(1800000);
+    if(n==='09')for(const stage of require(F.fixtures[n].base+'/config/content.js').REVEAL.stages)await F.invoke(n,{action:'control',set:'release',code:room,launchToken:faculty});
+  }
   F.fail();await p.tick();await p.retry();await p.tick();await p.retry();
   const reports=F.reports.filter(r=>r.n===n&&r.launch.sub==='student-'+n);
   ok(reports.length===1,`${n}: a failed completion callback is retried and then stops`);

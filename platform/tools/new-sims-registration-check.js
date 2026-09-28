@@ -29,7 +29,7 @@ function sign(payload) {
   process.env.LAUNCH_SECRET = 'registration-test-secret';
   process.env.PLATFORM_URL = 'https://platform.test';
   process.env.ACCESS_CODE = 'standalone-test';
-  for (const [number, id] of [['07', 'rapid-07-bought'], ['08', 'rapid-08-later']]) {
+  for (const [number, id] of [['07', 'rapid-07-bought'], ['08', 'rapid-08-later'], ['09', 'rapid-09-money-land']]) {
     const root = path.resolve(__dirname, '../../sim' + number);
     process.env.SIM_URL = 'https://platform.test/sim' + number;
     for (const failFirst of [false, true]) {
