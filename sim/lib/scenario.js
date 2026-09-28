@@ -7,7 +7,8 @@
 const META = {
   "id": "rapid-01-disaster",
   "title": "Disaster or Breach?",
-  "tagline": "Keep customers running while you work out why their systems are failing.",
+  "catalogueRevision": "disaster-v2-2026-09",
+  "tagline": "Twenty minutes in a room where nobody knows what is wrong yet.",
   "description": "You lead operations at a company that runs customer IT systems. Several systems fail overnight. You must question four advisers, review new reports, and decide what to do before the cause is clear.",
   "minutes": 20,
   "detail": {
