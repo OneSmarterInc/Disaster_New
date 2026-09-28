@@ -3,7 +3,7 @@
 //
 // Administrator edits win, followed by the current authored public metadata
 // snapshot, registered metadata, and neutral fallbacks. The snapshot contains
-// only META fields and is checked against the ten sim sources in CI.
+// only META fields and is checked against the eleven sim sources in CI.
 const source = require('./catalogue-source.json');
 const DEFAULTS = {
   world: '',
@@ -17,14 +17,14 @@ const DEFAULTS = {
   preparation: '',
   suitableFor: '',
   durationNote: '',
-  after: 'Review your choices and the information provided at the end of the activity.',
+  after: 'Review your choices and the information provided at the end of the simulation.',
 
   // The parts that are true of every simulation. Editable all the same, since
   // an institution may want to say them differently.
   roomIntro: '',
   momentsIntro: '',
   discussion: 'Discuss the evidence you used and the reasons for your choices.',
-  tryIt: 'Request a preview to explore the activity before using it with a class.',
+  tryIt: 'Request a preview to explore the simulation before using it with a class.',
   sessionShape: 'Your instructor will explain the timing and how the session will run.'
 };
 
