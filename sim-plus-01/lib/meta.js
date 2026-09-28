@@ -5,9 +5,9 @@ const META = {
   "catalogueRevision": "claims-interview-v1",
   "replaces": [],
   "title": "Why Don't They Have Any Patience?",
-  "tagline": "Observe the work, interview three people, and explain how claims are handled.",
+  "tagline": "Three interviews. Fifteen minutes each. Every question has a cost.",
   "description": "A dental benefits administrator is replacing its claims system. You must document how claims arrive and reach the first review. Study an incomplete process chart, observe the work, interview three employees, and submit a report for the new system.",
-  "minutes": 180,
+  "minutes": 70,
   "detail": {
     "world": "Dental claims processing and a new computer system",
     "seat": "Internal process analyst",
@@ -56,7 +56,7 @@ const META = {
     "suitableFor": "Systems analysis, process improvement, and requirements gathering classes.",
     "preparation": "The brief and incomplete process chart are provided. No outside research is needed.",
     "output": "A completed process chart and a report recommending how the new system should handle the work.",
-    "durationNote": "Up to 180 minutes for the full class, including the brief, break, and discussion. The suggested activities total 155 minutes.",
+    "durationNote": "About 70 minutes of play; allow additional time for the full-class brief, break, and discussion.",
     "catalogueFacts": [
       {
         "label": "Play",
