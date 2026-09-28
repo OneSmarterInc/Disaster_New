@@ -79,6 +79,7 @@ async function call(payload, launch = teacher, extraHeaders = {}) {
     const joined = await call({ action: 'join', code: direct.body.session.code, name: 'Solo student' }, null, studentGate);
     assert.equal(joined.status, 200);
     assert.equal(joined.body.view.group, 'Participant 1');
+    assert.deepEqual(joined.body.view.lobby, { readyGroups: 1, totalGroups: 3, clockMinutes: 25 });
   });
   await check('standalone invitation returns to the student access gate', async () => {
     const redirect = {};
@@ -115,6 +116,11 @@ await check('registration states explicit identity, number and canonical route',
   }
   const started = await call({ action: 'start', code });
   assert.equal(started.status, 200);
+  await check('started room clears lobby status and starts its minute clock', async () => {
+    const state = await call({ action: 'state', code }, students[0]);
+    assert.equal(state.body.view.lobby, null);
+    assert.equal(state.body.view.clock.remaining, 60);
+  });
   for (let i = 0; i < 3; i++) {
     const response = await call({ action: 'state', code }, students[i]);
     await check(`real student API response ${i + 1} has only its own sheet`, () => {

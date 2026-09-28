@@ -114,6 +114,11 @@ function studentView(session, participantId, now) {
   if (!p) throw new Error('Join the session first.');
   return {
     state: session.state, mode: session.mode, group: slot ? slot.label : null,
+    lobby: session.state === 'lobby' ? {
+      readyGroups: session.slots.filter(s => s.memberIds.length).length,
+      totalGroups: session.slots.length,
+      clockMinutes: session.clockMinutes
+    } : null,
     clock: clock(session, now),
     data: slot ? engine.studentPayload(slot.sheetId) : null,
     commit: slot ? slot.commit && { number: slot.commit.number.toFixed(1), confidence: slot.commit.confidence } : null,

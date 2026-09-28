@@ -40,10 +40,10 @@ function time() {
   if (!view) return;
   let remaining = view.clock.remaining;
   if (remaining !== null) remaining = Math.max(0, remaining - Math.floor((Date.now() - pollAt) / 1000));
-  $('clock').textContent = remaining === null ? '--:--' : `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
+  $('clock').textContent = remaining === null ? 'Not started' : `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
   $('clock').classList.toggle('warn', remaining !== null && remaining <= 120);
   const pill = $('statePill');
-  pill.textContent = view.commit ? 'Report locked' : remaining === 0 ? 'Time ended' : view.canCommit ? 'Decision open' : 'Waiting';
+  pill.textContent = view.commit ? 'Report locked' : remaining === 0 ? 'Time ended' : view.canCommit ? 'Decision open' : view.state === 'lobby' ? 'Awaiting instructor' : 'Waiting';
   pill.classList.toggle('good', !!view.commit);
   pill.classList.toggle('warn', !view.commit && remaining !== null && remaining <= 120);
 }
@@ -83,7 +83,17 @@ function draw(result) {
   $('entry').hidden = true; $('play').hidden = false;
   $('group').textContent = view.group || 'Waiting for assignment';
   $('waiting').hidden = !!view.data && view.state !== 'lobby';
-  $('waitingText').textContent = !view.group ? 'Your instructor will assign your group.' : 'Your group is ready. The clock will start soon.';
+  if (view.state === 'lobby') {
+    const { readyGroups, totalGroups, clockMinutes } = view.lobby;
+    $('roomLabel').textContent = `Room ${code} · ${readyGroups} of ${totalGroups} groups ready`;
+    $('waitingText').textContent = !view.group
+      ? 'You have joined. Ask your instructor to assign you to a group.'
+      : readyGroups < totalGroups
+        ? `You are in ${view.group}. All ${totalGroups} groups need at least one participant before your instructor can press Start.`
+        : `You are in ${view.group}. All groups are ready; your instructor needs to press Start.`;
+    $('waitingHelp').textContent = `There is no set wait time. The ${clockMinutes}-minute timer begins when your instructor starts the room. This page checks automatically every 4 seconds. If you have been waiting, tell your instructor you are in room ${code}.`;
+    error('waitingError', '');
+  }
   $('materials').hidden = !view.data || view.state === 'lobby';
   if (view.data && !renderedPack) {
     renderedPack = true;
@@ -115,7 +125,10 @@ function draw(result) {
 async function refresh() {
   if (!code || !participantId) return;
   try { draw(await api('session', { action: 'state', code, participantId })); }
-  catch (e) { error('commitError', e.message); }
+  catch (e) {
+    if (view?.state === 'lobby') error('waitingError', 'Could not check the room. Retrying automatically… ' + e.message);
+    else error('commitError', e.message);
+  }
 }
 async function join(event) {
   event?.preventDefault();
