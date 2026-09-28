@@ -31,7 +31,15 @@ const standalone=params.get('standalone')==='1',manual=params.get('manual')==='1
 params.delete('standalone');params.delete('manual');const q=params.toString();
 document.getElementById('instructorLink').href=BASE+'/instructor.html';
 function goWithToken(){const target=faculty?'/instructor.html':'/index.html';location.replace(BASE+target+(q?'?'+q:'')+'#lt='+encodeURIComponent(token))}
-if(token){goWithToken()}
+const rememberedAccess=sessionStorage.getItem('m04-access');
+if(!token&&!standalone&&!manual&&!rememberedAccess&&BASE!=='/sim04'){
+  if(session){
+    const entry=new URLSearchParams({sim:'rapid-04-whose-number',session:session.trim().toUpperCase()});
+    const course=params.get('course');if(course)entry.set('course',course);
+    location.replace('https://rapidsims.flexee.org/session.html?'+entry.toString());
+  }else location.replace('https://rapidsims.flexee.org/sim04/');
+}
+else if(token){goWithToken()}
 else if(session&&!standalone){
   sessionStorage.removeItem('m04-lt:'+session.trim().toUpperCase());
   document.getElementById('gate').hidden=true;

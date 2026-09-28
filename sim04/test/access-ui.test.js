@@ -6,6 +6,8 @@ const vm = require('node:vm');
 
 const launch = fs.readFileSync(path.join(__dirname, '../public/launch.html'), 'utf8')
   .match(/<script>([\s\S]*?)<\/script>/)[1];
+const entryRedirect = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8')
+  .match(/<script id="platform-entry-redirect">([\s\S]*?)<\/script>/)[1];
 const instructor = fs.readFileSync(path.join(__dirname, '../public/instructor.js'), 'utf8');
 const student = fs.readFileSync(path.join(__dirname, '../public/student.js'), 'utf8');
 
@@ -46,7 +48,32 @@ function studentEntryHelp(token, search = '') {
   return values.get('entryHelp')?.textContent || '';
 }
 
+function redirectDestination({ hostname = 'sim04.vercel.app', search = '', hash = '', stored = {} } = {}) {
+  let destination;
+  const storage = new Map(Object.entries(stored));
+  vm.runInNewContext(entryRedirect, {
+    location: { hostname, search, hash, replace(url) { destination = url; } },
+    sessionStorage: { getItem: key => storage.get(key) || null },
+    URLSearchParams, URL
+  });
+  return destination;
+}
+
 (async () => {
+  assert.equal(redirectDestination(), 'https://rapidsims.flexee.org/sim04/',
+    'a bare production Sim04 page goes through the signed RapidSims launch');
+  assert.equal(redirectDestination({ search: '?session=wn26h&course=course-123' }),
+    'https://rapidsims.flexee.org/session.html?sim=rapid-04-whose-number&session=WN26H&course=course-123',
+    'an old room link resumes through the account-bound class invitation');
+  assert.equal(redirectDestination({ hash: '#lt=signed-token' }), undefined,
+    'signed launches stay on Sim04');
+  assert.equal(redirectDestination({ search: '?standalone=1' }), undefined,
+    'an explicit standalone launch keeps manual access available');
+  assert.equal(redirectDestination({ stored: { 'm04-access': 'entered' } }), undefined,
+    'a student who already chose standalone access can continue');
+  assert.equal(redirectDestination({ hostname: 'localhost' }), undefined,
+    'local development does not redirect to production');
+
   const studentToken = Buffer.from(JSON.stringify({ role: 'student' })).toString('base64url') + '.signature';
   assert.match(studentEntryHelp(studentToken), /student sign-in is valid/i);
   assert.match(studentEntryHelp(studentToken), /do not need a faculty code/i);
@@ -61,6 +88,13 @@ function studentEntryHelp(token, search = '') {
 
   const invitation = page(launch, '/sim04/launch.html', '?session=ABCDE');
   assert.equal(invitation.location.destination, '/sim04/api/join?session=ABCDE');
+  const directEntry = page(launch, '/launch.html');
+  assert.equal(directEntry.location.destination, 'https://rapidsims.flexee.org/sim04/',
+    'opening the standalone host hands off to the signed course launch');
+  const oldDirectInvite = page(launch, '/launch.html', '?session=wn26h&course=course-123');
+  assert.equal(oldDirectInvite.location.destination,
+    'https://rapidsims.flexee.org/session.html?sim=rapid-04-whose-number&session=WN26H&course=course-123',
+    'direct room invitations enter through the account-bound session page');
   const inviteToken = Buffer.from(JSON.stringify({ role: 'student', mode: 'play' })).toString('base64url') + '.signature';
   const invitedStudent = page(launch, '/sim04/launch.html', '?session=ABCDE', '#lt=' + encodeURIComponent(inviteToken));
   assert.equal(invitedStudent.location.destination,
