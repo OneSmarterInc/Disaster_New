@@ -8,9 +8,9 @@
 const META = {
   "id": "rapid-05-approve",
   "replaces": [],
-  "catalogueRevision": "approve-v1-2026-09",
+  "catalogueRevision": "approve-v2-2026-09",
   "title": "Would You Approve This?",
-  "tagline": "Approve or decline five app features. See what your choices add up to.",
+  "tagline": "Five requests. Each one reasonable. See where they lead.",
   "description": "You manage a fitness app. Five requests to use customer data arrive one at a time. Decide whether to approve each feature, then see what your choices allow the app to learn and offer.",
   "minutes": 30,
   "detail": {
