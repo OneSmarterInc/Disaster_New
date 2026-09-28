@@ -66,3 +66,4 @@ jobs:
           node platform/tools/sim-detail-check.js
           node platform/tools/address-check.js
           node platform/tools/contact-check.js
+          node platform/tools/prose-check.js
