@@ -1,37 +1,89 @@
 'use strict';
 
 const META = {
-  // New catalogue identity. Legacy launches remain supported by the guard;
-  // historical rows are never renamed or deleted by registration.
-  id: 'rapidsimplus-01',
-  catalogueRevision: 'claims-interview-v1',
-  replaces: [],
-  title: 'Why Don\'t They Have Any Patience?',
-  tagline: 'Three interviews. Fifteen minutes each. Every question has a cost.',
-  description: 'Document a dental-claims intake process by interviewing three people who each hold one part of the same problem.',
-  minutes: 180,
-  detail: {
-    world: 'Dental claims administration · platform migration',
-    seat: 'Internal process analyst',
-    clock: 'Three fixed fifteen-minute interviews',
-    teaches: 'Question formulation · evidence synthesis · process documentation',
-    tangle: 'Every source is truthful, but no single source can see the complete feedback loop.',
-    turn: 'A plausible question can consume scarce access or permanently close the most important source.',
-    roomIntro: 'Three people hold different parts of the process: claim intake, the receipt log, and first-pass review. Each answers truthfully from the part they can see.',
-    momentsIntro: 'First inspect the incomplete vendor chart and observe the review desk. Then choose one permitted interview schedule and use three fixed fifteen-minute appointments before filing a configuration report.',
-    after: 'The instructor view places every question, its time cost, and any posture change beside the submitted report. It shows which evidence was available, which was missed, and what the recommendation would cause.',
-    discussion: 'Participants compare how different opening questions, interview orders, and assumptions produced different evidence from the same three truthful sources.',
-    tryIt: 'Play the complete brief, observation, interview and reporting sequence before assigning it to a course.',
-    sessionShape: 'Twenty minutes briefing, ten observation, forty-five interviews, twenty report, fifteen break, forty-five debrief.',
-    cast: [
-      { name: 'Ray Duffy', role: 'Claim intake', stake: 'He controls four arrival channels and the twice-daily releases.' },
-      { name: 'Terry Voss', role: 'Receipt log', stake: 'He maintains the only receipt record and answers provider status calls.' },
-      { name: 'Ruth Kessler', role: 'First-pass review', stake: 'She holds undocumented matching judgment and can close when replacement is framed carelessly.' }
+  "id": "rapidsimplus-01",
+  "catalogueRevision": "claims-interview-v1",
+  "replaces": [],
+  "title": "Why Don't They Have Any Patience?",
+  "tagline": "Observe the work, interview three people, and explain how claims are handled.",
+  "description": "A dental benefits administrator is replacing its claims system. You must document how claims arrive and reach the first review. Study an incomplete process chart, observe the work, interview three employees, and submit a report for the new system.",
+  "minutes": 180,
+  "detail": {
+    "world": "Dental claims processing and a new computer system",
+    "seat": "Internal process analyst",
+    "clock": "A ten-minute observation and three fifteen-minute interviews",
+    "teaches": "Ask clear questions, compare evidence from different people, and document a work process.",
+    "tangle": "Each employee knows a different part of the work. Interview time is limited, and the wording of a question can affect the conversation.",
+    "turn": "You must turn separate observations and answers into a clear account of how the process works.",
+    "roomIntro": "These are the people whose views you will consider during the activity.",
+    "momentsIntro": "",
+    "after": "The instructor can compare the interview questions, time spent, process chart, and final report.",
+    "discussion": "Compare how students' questions and interview order affected the evidence they gathered and the report they wrote.",
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "sessionShape": "Allow up to three hours for the full class. The suggested plan uses 20 minutes for the brief, 10 for observation, 45 for interviews, 20 for the report, a 15-minute break, and 45 for discussion.",
+    "cast": [
+      {
+        "name": "Ray Duffy",
+        "role": "Claim intake",
+        "stake": "Receives and releases incoming claims."
+      },
+      {
+        "name": "Terry Voss",
+        "role": "Receipt log",
+        "stake": "Keeps the receipt record and handles status questions."
+      },
+      {
+        "name": "Ruth Kessler",
+        "role": "First-pass review",
+        "stake": "Reviews claims before they move to the next stage."
+      }
     ],
-    beats: [
-      { at: 'Brief and observation', what: 'An incomplete vendor chart and a thirty-second routine-claim observation.' },
-      { at: 'Three interviews', what: 'Fixed appointments where every question consumes scarce access.' },
-      { at: 'Configuration report', what: 'Four decisions and a root cause that the platform vendor will implement.' }
+    "beats": [
+      {
+        "at": "Brief and observation",
+        "what": "Read the incomplete process chart and observe the desk for ten minutes."
+      },
+      {
+        "at": "Three interviews",
+        "what": "Use three fifteen-minute appointments to gather evidence."
+      },
+      {
+        "at": "Chart and report",
+        "what": "Complete the process chart and write the report for the new system."
+      }
+    ],
+    "activity": "Read the brief and incomplete chart, observe the review desk, and choose an interview order. Use three appointments to fill gaps in your process chart and write a report for the new system.",
+    "suitableFor": "Systems analysis, process improvement, and requirements gathering classes.",
+    "preparation": "The brief and incomplete process chart are provided. No outside research is needed.",
+    "output": "A completed process chart and a report recommending how the new system should handle the work.",
+    "durationNote": "Up to 180 minutes for the full class, including the brief, break, and discussion. The suggested activities total 155 minutes.",
+    "catalogueFacts": [
+      {
+        "label": "Play",
+        "value": "Individual"
+      },
+      {
+        "label": "Before play",
+        "value": "Brief and chart included"
+      },
+      {
+        "label": "Feedback",
+        "value": "Report and interview review"
+      }
+    ],
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "Three interviews, a process chart, and a report"
+      },
+      {
+        "label": "Numbers",
+        "value": "Record observed timing and process facts"
+      },
+      {
+        "label": "Play mode",
+        "value": "Individual"
+      }
     ]
   }
 };

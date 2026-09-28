@@ -5,31 +5,94 @@
 // is populated from this rather than from anyone typing it in — a deployment
 // that exists should appear, without a form.
 const META = {
-  id: 'rapid-01-disaster',
-  title: 'Disaster or Breach?',
-  tagline: 'Twenty minutes in a room where nobody knows what is wrong yet.',
-  description: 'It is two in the morning and customer systems are breaking, one after another. It might be a failing disk. It might be somebody who got in. Right now they look the same, and the fix for one is the wrong move for the other.',
-  minutes: 20,
-  detail: {
-    world: 'IT operations · managed services',
-    seat: 'VP of Operations',
-    clock: '02:14 Tuesday to Day 3',
-    teaches: 'What to do first when you do not know · how to weigh advice from people with something to lose',
-    tangle: 'From the outside the two look the same. The quickest way to get customers running again is not the way to find out what went wrong. You cannot do both.',
-    turn: 'If it is the hardware, that is one person\'s fault. If it is a break-in, it is another\'s. Both of them are in the room. Both are good at their jobs, and neither is lying. You still have to decide who to believe.',
-    cast: [
-      { name: 'Kate Sullivan', role: 'Director, Infrastructure & Architecture', stake: 'Specified the array. Owns the patch cadence.' },
-      { name: 'Sophia Kim', role: 'Head of Security', stake: 'If this is an intrusion, it has been resident for weeks.' },
-      { name: 'Tom Reyes', role: 'Account Director, storage vendor', stake: 'It is his hardware under discussion.' },
-      { name: 'Ben Carter', role: 'SVP, Client Operations', stake: 'Three of his clients are down and the board calls at eight.' }
+  "id": "rapid-01-disaster",
+  "title": "Disaster or Breach?",
+  "tagline": "Keep customers running while you work out why their systems are failing.",
+  "description": "You lead operations at a company that runs customer IT systems. Several systems fail overnight. You must question four advisers, review new reports, and decide what to do before the cause is clear.",
+  "minutes": 20,
+  "detail": {
+    "world": "IT services and incident response",
+    "seat": "Head of operations",
+    "clock": "An overnight incident through Day 3",
+    "teaches": "Weigh conflicting advice, explain a decision, and change course when new evidence appears.",
+    "tangle": "Customers need service restored quickly, but you also need time to understand the problem. Each adviser sees a different part of it.",
+    "turn": "You have to act before you have a complete answer. Later reports let you check whether your original reasons still hold.",
+    "cast": [
+      {
+        "name": "Kate Sullivan",
+        "role": "Director, Infrastructure & Architecture",
+        "stake": "Responsible for infrastructure and system maintenance."
+      },
+      {
+        "name": "Sophia Kim",
+        "role": "Head of Security",
+        "stake": "Responsible for investigating security concerns."
+      },
+      {
+        "name": "Tom Reyes",
+        "role": "Account Director, storage vendor",
+        "stake": "Represents the supplier of the storage equipment."
+      },
+      {
+        "name": "Ben Carter",
+        "role": "SVP, Client Operations",
+        "stake": "Represents the customers affected by the outage."
+      }
     ],
-    beats: [
-      { at: 'Hour 4', what: 'Three systems down, nobody knows why, and the room already has opinions.' },
-      { at: 'Hour 20', what: 'It turns up somewhere it should not be able to reach.' },
-      { at: 'Day 3', what: 'Something nineteen days old comes to light. A clock may have been running the whole time.' }
+    "beats": [
+      {
+        "at": "Ask",
+        "what": "Read the opening report and question the advisers."
+      },
+      {
+        "at": "Decide",
+        "what": "Record your judgment at each of three points as new reports arrive."
+      },
+      {
+        "at": "Review",
+        "what": "Compare your decisions with the feedback and discuss your reasoning."
+      }
     ],
-    after: 'At the end they find out what was really going on. Then they see their own three answers, marked. Did the thing they said would change their mind turn up? Did they do anything about it?'
-  },
+    "after": "Review your three written decisions and the feedback on your reasoning.",
+    "activity": "Ask the four advisers questions in the shared room or in private. At three points, record what you think is happening, what you will do, and what would change your mind.",
+    "discussion": "Compare which reports students trusted and when they changed their minds.",
+    "sessionShape": "Allow about 20 minutes for play. A suggested 60-minute class adds 5 minutes to begin, 10 minutes to review feedback, and 25 minutes for discussion.",
+    "suitableFor": "IT management, cybersecurity, and decision-making classes.",
+    "preparation": "No advance reading. The situation and advisers are introduced in the simulation.",
+    "output": "Three written decisions, with reasons and evidence that could change your mind.",
+    "durationNote": "About 20 minutes of play; allow about 60 minutes with discussion.",
+    "catalogueFacts": [
+      {
+        "label": "Play",
+        "value": "Individual"
+      },
+      {
+        "label": "Before play",
+        "value": "No advance reading"
+      },
+      {
+        "label": "Feedback",
+        "value": "Written feedback"
+      }
+    ],
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "Three written decisions"
+      },
+      {
+        "label": "Numbers",
+        "value": "No calculations required"
+      },
+      {
+        "label": "Play mode",
+        "value": "Individual"
+      }
+    ],
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "momentsIntro": "",
+    "roomIntro": "These are the people whose views you will consider during the activity."
+  }
 };
 
 const GROUND_TRUTH = {

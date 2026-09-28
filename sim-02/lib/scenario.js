@@ -9,31 +9,94 @@
 // is populated from this rather than from anyone typing it in — a deployment
 // that exists should appear, without a form.
 const META = {
-  id: 'rapid-02-relay',
-  title: 'What Did It Tell Them?',
-  tagline: 'Twenty minutes after an AI told a customer the wrong thing.',
-  description: 'An AI gave a customer the wrong number. Six weeks later those parts are out in the world, fitted and running. Two teams have an explanation for how it happened, and each one points at the other.',
-  minutes: 20,
-  detail: {
-    world: 'Manufacturing · customer operations',
-    seat: 'VP of Customer Operations',
-    clock: '09:40 Tuesday to Wednesday morning',
-    teaches: 'Who answers for what a machine did · acting before the trail goes cold',
-    tangle: 'One team left an old document where the AI could find it. Another changed which questions get passed to a person. Both looked fine at the time. Neither wants to own it now.',
-    turn: 'Somebody in the room wants to fix it tonight. They are right to want that. But the fix costs you something you will need later, and nobody says so. Spotting it is the exercise.',
-    cast: [
-      { name: 'Joanna Petrell', role: 'Director, Technical Publications', stake: 'The superseded revision was never withdrawn.' },
-      { name: 'Devin Oyelaran', role: 'Head of Customer Platforms', stake: 'He moved the threshold that decides what reaches a human.' },
-      { name: 'Grant Mercer', role: 'Client Director, the AI vendor', stake: 'It is his platform being blamed.' },
-      { name: 'Nadia Renko', role: 'Applications Support Engineer', stake: 'She noticed the questions had stopped arriving, and said nothing.' }
+  "id": "rapid-02-relay",
+  "title": "What Did It Tell Them?",
+  "tagline": "An AI gave a customer wrong advice. Decide what the company should do next.",
+  "description": "You lead customer operations at a manufacturer. A customer has acted on incorrect advice from its AI assistant. You question the people responsible, review new information, and decide how the company should respond.",
+  "minutes": 20,
+  "detail": {
+    "world": "Manufacturing and AI customer support",
+    "seat": "Head of customer operations",
+    "clock": "One working day and the following morning",
+    "teaches": "Check an AI-supported service, weigh responsibility, and explain decisions under pressure.",
+    "tangle": "Each team has a different explanation. You need to address the customer problem while finding out how the advice was produced.",
+    "turn": "You make decisions before seeing the full story, then revisit your reasoning when new information arrives.",
+    "cast": [
+      {
+        "name": "Joanna Petrell",
+        "role": "Director, Technical Publications",
+        "stake": "Responsible for the product document library."
+      },
+      {
+        "name": "Devin Oyelaran",
+        "role": "Head of Customer Platforms",
+        "stake": "Responsible for the customer support platform."
+      },
+      {
+        "name": "Grant Mercer",
+        "role": "Client Director, the AI vendor",
+        "stake": "Represents the AI system supplier."
+      },
+      {
+        "name": "Nadia Renko",
+        "role": "Applications Support Engineer",
+        "stake": "Handles customer application questions."
+      }
     ],
-    beats: [
-      { at: 'Hour 1', what: 'One customer, one wrong number, and four people who each know part of the story.' },
-      { at: 'Hour 7', what: 'It was not one customer. And a deadline nobody mentioned is about to start.' },
-      { at: 'Day 2', what: 'Their lawyer asks a simple question. Whether you can answer it depends on last night.' }
+    "beats": [
+      {
+        "at": "Ask",
+        "what": "Read the customer report and question the four advisers."
+      },
+      {
+        "at": "Decide",
+        "what": "Record your response as new information arrives."
+      },
+      {
+        "at": "Review",
+        "what": "Examine the consequences and compare your reasoning with the class."
+      }
     ],
-    after: 'The ending is not the same for everyone. It depends on something they did, or did not do, hours earlier — and saying it out loud counts, not just ticking a box. The debrief quotes them back.'
-  },
+    "after": "Review your decisions and a written discussion of their consequences.",
+    "activity": "Question four advisers in the shared room or in private. Record three decisions as the situation develops, including what evidence could change your view.",
+    "discussion": "Compare the questions students asked, the evidence they used, and the actions they chose.",
+    "sessionShape": "Allow about 20 minutes for play. A suggested 60-minute class adds 5 minutes to begin, 10 minutes to review feedback, and 25 minutes for discussion.",
+    "suitableFor": "AI management, information systems, and customer operations classes.",
+    "preparation": "No advance reading. The case and advisers are introduced during play.",
+    "output": "Three written decisions, with reasons and evidence that could change your mind.",
+    "durationNote": "About 20 minutes of play; allow about 60 minutes with discussion.",
+    "catalogueFacts": [
+      {
+        "label": "Play",
+        "value": "Individual"
+      },
+      {
+        "label": "Before play",
+        "value": "No advance reading"
+      },
+      {
+        "label": "Feedback",
+        "value": "Written feedback"
+      }
+    ],
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "Three written decisions"
+      },
+      {
+        "label": "Numbers",
+        "value": "No calculations required"
+      },
+      {
+        "label": "Play mode",
+        "value": "Individual"
+      }
+    ],
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "momentsIntro": "",
+    "roomIntro": "These are the people whose views you will consider during the activity."
+  }
 };
 
 const GROUND_TRUTH = {

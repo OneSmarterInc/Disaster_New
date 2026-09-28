@@ -9,42 +9,73 @@
 // Real names appear only in REVEAL, never before the instructor releases a stage.
 
 const META = {
-  id: 'rapid-09-money-land',
-  replaces: [],
-  catalogueRevision: 'money-land-v1-2026-09',
-  title: 'Where Does the Money Land?',
-  tagline: 'The direction is obvious. Put your fund behind the destination.',
-  description:
-    'It is late June 2000. A forecast says business purchasing is moving online and says who will be paid for carrying it. ' +
-    'You separate what the forecast says about direction from what it says about destination, then invest a fund in five companies chasing it. History arrives in three stages.',
-  minutes: 20,
-  detail: {
-    world: 'Venture and growth investing · business-to-business trade, 2000',
-    seat: 'Partner at a fund with $1 million to place',
-    clock: 'About twenty minutes of play, then the instructor releases history',
-    teaches: 'Why being right about a technology is not enough · Where value actually settles',
-    tangle:
-      'The forecast is sound and its direction came true. Every company in front of you is a reasonable bet on it. None of that decides who gets paid.',
-    turn:
-      'Your own two statements come back beside what happened in 2002, 2004 and 2010. The direction statement holds. Watch what happens to the other one.',
-    after:
-      'Each student or team sees their own statements, their own allocation and what it became at each stage. Nothing is ranked. Room totals stay on the projector.',
-    discussion:
-      'The projector shows the room\'s allocations, every destination pick, the most concentrated bet beside the most spread one, and any team whose money contradicts its own destination statement.',
-    tryIt: 'Play the same briefing and allocation your students will see. Nothing is scored and no allocation is labelled correct.',
-    sessionShape: 'About twenty minutes to play. The debrief is designed for the rest of the class hour.',
-    recommendedMode: 'team',
-    catalogueFacts: [
-      { label: 'played', value: 'team (recommended) or individual' },
-      { label: 'preparation', value: 'none' },
-      { label: 'assessment', value: 'not marked' }
+  "id": "rapid-09-money-land",
+  "replaces": [],
+  "catalogueRevision": "money-land-v1-2026-09",
+  "title": "Where Does the Money Land?",
+  "tagline": "Online trade is growing. Which businesses should your fund invest in?",
+  "description": "It is June 2000 and you have $1 million to invest. Read a forecast about businesses buying online, write down what you expect to change and who you think will earn money, then divide the fund among five companies.",
+  "minutes": 20,
+  "detail": {
+    "world": "Investing in online business trade in 2000",
+    "seat": "Investment partner with a $1 million fund",
+    "clock": "About twenty minutes, followed by three historical reveals",
+    "teaches": "Separate growth in a technology from success for an individual business, and connect investment choices to a clear reason.",
+    "tangle": "Several businesses may benefit from the same trend in different ways. Your investment has to show which explanation you believe.",
+    "turn": "Your original statements stay alongside your investment choices, so you can compare both with later results.",
+    "after": "Review your statements, allocation, and its value at each reveal stage. There is no ranking.",
+    "discussion": "Compare concentrated and spread-out investments, and check whether each allocation matches its stated reason.",
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "sessionShape": "Allow about 20 minutes for the briefing, written statements, and allocation. The instructor releases the historical results in three stages and leads the discussion. Team play is recommended.",
+    "recommendedMode": "team",
+    "catalogueFacts": [
+      {
+        "label": "Play",
+        "value": "Team (recommended) or individual"
+      },
+      {
+        "label": "Before play",
+        "value": "No advance reading"
+      },
+      {
+        "label": "Feedback",
+        "value": "Reflection; no ranking"
+      }
     ],
-    atAGlance: [
-      { label: 'Decision', value: 'One allocation, final' },
-      { label: 'The rule', value: 'Direction and destination, written separately first' },
-      { label: 'Played', value: 'Team or individual' },
-      { label: 'Session', value: '20-minute simulation + debrief' }
-    ]
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "One final investment allocation"
+      },
+      {
+        "label": "Numbers",
+        "value": "Divide $1 million among five companies"
+      },
+      {
+        "label": "Play mode",
+        "value": "Team (recommended) or individual"
+      }
+    ],
+    "activity": "Read the forecast and company cards. Write separate statements about the market trend and who will benefit. Then divide the fund among five companies and review later events.",
+    "suitableFor": "Technology strategy, entrepreneurship, and investment decision classes.",
+    "preparation": "No advance reading. The forecast and company cards are provided.",
+    "output": "Two written statements and one final allocation of a $1 million fund.",
+    "beats": [
+      {
+        "at": "Read",
+        "what": "Study the forecast and the five company cards."
+      },
+      {
+        "at": "Explain and invest",
+        "what": "Write two statements, then commit the fund."
+      },
+      {
+        "at": "Reflect",
+        "what": "Review later events and compare them with your original reasons."
+      }
+    ],
+    "durationNote": "About 20 minutes before the historical reveals and discussion.",
+    "momentsIntro": ""
   }
 };
 

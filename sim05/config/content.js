@@ -6,42 +6,73 @@
 // Data keys:  A activity · G GPS · S sleep · N grocery · H heart rate
 
 const META = {
-  id: 'rapid-05-approve',
-  replaces: [],
-  catalogueRevision: 'approve-v1-2026-09',
-  title: 'Would You Approve This?',
-  tagline: 'Five requests. Each one reasonable. See where they lead.',
-  description:
-    'You are the product manager at a fitness app. Five data features reach you one at a time, each with a sound business reason. ' +
-    'You approve or decline each one, and after every decision you see what the app can now work out about one customer.',
-  minutes: 30,
-  detail: {
-    world: 'Product management · consumer fitness app',
-    seat: 'Product manager at Loopwell',
-    clock: 'Five rounds, three minutes each',
-    teaches: 'What a system can work out that nobody told it · Why no single approval feels wrong',
-    tangle:
-      'Each request is defensible on its own. The data adds up in ways no single request asked for, and nothing approved can be withdrawn.',
-    turn:
-      'There is no score and no verdict. The close shows what the app can work out about one customer beside what it could not offer her.',
-    after:
-      'Each student sees their own five decisions, what Loopwell can now work out about Dana, and what it could not offer her. Room totals stay on the projector.',
-    discussion:
-      'The instructor view shows how the room split at each round, how many reached each ending, and flags the most divided round for the debrief.',
-    tryIt: 'Play the same five rounds your students will see. Nothing is scored and no path is labelled correct.',
-    sessionShape: 'About thirty minutes to play. The debrief is designed for the rest of the class hour.',
-    recommendedMode: 'individual',
-    catalogueFacts: [
-      { label: 'played', value: 'individual (recommended) or team' },
-      { label: 'preparation', value: 'none' },
-      { label: 'assessment', value: 'not marked' }
+  "id": "rapid-05-approve",
+  "replaces": [],
+  "catalogueRevision": "approve-v1-2026-09",
+  "title": "Would You Approve This?",
+  "tagline": "Approve or decline five app features. See what your choices add up to.",
+  "description": "You manage a fitness app. Five requests to use customer data arrive one at a time. Decide whether to approve each feature, then see what your choices allow the app to learn and offer.",
+  "minutes": 30,
+  "detail": {
+    "world": "Product decisions at a fitness app",
+    "seat": "Product manager at Loopwell",
+    "clock": "Five rounds with a three-minute decision window each",
+    "teaches": "Consider how separate data decisions add up and weigh useful features against what they reveal about a customer.",
+    "tangle": "Each feature has a business reason. You need to consider both that request and the effect of combining it with earlier choices.",
+    "turn": "You see the combined effect of a series of small decisions, rather than judging one request on its own.",
+    "after": "Review your five decisions and what the app can and cannot offer the customer. There is no score.",
+    "discussion": "The instructor can show how the class split on each request and compare the results.",
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "sessionShape": "Allow about 30 minutes for play, including five three-minute decisions and the feedback between them. Add time for class discussion. In team mode, students vote on each request.",
+    "recommendedMode": "individual",
+    "catalogueFacts": [
+      {
+        "label": "Play",
+        "value": "Individual (recommended) or team"
+      },
+      {
+        "label": "Before play",
+        "value": "No advance reading"
+      },
+      {
+        "label": "Feedback",
+        "value": "Review; no score"
+      }
     ],
-    atAGlance: [
-      { label: 'Decisions', value: 'Five approvals, each final' },
-      { label: 'Clock', value: 'Three minutes per round' },
-      { label: 'Played', value: 'Individual or team' },
-      { label: 'Session', value: '30-minute simulation + debrief' }
-    ]
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "Five final approvals or rejections"
+      },
+      {
+        "label": "Numbers",
+        "value": "No calculations required"
+      },
+      {
+        "label": "Play mode",
+        "value": "Individual (recommended) or team"
+      }
+    ],
+    "activity": "Read each feature request and approve or decline it. Review its effect on one customer before the next request arrives. Earlier decisions cannot be changed.",
+    "suitableFor": "Product management, data ethics, and information systems classes.",
+    "preparation": "No advance reading. All five requests are supplied during play.",
+    "output": "Five final approve-or-decline decisions and a summary of their combined effects.",
+    "beats": [
+      {
+        "at": "Read",
+        "what": "Consider one feature request and its business reason."
+      },
+      {
+        "at": "Choose",
+        "what": "Approve or decline before the three-minute window ends."
+      },
+      {
+        "at": "Review",
+        "what": "See its effect, continue through five rounds, and review the full set of choices."
+      }
+    ],
+    "durationNote": "About 30 minutes of play, plus discussion.",
+    "momentsIntro": ""
   }
 };
 

@@ -85,7 +85,7 @@ for (const key of Object.keys(S.DEFAULT_THRESHOLDS)) {
 }
 assert.equal(S.META.id, 'rapid-03-midland');
 assert.deepEqual(S.META.replaces, []);
-assert.equal(S.META.detail.roomIntro, 'Four people want four different things from the same nine million dollars. None of them is wrong, and none of them is going to tell you what to do.');
+assert.match(S.META.detail.roomIntro, /Four people.*\$9 million budget/);
 assert.equal(S.META.detail.cast.length, 4);
 assert.deepEqual(S.META.detail.cast.map(x => x.name), ['Dale Brenner','Renata Oyelaran','Tom Vasquez','Sam Achterberg']);
 assert.deepEqual(S.META.detail.cast.map(x => x.line), ['Run','Uptime','Features','Connect']);

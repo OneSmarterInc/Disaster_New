@@ -21,16 +21,13 @@
       : [];
     const factsHTML = customFacts.length
       ? customFacts.map(x => `<span>${x.label ? esc(x.label) + ' ' : ''}<b>${esc(x.value)}</b></span>`).join('')
-      : '<span>played <b>individually</b></span><span><b>no</b> preparation</span><span><b>not</b> marked</span>';
+      : '';
     const customGlance = Array.isArray(d.atAGlance)
       ? d.atAGlance.filter(x => x && x.label && x.value).slice(0, 8)
       : [];
     const glanceHTML = customGlance.length
       ? customGlance.map(x => `<div class="line"><span>${esc(x.label)}</span><b>${esc(x.value)}</b></div>`).join('')
-      : '<div class="line"><span>Decisions</span><b>Three</b></div>' +
-        '<div class="line"><span>Quantitative</span><b>None</b></div>' +
-        '<div class="line"><span>Played</span><b>Individually</b></div>' +
-        '<div class="line"><span>Session</span><b>About an hour</b></div>';
+      : '';
 
     return `
     <div class="sim-head">
@@ -40,17 +37,19 @@
       <div class="facts">
         ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
         ${factsHTML}
-        <span>runs <b>standalone</b></span>
       </div>
+      ${d.durationNote ? `<p class="duration-note">${esc(d.durationNote)}</p>` : ''}
     </div>
 
     <div class="two">
       <div class="prose">
         ${s.description ? `<h3>The situation</h3><p>${esc(s.description)}</p>` : ''}
+        ${d.activity ? `<h3>What you will do</h3><p>${esc(d.activity)}</p>` : ''}
+        ${d.output ? `<h3>What you will produce</h3><p>${esc(d.output)}</p>` : ''}
         ${d.tangle ? `<h3>What makes it hard</h3><p>${esc(d.tangle)}</p>` : ''}
-        ${d.turn ? `<h3>Why it teaches something</h3><p>${esc(d.turn)}</p>` : ''}
+        ${d.turn ? `<h3>Why this activity helps</h3><p>${esc(d.turn)}</p>` : ''}
 
-        ${Array.isArray(d.cast) && d.cast.length ? `<h3>The room</h3>
+        ${Array.isArray(d.cast) && d.cast.length ? `<h3>People in the case</h3>
           ${d.roomIntro ? `<p>${esc(d.roomIntro)}</p>` : ''}
           <div class="room">${d.cast.map((c) => `<div class="who">
             <div class="n">${esc(c.name)}</div>
@@ -58,7 +57,7 @@
             ${c.stake ? `<div class="x">${esc(c.stake)}</div>` : ''}
           </div>`).join('')}</div>` : ''}
 
-        ${Array.isArray(d.beats) && d.beats.length ? `<h3>How the twenty minutes go</h3>
+        ${Array.isArray(d.beats) && d.beats.length ? `<h3>How it works</h3>
           ${d.momentsIntro ? `<p>${esc(d.momentsIntro)}</p>` : ''}
           <div class="beats">${d.beats.map((b) => `<div class="beat">
             <div class="t">${esc(b.at)}</div><p>${esc(b.what)}</p></div>`).join('')}</div>` : ''}
@@ -72,11 +71,13 @@
           <h4>At a glance</h4>
           ${d.seat ? `<div class="line"><span>You are</span><b>${esc(d.seat)}</b></div>` : ''}
           ${d.world ? `<div class="line"><span>Setting</span><b>${esc(d.world)}</b></div>` : ''}
-          ${d.clock ? `<div class="line"><span>Spans</span><b>${esc(d.clock)}</b></div>` : ''}
+          ${d.clock ? `<div class="line"><span>Scenario timing</span><b>${esc(d.clock)}</b></div>` : ''}
           ${glanceHTML}
         </div>
 
-        ${d.teaches ? `<div class="box"><h4>Teaches</h4><p style="margin:0">${esc(d.teaches)}</p></div>` : ''}
+        ${d.teaches ? `<div class="box"><h4>What you will learn</h4><p style="margin:0">${esc(d.teaches)}</p></div>` : ''}
+        ${d.suitableFor ? `<div class="box"><h4>Useful for</h4><p style="margin:0">${esc(d.suitableFor)}</p></div>` : ''}
+        ${d.preparation ? `<div class="box"><h4>Before you start</h4><p style="margin:0">${esc(d.preparation)}</p></div>` : ''}
 
         ${o.forFaculty ? '' : `<div class="box">
           <h4>Try it</h4>

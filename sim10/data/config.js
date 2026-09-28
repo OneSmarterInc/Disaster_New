@@ -2,31 +2,72 @@
 // SERVER-SIDE ONLY. Nothing in this file is sent to a browser as-is.
 
 module.exports = {
-  simId: 'rapid-10-bubble',
-  route: '/sim10',
-  title: 'Infrastructure or Bubble?',
-  tagline: 'Two quarters of a real company. One call: infrastructure or bubble?',
-  minutes: 45,
-  catalogueRevision: 'sim10-v2',
-  description: 'Read two quarters of a real company\'s figures and make one call: infrastructure that will be needed, or inside a bubble. Then see what happened next.',
-  detail: {
-    world: 'Technology infrastructure · financial analysis',
-    seat: 'An analyst evaluating a company',
-    clock: 'Two quarterly reports per case',
-    teaches: 'Financial statement analysis · evidence-based judgment · identifying assumptions',
-    tangle: 'Growth, company-defined measures and funding needs can support different interpretations of the same business.',
-    turn: 'Participants must commit to a verdict, identify evidence that could change it, and revisit that judgment when outcomes are revealed.',
-    after: 'The staged reveal identifies the company and compares the original verdict with later evidence and outcomes.',
-    discussion: 'Compare the figures each participant used, their reasons for trusting them, and what would have changed their judgment.',
-    tryIt: 'Try an individual run before choosing one or two cases for a class session.',
-    sessionShape: 'Choose one or two cases and individual or team mode. Reading and decision windows are timed; the instructor controls the class reveal.',
-    catalogueFacts: [{ label: 'play', value: 'individual or teams' }, { label: 'cases', value: 'one or two' }],
-    atAGlance: [{ label: 'Evidence', value: 'Quarterly financial reports' }, { label: 'Quantitative', value: 'Financial statement analysis' }, { label: 'Format', value: 'Individual or team decisions' }],
-    beats: [
-      { at: 'Read', what: 'Examine the financial statements and management claims.' },
-      { at: 'Decide', what: 'Commit to a verdict and explain the evidence and assumptions behind it.' },
-      { at: 'Reveal', what: 'Compare the judgment with the company identity and subsequent outcomes.' }
-    ]
+  "simId": "rapid-10-bubble",
+  "route": "/sim10",
+  "title": "Infrastructure or Bubble?",
+  "tagline": "Read a company's figures. Is it building lasting value or caught in a bubble?",
+  "minutes": 45,
+  "catalogueRevision": "sim10-v2",
+  "description": "Read two quarters of financial information from a real company whose name is hidden. Decide whether its business is supported by the evidence, explain your judgment, and say what would change your mind. Then learn its identity and what happened later.",
+  "detail": {
+    "world": "Technology infrastructure · financial analysis",
+    "seat": "Analyst evaluating a company",
+    "clock": "Two quarterly reports per case",
+    "teaches": "Read financial reports, question company claims, and explain the assumptions behind a judgment.",
+    "tangle": "Sales growth, cash needs, and the company's own performance measures may tell different stories.",
+    "turn": "You commit to a judgment before learning the company's name or later results.",
+    "after": "Review the company identity and later evidence alongside your original verdict.",
+    "discussion": "Compare which figures students trusted, how they interpreted them, and what would have changed their judgment.",
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "sessionShape": "Allow about 45 minutes, depending on whether the instructor selects one or two cases and individual or team play. Reading and decision windows are timed; the instructor controls the reveal and discussion.",
+    "catalogueFacts": [
+      {
+        "label": "Play",
+        "value": "Individual or team"
+      },
+      {
+        "label": "Before play",
+        "value": "Basic financial knowledge useful"
+      },
+      {
+        "label": "Feedback",
+        "value": "Class comparison and discussion"
+      }
+    ],
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "A verdict for each of one or two cases"
+      },
+      {
+        "label": "Numbers",
+        "value": "Read and compare financial statements"
+      },
+      {
+        "label": "Play mode",
+        "value": "Individual or team"
+      }
+    ],
+    "beats": [
+      {
+        "at": "Read",
+        "what": "Examine two quarters of company figures and claims."
+      },
+      {
+        "at": "Decide",
+        "what": "Give a verdict, supporting reasons, and evidence that could change it."
+      },
+      {
+        "at": "Review",
+        "what": "Compare your judgment with the company identity and later events."
+      }
+    ],
+    "activity": "Examine the financial statements and management claims. Choose a verdict, identify the figures behind it, and explain what evidence could change it. Your instructor can use one or two cases.",
+    "suitableFor": "Financial analysis, business strategy, and technology investment classes.",
+    "preparation": "The financial reports are supplied. Basic familiarity with income statements, balance sheets, and cash flow is useful.",
+    "output": "A verdict for each selected case, supporting figures and reasons, and evidence that could change the verdict.",
+    "durationNote": "Plan about 45 minutes; timing depends on the case count, mode, and discussion.",
+    "momentsIntro": ""
   },
 
   // Ids already declared by other sims in OneSmarterInc/Disaster_New (checked

@@ -3,88 +3,107 @@
 // already earned, never future thresholds or alternate branches.
 
 const META = {
-  id: 'rapid-03-midland',
-  replaces: [], // Midland is not an alias of the retired Bench / reused Wexford ID.
-  catalogueRevision: 'midland-v1-2026-09',
-  title: 'Midland Equipment',
-  tagline: 'Two years to choose. The third year tells you what those choices bought.',
-  description:
-    'You run technology for a mid-sized HVAC company and allocate a fixed budget across two years. ' +
-    'The consequences of Year 1 arrive in Year 2, and the consequences of both arrive in a final year you cannot influence.',
-  minutes: 30,
-  detail: {
-    world: 'Technology architecture · mid-sized HVAC company',
-    seat: 'Technology leader at Midland Equipment',
-    clock: 'Year 1 through Year 3',
-    teaches:
-      'Infrastructure has lead time · every allocation buys one thing by not buying another',
-    tangle:
-      'A fixed annual budget has to cover today, resilience, capacity, connection and features. ' +
-      'The limits force trade-offs before the events that reveal them.',
-    turn:
-      'There is no scored or ranked answer. The same portfolio is later seen through different consequences and buyer perspectives.',
-    roomIntro:
-      'Four people want four different things from the same nine million dollars. None of them is wrong, and none of them is going to tell you what to do.',
-    momentsIntro:
-      'You commit a view, allocate Year 1, see what that made possible, allocate Year 2, then watch Year 3 arrive after your ability to change course has ended.',
-    after:
-      'The close returns the student to the sentence they wrote before allocating, their Year 1 portfolio, and two reflection questions. Instructor comparisons stay on the projector, never in the student view.',
-    discussion:
-      'The instructor view compares allocation distributions, Year 3 outcome bands, and Connect versus Uptime. Two contrasting anonymous runs can be put side by side for the room.',
-    tryIt:
-      'Run the same fixed-budget problem your students will see. Nothing is scored and no allocation is labelled correct.',
-    sessionShape:
-      'About thirty minutes to play. The debrief is designed for the rest of the class hour.',
-    catalogueFacts: [
-      { label: 'played', value: 'individual or team' },
-      { label: 'preparation', value: 'briefing packet before the session' },
-      { label: 'assessment', value: 'not marked' }
-    ],
-    atAGlance: [
-      { label: 'Decisions', value: 'Two annual allocations' },
-      { label: 'Quantitative', value: 'Five-line $9M budget' },
-      { label: 'Played', value: 'Individual or team' },
-      { label: 'Session', value: '30-minute simulation + debrief' }
-    ],
-    cast: [
+  "id": "rapid-03-midland",
+  "replaces": [],
+  "catalogueRevision": "midland-v1-2026-09",
+  "title": "Midland Equipment",
+  "tagline": "Spend a limited technology budget now. See the effects over three years.",
+  "description": "You lead technology at a heating and cooling equipment company. Divide a $9 million annual budget among five areas for two years. Then see how those choices affect the business in a third year, when you can no longer change them.",
+  "minutes": 30,
+  "detail": {
+    "world": "Technology planning at an equipment company",
+    "seat": "Technology leader at Midland Equipment",
+    "clock": "Three business years",
+    "teaches": "Balance daily operations with future needs and understand why technology spending takes time to pay off.",
+    "tangle": "The same budget must keep existing systems running and prepare the company for future needs. Spending more in one area leaves less for another.",
+    "turn": "You see the later effects of choices that looked reasonable when you made them.",
+    "roomIntro": "Four people want different things from the same $9 million budget. Each represents a different business need.",
+    "momentsIntro": "",
+    "after": "Review your starting view and allocations, then answer two reflection questions. There is no score or ranking.",
+    "discussion": "The instructor can compare anonymous budgets and outcomes to discuss the trade-offs.",
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "sessionShape": "Allow about 30 minutes for play and the rest of a class hour for discussion. Students should read the briefing packet before the session.",
+    "catalogueFacts": [
       {
-        name: 'Dale Brenner',
-        role: 'Chief Financial Officer',
-        line: 'Run',
-        stake: 'Six million a year keeps the lights on and produces nothing new. Every conversation should start with getting that number down.',
-        shortWant: 'Get the Run cost down without breaking the systems Midland still depends on.',
-        quote: 'Six million dollars a year keeps the lights on and produces nothing new. Every conversation we have should start with getting that number down.'
+        "label": "Play",
+        "value": "Individual or team"
       },
       {
-        name: 'Renata Oyelaran',
-        role: 'VP, Service',
-        line: 'Uptime',
-        stake: "Doesn't need software, needs eight more technicians. Every dollar spent on a system is a dollar that did not go to a truck.",
-        shortWant: 'Keep dispatch dependable; every system dollar is competing with trucks and technicians.',
-        quote: 'I do not need software. I need eight more technicians. Every dollar you spend on a system is a dollar that did not go to a truck.'
+        "label": "Before play",
+        "value": "Read the briefing packet"
       },
       {
-        name: 'Tom Vasquez',
-        role: 'Chief Executive',
-        line: 'Features',
-        stake: "In eighteen months has to stand in front of the board and show them something. Doesn't care what it is. Cares that it is real.",
-        shortWant: 'Have something real to show the board inside eighteen months.',
-        quote: 'In eighteen months I have to stand in front of the board and show them something. I do not care what it is. I care that it is real.'
-      },
-      {
-        name: 'Sam Achterberg',
-        role: 'Field technician, 22 years',
-        line: 'Connect',
-        stake: 'Nineteen percent of 14,000 service visits find nothing wrong. At $290 a truck roll, the machines should be able to tell us before we drive there.',
-        shortWant: 'Hear the machines before a $290 truck roll has to go find out in person.',
-        quote: 'Nineteen percent of our visits find nothing wrong. At $290 a truck roll, I would rather hear the machine before I drive there. Those machines have been telling us they were about to fail for years.'
+        "label": "Feedback",
+        "value": "Reflection; no score"
       }
     ],
-    beats: [
-      { at: 'Year 1', what: 'Commit a technology portfolio before the first consequence appears.' },
-      { at: 'Year 2', what: 'Allocate again with Year 1 totals still visible, then face two events.' },
-      { at: 'Year 3', what: 'No more allocation. The accumulated architecture now answers for you.' }
-    ]
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "Two annual budgets"
+      },
+      {
+        "label": "Numbers",
+        "value": "Divide $9 million across five areas"
+      },
+      {
+        "label": "Play mode",
+        "value": "Individual or team"
+      }
+    ],
+    "cast": [
+      {
+        "name": "Dale Brenner",
+        "role": "Chief Financial Officer",
+        "stake": "Wants to control the cost of running existing systems.",
+        "line": "Run",
+        "shortWant": "Get the Run cost down without breaking the systems Midland still depends on.",
+        "quote": "Six million dollars a year keeps the lights on and produces nothing new. Every conversation we have should start with getting that number down."
+      },
+      {
+        "name": "Renata Oyelaran",
+        "role": "VP, Service",
+        "stake": "Wants dependable service operations.",
+        "line": "Uptime",
+        "shortWant": "Keep dispatch dependable; every system dollar is competing with trucks and technicians.",
+        "quote": "I do not need software. I need eight more technicians. Every dollar you spend on a system is a dollar that did not go to a truck."
+      },
+      {
+        "name": "Tom Vasquez",
+        "role": "Chief Executive",
+        "stake": "Wants visible progress to show the board.",
+        "line": "Features",
+        "shortWant": "Have something real to show the board inside eighteen months.",
+        "quote": "In eighteen months I have to stand in front of the board and show them something. I do not care what it is. I care that it is real."
+      },
+      {
+        "name": "Sam Achterberg",
+        "role": "Field technician, 22 years",
+        "stake": "Wants information that helps technicians avoid unnecessary visits.",
+        "line": "Connect",
+        "shortWant": "Hear the machines before a $290 truck roll has to go find out in person.",
+        "quote": "Nineteen percent of our visits find nothing wrong. At $290 a truck roll, I would rather hear the machine before I drive there. Those machines have been telling us they were about to fail for years."
+      }
+    ],
+    "beats": [
+      {
+        "at": "Year 1",
+        "what": "State your starting view and choose your first budget."
+      },
+      {
+        "at": "Year 2",
+        "what": "Review what happened and choose the next budget."
+      },
+      {
+        "at": "Year 3",
+        "what": "See the later effects and reflect on your choices."
+      }
+    ],
+    "activity": "Read the briefing, write your starting view, and divide the budget for Year 1. Review the results, set the Year 2 budget, and reflect on what happens in Year 3.",
+    "suitableFor": "IT strategy, budgeting, and operations management classes.",
+    "preparation": "Read the briefing packet before the session.",
+    "output": "A starting view, two annual budgets, and two final reflections.",
+    "durationNote": "About 30 minutes of play, plus discussion."
   }
 };
 

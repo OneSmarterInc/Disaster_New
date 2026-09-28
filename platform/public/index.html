@@ -401,6 +401,7 @@ async function greet() {
 // 60 minutes or more is treated as a RapidSim+.
 function classify(sim) {
   if (sim.type === 'rapidsim' || sim.type === 'rapidsim-plus') return sim.type;
+  if (RapidSimsIdentity.identity(sim).plus) return 'rapidsim-plus';
   return (Number(sim.minutes) || 0) >= 60 ? 'rapidsim-plus' : 'rapidsim';
 }
 
@@ -410,16 +411,15 @@ function catalogueFactsHTML(s) {
     ? d.catalogueFacts.filter(x => x && x.value).slice(0, 6)
     : [];
   if (!custom.length) {
-    return '<span>played <b>individually</b></span>' +
-           '<span><b>no</b> preparation</span>' +
-           '<span><b>not</b> marked</span>';
+    return '';
   }
   return custom.map(x => `<span>${x.label ? esc(x.label) + ' ' : ''}<b>${esc(x.value)}</b></span>`).join('');
 }
 
 function cardHTML(s) {
-  return `<div class="card" data-open="${esc(s.id)}">
+  return `<div class="card" data-open="${esc(s.id)}" role="link" tabindex="0" aria-label="${esc('View details: ' + s.title)}">
     <div class="body">
+      <div class="eyebrow">${esc(RapidSimsIdentity.label(s))}${s.detail && s.detail.world ? ' · ' + esc(s.detail.world) : ''}</div>
       <h2>${esc(s.title)}</h2>
       ${s.tagline ? `<div class="tag">${esc(s.tagline)}</div>` : ''}
       ${s.description ? `<p>${esc(s.description)}</p>` : ''}
@@ -427,28 +427,30 @@ function cardHTML(s) {
         ${s.minutes ? `<span><b>${s.minutes}</b> minutes</span>` : ''}
         ${catalogueFactsHTML(s)}
       </div>
-      ${s.detail && s.detail.teaches ? `<div class="teaches"><span>Teaches</span>${esc(s.detail.teaches)}</div>` : ''}
+      ${s.detail && s.detail.teaches ? `<div class="teaches"><span>You will learn</span>${esc(s.detail.teaches)}</div>` : ''}
+      <div class="details-link">View details →</div>
     </div>
   </div>`;
 }
 
 function list(){
-  const rapidsims = SIMS.filter(s => classify(s) === 'rapidsim');
-  const rapidsimsPlus = SIMS.filter(s => classify(s) === 'rapidsim-plus');
+  const byNumber = (a, b) => (RapidSimsIdentity.identity(a).number || 0) - (RapidSimsIdentity.identity(b).number || 0);
+  const rapidsims = SIMS.filter(s => classify(s) === 'rapidsim').sort(byNumber);
+  const rapidsimsPlus = SIMS.filter(s => classify(s) === 'rapidsim-plus').sort(byNumber);
 
   app.innerHTML = `
     <div class="hero">
       <div class="eyebrow">Flexee</div>
       <h1>Rapid<em>Sims</em></h1>
       <p>Short-form simulations for the classroom.</p>
-      <p>RapidSims put students in a twenty-minute decision. RapidSims+ put them in a longer investigation. <a href="https://flexee.org/#rapidsims" style="color:inherit;text-decoration:underline">More about both formats</a>.</p>
+      <p>Explore a situation, make choices, and discuss what happened. Each entry explains your role, the task, the time to allow, and what you will learn. <a href="https://flexee.org/#rapidsims" style="color:inherit;text-decoration:underline">More about both formats</a>.</p>
     </div>
 
     ${SIMS.length ? `
       ${rapidsims.length ? `
         <div class="section-head">
           <h2>Rapid<em>Sims</em></h2>
-          <p>Twenty minutes. One decision. Nothing to prepare.</p>
+          <p>Short activities with different decisions and play formats. Open an entry for the full details.</p>
         </div>
         ${rapidsims.map(cardHTML).join('')}
       ` : ''}
@@ -456,7 +458,7 @@ function list(){
       ${rapidsimsPlus.length ? `
         <div class="section-head" id="rapidsimPlus">
           <h2>Rapid<em>Sims+</em></h2>
-          <p>Longer. Investigative. Still nothing to prepare.</p>
+          <p>Longer investigations with time to gather evidence and prepare a report.</p>
         </div>
         ${rapidsimsPlus.map(cardHTML).join('')}
       ` : ''}
@@ -473,11 +475,13 @@ function list(){
 
     <div class="quote" style="margin-top:14px">
 
-  Every scenario runs on the same engine: uncertainty, competing perspectives, and incomplete information. Two people can experience the same event and reach completely different conclusions, both believing they are right. The challenge is not finding who is wrong. It is listening, reconciling perspectives, and making a clear decision when the full truth is still unclear.
+  Students work with incomplete information and different points of view. The class discussion asks what they chose, why they chose it, and what new evidence might change their minds.
 
     </div>`;
-  app.querySelectorAll('[data-open]').forEach(c => c.onclick = () => {
-    VIEW = c.dataset.open; setLink(VIEW); render(); });
+  app.querySelectorAll('[data-open]').forEach(c => {
+    c.onclick = () => { VIEW = c.dataset.open; setLink(VIEW); render(); };
+    c.onkeydown = event => { if (event.key === 'Enter') c.onclick(); };
+  });
 }
 
 function detail(){

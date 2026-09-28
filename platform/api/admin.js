@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const SCHEMA = require('../lib/schema.js');
 
 const { healthHeaders, inspectHealth } = require('../lib/sim-health.js');
-const { effective, FIELDS, statesOutcome } = require('../lib/catalogue.js');
+const { present, FIELDS, statesOutcome } = require('../lib/catalogue.js');
 const { sql, id } = require('../lib/db.js');
 const A = require('../lib/auth.js');
 
@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
         const simRows = await s`SELECT * FROM sims ORDER BY number NULLS LAST, created_at`;
         // Every simulation carries the copy the public page will show, so the
         // editor opens on real sentences rather than empty boxes.
-        const sims = simRows.map(r => Object.assign({}, r, { detail: effective(r.detail) }));
+        const sims = simRows.map(present);
         const totals = (await s`
           SELECT
             (SELECT count(*) FROM users WHERE role = 'student') AS students,
@@ -249,7 +249,7 @@ module.exports = async (req, res) => {
         }
         // Anything an administrator has touched is theirs from now on.
         next._edited = Array.from(new Set([...(cur.detail && cur.detail._edited || []),
-          ...words.filter(k => b[k] !== undefined && String(b[k]).trim())]));
+          ...FIELDS.map(f => f.key).filter(k => b[k] !== undefined && String(b[k]).trim())]));
 
         await s`UPDATE sims SET detail = ${JSON.stringify(next).slice(0, 12000)} WHERE id = ${sid}`;
         return res.status(200).json({ ok: true, detail: next });

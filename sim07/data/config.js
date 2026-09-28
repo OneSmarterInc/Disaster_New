@@ -8,25 +8,72 @@
 // The build gate checks that nothing in PRE_REVEAL names the companies or points forward.
 
 const META = {
-  id: 'rapid-07-bought',
-  replaces: [],
-  catalogueRevision: 'bought-v1-2026-09',
-  title: 'Would You Have Bought It?',
-  tagline: 'The year 2000, and you can only see what they could see.',
-  description:
-    'You run the country\'s largest video rental chain. A small, loss-making company offers to sell itself to you for fifty million dollars. ' +
-    'You decide on the evidence of the time, and then history arrives in stages.',
-  minutes: 20,
-  detail: {
-    world: 'Video rental · autumn 2000',
-    seat: 'Chief executive of the largest video rental chain',
-    clock: 'Ten minutes to decide; the reveal follows in three stages',
-    teaches: 'what was knowable at the time · how hindsight rewrites a judgement',
-    tangle:
-      'Four advisers, each right about the part of the business they run. A price that is small for you and large for what you are buying.',
-    turn: 'Nothing is scored. Your own reasoning stays on screen while the next ten years arrive.',
-    after: 'Best run early in a course that teaches by case. Individual mode is recommended.',
-    format: 'individual or team · no preparation · not marked'
+  "id": "rapid-07-bought",
+  "replaces": [],
+  "catalogueRevision": "bought-v1-2026-09",
+  "title": "Would You Have Bought It?",
+  "tagline": "Would you buy the company using only what was known in 2000?",
+  "description": "You lead a large video rental chain in autumn 2000. A smaller company offers to sell itself for $50 million. Read the proposal, consider four advisers, and make your decision before learning what happened later.",
+  "minutes": 20,
+  "detail": {
+    "world": "A video rental business in 2000",
+    "seat": "Chief executive deciding on an acquisition",
+    "clock": "A ten-minute decision followed by three stages of history",
+    "teaches": "Judge a decision using the evidence available at the time, rather than what became known later.",
+    "tangle": "The advisers focus on different parts of the business. You have limited time and cannot use later events to justify the original choice.",
+    "turn": "Keeping your original explanation visible helps you notice how later knowledge changes your judgment.",
+    "after": "See history in three stages and revisit your original reason. There is no score.",
+    "activity": "Read the proposal and four advisers' views. Decide whether to buy and explain your reason. Then review later events while your original reasoning remains visible.",
+    "discussion": "Discuss whether a reasonable decision can look different after its outcome is known.",
+    "sessionShape": "Allow about 20 minutes for the decision and staged reveal, then add class discussion. The decision window is ten minutes. Individual play is recommended.",
+    "suitableFor": "Business strategy, acquisitions, and case discussion classes.",
+    "preparation": "No advance reading. Use only the evidence supplied in the case.",
+    "output": "One acquisition decision and a written reason to revisit during the reveal.",
+    "beats": [
+      {
+        "at": "Read",
+        "what": "Review the offer and the advisers' views."
+      },
+      {
+        "at": "Choose",
+        "what": "Make a decision and record your reason within ten minutes."
+      },
+      {
+        "at": "Reflect",
+        "what": "Read the staged history and revisit the evidence you used."
+      }
+    ],
+    "durationNote": "About 20 minutes including the reveal, plus discussion.",
+    "catalogueFacts": [
+      {
+        "label": "Play",
+        "value": "Individual (recommended) or team"
+      },
+      {
+        "label": "Before play",
+        "value": "No advance reading"
+      },
+      {
+        "label": "Feedback",
+        "value": "Reflection; no score"
+      }
+    ],
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "One acquisition decision"
+      },
+      {
+        "label": "Numbers",
+        "value": "Read basic business figures"
+      },
+      {
+        "label": "Play mode",
+        "value": "Individual (recommended) or team"
+      }
+    ],
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "momentsIntro": ""
   }
 };
 

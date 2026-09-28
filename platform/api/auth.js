@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { sql, id } = require('../lib/db.js');
 const A = require('../lib/auth.js');
-const { effective } = require('../lib/catalogue.js');
+const { present } = require('../lib/catalogue.js');
 
 function body(req) {
   let b = req.body;
@@ -140,7 +140,7 @@ module.exports = async (req, res) => {
                              FROM sims WHERE published = true ORDER BY number NULLS LAST, created_at`;
         // Resolved here rather than in the page, so the catalogue and the
         // administrator's editor are always looking at the same sentences.
-        const sims = rows.map(r => Object.assign({}, r, { detail: effective(r.detail) }));
+        const sims = rows.map(present);
         return res.status(200).json({ sims });
       }
 

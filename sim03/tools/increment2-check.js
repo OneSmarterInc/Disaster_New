@@ -8,7 +8,7 @@ const { buildClosingLesson } = require('../lib/closingLesson.js');
 const valid = x => { const v=S.validateAllocation(x, S.LEGACY_THRESHOLDS); assert.equal(v.ok,true,JSON.stringify(v)); return v.allocation; };
 const cfg=S.publicConfig();
 assert.equal(S.META.minutes,30);
-assert.ok(S.META.detail.sessionShape.includes('thirty minutes'));
+assert.match(S.META.detail.sessionShape, /(?:30|thirty) minutes/);
 assert.ok(cfg.lines.find(x=>x.id==='capacity').description.includes('Nobody asks for this')===false);
 assert.equal(cfg.lines.find(x=>x.id==='uptime').description,'Backup and redundancy so dispatch survives a bad day.');
 assert.equal(cfg.lines.find(x=>x.id==='connect').description,'Gets data back from units in the field automatically.');

@@ -27,10 +27,10 @@ const S = require(path.join(root, 'sim03', 'lib', 'scenario.js'));
 const { effective } = require(path.join(root, 'platform', 'lib', 'catalogue.js'));
 const d = effective(S.META.detail);
 assert(Array.isArray(d.catalogueFacts) && d.catalogueFacts.length >= 3, 'Sim03 catalogue facts missing');
-assert(d.catalogueFacts.some(x => x.value === 'individual or team'), 'Sim03 play-mode fact missing');
-assert(d.catalogueFacts.some(x => x.value === 'briefing packet before the session'), 'Sim03 preparation fact missing');
-assert(d.catalogueFacts.some(x => x.value === 'not marked'), 'Sim03 assessment fact missing');
-assert(Array.isArray(d.atAGlance) && d.atAGlance.some(x => x.value === 'Five-line $9M budget'), 'Sim03 quantitative fact missing');
+assert(d.catalogueFacts.some(x => /individual or team/i.test(x.value)), 'Sim03 play-mode fact missing');
+assert(d.catalogueFacts.some(x => /briefing packet/i.test(x.value)), 'Sim03 preparation fact missing');
+assert(d.catalogueFacts.some(x => /no score/i.test(x.value)), 'Sim03 assessment fact missing');
+assert(Array.isArray(d.atAGlance) && d.atAGlance.some(x => /\$9 million.*five areas/.test(x.value)), 'Sim03 quantitative fact missing');
 assert(Array.isArray(d.beats) && d.beats.every(x => x.at && x.what), 'Sim03 detail beats do not match platform renderer contract');
 
 const guard = read('sim03/lib/guard.js');

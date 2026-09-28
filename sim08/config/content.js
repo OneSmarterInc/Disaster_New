@@ -8,42 +8,73 @@
 // Outcome tiers (instructor-only): adopted · lucky · knew · shadow
 
 const META = {
-  id: 'rapid-08-later',
-  replaces: [],
-  catalogueRevision: 'later-v1-2026-09',
-  title: 'Eighteen Months Later',
-  tagline: 'You choose in twenty minutes. You find out a year and a half later.',
-  description:
-    'You are on the committee choosing a scheduling system for a four-clinic veterinary practice. Three vendors, three proposals, ' +
-    'and six questions to spend. You commit to a vendor and a go-live plan, then the sim jumps eighteen months and reports what happened.',
-  minutes: 25,
-  detail: {
-    world: 'System selection · multi-site veterinary practice',
-    seat: 'Selection committee at Brookfield Veterinary',
-    clock: 'About twenty minutes of play on one shared clock',
-    teaches: 'What a demonstration cannot show you · Why a good purchase still fails',
-    tangle:
-      'Every vendor is defensible. Six questions cannot cover everything, and the questions that feel most like diligence tell you the least.',
-    turn:
-      'There is no score. Eighteen months later the practice either runs on the new system or on the workaround somebody built to get through the week.',
-    after:
-      'Each student or team sees the vendor they chose, the questions they spent, and what the practice looks like eighteen months on. Room comparisons stay on the projector.',
-    discussion:
-      'The projector reveals in four steps: vendor choices, outcomes grouped by vendor, each team\'s questions and plan, and which answers carried each warning.',
-    tryIt: 'Play the same selection your students will see. Nothing is scored and no vendor is labelled correct.',
-    sessionShape: 'About twenty minutes to play. The debrief is designed for the rest of the class hour.',
-    recommendedMode: 'team',
-    catalogueFacts: [
-      { label: 'played', value: 'team (recommended) or individual' },
-      { label: 'preparation', value: 'none' },
-      { label: 'assessment', value: 'not marked' }
+  "id": "rapid-08-later",
+  "replaces": [],
+  "catalogueRevision": "later-v1-2026-09",
+  "title": "Eighteen Months Later",
+  "tagline": "Choose a system and a launch plan. See how the clinics are working eighteen months later.",
+  "description": "You help four veterinary clinics choose a scheduling system. Compare three vendors, spend a total of six questions, and choose a supplier and a plan to start using the system. Then see the result eighteen months later.",
+  "minutes": 25,
+  "detail": {
+    "world": "Choosing software for veterinary clinics",
+    "seat": "Member of the selection committee at Brookfield Veterinary",
+    "clock": "A timed selection followed by an eighteen-month jump",
+    "teaches": "Ask useful questions about software and plan how staff will start using it.",
+    "tangle": "You cannot ask everything. The choice must fit both the budget and the way people work.",
+    "turn": "You compare the sales presentation with what daily work looks like after the system has been introduced.",
+    "after": "Review your vendor choice, questions, launch plan, and later result. There is no score.",
+    "discussion": "The instructor can compare choices and results to discuss which questions and preparations mattered.",
+    "tryIt": "Try the complete activity before assigning it to students.",
+    "sessionShape": "Allow about 25 minutes for the activity. The timed briefing and decision stages total 17 minutes, including nine minutes for vendor questions; add time to read the result and discuss it. Team play is recommended.",
+    "recommendedMode": "team",
+    "catalogueFacts": [
+      {
+        "label": "Play",
+        "value": "Team (recommended) or individual"
+      },
+      {
+        "label": "Before play",
+        "value": "No advance reading"
+      },
+      {
+        "label": "Feedback",
+        "value": "Review; no score"
+      }
     ],
-    atAGlance: [
-      { label: 'Decisions', value: 'Six questions, one vendor, one go-live plan' },
-      { label: 'Clock', value: 'Nine minutes to question the vendors' },
-      { label: 'Played', value: 'Team or individual' },
-      { label: 'Session', value: '20-minute simulation + debrief' }
-    ]
+    "atAGlance": [
+      {
+        "label": "Main task",
+        "value": "One vendor and one launch plan"
+      },
+      {
+        "label": "Numbers",
+        "value": "Compare costs within a $240,000 budget"
+      },
+      {
+        "label": "Play mode",
+        "value": "Team (recommended) or individual"
+      }
+    ],
+    "activity": "Review three proposals and demonstrations. Spend six questions across the vendors, choose a system, and commit to a plan for introducing it at the clinics.",
+    "suitableFor": "Systems analysis, software purchasing, and change management classes.",
+    "preparation": "No advance reading. Proposals, demonstrations, and questions are supplied during play.",
+    "output": "Six vendor questions, one system choice, and a plan for starting to use it.",
+    "beats": [
+      {
+        "at": "Compare",
+        "what": "Read three proposals and watch the demonstrations."
+      },
+      {
+        "at": "Ask and choose",
+        "what": "Use six questions, select a vendor, and choose a launch plan."
+      },
+      {
+        "at": "Review",
+        "what": "Read the eighteen-month report and discuss your choices."
+      }
+    ],
+    "durationNote": "Allow about 25 minutes for the activity, plus class discussion.",
+    "momentsIntro": ""
   }
 };
 

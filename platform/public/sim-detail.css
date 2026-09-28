@@ -9,6 +9,9 @@
 .sim-head h1{font-size:42px;font-weight:300;letter-spacing:-.03em;line-height:1.1;margin:6px 0 12px}
 .sim-head .tag{font-size:19px;color:var(--amber);font-style:italic;max-width:52ch;font-family:var(--serif)}
 .sim-head .facts{margin-top:20px}
+.sim-head .duration-note{font-size:14px;line-height:1.5;color:var(--ink2);margin:14px 0 0;max-width:76ch}
+.card .details-link{margin-top:16px;font-size:14px;color:var(--amber)}
+.card[role="link"]:focus-visible{outline:2px solid var(--amber);outline-offset:4px}
 
 .facts{display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;
   letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}

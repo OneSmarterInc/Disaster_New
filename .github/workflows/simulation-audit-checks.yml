@@ -55,6 +55,8 @@ jobs:
           node tools/health-security-check.js
       - name: Health diagnostics and catalogue presentation
         run: |
+          node platform/tools/sync-catalogue-source.js --check
+          node platform/tools/catalogue-content-check.js
           node platform/tools/health-contract-check.js
           node platform/tools/catalogue-number-check.js
           node platform/tools/deploy-check.js

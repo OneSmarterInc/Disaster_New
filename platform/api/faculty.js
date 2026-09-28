@@ -1,6 +1,7 @@
 const { sql, id, joinCode } = require('../lib/db.js');
 const { ensureTranscripts } = require('../lib/transcripts.js');
 const A = require('../lib/auth.js');
+const { present } = require('../lib/catalogue.js');
 
 function body(req) {
   let b = req.body;
@@ -12,11 +13,11 @@ const { baseUrl } = require('../lib/urls.js');
 // A sim is visible to someone if it's published, or if an admin granted them
 // access while it is still in draft. Repeated in every place a sim is listed
 // or attached, so a reviewer sees exactly what a faculty member would.
-const visibleSims = (s, userId) => s`
+const visibleSims = async (s, userId) => (await s`
   SELECT * FROM sims si
   WHERE si.published = true
      OR EXISTS (SELECT 1 FROM sim_access sa WHERE sa.sim_id = si.id AND sa.user_id = ${userId})
-  ORDER BY si.number NULLS LAST, si.created_at`;
+  ORDER BY si.number NULLS LAST, si.created_at`).map(present);
 
 const simVisibleTo = async (s, userId, simId) => {
   const rows = await s`
@@ -356,4 +357,3 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'server_error', message: e.message });
   }
 };
-
