@@ -15,7 +15,7 @@ const realDateNow = Date.now, realFetch = global.fetch, oldEnv = { ...process.en
 Date.now = () => now;
 Object.assign(process.env, {
   LAUNCH_SECRET: 'test-secret-not-for-production', PLATFORM_URL: 'https://platform.test',
-  SIM_URL: 'https://rapidsims.flexee.org/sim04', FACULTY_CODE: 'private-instructor', ACCESS_CODE: 'private-student'
+  SIM_URL: 'https://sim04.test', FACULTY_CODE: 'private-instructor', ACCESS_CODE: 'private-student'
 });
 const sessions = new Map(), requests = [];
 global.fetch = async (url, options) => {
