@@ -1,6 +1,6 @@
 {
   "rapid-01-disaster": {
-    "tagline": "Keep customers running while you work out why their systems are failing.",
+    "tagline": "Twenty minutes in a room where nobody knows what is wrong yet.",
     "description": "You lead operations at a company that runs customer IT systems. Several systems fail overnight. You must question four advisers, review new reports, and decide what to do before the cause is clear.",
     "detail": {
       "world": "IT services and incident response",
@@ -87,7 +87,7 @@
     }
   },
   "rapid-02-relay": {
-    "tagline": "An AI gave a customer wrong advice. Decide what the company should do next.",
+    "tagline": "Twenty minutes after an AI told a customer the wrong thing.",
     "description": "You lead customer operations at a manufacturer. A customer has acted on incorrect advice from its AI assistant. You question the people responsible, review new information, and decide how the company should respond.",
     "detail": {
       "world": "Manufacturing and AI customer support",
@@ -174,7 +174,7 @@
     }
   },
   "rapid-03-midland": {
-    "tagline": "Spend a limited technology budget now. See the effects over three years.",
+    "tagline": "Two years to choose. The third year tells you what those choices bought.",
     "description": "You lead technology at a heating and cooling equipment company. Divide a $9 million annual budget among five areas for two years. Then see how those choices affect the business in a third year, when you can no longer change them.",
     "detail": {
       "world": "Technology planning at an equipment company",
@@ -336,7 +336,7 @@
     }
   },
   "rapid-05-approve": {
-    "tagline": "Approve or decline five app features. See what your choices add up to.",
+    "tagline": "Five requests. Each one reasonable. See where they lead.",
     "description": "You manage a fitness app. Five requests to use customer data arrive one at a time. Decide whether to approve each feature, then see what your choices allow the app to learn and offer.",
     "detail": {
       "world": "Product decisions at a fitness app",
@@ -401,7 +401,7 @@
     }
   },
   "rapid-06-switch": {
-    "tagline": "Card payments are failing. Stay with the current provider or switch to the backup?",
+    "tagline": "One decision, taken while the reports are still arriving.",
     "description": "You run operations for a chain of twelve stores. Card payments are failing during a busy hour. Read reports and two supplier documents, then decide whether to stay with the current network provider or switch to the backup.",
     "detail": {
       "world": "Store operations and network outages",
@@ -465,7 +465,7 @@
     }
   },
   "rapid-07-bought": {
-    "tagline": "Would you buy the company using only what was known in 2000?",
+    "tagline": "The year 2000, and you can only see what they could see.",
     "description": "You lead a large video rental chain in autumn 2000. A smaller company offers to sell itself for $50 million. Read the proposal, consider four advisers, and make your decision before learning what happened later.",
     "detail": {
       "world": "A video rental business in 2000",
@@ -529,7 +529,7 @@
     }
   },
   "rapid-08-later": {
-    "tagline": "Choose a system and a launch plan. See how the clinics are working eighteen months later.",
+    "tagline": "You choose in twenty minutes. You find out a year and a half later.",
     "description": "You help four veterinary clinics choose a scheduling system. Compare three vendors, spend a total of six questions, and choose a supplier and a plan to start using the system. Then see the result eighteen months later.",
     "detail": {
       "world": "Choosing software for veterinary clinics",
@@ -594,7 +594,7 @@
     }
   },
   "rapid-09-money-land": {
-    "tagline": "Online trade is growing. Which businesses should your fund invest in?",
+    "tagline": "The direction is obvious. Put your fund behind the destination.",
     "description": "It is June 2000 and you have $1 million to invest. Read a forecast about businesses buying online, write down what you expect to change and who you think will earn money, then divide the fund among five companies.",
     "detail": {
       "world": "Investing in online business trade in 2000",
@@ -659,7 +659,7 @@
     }
   },
   "rapid-10-bubble": {
-    "tagline": "Read a company's figures. Is it building lasting value or caught in a bubble?",
+    "tagline": "Two quarters of a real company. One call: infrastructure or bubble?",
     "description": "Read two quarters of financial information from a real company whose name is hidden. Decide whether its business is supported by the evidence, explain your judgment, and say what would change your mind. Then learn its identity and what happened later.",
     "detail": {
       "world": "Technology infrastructure · financial analysis",
@@ -723,7 +723,7 @@
     }
   },
   "rapidsimplus-01": {
-    "tagline": "Observe the work, interview three people, and explain how claims are handled.",
+    "tagline": "Three interviews. Fifteen minutes each. Every question has a cost.",
     "description": "A dental benefits administrator is replacing its claims system. You must document how claims arrive and reach the first review. Study an incomplete process chart, observe the work, interview three employees, and submit a report for the new system.",
     "detail": {
       "world": "Dental claims processing and a new computer system",
@@ -773,7 +773,7 @@
       "suitableFor": "Systems analysis, process improvement, and requirements gathering classes.",
       "preparation": "The brief and incomplete process chart are provided. No outside research is needed.",
       "output": "A completed process chart and a report recommending how the new system should handle the work.",
-      "durationNote": "Up to 180 minutes for the full class, including the brief, break, and discussion. The suggested activities total 155 minutes.",
+      "durationNote": "About 70 minutes of play; allow additional time for the full-class brief, break, and discussion.",
       "catalogueFacts": [
         {
           "label": "Play",
