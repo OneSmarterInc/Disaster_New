@@ -11,9 +11,9 @@
 const META = {
   "id": "rapid-09-money-land",
   "replaces": [],
-  "catalogueRevision": "money-land-v1-2026-09",
+  "catalogueRevision": "money-land-v2-2026-09",
   "title": "Where Does the Money Land?",
-  "tagline": "Online trade is growing. Which businesses should your fund invest in?",
+  "tagline": "The direction is obvious. Put your fund behind the destination.",
   "description": "It is June 2000 and you have $1 million to invest. Read a forecast about businesses buying online, write down what you expect to change and who you think will earn money, then divide the fund among five companies.",
   "minutes": 20,
   "detail": {
