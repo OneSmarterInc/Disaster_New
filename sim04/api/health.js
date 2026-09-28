@@ -3,7 +3,7 @@ const store = require('../lib/store');
 const { META } = require('../lib/meta');
 const finger = value => value ? crypto.createHash('sha256').update(value).digest('hex').slice(0, 8) : null;
 function authorized(req) {
-  const want = process.env.HEALTH_SECRET || '', given = req.headers?.['x-health-key'] || '';
+  const want = process.env.HEALTH_SECRET || '', given = (req.headers && req.headers['x-health-key']) || '';
   const a = Buffer.from(String(want)), b = Buffer.from(String(given));
   return !!want && !!given && a.length === b.length && crypto.timingSafeEqual(a, b);
 }
@@ -12,7 +12,7 @@ module.exports = (req, res) => {
   if (!authorized(req)) return res.status(200).json({ ok: true, sim: META.id });
   const launchSecret = !!process.env.LAUNCH_SECRET, storage = store.configured();
   const platform = /^https:\/\//.test(process.env.PLATFORM_URL || '');
-  const self = process.env.SIM_URL === 'https://rapidsims.flexee.org/sim04';
+  const self = /^https:\/\//.test(process.env.SIM_URL || '');
   return res.status(200).json({
     ok: launchSecret && storage && platform && self,
     sim: META.id, diagnostic: true, needsModelKey: false,
