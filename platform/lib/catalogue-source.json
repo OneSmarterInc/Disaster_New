@@ -272,6 +272,42 @@
       "durationNote": "About 30 minutes of play, plus discussion."
     }
   },
+  "rapid-04-whose-number": {
+    "tagline": "Twenty-five minutes to give the board one number.",
+    "description": "Ridgeway Dispatch needs one customer-retention figure. Use the quarter's records and your assigned definition to report a number, then compare how five valid definitions lead to different answers.",
+    "detail": {
+      "world": "Customer retention at a software company for trade businesses",
+      "seat": "A team asked to report retention to the board",
+      "clock": "A 25-minute decision window",
+      "teaches": "A business number depends on its definition, the records used, and its purpose.",
+      "tangle": "Every group uses the same data, but its assigned definition changes which accounts count.",
+      "turn": "Commit one figure before seeing how the other groups defined retention.",
+      "after": "Compare the figures, definitions, and reasons each department might prefer its measure. There is no score.",
+      "discussion": "Ask groups with far-apart figures to defend their calculations before revealing the definitions.",
+      "sessionShape": "Choose team or individual mode and at least three groups. Allow 25 minutes to calculate and additional time to discuss.",
+      "activity": "Read the account records, support tickets and your private definition sheet. Commit a retention percentage and confidence from 1 to 5.",
+      "suitableFor": "Business analytics, measurement, management and information systems classes.",
+      "preparation": "No advance reading; the data pack is included.",
+      "output": "One locked percentage and a confidence rating for each group.",
+      "durationNote": "25 minutes of play, plus discussion.",
+      "tryIt": "Preview the activity before assigning it to students.",
+      "catalogueFacts": [
+        { "label": "Play", "value": "Team or individual; at least three groups" },
+        { "label": "Before play", "value": "No advance reading" },
+        { "label": "Feedback", "value": "Discussion; no score" }
+      ],
+      "atAGlance": [
+        { "label": "Main task", "value": "Report one customer-retention figure" },
+        { "label": "Numbers", "value": "Use the supplied account records" },
+        { "label": "Play mode", "value": "Team or individual" }
+      ],
+      "beats": [
+        { "at": "Read", "what": "Examine the records and your private definition." },
+        { "at": "Commit", "what": "Submit one percentage and your confidence." },
+        { "at": "Discuss", "what": "Compare definitions after all figures are locked." }
+      ]
+    }
+  },
   "rapid-05-approve": {
     "tagline": "Approve or decline five app features. See what your choices add up to.",
     "description": "You manage a fitness app. Five requests to use customer data arrive one at a time. Decide whether to approve each feature, then see what your choices allow the app to learn and offer.",

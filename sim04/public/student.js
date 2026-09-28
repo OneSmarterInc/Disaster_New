@@ -1,0 +1,134 @@
+'use strict';
+const BASE = (location.pathname.match(/^\/sim-?\d+/) || [''])[0];
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+let code = (params.get('session') || '').trim().toUpperCase();
+let launch = new URLSearchParams(location.hash.slice(1)).get('lt') || null;
+if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
+else launch = sessionStorage.getItem('m04-lt:' + code);
+let participantId = sessionStorage.getItem('m04-participant:' + code) || null;
+let config = null, view = null, pollAt = 0, renderedPack = false, renderedCommit = '';
+
+function headers() {
+  return { 'content-type': 'application/json', ...(launch ? { 'x-launch-token': launch }
+    : { 'x-access-code': sessionStorage.getItem('m04-access') || '' }) };
+}
+async function api(path, payload) {
+  const response = await fetch(BASE + '/api/' + path, {
+    method: payload ? 'POST' : 'GET', headers: headers(),
+    ...(payload ? { body: JSON.stringify(payload) } : {}), cache: 'no-store'
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || result.error || 'Please try again.');
+  return result;
+}
+function error(id, message) { $(id).textContent = message || ''; }
+function time() {
+  if (!view) return;
+  let remaining = view.clock.remaining;
+  if (remaining !== null) remaining = Math.max(0, remaining - Math.floor((Date.now() - pollAt) / 1000));
+  $('clock').textContent = remaining === null ? '--:--' : `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
+  $('clock').classList.toggle('warn', remaining !== null && remaining <= 120);
+  const pill = $('statePill');
+  pill.textContent = view.commit ? 'Report locked' : remaining === 0 ? 'Time ended' : view.canCommit ? 'Decision open' : 'Waiting';
+  pill.classList.toggle('good', !!view.commit);
+  pill.classList.toggle('warn', !view.commit && remaining !== null && remaining <= 120);
+}
+function table(target, records, columns) {
+  const sort = { key: columns[0], direction: 1 };
+  function paint() {
+    const table = document.createElement('table'), thead = table.createTHead(), row = thead.insertRow();
+    for (const key of columns) {
+      const th = document.createElement('th'), button = document.createElement('button');
+      button.type = 'button'; button.textContent = key.replaceAll('_', ' ') + (key === sort.key ? (sort.direction > 0 ? ' ↑' : ' ↓') : '');
+      button.onclick = () => { sort.direction = sort.key === key ? -sort.direction : 1; sort.key = key; paint(); };
+      th.append(button); row.append(th);
+    }
+    const body = table.createTBody();
+    const ordered = [...records].sort((a, b) => {
+      const x = a[sort.key] ?? '', y = b[sort.key] ?? '';
+      return sort.direction * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true }));
+    });
+    for (const item of ordered) {
+      const tr = body.insertRow();
+      for (const key of columns) tr.insertCell().textContent = item[key] == null ? '—' : String(item[key]);
+    }
+    $(target).replaceChildren(table);
+  }
+  paint();
+}
+function csv(records, name) {
+  const columns = Object.keys(records[0] || {});
+  const cell = v => '"' + String(v ?? '').replace(/^[=+@-]/, "'$&").replaceAll('"', '""') + '"';
+  const text = [columns.map(cell).join(','), ...records.map(row => columns.map(k => cell(row[k])).join(','))].join('\r\n');
+  const url = URL.createObjectURL(new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function draw(result) {
+  view = result.view; pollAt = Date.now();
+  $('entry').hidden = true; $('play').hidden = false;
+  $('group').textContent = view.group || 'Waiting for assignment';
+  $('waiting').hidden = !!view.data && view.state !== 'lobby';
+  $('waitingText').textContent = !view.group ? 'Your instructor will assign your group.' : 'Your group is ready. The clock will start soon.';
+  $('materials').hidden = !view.data || view.state === 'lobby';
+  if (view.data && !renderedPack) {
+    renderedPack = true;
+    $('briefing').textContent = config.briefing;
+    for (const [i, line] of view.data.sheet.lines.entries()) {
+      const li = document.createElement('li'); li.textContent = line; if (i === 3) li.className = 'contested'; $('sheet').append(li);
+    }
+    $('scope').textContent = `Starting monthly revenue in scope: $${Number(view.data.startingMrrInScope).toLocaleString('en-US')}`;
+    $('plans').textContent = Object.entries(view.data.plans).map(([tier, price]) => `${tier} $${price}/month`).join(' · ');
+    const accountColumns = Object.keys(view.data.accounts[0]);
+    table('accountsTable', view.data.accounts, accountColumns);
+    table('ticketsTable', view.data.tickets, Object.keys(view.data.tickets[0]));
+    $('downloadAccounts').onclick = () => csv(view.data.accounts, 'ridgeway-accounts.csv');
+    $('downloadTickets').onclick = () => csv(view.data.tickets, 'ridgeway-tickets.csv');
+  }
+  const key = JSON.stringify([view.commit, view.canCommit, view.clock.expired, view.state]);
+  if (key !== renderedCommit) {
+    renderedCommit = key;
+    $('commitForm').hidden = !view.canCommit;
+    $('locked').hidden = !view.commit;
+    if (view.commit) {
+      $('lockedNumber').textContent = view.commit.number + '%';
+      $('lockedConfidence').textContent = `Confidence ${view.commit.confidence}/5`;
+    }
+    if (!view.commit && view.clock.expired) error('commitError', 'Time ended. No number reported.');
+  }
+  time();
+}
+async function refresh() {
+  if (!code || !participantId) return;
+  try { draw(await api('session', { action: 'state', code, participantId })); }
+  catch (e) { error('commitError', e.message); }
+}
+async function join(event) {
+  event?.preventDefault();
+  code = $('code').value.trim().toUpperCase();
+  if (!/^[A-Z2-9]{5}$/.test(code)) { error('entryError', 'Enter the five-character room code.'); return; }
+  $('joinForm').querySelector('button').disabled = true;
+  try {
+    if (!launch) launch = sessionStorage.getItem('m04-lt:' + code);
+    config = await api('config');
+    const result = await api('session', { action: 'join', code,
+      participantId: sessionStorage.getItem('m04-participant:' + code) || null, name: $('name').value.trim() });
+    participantId = result.participantId;
+    sessionStorage.setItem('m04-participant:' + code, participantId);
+    history.replaceState(null, '', location.pathname + '?session=' + encodeURIComponent(code));
+    draw(result);
+  } catch (e) { error('entryError', e.message); }
+  finally { $('joinForm').querySelector('button').disabled = false; }
+}
+$('joinForm').addEventListener('submit', join);
+$('commitForm').addEventListener('submit', async event => {
+  event.preventDefault(); error('commitError', '');
+  const n = Number($('number').value).toFixed(1), confidence = $('confidence').value;
+  if (!confirm(`Lock ${n}% with confidence ${confidence}/5? This cannot be changed.`)) return;
+  try { draw(await api('session', { action: 'commit', code, participantId, number: $('number').value, confidence })); }
+  catch (e) { error('commitError', e.message); await refresh(); }
+});
+if (code) { $('code').value = code; if (launch || participantId) join(); }
+if (launch) $('nameField').hidden = true;
+setInterval(time, 1000); setInterval(refresh, 4000);
