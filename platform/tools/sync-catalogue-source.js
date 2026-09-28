@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const sources = [
-  'sim/lib/scenario.js', 'sim-02/lib/scenario.js', 'sim03/lib/scenario.js',
+  'sim/lib/scenario.js', 'sim-02/lib/scenario.js', 'sim03/lib/scenario.js', 'sim04/lib/meta.js',
   'sim05/config/content.js', 'sim06/lib/meta.js', 'sim07/data/config.js',
   'sim08/config/content.js', 'sim09/config/content.js', 'sim10/data/config.js',
   'sim-plus-01/lib/meta.js'
@@ -25,10 +25,10 @@ if (require.main === module) {
     if (fs.readFileSync(output, 'utf8') !== text) {
       console.error('Catalogue copy is stale. Run node platform/tools/sync-catalogue-source.js');
       process.exitCode = 1;
-    } else console.log('Catalogue source matches all ten simulations.');
+    } else console.log('Catalogue source matches all eleven simulations.');
   } else {
     fs.writeFileSync(output, text);
-    console.log('Updated public catalogue source for all ten simulations.');
+    console.log('Updated public catalogue source for all eleven simulations.');
   }
 }
 module.exports = { sources, snapshot };
