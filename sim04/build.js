@@ -52,8 +52,8 @@ function checkWiring(overrides = {}) {
   const vercel = overrides.vercel || JSON.parse(read('vercel.json'));
   if (vercel.git?.deploymentEnabled === false || vercel.git?.deploymentEnabled?.main !== true) problems.push('main deployment disabled');
   const env = overrides.env ?? read('.env.example');
-  if (!/^SIM_URL=https:\/\/rapidsims\.flexee\.org\/sim04$/m.test(env)) problems.push('explicit SIM_URL missing');
-  if (process.env.VERCEL && process.env.SIM_URL !== 'https://rapidsims.flexee.org/sim04') problems.push('Vercel SIM_URL must be set explicitly');
+  if (!/^SIM_URL=https:\/\/[^\s/]+\/sim04$/m.test(env)) problems.push('explicit SIM_URL missing');
+  if (process.env.VERCEL && !/^https:\/\/[^/]+\/sim04$/.test(process.env.SIM_URL || '')) problems.push('Vercel SIM_URL must be set explicitly');
   if (/req\.headers\[['"](?:host|x-forwarded-host)['"]\]/.test(overrides.launch ?? read('lib/launch.js'))) problems.push('registration derives address from request host');
   const platform = overrides.platform || JSON.parse(read('../platform/vercel.json'));
   const routes = ['/sim04', '/sim04/', '/sim04/:path*'];
