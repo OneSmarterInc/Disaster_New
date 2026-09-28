@@ -5,9 +5,9 @@ const cfg = require('../data/config');
 const META = {
   "id": "rapid-06-switch",
   "replaces": [],
-  "catalogueRevision": "switch-v1-2026-09",
+  "catalogueRevision": "switch-v2-2026-09",
   "title": "Do We Switch?",
-  "tagline": "Card payments are failing. Stay with the current provider or switch to the backup?",
+  "tagline": "One decision, taken while the reports are still arriving.",
   "description": "You run operations for a chain of twelve stores. Card payments are failing during a busy hour. Read reports and two supplier documents, then decide whether to stay with the current network provider or switch to the backup.",
   "minutes": 15,
   "detail": {
