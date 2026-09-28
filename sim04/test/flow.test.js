@@ -6,6 +6,9 @@ const room = require('../lib/room');
 const gate = require('../build');
 const store = require('../lib/store');
 const { signBack } = require('../lib/launch');
+const fs = require('node:fs');
+const path = require('node:path');
+const canonicalSimUrl = fs.readFileSync(path.join(__dirname, '../.env.example'), 'utf8').match(/^SIM_URL=(.+)$/m)[1];
 
 let passed = 0;
 function check(name, fn) { return Promise.resolve().then(fn).then(() => { passed++; console.log('ok', name); }); }
@@ -15,7 +18,7 @@ const realDateNow = Date.now, realFetch = global.fetch, oldEnv = { ...process.en
 Date.now = () => now;
 Object.assign(process.env, {
   LAUNCH_SECRET: 'test-secret-not-for-production', PLATFORM_URL: 'https://platform.test',
-  SIM_URL: 'https://sim04.test', FACULTY_CODE: 'private-instructor', ACCESS_CODE: 'private-student'
+  SIM_URL: canonicalSimUrl, FACULTY_CODE: 'private-instructor', ACCESS_CODE: 'private-student'
 });
 const sessions = new Map(), requests = [];
 global.fetch = async (url, options) => {
