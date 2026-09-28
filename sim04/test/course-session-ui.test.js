@@ -43,7 +43,7 @@ async function run(sessions, configStatus = 200) {
 (async () => {
   const noRooms = await run([]);
   assert.equal(noRooms.element('joinForm').hidden, true);
-  assert.equal(noRooms.element('manual-room-toggle').hidden, false);
+  assert.doesNotMatch(source, /manual-room-toggle|Enter a room code instead/, 'student course entry has no manual room-code fallback');
   assert.match(noRooms.element('entryHelp').textContent, /has not opened a Sim04 session/i);
 
   const oneRoom = await run([{ code: 'ABCDE', name: 'Monday class', mode: 'team', state: 'lobby' }], 401);
@@ -58,7 +58,6 @@ async function run(sessions, configStatus = 200) {
   assert.equal(severalRooms.element('joinForm').hidden, true);
   assert.equal(severalRooms.element('course-sessions').children.length, 2);
   assert.equal(severalRooms.element('course-sessions').children[0].textContent, 'Morning section · Team session');
-  assert.equal(severalRooms.element('manual-room-toggle').hidden, false);
   assert.equal(severalRooms.element('code').value, '', 'room code stays hidden when the student must choose between sessions');
   console.log('PASS Sim04 course entry UI: auto-join one room, choose among several, explain when none is open');
 })().catch(error => { console.error(error); process.exit(1); });

@@ -22,8 +22,7 @@ let participantId = sessionStorage.getItem('m04-participant:' + code) || null;
 let config = null, view = null, pollAt = 0, renderedPack = false, renderedCommit = '';
 
 function headers() {
-  return { 'content-type': 'application/json', ...(launch ? { 'x-launch-token': launch }
-    : { 'x-access-code': sessionStorage.getItem('m04-access') || '' }) };
+  return { 'content-type': 'application/json', ...(launch ? { 'x-launch-token': launch } : {}) };
 }
 async function api(path, payload) {
   const response = await fetch(BASE + '/api/' + path, {
@@ -119,8 +118,9 @@ async function refresh() {
 async function join(event) {
   event?.preventDefault();
   code = $('code').value.trim().toUpperCase();
-  if (!/^[A-Z2-9]{5}$/.test(code)) { error('entryError', 'Enter the five-character room code.'); return; }
-  if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
+  if (!launch) { error('entryError', 'Open Sim04 from your course page.'); return; }
+  if (!/^[A-Z2-9]{5}$/.test(code)) { error('entryError', 'Your course session could not be opened. Return to your course page and try again.'); return; }
+  sessionStorage.setItem('m04-lt:' + code, launch);
   $('joinForm').querySelector('button').disabled = true;
   try {
     if (!launch) launch = sessionStorage.getItem('m04-lt:' + code);
@@ -134,28 +134,19 @@ async function join(event) {
   } catch (e) { error('entryError', e.message); }
   finally { $('joinForm').querySelector('button').disabled = false; }
 }
-function showManualRoomEntry() {
-  $('course-sessions').hidden = true;
-  $('joinForm').hidden = false;
-  $('manual-room-toggle').hidden = true;
-  $('entryHelp').textContent = 'Enter the five-character room code from your instructor.';
-  $('code').focus();
-}
 async function findCourseSessions() {
-  const form = $('joinForm'), picker = $('course-sessions'), manual = $('manual-room-toggle');
-  form.hidden = true; picker.hidden = true; manual.hidden = true;
+  const form = $('joinForm'), picker = $('course-sessions');
+  form.hidden = true; picker.hidden = true;
   try {
     const result = await api('session', { action: 'course_sessions' });
     const sessions = Array.isArray(result.sessions) ? result.sessions : [];
     if (!sessions.length) {
-      $('entryHelp').textContent = 'Your sign-in is confirmed, but your instructor has not opened a Sim04 session for this course yet. Ask them to start one; no room code is needed from your course page.';
-      manual.hidden = false;
+      $('entryHelp').textContent = 'Your sign-in is confirmed, but your instructor has not opened a Sim04 session for this course yet. Return to your course page after they start one.';
       return;
     }
     if (sessions.length === 1) {
       $('entryHelp').textContent = `Joining ${sessions[0].name}…`;
       $('code').value = sessions[0].code;
-      manual.hidden = false;
       await join();
       return;
     }
@@ -173,15 +164,13 @@ async function findCourseSessions() {
       });
       picker.append(button);
     }
-    picker.hidden = false; manual.hidden = false;
+    picker.hidden = false;
   } catch (e) {
     $('entryHelp').textContent = 'Your student access is confirmed, but Sim04 could not check for an open class session.';
     error('entryError', e.message);
-    manual.hidden = false;
   }
 }
 $('joinForm').addEventListener('submit', join);
-$('manual-room-toggle').addEventListener('click', showManualRoomEntry);
 $('commitForm').addEventListener('submit', async event => {
   event.preventDefault(); error('commitError', '');
   const n = Number($('number').value).toFixed(1), confidence = $('confidence').value;

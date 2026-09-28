@@ -1,8 +1,8 @@
 'use strict';
 
 // Exchange an existing RapidSims sign-in for Sim04's normal signed launch.
-// The classroom invitation supplies the session code; direct access can still
-// use the standalone code flow when a student has no platform entitlement.
+// The classroom invitation supplies the session code; access is always checked
+// against the student's RapidSims course enrolment.
 async function platformLaunch(simId) {
   if (!/^\/sim04(?:\/|$)/.test(location.pathname)) return { status: 'skip' };
   try {
