@@ -14,7 +14,10 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0E152
   <h1 id="title">Eighteen Months Later</h1>
   <p class="muted" id="message">Enter the access code supplied by your instructor or administrator.</p>
   <div class="field" id="gate"><label for="code">Access code</label><input id="code" type="password" autocomplete="off" spellcheck="false"><button class="btn" id="open">Open simulation</button><div class="err" id="err"></div></div>
+  <p id="course-link" hidden><a href="/student.html">Back to your courses</a></p>
+  <button class="btn" id="standalone-toggle" type="button" hidden>Use a standalone access code</button>
 </div>
+<script src="platform-launch.js"></script>
 <script>
 const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
 const tokenParams=new URLSearchParams(location.hash.slice(1));
@@ -34,7 +37,10 @@ else if(params.get('session')){
 else{
   sessionStorage.removeItem('m08-lt:solo');
   const input=document.getElementById('code'),button=document.getElementById('open'),err=document.getElementById('err');
+  const gate=document.getElementById('gate'),message=document.getElementById('message');
+  const standalone=document.getElementById('standalone-toggle'),courseLink=document.getElementById('course-link');
   const remembered=sessionStorage.getItem('m08-access')||'';if(remembered)input.value=remembered;
+  function showGate(){gate.hidden=false;standalone.hidden=true;courseLink.hidden=true;message.textContent='Enter the access code supplied by your instructor or administrator.'}
   async function verify(){
     const code=input.value.trim();err.textContent='';button.disabled=true;
     try{
@@ -45,7 +51,19 @@ else{
     }catch(e){sessionStorage.removeItem('m08-access');err.textContent=e.message;button.disabled=false;input.focus()}
   }
   button.onclick=verify;input.addEventListener('keydown',e=>{if(e.key==='Enter')verify()});
-  input.focus();
+  standalone.onclick=showGate;
+  if(params.get('manual')==='1'||BASE!=='/sim08')showGate();
+  else{
+    gate.hidden=true;message.textContent='Checking your RapidSims sign-in…';
+    platformLaunch('rapid-08-later').then(result=>{
+      if(result.status==='launched')return;
+      if(result.status==='not_entitled'){
+        message.textContent=result.message;courseLink.hidden=false;standalone.hidden=false;return;
+      }
+      showGate();if(result.status==='unavailable')err.textContent=result.message;
+      input.focus();
+    });
+  }
 }
 </script>
 </body>

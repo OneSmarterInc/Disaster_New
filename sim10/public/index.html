@@ -60,6 +60,9 @@ base.href = mount;
     <button class="btn" id="go" type="submit">Join</button>
   </form>
   </div>
+  <p class="error" id="entry-status" role="status" hidden></p>
+  <p id="account-link" hidden><a href="/student.html">Back to your courses</a></p>
+  <p><button class="btn" id="manual-access" type="button" hidden>Use a standalone access code</button></p>
 </main>
 <script src="common.js"></script>
 <script>
@@ -163,6 +166,12 @@ async function go() {
   } finally { $('#go').disabled = false; }
 }
 form.addEventListener('submit', (e) => { e.preventDefault(); go(); });
+$('#manual-access').addEventListener('click', () => {
+  const query = new URLSearchParams(location.search); query.set('manual', '1');
+  history.replaceState(null, '', location.pathname + '?' + query.toString());
+  $('#entry-status').hidden = true; $('#account-link').hidden = true; $('#manual-access').hidden = true;
+  $('#access-gate').hidden = false; $('#entry-error').textContent = '';
+});
 async function initEntry() {
   // A platform invitation goes through account sign-in, not a standalone code.
   if (preset && !launchToken()) {
@@ -170,6 +179,20 @@ async function initEntry() {
       const session = await api('GET', `api/session?code=${encodeURIComponent(preset)}`);
       if (session.platform) { location.replace(session.joinUrl); return; }
     } catch (e) { $('#entry-error').textContent = e.message; return; }
+  }
+  const manual = new URLSearchParams(location.search).get('manual') === '1';
+  if (!preset && !launchToken() && !manual && /^\/sim10(?:\/|$)/.test(location.pathname)) {
+    $('#access-gate').hidden = true;
+    $('#entry-status').hidden = false;
+    $('#entry-status').textContent = 'Checking your RapidSims sign-in…';
+    const entry = await platformLaunch('rapid-10-bubble');
+    if (entry.status === 'launched') return;
+    $('#entry-status').hidden = true;
+    if (entry.status === 'not_entitled') {
+      $('#entry-status').hidden = false; $('#entry-status').textContent = entry.message;
+      $('#account-link').hidden = false; $('#manual-access').hidden = false;
+      return;
+    }
   }
   await verifyEntry();
 }

@@ -9,6 +9,7 @@ const C = require('./config/content.js');
 
 const read = (f) => fs.readFileSync(path.join(__dirname, 'public', f), 'utf8');
 const pages = { student: read('index.html'), launcher: read('launch.html'), instructor: read('instructor.html') };
+const platformLaunch = fs.readFileSync(path.join(__dirname, 'public', 'platform-launch.js'), 'utf8');
 const problems = [];
 const refuse = (m) => problems.push(m);
 
@@ -26,6 +27,11 @@ for (const [name, html] of Object.entries(pages)) {
   for (const [, js] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
     try { new vm.Script(js); } catch (e) { refuse(`${name} page script does not parse: ${e.message}`); }
   }
+}
+try { new vm.Script(platformLaunch, { filename: 'platform-launch.js' }); }
+catch (e) { refuse(`platform-launch.js does not parse: ${e.message}`); }
+for (const name of ['student', 'launcher']) {
+  if (!pages[name].includes('<script src="platform-launch.js"></script>')) refuse(`${name} page is missing the RapidSims launch bridge`);
 }
 // Students never see tier labels, scores or rankings.
 for (const w of [...Object.values(C.DEBRIEF.tierLabels), 'score', 'rank', 'correct answer']) {

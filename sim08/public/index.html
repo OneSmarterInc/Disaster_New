@@ -107,6 +107,7 @@ table.short .rep{display:block;font:12px var(--mono);color:var(--dimmer)}
   <div class="clock" id="clock" aria-live="off"></div>
 </header>
 <main id="app" aria-live="polite"></main>
+<script src="platform-launch.js"></script>
 <script>
 const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
 const app=document.getElementById('app');
@@ -152,6 +153,14 @@ async function request(path,payload,method='POST'){
 const sessionApi=p=>request('/api/session',p);
 
 async function init(){
+  if(!LAUNCH_TOKEN&&BASE==='/sim08'&&new URLSearchParams(location.search).get('manual')!=='1'){
+    const entry=await platformLaunch('rapid-08-later');
+    if(entry.status==='launched')return;
+    if(entry.status==='not_entitled'){
+      app.innerHTML=`<div class="note bad">${esc(entry.message)}</div><p><a href="/student.html">Back to your courses</a></p><p><a href="${BASE}/launch.html?manual=1">Use a standalone access code</a></p>`;
+      return;
+    }
+  }
   try{CFG=await request('/api/config'+(INITIAL_SESSION?'?session='+encodeURIComponent(INITIAL_SESSION):''),null,'GET')}
   catch(e){
     if(INITIAL_SESSION&&['platform_signin_required','launch_token_invalid'].includes(e.code)){

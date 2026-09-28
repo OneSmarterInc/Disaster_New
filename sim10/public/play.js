@@ -2,7 +2,7 @@
 const params = new URLSearchParams(location.search);
 const CODE = (params.get('code') || '').toUpperCase();
 const PID = sessionStorage.getItem(participantKey(CODE));
-if (!CODE || !PID) location.href = './';
+if (!CODE || !PID) location.replace(CODE ? `./?session=${encodeURIComponent(CODE)}` : './');
 
 let view = null;          // last state from the server
 let skew = 0;             // server clock minus local clock

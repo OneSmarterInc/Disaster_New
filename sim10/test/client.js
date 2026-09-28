@@ -18,7 +18,7 @@ const storage = () => {
   return { getItem: k => m.get(k) || null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) };
 };
 
-async function page(url, call, ss = storage(), kind = 'index') {
+async function page(url, call, ss = storage(), kind = 'index', platformCall = null) {
   let current = new URL(url), navigated = null, base = null;
   class Element {
     constructor() { this.hidden = false; this.disabled = false; this.value = ''; this.textContent = ''; this.events = {}; }
@@ -48,8 +48,10 @@ async function page(url, call, ss = storage(), kind = 'index') {
     history: { replaceState(a, b, u) { current = new URL(u, current); } },
     fetch: async (u, opt = {}) => {
       const target = new URL(u, resolvedBase()); requests.push(target.pathname + target.search);
-      const r = await call(opt.method || 'GET', target.pathname + target.search,
-        opt.body ? JSON.parse(opt.body) : undefined, opt.headers);
+      const r = target.pathname === '/api/launch' && platformCall
+        ? await platformCall(target.pathname + target.search)
+        : await call(opt.method || 'GET', target.pathname + target.search,
+          opt.body ? JSON.parse(opt.body) : undefined, opt.headers);
       return { status: r.status, ok: r.status >= 200 && r.status < 300, json: async () => r.body };
     }
   });
@@ -117,6 +119,15 @@ async function check({ call, tok }) {
     assert.equal(second.ss.getItem('s10-lt:' + code), token, 'class token does not overwrite a private run');
     assert(second.target().includes('/sim10/play?code='));
     assert(second.requests.every(p => p.startsWith('/sim10/api/')));
+    const noPid = fs.readFileSync(path.join(publicDir, 'play.js'), 'utf8').split('let view = null;')[0];
+    let recovery = null;
+    const noPidLocation = { pathname: '/sim10/play', search: `?code=${classCode}`, replace: (url) => { recovery = url; } };
+    vm.runInNewContext(noPid, {
+      URLSearchParams, encodeURIComponent, location: noPidLocation,
+      participantKey: code => `s10:${code}`,
+      sessionStorage: { getItem: () => null }
+    });
+    assert.equal(recovery, `./?session=${classCode}`, 'a missing same-tab participant returns to the class-session join path');
     const unknown = await page('https://fixture/sim10/?session=ZZZZ2', call, root.ss);
     assert.equal(unknown.run('launchToken()'), null, 'a different invitation does not borrow a prior account token');
 
@@ -139,8 +150,22 @@ async function check({ call, tok }) {
       const forged = await page('https://fixture/sim10/#lt=not.a.valid.token', call);
       assert.equal(forged.el('entry-options').hidden, true, 'invalid launch cannot bypass the gate');
       assert(forged.el('entry-error').textContent.includes('RapidSims'));
-      const invitation = await page(`https://fixture/sim10/?session=${classCode}`, call);
-      assert(new URL(invitation.target()).pathname === '/session.html', 'unsigned class invitation goes to platform sign-in');
+    const invitation = await page(`https://fixture/sim10/?session=${classCode}`, call);
+    assert(new URL(invitation.target()).pathname === '/session.html', 'unsigned class invitation goes to platform sign-in');
+
+    const autoLaunchToken = tok({ sub: 'auto', role: 'student', course: 'c1' });
+    const autoLaunch = await page('https://fixture/sim10/', call, storage(), 'index', async (path) => {
+      assert.equal(path, '/api/launch?sim=rapid-10-bubble&format=json');
+      return { status: 200, body: { url: `https://fixture/sim10/#lt=${autoLaunchToken}` } };
+    });
+    assert.equal(autoLaunch.target(), `https://fixture/sim10/#lt=${autoLaunchToken}`, 'a signed-in student at the sim URL is routed through RapidSims entitlement');
+
+    const notEntitled = await page('https://fixture/sim10/', call, storage(), 'index', async () => ({
+      status: 403, body: { message: 'This simulation is not assigned to your course.' }
+    }));
+    assert.equal(notEntitled.el('entry-status').textContent, 'This simulation is not assigned to your course.');
+    assert.equal(notEntitled.el('access-gate').hidden, true, 'a signed-in account without entitlement gets an explanation instead of an access-code prompt');
+    assert.equal(notEntitled.el('manual-access').hidden, false, 'standalone access remains an explicit option');
     } finally { delete process.env.ACCESS_CODE; }
 
     // The completion endpoint can return HTTP 200 with reported:false after a
