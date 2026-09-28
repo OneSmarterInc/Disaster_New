@@ -116,6 +116,10 @@ const equal=(a,b,label)=>{assert.deepEqual(a,b,label);checks++;};
   equal(r.statusCode,400,'malformed invite cannot inject token or redirect');
   r=await f.call('launch',{}, {method:'GET',headers:{cookie},query:{sim:f.sim.id,course:'course-a',format:'json'}});
   equal(new URL(r.payload.url).searchParams.has('session'),false,'ordinary standalone launch unchanged');
+  r=await f.call('launch',{}, {method:'GET',headers:{cookie},query:{sim:f.sim.id,format:'json'}});
+  equal(r.statusCode,200,'direct signed student link opens the assigned simulation');
+  equal(verify(new URLSearchParams(new URL(r.payload.url).hash.slice(1)).get('lt')).course,
+    'course-a','direct link ticket carries the enrolled course for room discovery');
   r=await f.call('join',{}, {method:'GET',query:{session:'ZZZZZ'}});equal(r.statusCode,404);
   sess.state='closed';
   r=await f.call('join',{}, {method:'GET',query:{session:code}});equal(r.statusCode,410);

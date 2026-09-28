@@ -115,7 +115,7 @@ module.exports = async (req, res) => {
       let rows;
       if (courseId) {
         rows = await s`
-          SELECT e.id, e.paid, e.dropped, c.title
+          SELECT e.id, e.paid, e.dropped, c.title, e.course_id
           FROM enrolments e
           JOIN courses c ON c.id = e.course_id
           JOIN course_sims cs ON cs.course_id = c.id AND cs.sim_id = ${simId}
@@ -123,7 +123,7 @@ module.exports = async (req, res) => {
           ORDER BY e.paid DESC LIMIT 1`;
       } else {
         rows = await s`
-          SELECT e.id, e.paid, e.dropped, c.title
+          SELECT e.id, e.paid, e.dropped, c.title, e.course_id
           FROM enrolments e
           JOIN courses c ON c.id = e.course_id
           JOIN course_sims cs ON cs.course_id = c.id AND cs.sim_id = ${simId}
@@ -160,6 +160,9 @@ module.exports = async (req, res) => {
       }
       if (!en.paid) return deny(res, wants, 'Waiting on your instructor',
         'Your enrolment is confirmed, but access to this simulation hasn\'t been released yet. Your instructor releases it once your registration is settled.');
+      // Direct links omit ?course. Carry the actual authorised course in the
+      // ticket so session sims can find that course's open room automatically.
+      courseId = en.course_id;
       asRole = 'student';
     }
 

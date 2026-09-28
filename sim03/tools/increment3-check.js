@@ -50,7 +50,9 @@ const context=vm.createContext({
   localStorage:storage,sessionStorage:storage,
   capture:value=>{rendered=value;}
 });
-const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).join('\n').replace(/\binit\(\);\s*$/,'');
+const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+  .filter(m=>!m[0].includes('id="account-entry-redirect"'))
+  .map(m=>m[1]).join('\n').replace(/\binit\(\);\s*$/,'');
 vm.runInContext(scripts,context);
 vm.runInContext(`C=${JSON.stringify(cfg)}; shell=capture; wireNav=()=>{};`,context);
 function display(code){vm.runInContext(code,context);return rendered;}

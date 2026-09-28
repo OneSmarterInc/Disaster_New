@@ -183,7 +183,7 @@ async function check({ call, tok }) {
     }));
     assert.equal(notEntitled.el('entry-status').textContent, 'This simulation is not assigned to your course.');
     assert.equal(notEntitled.el('access-gate').hidden, true, 'a signed-in account without entitlement gets an explanation instead of an access-code prompt');
-    assert.equal(notEntitled.el('manual-access').hidden, false, 'standalone access remains an explicit option');
+    assert.equal(notEntitled.el('manual-access').hidden, true, 'an assigned account without entitlement cannot fall into the guest code path');
     } finally { delete process.env.ACCESS_CODE; }
 
     // The completion endpoint can return HTTP 200 with reported:false after a

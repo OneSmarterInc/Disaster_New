@@ -21,6 +21,9 @@ async function page(n,kind='index',url='',saved={}){
  const ss=saved.ss||storage(),ls=saved.ls||storage();
  const ctx=vm.createContext({document:dom,location,history:{replaceState(_,__,u){target=new URL(u,target)}},sessionStorage:ss,localStorage:ls,TextDecoder,Uint8Array,URLSearchParams,Date,AbortSignal,console,scrollTo(){},matchMedia:()=>({matches:false}),performance:{now:()=>0},atob:t=>Buffer.from(t,'base64').toString('binary'),setInterval:f=>{timers.set(++next,f);return next},clearInterval:id=>timers.delete(id),setTimeout:f=>{timeouts.set(++next,f);return next},clearTimeout:id=>timeouts.delete(id)});
  ctx.window={addEventListener(){}};
+ // This fixture exercises the sim client after the shared account entry.
+ // The actual account decision is covered by tools/test-entry-flow.js.
+ ctx.platformLaunch=async()=>({status:'signed_out'});
  ctx.fetch=async(u,opt={})=>{
   const targetURL=new URL(u,target),name=targetURL.pathname.split('/').at(-1);requests.push(targetURL.pathname+targetURL.search);
   const req={method:opt.method||'GET',headers:opt.headers||{},query:Object.fromEntries(targetURL.searchParams),body:opt.body?JSON.parse(opt.body):{}};
@@ -36,9 +39,9 @@ async function page(n,kind='index',url='',saved={}){
 (async()=>{
  for(const n of ['07','08','09']){
   const key=n==='07'?'w07':'m'+n;
-  const gate=await page(n,'launch');gate.elements.get('code').value='entry-test';await gate.click('open');
-  ok(gate.redirect().endsWith('/index.html'),`${n}: access code opens student page`);
-  let p=await page(n,'index','',gate);
+  const gate=await page(n,'launch',`http://fixture/sim${n}/launch.html?guest=1`);gate.elements.get('code').value='entry-test';await gate.click('open');
+  ok(gate.redirect().endsWith('/index.html?guest=1'),`${n}: access code opens student page`);
+  let p=await page(n,'index',`http://fixture/sim${n}/index.html?guest=1`,gate);
   ok(!p.body().includes('Session code'),`${n}: direct play needs no session code`);
   if(n==='09'){p.elements.get('sn').value='Solo Student';await p.click('sb')}
   ok(p.run(n==='07'?'S.solo&&!!S.soloClosesAt':n==='09'?'S.session.solo&&!!S.view':'S.solo&&!!S.view'),`${n}: standalone play starts`);
@@ -105,16 +108,16 @@ async function page(n,kind='index',url='',saved={}){
 
   // A stale platform solo token cannot attach a later direct guest run to it.
   gate.ss.setItem(key+'-lt:solo',student);
-  const clean=await page(n,'launch','',gate);
+  const clean=await page(n,'launch',`http://fixture/sim${n}/launch.html?guest=1`,gate);
   ok(clean.ss.getItem(key+'-lt:solo')===null,`${n}: direct entry clears previous solo account token`);
   const guest=(await F.invoke(n,{action:'create',mode:'individual',facultyCode:'faculty-test'})).body.session.code;
   const jr=await F.api(n,'join',{method:'GET',query:{session:guest},headers:{}});
-  ok(jr.redirect===`../index.html?session=${guest}`,`${n}: guest invitation stays on this sim`);
-  p=await page(n,'index',`http://fixture/sim${n}/index.html?session=${guest}`);
+  ok(jr.redirect===`../index.html?session=${guest}&guest=1`,`${n}: guest invitation stays on this sim`);
+  p=await page(n,'index',`http://fixture/sim${n}/index.html?session=${guest}&guest=1`);
   ok(p.body().includes('Join'),`${n}: guest sees join form without access code`);
   p.elements.get(n==='07'?'nm':'jn').value='Class Guest';await p.click(n==='07'?'join':'jb');
   ok(Object.keys(await F.fixtures[n].store.getParticipants(guest)).length===1,`${n}: guest joins faculty room`);
-  p=await page(n,'index',`http://fixture/sim${n}/index.html?session=${guest}`,p);
+  p=await page(n,'index',`http://fixture/sim${n}/index.html?session=${guest}&guest=1`,p);
   ok(p.body().includes("You're in."),`${n}: guest refresh stays in class`);
 
   const room=(await F.invoke(n,{action:'create',mode:'individual',launchToken:faculty})).body.session.code;

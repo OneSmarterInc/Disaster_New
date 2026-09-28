@@ -1,25 +1,19 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Whose Number Is Right? — RapidSim 04</title><link rel="stylesheet" href="app.css">
-<script id="platform-entry-redirect">
+<script id="account-entry-redirect">
 (() => {
-  const params = new URLSearchParams(location.search);
-  const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
-  const session = (params.get('session') || '').trim().toUpperCase();
-  if (['localhost', '127.0.0.1'].includes(location.hostname) || fragment.has('lt')) return;
-
-  const platform = 'https://rapidsims.flexee.org';
-  if (session) {
-    const entry = new URLSearchParams({ sim: 'rapid-04-whose-number', session });
-    const course = params.get('course');
-    if (course) entry.set('course', course);
-    location.replace(platform + '/session.html?' + entry.toString());
-  } else {
-    location.replace(platform + '/sim04/');
-  }
+  const q = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.slice(1));
+  if (['localhost', '127.0.0.1'].includes(location.hostname) ||
+      q.has('guest') || q.has('lt') || hash.has('lt')) return;
+  const entry = new URLSearchParams({ sim: 'rapid-04-whose-number' });
+  if (q.get('session')) entry.set('session', q.get('session'));
+  if (q.get('course')) entry.set('course', q.get('course'));
+  location.replace('https://rapidsims.flexee.org/open.html?' + entry.toString());
 })();
 </script>
 </head><body><header class="topbar"><div class="wrap"><a class="brand" href="launch.html">Flexee <b>RapidSim 04</b></a><span class="eyebrow">Ridgeway Dispatch</span></div></header>
 <main class="wrap"><section class="hero"><div class="eyebrow">The board wants one figure</div><h1>Whose Number<br>Is Right?</h1><p class="tag">Twenty-five minutes to give the board one number.</p></section>
-<div class="stack"><section id="entry" class="card"><h2>Join your session</h2><p class="muted" id="entryHelp">Checking your course access…</p><form id="joinForm" hidden><input id="code" autocomplete="off"><span id="nameField"><input id="name" autocomplete="name"></span><button type="submit">Join</button></form><div id="course-sessions" class="stack" hidden></div><div id="entryError" class="error" role="alert"></div></section>
+<div class="stack"><section id="entry" class="card"><h2>Join your session</h2><p class="muted" id="entryHelp">Checking your course access…</p><form id="joinForm" class="row" hidden><div class="field narrow"><label for="code">Classroom code</label><input id="code" required maxlength="5" autocomplete="off" spellcheck="false" placeholder="ABCDE"></div><div class="field" id="nameField"><label for="name">Your name</label><input id="name" maxlength="60" autocomplete="name" placeholder="Your name"></div><button class="button" type="submit">Join room</button></form><div id="course-sessions" class="stack" hidden></div><div id="entryError" class="error" role="alert"></div></section>
 <section id="play" hidden><div class="card row space"><div class="stat"><small>Assigned group</small><strong id="group">Waiting</strong></div><div class="stat"><small>Time left</small><strong class="clock" id="clock">--:--</strong></div><span id="statePill" class="pill">Waiting</span></div>
 <div id="waiting" class="card" style="margin-top:18px"><h2>Waiting for the room</h2><p id="waitingText" class="muted">Your instructor will assign your group and start the clock.</p></div>
 <div id="materials" class="stack" style="margin-top:18px" hidden><section class="card"><div class="eyebrow">Briefing</div><h2>One figure for the board</h2><p id="briefing"></p></section>

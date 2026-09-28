@@ -4,7 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-const script = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join('\n').replace(/\binit\(\);\s*$/, '');
+const script = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+  .filter(m => !m[0].includes('id="account-entry-redirect"'))
+  .map(m => m[1]).join('\n').replace(/\binit\(\);\s*$/, '');
 let html = '', response, calls = [], alerts = [];
 const elements = new Map();
 const app = { get innerHTML() { return html; }, set innerHTML(value) { html = value; elements.clear(); } };

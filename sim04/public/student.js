@@ -2,10 +2,11 @@
 const BASE = (location.pathname.match(/^\/sim-?\d+/) || [''])[0];
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+const guest = params.get('guest') === '1';
 let code = (params.get('session') || '').trim().toUpperCase();
-let launch = new URLSearchParams(location.hash.slice(1)).get('lt') || null;
+let launch = guest ? null : new URLSearchParams(location.hash.slice(1)).get('lt') || null;
 if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
-else launch = sessionStorage.getItem('m04-lt:' + code);
+else if (!guest) launch = sessionStorage.getItem('m04-lt:' + code);
 function launchClaims() {
   if (!launch) return null;
   try {
@@ -22,7 +23,8 @@ let participantId = sessionStorage.getItem('m04-participant:' + code) || null;
 let config = null, view = null, pollAt = 0, renderedPack = false, renderedCommit = '';
 
 function headers() {
-  return { 'content-type': 'application/json', ...(launch ? { 'x-launch-token': launch } : {}) };
+  return { 'content-type': 'application/json', ...(launch ? { 'x-launch-token': launch }
+    : { 'x-access-code': sessionStorage.getItem('m04-access') || '' }) };
 }
 async function api(path, payload) {
   const response = await fetch(BASE + '/api/' + path, {
@@ -118,18 +120,18 @@ async function refresh() {
 async function join(event) {
   event?.preventDefault();
   code = $('code').value.trim().toUpperCase();
-  if (!launch) { error('entryError', 'Open Sim04 from your course page.'); return; }
-  if (!/^[A-Z2-9]{5}$/.test(code)) { error('entryError', 'Your course session could not be opened. Return to your course page and try again.'); return; }
-  sessionStorage.setItem('m04-lt:' + code, launch);
+  if (!launch && !guest) { error('entryError', 'Open Sim04 from your course page.'); return; }
+  if (!/^[A-Z2-9]{5}$/.test(code)) { error('entryError', 'Enter the five-character classroom code from your instructor.'); return; }
+  if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
   $('joinForm').querySelector('button').disabled = true;
   try {
-    if (!launch) launch = sessionStorage.getItem('m04-lt:' + code);
+    if (!launch && !guest) launch = sessionStorage.getItem('m04-lt:' + code);
     config = await api('config');
     const result = await api('session', { action: 'join', code,
       participantId: sessionStorage.getItem('m04-participant:' + code) || null, name: $('name').value.trim() });
     participantId = result.participantId;
     sessionStorage.setItem('m04-participant:' + code, participantId);
-    history.replaceState(null, '', location.pathname + '?session=' + encodeURIComponent(code));
+    history.replaceState(null, '', location.pathname + '?session=' + encodeURIComponent(code) + (guest ? '&guest=1' : ''));
     draw(result);
   } catch (e) { error('entryError', e.message); }
   finally { $('joinForm').querySelector('button').disabled = false; }
@@ -178,7 +180,11 @@ $('commitForm').addEventListener('submit', async event => {
   try { draw(await api('session', { action: 'commit', code, participantId, number: $('number').value, confidence })); }
   catch (e) { error('commitError', e.message); await refresh(); }
 });
-if (code) { $('code').value = code; if (launch || participantId) join(); }
+if (guest) {
+  $('joinForm').hidden = false;
+  $('entryHelp').textContent = 'Enter the classroom code from your instructor to join the room.';
+}
+if (code) { $('code').value = code; if (launch || participantId || guest) join(); }
 else if (launch && launchClaims()?.role === 'student' && launchClaims()?.course) findCourseSessions();
 if (launch) $('nameField').hidden = true;
 setInterval(time, 1000); setInterval(refresh, 4000);

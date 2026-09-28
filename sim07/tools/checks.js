@@ -255,7 +255,7 @@ async function check(name, fn) {
 
   await check('guest invitations open without the standalone access code', async () => {
     assert.strictEqual((await call(config, {}, {}, 'GET', { session: code })).statusCode, 200);
-    assert.strictEqual((await call(joinEntry, {}, {}, 'GET', { session: code })).location, '../index.html?session=' + code);
+    assert.strictEqual((await call(joinEntry, {}, {}, 'GET', { session: code })).location, '../index.html?session=' + code + '&guest=1');
     assert.strictEqual((await call(finish, { sessionCode: code, participantId: ids['Asha Patel'] })).body.reported, false);
   });
   await check('class entry enforces account, course and participant identity', async () => {

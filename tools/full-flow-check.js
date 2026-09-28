@@ -71,7 +71,7 @@ function sql() {
         && (!cid || e.course_id===cid)
         && DB.course_sims.some(cs=>cs.course_id===e.course_id&&cs.sim_id===sid));
       rows.sort((a,b)=>(b.paid?1:0)-(a.paid?1:0));
-      return R(rows.slice(0,1).map(e=>({id:e.id,paid:e.paid,dropped:e.dropped,title:'c'}))); }
+      return R(rows.slice(0,1).map(e=>({id:e.id,paid:e.paid,dropped:e.dropped,title:'c',course_id:e.course_id}))); }
     if (q.startsWith('INSERT INTO launches')) { DB.launches.push({id:v[0],user_id:v[1],sim_id:v[2],course_id:v[3],as_role:v[4]}); return R([]); }
     if (q.includes('FROM launches WHERE user_id') || q.includes('SELECT 1 FROM launches')) {
       return R(DB.launches.filter(l=>l.user_id===v[0]&&l.sim_id===v[1]).slice(0,1).map(()=>({n:1}))); }

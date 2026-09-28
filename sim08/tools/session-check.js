@@ -267,7 +267,7 @@ const goto = (code, phase) => { clockMs = startAt[code] + E.phaseStart(phase) * 
 
   // Guest invitations bypass only the standalone gate; signed class access is preserved.
   eq((await call(config, {}, {}, 'GET', { session: code })).status, 200, 'guest class config needs no access code');
-  eq((await call(joinEntry, {}, {}, 'GET', { session: code })).location, '../index.html?session=' + code, 'guest link opens guest class');
+  eq((await call(joinEntry, {}, {}, 'GET', { session: code })).location, '../index.html?session=' + code + '&guest=1', 'guest link opens guest class');
   const facultyToken = { 'x-launch-token': token({ sub: 'teacher', role: 'faculty', mode: 'session', course: 'course-a' }) };
   const pc = (await api({ action: 'create', mode: 'individual' }, facultyToken)).body.session.code;
   const pupil = { 'x-launch-token': token({ sub: 'pupil', course: 'course-a' }) };

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Whose Number Is Right? — access</title>
 <style>
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0E1524;color:#E8E4DA;font-family:Georgia,serif}.box{width:min(520px,calc(100% - 36px));padding:30px;border:1px solid #2B3548;background:#161E2E}.ey{font:11px ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:#F0A63C}h1{font-weight:400;margin:10px 0 10px}.muted{color:#8C95A8;line-height:1.55}a{color:#F0A63C}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0E1524;color:#E8E4DA;font-family:Georgia,serif}.box{width:min(520px,calc(100% - 36px));padding:30px;border:1px solid #2B3548;background:#161E2E}.ey{font:11px ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:#F0A63C}h1{font-weight:400;margin:10px 0 10px}.muted{color:#8C95A8;line-height:1.55}a{color:#F0A63C}.field{margin-top:22px}.field label{display:block;font:10px ui-monospace,monospace;letter-spacing:.13em;text-transform:uppercase;color:#F0A63C;margin-bottom:7px}.field input{width:100%;box-sizing:border-box;background:#0E1524;border:1px solid #3A4659;color:#E8E4DA;padding:12px 13px;font:16px ui-monospace,monospace}.btn{margin-top:12px;border:1px solid #F0A63C;background:#F0A63C;color:#1A1206;padding:11px 16px;font:600 11px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}.btn:disabled{opacity:.5;cursor:wait}.err{margin-top:12px;color:#E3B9C2;font-size:14px;min-height:20px}[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -13,6 +13,7 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0E152
   <div class="ey">Flexee RapidSim 04</div>
   <h1 id="title">Whose Number Is Right?</h1>
   <p class="muted" id="message">Checking your RapidSims sign-in…</p>
+  <div class="field" id="gate" hidden><label for="code">Student access code</label><input id="code" type="password" autocomplete="off"><button class="btn" id="open" type="button">Open simulation</button><div class="err" id="err" role="alert"></div></div>
   <p class="muted" id="course-link" hidden><a href="/student.html">Back to your courses</a></p>
   <p class="muted"><a id="instructorLink" href="instructor.html">Instructor? Open the console.</a></p>
 </div>
@@ -27,25 +28,27 @@ if(faculty&&token)sessionStorage.setItem('m04-faculty-lt',token);
 const params=new URLSearchParams(location.search);params.delete('lt');const session=(params.get('session')||'').trim().toUpperCase();const q=params.toString();
 document.getElementById('instructorLink').href=BASE+'/instructor.html';
 function goWithToken(){const target=faculty?'/instructor.html':'/index.html';location.replace(BASE+target+(q?'?'+q:'')+'#lt='+encodeURIComponent(token))}
-function openPlatformSession(){
-  if(session){
-    const entry=new URLSearchParams({sim:'rapid-04-whose-number',session});
-    const course=params.get('course');if(course)entry.set('course',course);
-    location.replace('https://rapidsims.flexee.org/session.html?'+entry.toString());
-  }else location.replace('https://rapidsims.flexee.org/sim04/');
-}
 if(token){goWithToken()}
-else if(BASE!=='/sim04'){openPlatformSession()}
-else{
-  const message=document.getElementById('message'),courseLink=document.getElementById('course-link');
-  platformLaunch('rapid-04-whose-number').then(result=>{
-    if(result.status==='launched')return;
-    if(result.status==='signed_out'){
-      message.textContent='Sign in to RapidSims from your course page to open this simulation.';courseLink.hidden=false;return;
-    }
-    message.textContent=result.message||'RapidSims could not check access right now.';
-    courseLink.hidden=false;
-  });
+else if(params.get('guest')==='1'){
+  const gate=document.getElementById('gate'),message=document.getElementById('message');
+  const input=document.getElementById('code'),button=document.getElementById('open'),err=document.getElementById('err');
+  gate.hidden=false;message.textContent='Enter the student access code supplied by your instructor.';
+  input.value=sessionStorage.getItem('m04-access')||'';
+  async function verify(){
+    const code=input.value.trim();err.textContent='';button.disabled=true;
+    try{
+      const r=await fetch(BASE+'/api/config',{headers:code?{'x-access-code':code}:{}});
+      if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.message||'That student access code is not valid.')}
+      sessionStorage.setItem('m04-access',code);
+      location.replace(BASE+'/index.html'+(q?'?'+q:''));
+    }catch(e){err.textContent=e.message;button.disabled=false;input.focus()}
+  }
+  button.onclick=verify;input.addEventListener('keydown',e=>{if(e.key==='Enter')verify()});input.focus();
+}else{
+  const entry=new URLSearchParams({sim:'rapid-04-whose-number'});
+  if(session)entry.set('session',session);
+  if(params.get('course'))entry.set('course',params.get('course'));
+  location.replace('https://rapidsims.flexee.org/open.html?'+entry.toString());
 }
 </script>
 </body>

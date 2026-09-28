@@ -15,7 +15,7 @@ const validCode = code => /^[A-Z2-9]{5}$/.test(code);
 const safe = s => ({ code: s.code, name: s.name, mode: s.mode, count: s.count,
   clockMinutes: s.clockMinutes, state: s.state, stage: s.stage });
 const joinUrl = s => s.platformAuth ? accountJoinUrl(s)
-  : process.env.SIM_URL ? process.env.SIM_URL.replace(/\/+$/, '') + '/launch.html?session=' + s.code : null;
+  : process.env.SIM_URL ? process.env.SIM_URL.replace(/\/+$/, '') + '/launch.html?session=' + s.code + '&guest=1' : null;
 
 async function reportAll(code) {
   let sent = 0, failed = 0;

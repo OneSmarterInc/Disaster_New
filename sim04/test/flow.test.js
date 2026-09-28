@@ -87,7 +87,7 @@ async function call(payload, launch = teacher, extraHeaders = {}) {
       redirect(n, path) { redirect.status = n; redirect.path = path; return this; } };
     await require('../api/join')({ method: 'GET', query: { session: direct.body.session.code } }, res);
     assert.equal(redirect.status, 302);
-    assert.equal(redirect.path, '../launch.html?session=' + direct.body.session.code + '&standalone=1');
+    assert.equal(redirect.path, '../launch.html?session=' + direct.body.session.code + '&guest=1');
   });
 const created = await call({ action: 'create', mode: 'team', count: 3, clockMinutes: 1 });
 assert.equal(created.status, 200);

@@ -27,7 +27,13 @@ const faculty=launch&&(launch.role==='faculty'||launch.role==='faculty_preview')
 if(faculty&&token)sessionStorage.setItem('m08-faculty-lt',token);
 const params=new URLSearchParams(location.search);params.delete('lt');const q=params.toString();
 function goWithToken(){const target=faculty?'/instructor.html':'/index.html';location.replace(BASE+target+(q?'?'+q:'')+'#lt='+encodeURIComponent(token))}
-if(token){goWithToken()}
+if(!token && params.get('guest')!=='1' && !['localhost','127.0.0.1'].includes(location.hostname)){
+  const entry=new URLSearchParams({sim:'rapid-08-later'});
+  if(params.get('session'))entry.set('session',params.get('session'));
+  if(params.get('course'))entry.set('course',params.get('course'));
+  location.replace('https://rapidsims.flexee.org/open.html?'+entry.toString());
+}
+else if(token){goWithToken()}
 else if(params.get('session')){
   sessionStorage.removeItem('m08-lt:'+params.get('session').trim().toUpperCase());
   document.getElementById('gate').hidden=true;
@@ -52,13 +58,13 @@ else{
   }
   button.onclick=verify;input.addEventListener('keydown',e=>{if(e.key==='Enter')verify()});
   standalone.onclick=showGate;
-  if(params.get('manual')==='1'||BASE!=='/sim08')showGate();
+  if(params.get('guest')==='1')showGate();
   else{
     gate.hidden=true;message.textContent='Checking your RapidSims sign-in…';
     platformLaunch('rapid-08-later').then(result=>{
       if(result.status==='launched')return;
       if(result.status==='not_entitled'){
-        message.textContent=result.message;courseLink.hidden=false;standalone.hidden=false;return;
+        message.textContent=result.message;courseLink.hidden=false;return;
       }
       showGate();if(result.status==='unavailable')err.textContent=result.message;
       input.focus();

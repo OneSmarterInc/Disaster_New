@@ -4,68 +4,57 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const launch = fs.readFileSync(path.join(__dirname, '../public/launch.html'), 'utf8')
-  .match(/<script>([\s\S]*?)<\/script>/)[1];
-const entry = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
-const entryRedirect = entry.match(/<script id="platform-entry-redirect">([\s\S]*?)<\/script>/)[1];
-const student = fs.readFileSync(path.join(__dirname, '../public/student.js'), 'utf8');
+const launchHtml = fs.readFileSync(path.join(__dirname, '../public/launch.html'), 'utf8');
+const launch = launchHtml.match(/<script>([\s\S]*?)<\/script>/)[1];
+const entryHtml = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
+const entryRedirect = entryHtml.match(/<script id="account-entry-redirect">([\s\S]*?)<\/script>/)[1];
 
-function redirectDestination({ hostname = 'sim04.vercel.app', search = '', hash = '', stored = {} } = {}) {
+function redirect(search = '', hash = '', hostname = 'sim04.vercel.app') {
   let destination;
-  const storage = new Map(Object.entries(stored));
   vm.runInNewContext(entryRedirect, {
-    location: { hostname, search, hash, replace(url) { destination = url; } },
-    sessionStorage: { getItem: key => storage.get(key) || null }, URLSearchParams, URL
+    location: { search, hash, hostname, replace(url) { destination = url; } }, URLSearchParams
   });
   return destination;
 }
 
-function launchPage(pathname, search = '', hash = '', result = { status: 'not_entitled', message: 'Not enrolled' }) {
-  const values = new Map(); let destination;
+async function launchPage(pathname, search = '', hash = '') {
+  const elements = new Map(); let destination;
   const element = id => {
-    if (!values.has(id)) values.set(id, { hidden: false, textContent: '', href: '', addEventListener() {} });
-    return values.get(id);
+    if (!elements.has(id)) elements.set(id, {
+      hidden: id === 'gate', value: '', textContent: '', disabled: false,
+      focus() {}, addEventListener() {}
+    });
+    return elements.get(id);
   };
+  const storage = new Map();
+  const fetch = async () => ({ ok: true, json: async () => ({}) });
   vm.runInNewContext(launch, {
     location: { pathname, search, hash, replace(url) { destination = url; } },
-    document: { getElementById: element }, sessionStorage: { setItem() {} },
-    URLSearchParams, atob: text => Buffer.from(text, 'base64').toString('binary'),
-    platformLaunch: async () => result
+    document: { getElementById: element },
+    sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
+    URLSearchParams, atob: s => Buffer.from(s, 'base64').toString('binary'), fetch
   });
-  return new Promise(resolve => setTimeout(() => resolve({ element, destination }), 0));
+  await new Promise(resolve => setTimeout(resolve, 0));
+  return { element, storage, destination: () => destination };
 }
 
 (async () => {
-  assert.equal(redirectDestination(), 'https://rapidsims.flexee.org/sim04/',
-    'a bare production Sim04 page goes through the signed RapidSims launch');
-  assert.equal(redirectDestination({ search: '?session=wn26h&course=course-123' }),
-    'https://rapidsims.flexee.org/session.html?sim=rapid-04-whose-number&session=WN26H&course=course-123',
-    'an old room link resumes through the account-bound class invitation');
-  assert.equal(redirectDestination({ search: '?standalone=1' }), 'https://rapidsims.flexee.org/sim04/',
-    'the standalone query cannot expose a student room-code path');
-  assert.equal(redirectDestination({ stored: { 'm04-access': 'entered' } }), 'https://rapidsims.flexee.org/sim04/',
-    'a saved legacy code cannot bypass the signed course launch');
-  assert.equal(redirectDestination({ hash: '#lt=signed-token' }), undefined,
-    'signed launches stay on Sim04');
-  assert.equal(redirectDestination({ hostname: 'localhost' }), undefined,
-    'local development does not redirect to production');
-
-  assert.doesNotMatch(entry, /Classroom code|Enter a room code instead|five-character room code/,
-    'the student entry page does not render a classroom-code prompt');
-  assert.doesNotMatch(launch, /Student access code|standalone-toggle|Use a standalone access code/,
-    'the launch page does not render an access-code prompt');
-  assert.doesNotMatch(student, /manual-room-toggle|Enter a room code instead/,
-    'the student script has no manual room-code fallback');
+  assert.equal(redirect(), 'https://rapidsims.flexee.org/open.html?sim=rapid-04-whose-number');
+  assert.equal(redirect('?session=ABCDE&course=c1'),
+    'https://rapidsims.flexee.org/open.html?sim=rapid-04-whose-number&session=ABCDE&course=c1');
+  assert.equal(redirect('?guest=1'), undefined, 'guest resumes without another account check');
+  assert.equal(redirect('', '#lt=signed-token'), undefined, 'signed student stays in the sim');
+  assert.equal(redirect('', '', 'localhost'), undefined);
+  assert.match(entryHtml, /id="joinForm"[^>]+hidden/, 'room-code form is hidden on signed student entry');
+  assert.match(launchHtml, /id="gate" hidden/, 'access-code gate starts hidden while account is checked');
 
   const direct = await launchPage('/launch.html');
-  assert.equal(direct.destination, 'https://rapidsims.flexee.org/sim04/',
-    'opening the Sim04 host always hands off to the signed course launch');
-  const oldDirectInvite = await launchPage('/launch.html', '?session=wn26h&course=course-123');
-  assert.equal(oldDirectInvite.destination,
-    'https://rapidsims.flexee.org/session.html?sim=rapid-04-whose-number&session=WN26H&course=course-123',
-    'a direct room invitation enters through the account-bound session page');
-  const coursePage = await launchPage('/sim04/launch.html');
-  assert.equal(coursePage.element('message').textContent, 'Not enrolled');
-  assert.equal(coursePage.element('course-link').hidden, false);
-  console.log('PASS Sim04 student access UI: signed course launch only, no classroom or access-code prompt');
+  assert.equal(direct.destination(), 'https://rapidsims.flexee.org/open.html?sim=rapid-04-whose-number');
+  const guest = await launchPage('/sim04/launch.html', '?guest=1');
+  assert.equal(guest.element('gate').hidden, false, 'guest sees the access-code gate');
+  guest.element('code').value = 'test-student-code';
+  await guest.element('open').onclick();
+  assert.equal(guest.destination(), '/sim04/index.html?guest=1');
+  assert.equal(guest.storage.get('m04-access'), 'test-student-code');
+  console.log('PASS Sim04 entry: signed students skip codes; guests keep access and room codes');
 })().catch(error => { console.error(error); process.exit(1); });

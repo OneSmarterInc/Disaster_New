@@ -24,7 +24,13 @@ const faculty=launch&&(launch.role==='faculty'||launch.role==='faculty_preview')
 if(faculty&&token)sessionStorage.setItem('m09-faculty-lt',token);
 const params=new URLSearchParams(location.search);params.delete('lt');const q=params.toString();
 function goWithToken(){const target=faculty?'/instructor.html':'/index.html';location.replace(BASE+target+(q?'?'+q:'')+'#lt='+encodeURIComponent(token))}
-if(token){goWithToken()}
+if(!token && params.get('guest')!=='1' && !['localhost','127.0.0.1'].includes(location.hostname)){
+  const entry=new URLSearchParams({sim:'rapid-09-money-land'});
+  if(params.get('session'))entry.set('session',params.get('session'));
+  if(params.get('course'))entry.set('course',params.get('course'));
+  location.replace('https://rapidsims.flexee.org/open.html?'+entry.toString());
+}
+else if(token){goWithToken()}
 else if(params.get('session')){
   sessionStorage.removeItem('m09-lt:'+params.get('session').trim().toUpperCase());
   document.getElementById('gate').hidden=true;
