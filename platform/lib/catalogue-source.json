@@ -274,7 +274,7 @@
   },
   "rapid-04-whose-number": {
     "tagline": "Twenty-five minutes to give the board one number.",
-    "description": "Ridgeway Dispatch needs one customer-retention figure. Use the quarter's records and your assigned definition to report a number, then compare how five valid definitions lead to different answers.",
+    "description": "Ridgeway Dispatch needs one customer-retention figure. Use the quarter’s records and your assigned definition to report a number, then compare how five valid definitions lead to different answers.",
     "detail": {
       "world": "Customer retention at a software company for trade businesses",
       "seat": "A team asked to report retention to the board",
@@ -292,19 +292,46 @@
       "durationNote": "25 minutes of play, plus discussion.",
       "tryIt": "Preview the activity before assigning it to students.",
       "catalogueFacts": [
-        { "label": "Play", "value": "Team or individual; at least three groups" },
-        { "label": "Before play", "value": "No advance reading" },
-        { "label": "Feedback", "value": "Discussion; no score" }
+        {
+          "label": "Play",
+          "value": "Team or individual; at least three groups"
+        },
+        {
+          "label": "Before play",
+          "value": "No advance reading"
+        },
+        {
+          "label": "Feedback",
+          "value": "Discussion; no score"
+        }
       ],
       "atAGlance": [
-        { "label": "Main task", "value": "Report one customer-retention figure" },
-        { "label": "Numbers", "value": "Use the supplied account records" },
-        { "label": "Play mode", "value": "Team or individual" }
+        {
+          "label": "Main task",
+          "value": "Report one customer-retention figure"
+        },
+        {
+          "label": "Numbers",
+          "value": "Use the supplied account records"
+        },
+        {
+          "label": "Play mode",
+          "value": "Team or individual"
+        }
       ],
       "beats": [
-        { "at": "Read", "what": "Examine the records and your private definition." },
-        { "at": "Commit", "what": "Submit one percentage and your confidence." },
-        { "at": "Discuss", "what": "Compare definitions after all figures are locked." }
+        {
+          "at": "Read",
+          "what": "Examine the records and your private definition."
+        },
+        {
+          "at": "Commit",
+          "what": "Submit one percentage and your confidence."
+        },
+        {
+          "at": "Discuss",
+          "what": "Compare definitions after all figures are locked."
+        }
       ]
     }
   },
