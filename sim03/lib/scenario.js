@@ -5,9 +5,9 @@
 const META = {
   "id": "rapid-03-midland",
   "replaces": [],
-  "catalogueRevision": "midland-v1-2026-09",
+  "catalogueRevision": "midland-v2-2026-09",
   "title": "Midland Equipment",
-  "tagline": "Spend a limited technology budget now. See the effects over three years.",
+  "tagline": "Two years to choose. The third year tells you what those choices bought.",
   "description": "You lead technology at a heating and cooling equipment company. Divide a $9 million annual budget among five areas for two years. Then see how those choices affect the business in a third year, when you can no longer change them.",
   "minutes": 30,
   "detail": {
