@@ -7,7 +7,7 @@
 const META = {
   "id": "rapid-01-disaster",
   "title": "Disaster or Breach?",
-  "catalogueRevision": "disaster-v2-2026-09",
+  "catalogueRevision": "disaster-v3-2026-09",
   "tagline": "Twenty minutes in a room where nobody knows what is wrong yet.",
   "description": "You lead operations at a company that runs customer IT systems. Several systems fail overnight. You must question four advisers, review new reports, and decide what to do before the cause is clear.",
   "minutes": 20,
@@ -90,9 +90,9 @@ const META = {
         "value": "Individual"
       }
     ],
-    "tryIt": "Try the complete activity before assigning it to students.",
+    "tryIt": "Try the complete simulation before assigning it to students.",
     "momentsIntro": "",
-    "roomIntro": "These are the people whose views you will consider during the activity."
+    "roomIntro": "These are the people whose views you will consider during the simulation."
   }
 };
 
