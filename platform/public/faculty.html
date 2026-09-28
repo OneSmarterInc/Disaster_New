@@ -61,7 +61,7 @@ function wirePager() {
 }
 
 async function api(path, payload) {
-  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const r = await fetch(path, { method:'POST', cache:'no-store', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) { const e = new Error(d.message || d.error || 'HTTP ' + r.status); e.body = d; throw e; }
   return d;
@@ -117,6 +117,26 @@ async function openCourse(id) {
   catch (e) { F.err = e.message; }
   render();
 }
+// Catalogue publication may change while a faculty member keeps a course open.
+// Fetch again when adding, including when every previously visible sim is attached.
+async function refreshSimulationChoices(button) {
+  const courseId = F.course.course.id;
+  const done = acting(button, 'Loading…');
+  try {
+    const fresh = await api('/api/faculty', { action:'course_detail', courseId });
+    if (F.view !== 'course' || F.course?.course.id !== courseId) return;
+    F.course = fresh;
+    F.data.catalogue = fresh.catalogue;
+    F.addSim = true;
+    F.err = null;
+  } catch (e) {
+    if (F.view !== 'course' || F.course?.course.id !== courseId) return;
+    F.err = 'Unable to refresh simulations: ' + e.message;
+    F.addSim = false;
+  } finally { done(); }
+  render();
+}
+
 async function openProgress(courseId, simId) {
   try { F.progress = await api('/api/faculty', { action:'sim_progress', courseId, simId }); F.view = 'played'; F.page.played = 1; F.err = null; }
   catch (e) { F.err = e.message; }
@@ -340,7 +360,7 @@ function renderCourse() {
     </div>` : ''}
 
     <div class="section"><span>Simulations in this course ${helpBtn('sims')}</span>
-      ${notAdded.length ? `<button class="btn sm" id="as">${F.addSim?'Cancel':'Add a simulation'}</button>` : ''}</div>
+      <button class="btn sm" id="as">${F.addSim?'Cancel':'Add a simulation'}</button></div>
 
     ${explain('sims', 'Playing it, and running it with a class', `<ol>
       <li><b>Play it yourself</b> takes you into the simulation as a student sees it. Worth doing once before you teach with it.</li>
@@ -349,7 +369,8 @@ function renderCourse() {
       <li><b>Who has played</b> shows who finished, how long they took, and a short summary the simulation reports back. Not a transcript; students keep their own.</li>
       <li>The expected number is a forecast, not a limit. Nobody is turned away.</li>
     </ol>`)}
-    ${F.addSim && notAdded.length ? `<div class="panel" style="padding:15px 16px;margin-bottom:12px">
+    ${F.addSim ? `<div class="panel" style="padding:15px 16px;margin-bottom:12px">
+      ${notAdded.length ? `
       <div class="field">
         <div><label class="f">Simulation</label>
           <select id="a_sim">${notAdded.map(si => `<option value="${esc(si.id)}">${esc(simLabel(si))}</option>`).join('')}</select></div>
@@ -357,6 +378,8 @@ function renderCourse() {
         <div style="flex:0 0 auto;align-self:flex-end"><button class="btn pri" id="a_go">Add</button></div>
       </div>
       <div class="hint" style="margin:0">The number is a forecast, not a limit — nobody is turned away if more enrol.</div>
+      ` : '<p class="hint">Every simulation currently available to you is already in this course.</p>'}
+      <button class="btn sm" id="refresh-sims" style="margin-top:10px">Refresh list</button>
     </div>` : ''}
 
     <div class="panel" style="margin-bottom:26px">
@@ -469,7 +492,12 @@ function renderCourse() {
     }
   };
   const as = document.getElementById('as');
-  if (as) as.onclick = () => { F.addSim = !F.addSim; render(); };
+  if (as) as.onclick = () => {
+    if (F.addSim) { F.addSim = false; render(); return; }
+    return refreshSimulationChoices(as);
+  };
+  const refreshSims = document.getElementById('refresh-sims');
+  if (refreshSims) refreshSims.onclick = () => refreshSimulationChoices(refreshSims);
   const ag = document.getElementById('a_go');
   if (ag) ag.onclick = async () => {
     const done = acting(ag, 'Adding…');
@@ -758,3 +786,4 @@ function wireCommon() {
 </script>
 </body>
 </html>
+

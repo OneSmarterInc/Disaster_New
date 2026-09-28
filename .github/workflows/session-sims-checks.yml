@@ -5,6 +5,9 @@ on:
     paths:
       - 'platform/api/launch.js'
       - 'platform/api/student.js'
+      - 'platform/api/faculty.js'
+      - 'platform/public/faculty.html'
+      - 'platform/tools/course-catalogue-check.js'
       - 'platform/api/session-enrolments.js'
       - 'platform/lib/**'
       - 'platform/public/session-entry.js'
@@ -19,6 +22,9 @@ on:
     paths:
       - 'platform/api/launch.js'
       - 'platform/api/student.js'
+      - 'platform/api/faculty.js'
+      - 'platform/public/faculty.html'
+      - 'platform/tools/course-catalogue-check.js'
       - 'platform/api/session-enrolments.js'
       - 'platform/lib/**'
       - 'platform/public/session-entry.js'
@@ -46,3 +52,5 @@ jobs:
         run: node platform/tools/new-sims-entry-check.js
       - name: Sim07 and Sim08 catalogue registration lifetime
         run: node platform/tools/new-sims-registration-check.js
+      - name: Course catalogue refresh and published simulation assignment
+        run: node platform/tools/course-catalogue-check.js

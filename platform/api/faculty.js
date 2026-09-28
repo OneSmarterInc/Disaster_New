@@ -34,6 +34,7 @@ async function ownCourse(s, facultyId, courseId) {
 }
 
 module.exports = async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const me = await A.requireRole(req, res, 'faculty', 'admin');
   if (!me) return;
@@ -355,3 +356,4 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'server_error', message: e.message });
   }
 };
+
