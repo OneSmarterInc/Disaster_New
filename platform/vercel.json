@@ -125,6 +125,14 @@
       "destination": "https://sim07.vercel.app/launch.html"
     },
     {
+      "source": "/sim07/demo",
+      "destination": "https://sim07.vercel.app/index.html"
+    },
+    {
+      "source": "/sim07/demo/",
+      "destination": "https://sim07.vercel.app/index.html"
+    },
+    {
       "source": "/sim07/:path*",
       "destination": "https://sim07.vercel.app/:path*"
     },
