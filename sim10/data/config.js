@@ -5,9 +5,9 @@ module.exports = {
   "simId": "rapid-10-bubble",
   "route": "/sim10",
   "title": "Infrastructure or Bubble?",
-  "tagline": "Read a company's figures. Is it building lasting value or caught in a bubble?",
+  "tagline": "Two quarters of a real company. One call: infrastructure or bubble?",
   "minutes": 45,
-  "catalogueRevision": "sim10-v2",
+  "catalogueRevision": "sim10-v3",
   "description": "Read two quarters of financial information from a real company whose name is hidden. Decide whether its business is supported by the evidence, explain your judgment, and say what would change your mind. Then learn its identity and what happened later.",
   "detail": {
     "world": "Technology infrastructure · financial analysis",
