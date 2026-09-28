@@ -60,6 +60,13 @@ module.exports = async (req, res) => {
       return faculty(req, b) ? res.status(200).json({ ok: true })
         : error(res, 401, 'faculty_authorization_required');
     }
+    if (action === 'course_sessions') {
+      const who = access(req, b);
+      if (!who?.platform || who.role !== 'student' || !who.courseId) {
+        return error(res, 403, 'student_course_required', 'Open Sim04 from a course where you have access.');
+      }
+      return res.status(200).json({ sessions: await store.courseSessions(who.courseId) });
+    }
     if (action === 'create') {
       const who = faculty(req, b);
       if (!who) return error(res, 401, 'faculty_authorization_required');

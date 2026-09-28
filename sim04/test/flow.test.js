@@ -31,6 +31,9 @@ store.createSession = async (code, session) => {
   sessions.set(code, structuredClone(session)); return true;
 };
 store.getSession = async code => sessions.has(code) ? structuredClone(sessions.get(code)) : null;
+store.courseSessions = async courseId => [...sessions.values()]
+  .filter(session => session.platformAuth && session.courseId === courseId && session.state !== 'complete' && session.stage < 3)
+  .map(({ code, name, mode, state, stage }) => ({ code, name, mode, state, stage }));
 store.compareAndSetSession = async (code, previous, next) => {
   if (JSON.stringify(sessions.get(code)) !== JSON.stringify(previous)) return false;
   sessions.set(code, structuredClone(next)); return true;
@@ -86,10 +89,19 @@ async function call(payload, launch = teacher, extraHeaders = {}) {
     assert.equal(redirect.status, 302);
     assert.equal(redirect.path, '../launch.html?session=' + direct.body.session.code + '&standalone=1');
   });
-  const created = await call({ action: 'create', mode: 'team', count: 3, clockMinutes: 1 });
-  assert.equal(created.status, 200);
-  const code = created.body.session.code;
-  await check('registration states explicit identity, number and canonical route', () => {
+const created = await call({ action: 'create', mode: 'team', count: 3, clockMinutes: 1 });
+assert.equal(created.status, 200);
+const code = created.body.session.code;
+await check('student course launch lists only open rooms for its course', async () => {
+  const listed = await call({ action: 'course_sessions' }, students[0]);
+  assert.equal(listed.status, 200);
+  assert.deepEqual(listed.body.sessions.map(session => session.code), [code]);
+  const otherCourse = signBack({ sub: 'other', name: 'other', role: 'student', sim: config.simId,
+    course: 'different-course', mode: 'play', iat: now, exp: now + 600000 });
+  assert.deepEqual((await call({ action: 'course_sessions' }, otherCourse)).body.sessions, []);
+  assert.equal((await call({ action: 'course_sessions' }, teacher)).status, 403);
+});
+await check('registration states explicit identity, number and canonical route', () => {
     const r = requests.find(x => x.url === 'https://platform.test/api/register');
     assert.equal(r.payload.sim, config.simId); assert.equal(r.payload.number, 4);
     assert.equal(r.payload.launchUrl, process.env.SIM_URL);

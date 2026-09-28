@@ -5,6 +5,7 @@ const url = () => process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_
 const token = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const TTL = 48 * 3600;
 const key = code => `m04:sess:${code}`;
+const courseKey = courseId => `m04:course:${Buffer.from(String(courseId)).toString('base64url')}`;
 function configured() { return !!(url() && token()); }
 async function cmd(args) {
   if (!configured()) throw new Error('Session storage is not configured.');
@@ -21,14 +22,46 @@ if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1] then return 0 end
 redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
 return 1
 `;
+const CREATE_WITH_COURSE_INDEX = `
+if redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2], 'NX') then
+  redis.call('SADD', KEYS[2], ARGV[3])
+  redis.call('EXPIRE', KEYS[2], ARGV[2])
+  return 1
+end
+return 0
+`;
+
+async function getSession(code) {
+  const raw = await cmd(['GET', key(code)]);
+  return raw ? JSON.parse(raw) : null;
+}
+
 module.exports = {
   configured,
-  async getSession(code) {
-    const raw = await cmd(['GET', key(code)]);
-    return raw ? JSON.parse(raw) : null;
-  },
+  getSession,
   async createSession(code, session) {
+    if (session.platformAuth && session.courseId) {
+      return Number(await cmd(['EVAL', CREATE_WITH_COURSE_INDEX, '2', key(code), courseKey(session.courseId),
+        JSON.stringify(session), String(TTL), code])) === 1;
+    }
     return (await cmd(['SET', key(code), JSON.stringify(session), 'EX', String(TTL), 'NX'])) === 'OK';
+  },
+  async courseSessions(courseId) {
+    const index = courseKey(courseId);
+    const codes = await cmd(['SMEMBERS', index]) || [];
+    const active = [];
+    for (const code of Array.isArray(codes) ? codes : []) {
+      const session = await getSession(code);
+      if (!session || !session.platformAuth || String(session.courseId) !== String(courseId) ||
+          session.state === 'complete' || session.stage >= 3) {
+        await cmd(['SREM', index, code]);
+        continue;
+      }
+      active.push({ code: session.code, name: session.name, mode: session.mode,
+        state: session.state, stage: session.stage });
+    }
+    if (active.length) await cmd(['EXPIRE', index, String(TTL)]);
+    return active.sort((a, b) => String(a.name).localeCompare(String(b.name)) || a.code.localeCompare(b.code));
   },
   async compareAndSetSession(code, previous, next) {
     return Number(await cmd(['EVAL', CAS, '1', key(code), JSON.stringify(previous), JSON.stringify(next), String(TTL)])) === 1;
