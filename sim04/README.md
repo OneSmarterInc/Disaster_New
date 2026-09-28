@@ -23,6 +23,14 @@ handover. `node test/gate-data.test.js` checks those source materials.
    reports launched participants to the platform; the instructor can retry a
    failed callback.
 
+For direct access, students enter `ACCESS_CODE` and then the five-character
+room code created by the instructor. A standalone invitation link carries the
+room code but still asks for the student access code. Instructors use the link
+on the access page and enter `FACULTY_CODE` (or one of `FACULTY_CODES`) once to
+create or reopen a room. A student access code does not grant instructor access.
+Signed platform launches go directly to the appropriate student or instructor
+view without a separate direct-access code.
+
 ## Checks
 
 Run `npm test` and `npm run build` from `sim04/`. These use Node 20 or later

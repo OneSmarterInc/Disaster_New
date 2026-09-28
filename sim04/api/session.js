@@ -56,6 +56,10 @@ module.exports = async (req, res) => {
   if (!store.configured()) return error(res, 503, 'no_store', 'Session storage is not configured.');
   const b = body(req), action = String(b.action || ''), code = String(b.code || '').trim().toUpperCase();
   try {
+    if (action === 'faculty_access') {
+      return faculty(req, b) ? res.status(200).json({ ok: true })
+        : error(res, 401, 'faculty_authorization_required');
+    }
     if (action === 'create') {
       const who = faculty(req, b);
       if (!who) return error(res, 401, 'faculty_authorization_required');
