@@ -1,6 +1,6 @@
 # Catalogue content
 
-Each of the ten shipped simulations has a plain-language description covering
+Each of the eleven shipped simulations has a plain-language description covering
 the situation, student role, actions, output, learning goals, time, play mode,
 preparation, steps, feedback, and class discussion. Public descriptions must not
 reveal case answers, company identities held for a reveal, or interview tactics.
@@ -25,8 +25,8 @@ create records, publish a sim, change a duration, rename an ID, or move course
 history. Existing Wexford aliases get Wexford copy only when their title already
 identifies that case; other historical uses of those IDs are preserved.
 
-Durations and gameplay are unchanged. RapidSim+ 01 remains listed at 180 minutes
-for a full class; its suggested activities total 155 minutes. Its catalogue now
-states both clearly. The separate 70-minute and question-starter proposals still
-need the teaching decision. The observation description now correctly says ten
-minutes, matching the student clock.
+RapidSim+ 01 is listed at 70 minutes of play. Its detailed session guidance may
+still describe a longer full-class plan including the brief, break, and discussion.
+Generic question starters appear only before the student's first interview question;
+after that, students formulate their own questions. The observation description
+correctly says ten minutes, matching the student clock.
