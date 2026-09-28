@@ -84,6 +84,10 @@ function createApp({ store: injectedStore, clock = () => Date.now() } = {}) {
       if (req.method === 'GET' && /^\/[a-z0-9-]+\.(css|js|svg)$/.test(p)) return serveStatic(res, p.slice(1));
 
       if (p === '/api/manifest') return send(res, 200, { simId: config.simId, title: config.title, tagline: config.tagline, description: config.description, minutes: config.minutes, route: config.route });
+      if (req.method === 'GET' && p === '/api/access') {
+        if (!launch) standaloneOk(req);
+        return send(res, 200, { ok: true });
+      }
       if (req.method === 'GET' && p === '/api/whoami') {
         const f = facultyOf(req, launch);
         return send(res, 200, { faculty: !!f, platform: !!(f && f.platformAuth), student: !!launch && !L.isFaculty(launch) });

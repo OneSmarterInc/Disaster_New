@@ -29,11 +29,12 @@ Its own Vercel project; `vercel.json` sends every path to `api/index.js`. Variab
 | `ACCESS_CODE`, `FACULTY_CODES` | Optional standalone access. Unset means closed, as in sim08 |
 | `DEV_OPEN` | Never set on Vercel |
 
-The production domain is still required before the platform `/sim10` rewrites can be activated. Do not assume the project name is its domain. On the first application API request the sim announces itself to `PLATFORM_URL/api/register` and appears in the admin catalogue unpublished. The health endpoint is read-only.
+The production origin is `https://sim10.vercel.app`; the platform `/sim10` rewrites point to it. Deploy the platform configuration as well as this sim. On the first application API request the sim announces itself to `PLATFORM_URL/api/register` and appears in the admin catalogue unpublished. The health endpoint is read-only.
 
 ## Platform contract (matches `platform/lib/launch.js` and sim08)
 
 - Token arrives as `#lt=` or `?lt=`, is kept for the tab and scoped to each run/session, and is sent as `X-Launch-Token` on every call. It must name `sim: rapid-10-bubble`, a person (`sub`) and a role of `student`, `faculty` or `faculty_preview`.
+- A direct visit asks for `ACCESS_CODE` before showing play/join options. Signed platform launches skip this prompt after server verification. Remembered codes are revalidated on refresh.
 - Student Play offers a private individual run with one or two companies. The reading and decision clocks start immediately; the owner releases each reveal afterward. Solo sessions cannot be joined or controlled by others.
 - Faculty launched with `mode: session` land on setup. Their sessions are bound to their course; students join through the platform's session page and are identified as `platform:<sub>`.
 - After the last company's outcome is revealed, each platform student's calls, lines and reasons are reported to `PLATFORM_URL/api/complete`.

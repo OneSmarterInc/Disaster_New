@@ -65,7 +65,7 @@ let announced = null;
 function announce(meta, selfUrl) {
   if (announced) return announced;
   const base = (process.env.PLATFORM_URL || '').replace(/\/$/, '');
-  if (!base || !meta) return Promise.resolve();
+  if (!base || !meta) return Promise.resolve({ ok: false, reason: 'not_configured' });
 
   const token = signBack({
     kind: 'register',
@@ -81,7 +81,7 @@ function announce(meta, selfUrl) {
     iat: Date.now(),
     exp: Date.now() + 5 * 60000
   });
-  if (!token) return Promise.resolve();
+  if (!token) return Promise.resolve({ ok: false, reason: 'not_configured' });
 
   announced = fetch(base + '/api/register', {
     method: 'POST',
@@ -91,9 +91,11 @@ function announce(meta, selfUrl) {
   }).then(async (r) => {
     if (!r.ok) throw new Error(`announce refused ${r.status}: ${await r.text().catch(() => '')}`);
     console.log('announced', meta.id, 'to', base);
+    return { ok: true };
   }).catch((e) => {
     console.error('announce failed', e.message);
     announced = null;
+    return { ok: false, reason: 'failed' };
   });
   return announced;
 }

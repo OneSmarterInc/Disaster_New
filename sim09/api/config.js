@@ -13,7 +13,10 @@ module.exports = async (req, res) => {
   // and faculty launched from RapidSims never have to type the standalone code.
   // Keep registration inside the request lifetime, including code-entry probes.
   // Failure remains non-blocking for access and is retried on the next request.
-  await announceOnce(req);
+  const registration = await announceOnce(req);
+  // Expose only the registration outcome, never secrets or catalogue contents.
+  // This remains visible on a code-entry response so setup can be diagnosed.
+  res.setHeader('X-Catalogue-Registration', registration?.ok ? 'registered' : registration?.reason || 'failed');
   if (!await checkConfigAccess(req, res)) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   return res.status(200).json({ ...S.publicConfig(), platformUrl: process.env.PLATFORM_URL || 'https://rapidsims.flexee.org' });

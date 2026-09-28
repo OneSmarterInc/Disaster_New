@@ -18,6 +18,13 @@ if (!document.querySelector('base')) {
 <body>
 <main class="wrap narrow">
   <h1>Infrastructure or Bubble?</h1>
+  <form id="access-gate" autocomplete="off">
+    <p>Enter the access code supplied by your instructor or administrator.</p>
+    <div class="field"><label for="entry-code">Access code</label><input id="entry-code" type="password" autocomplete="off" required></div>
+    <p class="error" id="entry-error" role="alert"></p>
+    <button class="btn" id="entry-open" type="submit">Open simulation</button>
+  </form>
+  <div id="entry-options" hidden>
   <section id="solo" hidden>
     <h2>Play on your own</h2>
     <p>Read the figures, make your call, then explore what happened. Your reading and decision timers start when you begin.</p>
@@ -51,21 +58,55 @@ if (!document.querySelector('base')) {
     <p class="error" id="err" role="alert"></p>
     <button class="btn" id="go" type="submit">Join</button>
   </form>
+  </div>
 </main>
 <script src="common.js"></script>
 <script>
 const form = $('#join'), codeEl = $('#code'), teamField = $('#team-field'), teamEl = $('#team'), err = $('#err');
-const who = launchInfo();
-if (who && (who.role === 'faculty' || who.role === 'faculty_preview') && who.mode === 'session') location.replace('host');
+let who = launchInfo(), entryAllowed = false;
 const preset = new URLSearchParams(location.search).get('session');
 if (preset) codeEl.value = preset.toUpperCase();
-if (!preset && who?.mode !== 'session') $('#solo').hidden = false;
-$('#host-link').hidden = !who || !['faculty', 'faculty_preview'].includes(who.role);
 const soloResume = $('#solo-resume');
 let savedSolo = null;
-try { savedSolo = JSON.parse(sessionStorage.getItem(soloKey()) || 'null'); } catch {}
-soloResume.hidden = !savedSolo?.code || !savedSolo?.pid;
+function showEntry() {
+  entryAllowed = true;
+  $('#access-gate').hidden = true;
+  $('#entry-options').hidden = false;
+  $('#solo').hidden = !!preset || who?.mode === 'session';
+  $('#host-link').hidden = !who || !['faculty', 'faculty_preview'].includes(who.role);
+  savedSolo = null;
+  try { savedSolo = JSON.parse(sessionStorage.getItem(soloKey()) || 'null'); } catch {}
+  soloResume.hidden = !savedSolo?.code || !savedSolo?.pid;
+}
+async function verifyEntry() {
+  const button = $('#entry-open'); button.disabled = true;
+  $('#entry-error').textContent = '';
+  try {
+    await api('GET', 'api/access');
+    if (who && ['faculty', 'faculty_preview'].includes(who.role) && who.mode === 'session') { location.replace('host'); return; }
+    showEntry();
+    if (preset && launchToken()) await go();
+  } catch (e) {
+    entryAllowed = false;
+    $('#entry-options').hidden = true;
+    $('#access-gate').hidden = false;
+    if (e.code === 'unauthorized') sessionStorage.removeItem('s10-access');
+    $('#entry-error').textContent = e.code === 'unauthorized' ? 'Enter a valid access code.' : e.message;
+  } finally { button.disabled = false; }
+}
+$('#access-gate').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if ($('#entry-open').disabled) return;
+  const code = $('#entry-code').value.trim();
+  if (!code) { $('#entry-error').textContent = 'Enter your access code.'; return; }
+  // An explicit code entry chooses standalone access, including after an old
+  // platform launch has expired. Verification still happens on the server.
+  sessionStorage.removeItem(launchKey); who = null;
+  sessionStorage.setItem('s10-access', code);
+  await verifyEntry();
+});
 function openRun(run) {
+  if (!entryAllowed) return;
   sessionStorage.setItem(participantKey(run.code), run.pid);
   rememberLaunch(run.code);
   location.href = `play?code=${encodeURIComponent(run.code)}`;
@@ -73,6 +114,7 @@ function openRun(run) {
 soloResume.addEventListener('click', () => openRun(savedSolo));
 $('#solo-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (!entryAllowed) return;
   const btn = $('#solo-start'), error = $('#solo-error');
   if (btn.disabled) return;
   error.textContent = '';
@@ -91,6 +133,7 @@ $('#solo-form').addEventListener('submit', async (e) => {
 let info = null;
 codeEl.addEventListener('input', () => { info = null; teamField.hidden = true; err.textContent = ''; });
 async function go() {
+  if (!entryAllowed) return;
   if ($('#go').disabled) return;
   $('#go').disabled = true;
   err.textContent = '';
@@ -119,7 +162,17 @@ async function go() {
   } finally { $('#go').disabled = false; }
 }
 form.addEventListener('submit', (e) => { e.preventDefault(); go(); });
-if (preset && launchToken()) go();
+async function initEntry() {
+  // A platform invitation goes through account sign-in, not a standalone code.
+  if (preset && !launchToken()) {
+    try {
+      const session = await api('GET', `api/session?code=${encodeURIComponent(preset)}`);
+      if (session.platform) { location.replace(session.joinUrl); return; }
+    } catch (e) { $('#entry-error').textContent = e.message; return; }
+  }
+  await verifyEntry();
+}
+initEntry();
 </script>
 </body>
 </html>

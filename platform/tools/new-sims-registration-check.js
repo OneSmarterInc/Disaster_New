@@ -10,11 +10,11 @@ let assertions = 0;
 function check(value, message) { assert.ok(value, message); assertions++; }
 
 function call(handler, headers = {}) {
-  const response = { statusCode: null, body: null };
+  const response = { statusCode: null, body: null, headers: {} };
   const res = {
     status(code) { response.statusCode = code; return this; },
     json(body) { response.body = body; return this; },
-    setHeader() {}, end() { return this; }
+    setHeader(name, value) { response.headers[name] = value; }, end() { return this; }
   };
   return { response, done: handler({ method: 'GET', headers, query: {} }, res) };
 }
@@ -54,6 +54,8 @@ function sign(payload) {
       await first.done;
       check(first.response.statusCode === 401 && first.response.body.error === 'access_code_required',
         id + ': registration never bypasses standalone access');
+      if (number === '09') check(first.response.headers['X-Catalogue-Registration'] === (failFirst ? 'failed' : 'registered'),
+        id + ': access gate reports registration outcome without exposing secrets');
       check(requests.length === 1, id + ': failed attempt is not restarted within the same request');
 
       const launch = sign({ sim: id, sub: 'test-student', role: 'student', exp: Date.now() + 60000 });
@@ -66,6 +68,7 @@ function sign(payload) {
       }
       await second.done;
       check(second.response.statusCode === 200, id + ': signed student still enters without access code');
+      if (number === '09') check(second.response.headers['X-Catalogue-Registration'] === 'registered', id + ': successful retry confirms registration');
     }
   }
   console.log('Registration checks passed: ' + assertions + ' assertions');

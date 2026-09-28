@@ -51,7 +51,7 @@ async function page(url, call, ss = storage(), kind = 'index') {
     const match = tag.match(/src="([^"]+)"/);
     let code = match ? fs.readFileSync(path.join(publicDir, match[1]), 'utf8') : tag.replace(/^<script>/, '').replace(/<\/script>$/, '');
     if (match && match[1] === 'play.js') continue; // Render is covered by syntax checks, not a fake layout engine.
-    code = code.replace('if (preset && launchToken()) go();', 'globalThis.ready = preset && launchToken() ? go() : Promise.resolve();');
+    code = code.replace(/initEntry\(\);\s*$/, 'globalThis.ready = initEntry();');
     vm.runInContext(code, ctx);
   }
   if (ctx.ready) await ctx.ready;
@@ -75,6 +75,8 @@ async function check({ call, tok }) {
     const root = await page(`https://fixture/sim10#lt=${token}`, call);
     assert.equal(root.base(), '/sim10/');
     assert.equal(root.el('solo').hidden, false);
+    assert.equal(root.el('entry-options').hidden, false, 'valid platform Play bypasses the standalone gate');
+    assert.equal(root.el('access-gate').hidden, true);
     root.el('solo-cases').value = 'A';
     await root.submit('solo-form');
     const next = new URL(root.target()); const code = next.searchParams.get('code');
@@ -105,6 +107,29 @@ async function check({ call, tok }) {
     assert(second.requests.every(p => p.startsWith('/sim10/api/')));
     const unknown = await page('https://fixture/sim10/?session=ZZZZ2', call, root.ss);
     assert.equal(unknown.run('launchToken()'), null, 'a different invitation does not borrow a prior account token');
+
+    process.env.ACCESS_CODE = 'entry-code-test';
+    try {
+      const direct = await page('https://fixture/sim10/', call);
+      assert.equal(direct.el('access-gate').hidden, false);
+      assert.equal(direct.el('entry-options').hidden, true, 'direct visitor sees no play/join choices before code verification');
+      direct.el('entry-code').value = 'wrong'; await direct.submit('access-gate');
+      assert.equal(direct.el('entry-options').hidden, true);
+      assert.equal(direct.ss.getItem('s10-access'), null, 'wrong code is not remembered');
+      direct.el('entry-code').value = 'entry-code-test'; await direct.submit('access-gate');
+      assert.equal(direct.el('entry-options').hidden, false);
+      assert.equal(direct.el('access-gate').hidden, true);
+      const refreshed = await page('https://fixture/sim10/', call, direct.ss);
+      assert.equal(refreshed.el('entry-options').hidden, false, 'remembered code is revalidated on refresh');
+      process.env.ACCESS_CODE = 'rotated-code';
+      const rotated = await page('https://fixture/sim10/', call, direct.ss);
+      assert.equal(rotated.el('entry-options').hidden, true, 'revoked code closes the entry gate');
+      const forged = await page('https://fixture/sim10/#lt=not.a.valid.token', call);
+      assert.equal(forged.el('entry-options').hidden, true, 'invalid launch cannot bypass the gate');
+      assert(forged.el('entry-error').textContent.includes('RapidSims'));
+      const invitation = await page(`https://fixture/sim10/?session=${classCode}`, call);
+      assert(new URL(invitation.target()).pathname === '/session.html', 'unsigned class invitation goes to platform sign-in');
+    } finally { delete process.env.ACCESS_CODE; }
 
     // The completion endpoint can return HTTP 200 with reported:false after a
     // transient platform failure. The shipped player must retry that too.

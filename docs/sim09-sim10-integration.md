@@ -15,9 +15,10 @@ current catalogue rather than using the snapshot from when the course was opened
 
 ## Deployment status and order
 
-The two production Vercel domains have not yet been supplied or verified. The
-platform's live rewrites intentionally do not contain guessed destinations for
-`/sim09` or `/sim10`. Code integration alone does not activate those URLs.
+The confirmed production origins are `https://sim09.vercel.app` and
+`https://sim10.vercel.app`. Their entry, health and application endpoints respond.
+The six proxy mappings below are configured in `platform/vercel.json`; the
+platform deployment must include this configuration for the canonical URLs to work.
 
 1. Import `OneSmarterInc/Disaster_New` as two Vercel projects, using the respective
    Root Directory above, branch **main**, framework **Other**. Both commit
@@ -27,16 +28,18 @@ platform's live rewrites intentionally do not contain guessed destinations for
 2. Set the Production environment variables below on **each sim project** and
    deploy. Environment changes require a new deployment. Preview environments
    should use a test platform/store if they are configured.
-3. Confirm each real production origin. Check its `/api/health` response: the
+3. Check each production origin's `/api/health` response: the
    `sim` field must match the catalogue ID above. These probes are read-only.
-4. Add the mappings below to `platform/vercel.json` using the confirmed origins,
-   plus the same noindex/no-store headers as Sim07/08, and deploy **disaster-new**
+4. Deploy the committed proxy mappings and noindex/no-store headers on **disaster-new**
    (Root Directory `platform`). No additional platform environment variables or
    database schema migrations are required for these sims.
 5. Verify the canonical health, asset and entry routes. Then visit
    `/sim09/api/config` and `/sim10/api/manifest` to trigger awaited signed
    registration. Sim09 may return 401 for the unsigned config probe after the
-   registration attempt. A failed announcement retries on a later application
+   registration attempt. Its `X-Catalogue-Registration` response header reports
+   `registered`, `not_configured`, or `failed` without exposing secrets. A
+   successful registration still needs admin publication. A failed announcement
+   retries on a later application
    request. Health probes never register a sim.
 6. In the admin catalogue, review the draft entries and test Play, faculty class
    setup, signed invitations, refresh and completion under the correct course.
@@ -64,20 +67,16 @@ database is needed. Keep secret values in Vercel environment settings, not Git.
 Sim10 permits in-memory sessions and accelerated clocks only in explicit local
 development with `DEV_OPEN=1`; that bypass is disabled on Vercel.
 
-### Proxy mappings to activate once origins are confirmed
-
-`SIM09_ORIGIN` and `SIM10_ORIGIN` below are documentation placeholders for the
-confirmed `https://...vercel.app` origins, **not environment variable names**.
-Vercel rewrite destinations must contain the actual URLs.
+### Configured proxy mappings
 
 | Platform source | Destination |
 | --- | --- |
-| `/sim09` | `SIM09_ORIGIN/launch.html` |
-| `/sim09/` | `SIM09_ORIGIN/launch.html` |
-| `/sim09/:path*` | `SIM09_ORIGIN/:path*` |
-| `/sim10` | `SIM10_ORIGIN/` |
-| `/sim10/` | `SIM10_ORIGIN/` |
-| `/sim10/:path*` | `SIM10_ORIGIN/:path*` |
+| `/sim09` | `https://sim09.vercel.app/launch.html` |
+| `/sim09/` | `https://sim09.vercel.app/launch.html` |
+| `/sim09/:path*` | `https://sim09.vercel.app/:path*` |
+| `/sim10` | `https://sim10.vercel.app/` |
+| `/sim10/` | `https://sim10.vercel.app/` |
+| `/sim10/:path*` | `https://sim10.vercel.app/:path*` |
 
 Sim10's root is its play/join page; it has no `launch.html`. Its `<base>` handling
 keeps assets and APIs under `/sim10/`, including when Vercel serves static HTML
@@ -89,6 +88,10 @@ directly. The app handler supports both origin paths and prefixed paths.
 - Sim09 starts a private run for a signed student. Direct guests enter a name
   after the access-code gate. The existing statement/allocation/history flow is
   preserved; class history remains under instructor control.
+- Direct Sim10 entry verifies `ACCESS_CODE` before showing play/join options.
+  Valid platform launches open directly; account invitations go to platform
+  sign-in. Remembered codes are rechecked, and a missing code configuration
+  keeps direct entry closed.
 - Sim10 Play offers one or two companies and starts a private timed run. After
   the decision clock closes, its owner opens each reveal and starts the next
   company. Private runs have no join link and do not expose host keys.
@@ -121,6 +124,6 @@ HTTP handler and shipped entry scripts. They cover course isolation, account
 switches, invitation entry, timers, private/class controls, staged completion,
 registration lifetime and retry. DOM fixtures run in Node VM; they are not a live
 browser or production Redis test. Production routing and a full student/faculty
-browser smoke test remain necessary after the two deployment origins are known.
+browser smoke test remain necessary after deployment.
 
 Build configuration reference: [Vercel project configuration](https://vercel.com/docs/project-configuration/vercel-json).
