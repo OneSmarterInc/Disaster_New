@@ -56,8 +56,12 @@ function checkWiring(overrides = {}) {
   if (process.env.VERCEL && process.env.SIM_URL !== 'https://rapidsims.flexee.org/sim04') problems.push('Vercel SIM_URL must be set explicitly');
   if (/req\.headers\[['"](?:host|x-forwarded-host)['"]\]/.test(overrides.launch ?? read('lib/launch.js'))) problems.push('registration derives address from request host');
   const platform = overrides.platform || JSON.parse(read('../platform/vercel.json'));
-  for (const route of ['/sim04', '/sim04/', '/sim04/:path*']) {
-    if (!platform.rewrites.some(r => r.source === route && r.destination.startsWith('https://sim04.vercel.app/'))) problems.push(`platform route missing: ${route}`);
+  const routes = ['/sim04', '/sim04/', '/sim04/:path*'];
+  const simRoutes = routes.map(route => platform.rewrites.find(r => r.source === route));
+  const alias = simRoutes[0]?.destination?.replace(/\/launch\.html$/, '').replace(/\/$/, '');
+  for (const [index, route] of routes.entries()) {
+    const rewrite = simRoutes[index];
+    if (!rewrite || !alias || !rewrite.destination.startsWith(alias + '/')) problems.push(`platform route missing: ${route}`);
   }
   if (!(overrides.sessionSims ?? read('../platform/lib/session-sims.js')).includes(META.id)) problems.push('platform session launch id missing');
   if (!(overrides.catalogue || JSON.parse(read('../platform/lib/catalogue-source.json')))[META.id]) problems.push('catalogue detail missing');
