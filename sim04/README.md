@@ -6,6 +6,19 @@ handover. `node test/gate-data.test.js` checks those source materials.
 
 ## Flow
 
+The normal student launch is self-paced. One student starts immediately, with
+their own definition and 25-minute timer. No faculty room, Start action, or
+minimum class size is required. After committing a report (or time expiring),
+the student opens the numbers, then the explanation, then finishes the session.
+The debrief uses five labelled worked examples computed from the data pack.
+Completion is sent to the course automatically, with a student retry button if
+delivery fails. Refreshing the saved run preserves its definition, timer and
+locked report. Guest access-code play also supports an individual run.
+
+Older classroom links also start a private student run. Existing instructor-led
+room APIs remain available for the faculty console; the normal student screen
+does not join or wait in their lobbies. The retained class-room API flow is:
+
 1. A facilitator creates a room, explicitly choosing team or individual mode
    and at least three groups. The clock defaults to 25 minutes.
 2. Participants use the signed platform invitation. In team mode, joiners are
@@ -40,7 +53,8 @@ view without a separate direct-access code.
 Run `npm test` and `npm run build` from `sim04/`. These use Node 20 or later
 and install no dependencies. The test covers the full three-group flow and
 the seven-group sheet cycle, automatic assignment, lobby moves, empty-slot
-removal, and private-check authentication in a new tab. The build checks student
+removal, private-check authentication in a new tab, self-paced entry, private
+run ownership, staged debrief access and student completion delivery. The build checks student
 bundle leaks, spoiler wording, forbidden terms, config and deployment wiring.
 Runtime diagnostics are available through
 `/api/health` with `x-health-key` when `HEALTH_SECRET` is set.

@@ -3,61 +3,99 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-
 const source = fs.readFileSync(path.join(__dirname, '../public/student.js'), 'utf8');
 const token = Buffer.from(JSON.stringify({ sub: 'student-04', role: 'student', course: 'course-04' })).toString('base64url') + '.signature';
+const ownSheet = ['Read the records.', 'Report a number.'];
+const initial = { participantId: 'platform:student-04', session: { code: 'ABCDE', solo: true },
+  view: { solo: true, stage: 0, state: 'running', group: 'Your report', canCommit: true,
+    canSoloAdvance: false, clock: { remaining: 1500, expired: false },
+    data: { sheet: { lines: ownSheet }, startingMrrInScope: 10800, plans: { Solo: 79 },
+      accounts: [{ account_id: 'A1' }], tickets: [{ ticket_id: 'T1' }] } }, debrief: null };
+const settle = () => new Promise(resolve => setTimeout(resolve, 10));
 
-async function run(sessions, configStatus = 200) {
-  const elements = new Map(), requests = [];
+async function run({ search = '', guest = false, saved = new Map() } = {}) {
+  const elements = new Map(), requests = [], urls = [];
+  const makeElement = () => ({ hidden: false, value: '', textContent: '', children: [], disabled: false,
+    classList: { toggle() {} }, addEventListener(name, fn) { this['on' + name] = fn; },
+    querySelector() { return this.button ||= { disabled: false }; },
+    replaceChildren(...children) { this.children = children; }, append(...children) { this.children.push(...children); },
+    createTHead() { return this; }, createTBody() { return this; },
+    insertRow() { const child = makeElement(); this.append(child); return child; },
+    insertCell() { const child = makeElement(); this.append(child); return child; } });
   const element = id => {
-    if (!elements.has(id)) elements.set(id, {
-      hidden: false, value: '', textContent: '', children: [],
-      classList: { toggle() {} },
-      addEventListener(name, listener) { this['on' + name] = listener; },
-      querySelector() { return { disabled: false }; },
-      replaceChildren() { this.children = []; }, append(child) { this.children.push(child); }, focus() {}
-    });
+    if (!elements.has(id)) elements.set(id, makeElement());
     return elements.get(id);
   };
-  const response = (status, data) => ({ ok: status >= 200 && status < 300, status, json: async () => data });
+  let response = structuredClone(initial);
   const fetch = async (url, options) => {
     requests.push({ url, options });
-    if (url === '/sim04/api/session' && JSON.parse(options.body).action === 'course_sessions') {
-      return response(200, { sessions });
+    if (url.endsWith('/api/config')) return { ok: true, json: async () => ({ briefing: 'Use these records.', warningMinutes: 2 }) };
+    const b = JSON.parse(options.body);
+    if (!['solo', 'state', 'commit', 'solo_advance', 'solo_report'].includes(b.action)) throw new Error('Unexpected action: ' + b.action);
+    if (b.action === 'commit') {
+      response.view.commit = { number: '90.0', confidence: 4 };
+      response.view.canCommit = false; response.view.canSoloAdvance = true;
     }
-    if (url === '/sim04/api/config') return response(configStatus, { error: 'access_required' });
-    throw new Error('Unexpected request: ' + url);
+    if (b.action === 'solo_advance') {
+      response.view.stage++;
+      response.debrief = { numbers: [{ label: 'Example 1', number: '90.0' }] };
+      if (response.view.stage >= 2) response.debrief.definitions = [{ label: 'Example 1', lines: ownSheet,
+        department: 'Sales', purpose: 'Example purpose', derivation: ['Worked calculation'], assigned: true }];
+      if (response.view.stage === 3) { response.view.state = 'complete'; response.view.canSoloAdvance = false; }
+    }
+    return { ok: true, json: async () => structuredClone(response) };
   };
-  const storage = new Map();
   vm.runInNewContext(source, {
-    location: { pathname: '/sim04/index.html', search: '', hash: '#lt=' + token },
-    document: { getElementById: element, createElement: () => element('new-' + elements.size) },
-    sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
+    location: { pathname: '/sim04/index.html', search, hash: guest ? '' : '#lt=' + token },
+    document: { getElementById: element, createElement: makeElement },
+    sessionStorage: { getItem: key => saved.get(key) || null, setItem: (key, value) => saved.set(key, value) },
     URLSearchParams, fetch, atob: value => Buffer.from(value, 'base64').toString('binary'),
-    history: { replaceState() {} }, setInterval() {}
-  }, { filename: 'student.js' });
-  await new Promise(resolve => setTimeout(resolve, 10));
-  return { elements, element, requests, storage };
+    history: { replaceState(_state, _unused, url) { urls.push(url); } }, setInterval() {}, confirm: () => true
+  });
+  await settle();
+  return { element, requests, urls, saved };
 }
 
 (async () => {
-  const noRooms = await run([]);
-  assert.equal(noRooms.element('joinForm').hidden, true);
-  assert.doesNotMatch(source, /manual-room-toggle|Enter a room code instead/, 'student course entry has no manual room-code fallback');
-  assert.match(noRooms.element('entryHelp').textContent, /has not opened a Sim04 session/i);
+  const direct = await run();
+  assert(direct.requests.some(r => JSON.parse(r.options.body || '{}').action === 'solo'));
+  assert(!direct.requests.some(r => ['course_sessions', 'join', 'start'].includes(JSON.parse(r.options.body || '{}').action)),
+    'normal entry never looks for a faculty room or waits for it');
+  assert.equal(direct.element('entry').hidden, true);
+  assert.equal(direct.element('materials').hidden, false);
+  assert.doesNotMatch(source, /Awaiting instructor|waitingHelp|joinForm/);
+  assert.equal(direct.element('sheet').children.length, 2);
+  assert.equal(direct.element('clock').textContent, '25:00');
+  assert.equal(direct.element('soloReview').hidden, true);
+  assert.match(direct.urls[0], /solo=1/);
+  assert.match(direct.urls[0], /#lt=/);
 
-  const oneRoom = await run([{ code: 'ABCDE', name: 'Monday class', mode: 'team', state: 'lobby' }], 401);
-  assert.equal(oneRoom.element('code').value, 'ABCDE');
-  assert(oneRoom.requests.some(request => request.url === '/sim04/api/config'), 'one active room is joined without asking for its code');
-  assert.match(oneRoom.element('entryHelp').textContent, /Joining Monday class/i);
+  direct.element('number').value = '90.0'; direct.element('confidence').value = '4';
+  await direct.element('commitForm').onsubmit({ preventDefault() {} });
+  assert.equal(direct.element('soloReview').hidden, false);
+  assert.equal(direct.element('soloAdvance').textContent, 'View the numbers');
+  await direct.element('soloAdvance').onclick();
+  assert.equal(direct.element('soloAdvance').textContent, 'View the explanation');
+  assert.equal(direct.element('soloReviewBody').children.length, 1);
+  await direct.element('soloAdvance').onclick();
+  assert.equal(direct.element('soloAdvance').textContent, 'Finish simulation');
+  assert.equal(direct.element('soloReviewBody').children.length, 3);
+  await direct.element('soloAdvance').onclick();
+  assert.equal(direct.element('soloAdvance').hidden, true);
+  assert.equal(direct.element('statePill').textContent, 'Complete');
 
-  const severalRooms = await run([
-    { code: 'ABCDE', name: 'Morning section', mode: 'team', state: 'lobby' },
-    { code: 'FGH23', name: 'Afternoon section', mode: 'individual', state: 'lobby' }
-  ]);
-  assert.equal(severalRooms.element('joinForm').hidden, true);
-  assert.equal(severalRooms.element('course-sessions').children.length, 2);
-  assert.equal(severalRooms.element('course-sessions').children[0].textContent, 'Morning section · Team session');
-  assert.equal(severalRooms.element('code').value, '', 'room code stays hidden when the student must choose between sessions');
-  console.log('PASS Sim04 course entry UI: auto-join one room, choose among several, explain when none is open');
+  const resume = await run({ search: '?session=ABCDE&solo=1', saved: direct.saved });
+  assert(!resume.requests.some(r => JSON.parse(r.options.body || '{}').action === 'solo'), 'refresh does not create a new session');
+  assert(resume.requests.some(r => JSON.parse(r.options.body || '{}').action === 'state'));
+  const oldClassLink = await run({ search: '?session=OLD23' });
+  assert(oldClassLink.requests.some(r => JSON.parse(r.options.body || '{}').action === 'solo'),
+    'old room invitations also start a private run without faculty');
+  assert(!oldClassLink.requests.some(r => JSON.parse(r.options.body || '{}').action === 'join'));
+  assert.equal(oldClassLink.element('materials').hidden, false);
+  const guest = await run({ search: '?guest=1', guest: true });
+  assert.equal(guest.element('startForm').hidden, false);
+  assert.equal(guest.requests.length, 0);
+  await guest.element('startForm').onsubmit({ preventDefault() {} });
+  assert.equal(guest.element('materials').hidden, false);
+  console.log('PASS Sim04 self-paced entry UI: immediate play, student debrief, completion, refresh, and guests');
 })().catch(error => { console.error(error); process.exit(1); });

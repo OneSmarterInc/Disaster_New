@@ -7,7 +7,7 @@ const META = Object.freeze({
   tagline: 'Twenty-five minutes to give the board one number.',
   description: 'Ridgeway Dispatch sells scheduling and invoicing software to plumbers, HVAC contractors and landscapers. The quarter has closed, and the board chair wants one figure before the next meeting: customer retention. Each team gets the account records, the support tickets and a definition sheet, and has to commit a number.',
   minutes: config.clockMinutes,
-  catalogueRevision: 'sim04-v1',
+  catalogueRevision: 'sim04-v2-self-paced',
   detail: {
     world: 'Customer retention at a software company for trade businesses',
     seat: 'A team asked to report retention to the board',
@@ -17,7 +17,7 @@ const META = Object.freeze({
     turn: 'Teams cannot see anyone else’s work, and a committed number cannot be changed.',
     after: 'The debrief starts with an argument between two teams and ends with each student writing down the definition behind a number they are judged by. There is no score.',
     discussion: 'Open with two teams defending their numbers, before any explanation.',
-    sessionShape: 'Choose team or individual mode and at least three groups. Allow 25 minutes to calculate and additional time to discuss.',
+    sessionShape: 'Start individually at your own pace. Your own session and timer begin immediately. Allow 25 minutes to calculate and additional time for the debrief.',
     activity: 'Read the account records, the support tickets and the definition sheet. Commit a retention percentage and a confidence from 1 to 5.',
     suitableFor: 'Marketing, accounting, operations and information systems classes, without changes.',
     preparation: 'No advance reading; the data pack is included.',
@@ -25,14 +25,14 @@ const META = Object.freeze({
     durationNote: '25 minutes of play, plus discussion.',
     tryIt: 'Preview the activity before assigning it to students.',
     catalogueFacts: [
-      { label: 'Play', value: 'Team or individual; at least three groups' },
+      { label: 'Play', value: 'Self-paced individual play' },
       { label: 'Before play', value: 'No advance reading' },
       { label: 'Feedback', value: 'Discussion; no score' }
     ],
     atAGlance: [
       { label: 'Main task', value: 'Report one customer-retention figure' },
       { label: 'Numbers', value: 'Use the supplied account records' },
-      { label: 'Play mode', value: 'Team or individual' }
+      { label: 'Play mode', value: 'Self-paced' }
     ],
     beats: [
       { at: 'Commit', what: 'Each team locks its number and says how sure it is.' },

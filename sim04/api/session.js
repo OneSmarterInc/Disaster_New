@@ -6,6 +6,7 @@ const { accountJoinUrl } = require('../lib/session-entry');
 const { courseEnrolments } = require('../lib/course-enrolments');
 const store = require('../lib/store');
 const room = require('../lib/room');
+const config = require('../data/config');
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const codeOf = () => Array.from({ length: 5 }, () => CHARS[randomInt(CHARS.length)]).join('');
@@ -13,7 +14,9 @@ const newId = () => randomBytes(16).toString('hex');
 const error = (res, status, code, message) => res.status(status).json({ error: code, ...(message ? { message } : {}) });
 const validCode = code => /^[A-Z2-9]{5}$/.test(code);
 const safe = s => ({ code: s.code, name: s.name, mode: s.mode, count: s.count,
-  clockMinutes: s.clockMinutes, state: s.state, stage: s.stage });
+  clockMinutes: s.clockMinutes, state: s.state, stage: s.stage, solo: !!s.solo });
+const studentResult = (session, id) => ({ session: safe(session), view: room.studentView(session, id, Date.now()),
+  ...(session.solo ? { debrief: room.soloDebrief(session, Date.now()) } : {}) });
 const joinUrl = s => s.platformAuth ? accountJoinUrl(s)
   : process.env.SIM_URL ? process.env.SIM_URL.replace(/\/+$/, '') + '/launch.html?session=' + s.code + '&guest=1' : null;
 
@@ -66,6 +69,24 @@ module.exports = async (req, res) => {
         return error(res, 403, 'student_course_required', 'Open Sim04 from a course where you have access.');
       }
       return res.status(200).json({ sessions: await store.courseSessions(who.courseId) });
+    }
+    if (action === 'solo') {
+      const me = access(req, b);
+      if (!me) return error(res, 401, 'participant_authorization_required');
+      if (me.mode === 'session') return error(res, 409, 'use_session');
+      const id = me.platform ? me.id : newId();
+      const name = String(me.platform ? me.name : b.name || 'Participant').trim().slice(0, 60) || 'Participant';
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const c = codeOf();
+        const session = room.createSoloSession({ code: c, participantId: id, name,
+          sheetId: config.assignmentOrder[randomInt(config.assignmentOrder.length)], now: Date.now() });
+        Object.assign(session, { platformAuth: !!me.platform, ownerId: me.platform ? me.id : null,
+          courseId: me.courseId || null });
+        if (!await store.createSession(c, session)) continue;
+        await announce();
+        return res.status(200).json({ participantId: id, ...studentResult(session, id) });
+      }
+      return error(res, 503, 'code_unavailable');
     }
     if (action === 'create') {
       const who = faculty(req, b);
@@ -125,7 +146,8 @@ module.exports = async (req, res) => {
       } else if (action === 'advance') {
         try { next = room.advance(session, Date.now()); }
         catch (e) { return error(res, 409, 'reveal_not_ready', e.message); }
-      } else if (['join', 'state', 'commit'].includes(action)) {
+      } else if (['join', 'state', 'commit', 'solo_advance', 'solo_report'].includes(action)) {
+        if (action === 'join' && session.solo) return error(res, 403, 'private_session');
         const me = participant(req, b, session);
         if (!me) return error(res, 401, 'participant_authorization_required');
         if (action === 'join') {
@@ -133,14 +155,29 @@ module.exports = async (req, res) => {
           try { next = room.join(session, id, me.platform ? me.name : b.name, Date.now()); }
           catch (e) { return error(res, 409, 'join_rejected', e.message); }
           if (!await store.compareAndSetSession(code, session, next)) continue;
-          return res.status(200).json({ participantId: id, session: safe(next), view: room.studentView(next, id, Date.now()) });
+          return res.status(200).json({ participantId: id, ...studentResult(next, id) });
         }
         if (!me.id || !session.participants[me.id]) return error(res, 403, 'not_joined');
-        if (action === 'state') return res.status(200).json({ session: safe(session), view: room.studentView(session, me.id, Date.now()) });
+        if (action === 'state') return res.status(200).json(studentResult(session, me.id));
+        if (action === 'solo_advance' || action === 'solo_report') {
+          if (!session.solo) return error(res, 403, 'private_session_required');
+          if (action === 'solo_report' || session.stage === 3) {
+            if (session.stage !== 3) return error(res, 409, 'not_complete');
+            const completion = await reportAll(code);
+            const latest = await store.getSession(code);
+            return res.status(200).json({ completion, ...studentResult(latest, me.id) });
+          }
+          try { next = room.advance(session, Date.now()); }
+          catch (e) { return error(res, 409, 'report_not_locked', e.message); }
+          if (!await store.compareAndSetSession(code, session, next)) continue;
+          const completion = next.stage === 3 ? await reportAll(code) : null;
+          const latest = completion ? await store.getSession(code) : next;
+          return res.status(200).json({ completion, ...studentResult(latest, me.id) });
+        }
         try { next = room.commit(session, me.id, b.number, b.confidence, Date.now()); }
         catch (e) { return error(res, 409, 'commit_rejected', e.message); }
         if (!await store.compareAndSetSession(code, session, next)) continue;
-        return res.status(200).json({ ok: true, view: room.studentView(next, me.id, Date.now()) });
+        return res.status(200).json({ ok: true, ...studentResult(next, me.id) });
       } else return error(res, 400, 'unknown_action');
       if (!await store.compareAndSetSession(code, session, next)) continue;
       if (action === 'advance' && next.stage === 3) {

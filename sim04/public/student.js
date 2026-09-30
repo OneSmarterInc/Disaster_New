@@ -7,20 +7,8 @@ let code = (params.get('session') || '').trim().toUpperCase();
 let launch = guest ? null : new URLSearchParams(location.hash.slice(1)).get('lt') || null;
 if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
 else if (!guest) launch = sessionStorage.getItem('m04-lt:' + code);
-function launchClaims() {
-  if (!launch) return null;
-  try {
-    const part = launch.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(part.padEnd(Math.ceil(part.length / 4) * 4, '=')));
-  } catch { return null; }
-}
-if (launch && !code && launchClaims()?.role === 'student') {
-  $('entryHelp').textContent = launchClaims()?.course
-    ? 'Your student access is confirmed. Looking for an open Sim04 session in this course…'
-    : 'Your student sign-in is valid. Open the class session invitation from your instructor to join without entering a room code. You do not need a faculty code.';
-}
 let participantId = sessionStorage.getItem('m04-participant:' + code) || null;
-let config = null, view = null, pollAt = 0, renderedPack = false, renderedCommit = '';
+let config = null, view = null, pollAt = 0, renderedPack = false, renderedCommit = '', renderedDebrief = '';
 
 function headers() {
   return { 'content-type': 'application/json', ...(launch ? { 'x-launch-token': launch }
@@ -44,7 +32,7 @@ function time() {
   $('clock').textContent = remaining === null ? 'Not started' : `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
   $('clock').classList.toggle('warn', remaining !== null && remaining <= warnAt());
   const pill = $('statePill');
-  pill.textContent = view.commit ? 'Report locked' : remaining === 0 ? 'Time ended' : view.canCommit ? 'Decision open' : view.state === 'lobby' ? 'Awaiting instructor' : 'Waiting';
+  pill.textContent = view.state === 'complete' ? 'Complete' : view.commit ? 'Report locked' : remaining === 0 ? 'Time ended' : 'Decision open';
   pill.classList.toggle('good', !!view.commit);
   pill.classList.toggle('warn', !view.commit && remaining !== null && remaining <= warnAt());
 }
@@ -80,24 +68,15 @@ function csv(records, name) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function draw(result) {
+  if (!result.view?.solo) throw new Error('Could not open your session. Reload and try again.');
   view = result.view; pollAt = Date.now();
   $('entry').hidden = true; $('play').hidden = false;
-  $('group').textContent = view.group || 'Waiting for assignment';
-  $('waiting').hidden = !!view.data && view.state !== 'lobby';
-  if (view.state === 'lobby') {
-    const { clockMinutes } = view.lobby;
-    $('roomLabel').textContent = `Room ${code}`;
-    $('waitingText').textContent = !view.group
-      ? 'You have joined. Ask your instructor to assign you to a group.'
-      : `You are in ${view.group}. Your instructor will start the clock once everyone has joined.`;
-    $('waitingHelp').textContent = `There is no set wait time. The ${clockMinutes}-minute timer begins when your instructor starts the room. This page checks automatically every 4 seconds. If you have been waiting, tell your instructor you are in room ${code}.`;
-    error('waitingError', '');
-  }
-  $('materials').hidden = !view.data || view.state === 'lobby';
+  $('group').textContent = view.group || 'Your report';
+  $('materials').hidden = !view.data;
   if (view.data && !renderedPack) {
     renderedPack = true;
     $('briefing').textContent = config.briefing;
-    for (const [i, line] of view.data.sheet.lines.entries()) {
+    for (const line of view.data.sheet.lines) {
       const li = document.createElement('li'); li.textContent = line; $('sheet').append(li);
     }
     $('scope').textContent = `Starting monthly revenue in scope: $${Number(view.data.startingMrrInScope).toLocaleString('en-US')}`;
@@ -119,72 +98,97 @@ function draw(result) {
     }
     if (!view.commit && view.clock.expired) error('commitError', 'Time ended. No number reported.');
   }
+  drawSoloReview(result.debrief);
   time();
+}
+function node(tag, text, className) {
+  const item = document.createElement(tag);
+  if (text != null) item.textContent = text;
+  if (className) item.className = className;
+  return item;
+}
+function drawSoloReview(debrief) {
+  $('soloReview').hidden = !view.solo || (view.stage === 0 && !view.canSoloAdvance);
+  if (!view.solo) return;
+  $('soloAdvance').hidden = view.stage === 3;
+  $('soloAdvance').textContent = ['View the numbers', 'View the explanation', 'Finish simulation'][view.stage] || 'Continue';
+  $('soloAdvance').disabled = !view.canSoloAdvance;
+  $('soloReviewTitle').textContent = ['Your report is locked', 'The numbers', 'What each number measures', 'Session complete'][view.stage];
+  $('soloReviewNote').textContent = view.stage === 0 ? 'Continue when you are ready.'
+    : 'Worked examples calculated from the same account records. Keep your submitted report for comparison.';
+  $('soloCompletion').textContent = view.stage === 3
+    ? view.completionPending ? 'Your session is complete. Saving completion to your course is pending.' : 'Your session is complete.' : '';
+  $('soloRetryReport').hidden = !view.completionPending;
+  const signature = JSON.stringify(debrief);
+  if (signature === renderedDebrief) return;
+  renderedDebrief = signature;
+  const body = $('soloReviewBody'); body.replaceChildren();
+  for (const example of debrief?.numbers || []) {
+    const row = node('div', null, 'status-item');
+    row.append(node('strong', example.label), node('span', example.number + '%', 'clock'));
+    body.append(row);
+  }
+  for (const example of debrief?.definitions || []) {
+    const card = node('article', null, 'reveal-card');
+    card.append(node('h3', example.label + (example.assigned ? ' · Your definition' : '')),
+      node('p', example.department, 'department'), node('p', example.purpose, 'muted'));
+    const lines = node('ol', null, 'definition');
+    example.lines.forEach(line => lines.append(node('li', line)));
+    card.append(lines, node('p', 'Worked calculation', 'eyebrow'));
+    example.derivation.forEach(step => card.append(node('p', step, 'quiet')));
+    body.append(card);
+  }
+  if (debrief?.definitions) body.append(node('p', 'Think of a number you are judged by. What definition does it use, and what does that definition leave out?', 'note'));
 }
 async function refresh() {
   if (!code || !participantId) return;
   try { draw(await api('session', { action: 'state', code, participantId })); }
   catch (e) {
-    if (view?.state === 'lobby') error('waitingError', 'Could not check the room. Retrying automatically… ' + e.message);
-    else error('commitError', e.message);
+    error('commitError', e.message);
   }
 }
-async function join(event) {
+async function beginSolo(event) {
   event?.preventDefault();
-  code = $('code').value.trim().toUpperCase();
-  if (!launch && !guest) { error('entryError', 'Open Sim04 from your course page.'); return; }
-  if (!/^[A-Z2-9]{5}$/.test(code)) { error('entryError', 'Enter the five-character classroom code from your instructor.'); return; }
-  if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
-  $('joinForm').querySelector('button').disabled = true;
+  $('startForm').querySelector('button').disabled = true;
+  error('entryError', '');
+  $('entryHelp').textContent = 'Starting your session…';
   try {
-    if (!launch && !guest) launch = sessionStorage.getItem('m04-lt:' + code);
     config = await api('config');
-    const result = await api('session', { action: 'join', code,
-      participantId: sessionStorage.getItem('m04-participant:' + code) || null, name: $('name').value.trim() });
-    participantId = result.participantId;
+    const result = await api('session', { action: 'solo', name: $('soloName').value.trim() });
+    code = result.session.code; participantId = result.participantId;
     sessionStorage.setItem('m04-participant:' + code, participantId);
-    history.replaceState(null, '', location.pathname + '?session=' + encodeURIComponent(code) + (guest ? '&guest=1' : ''));
+    if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
+    history.replaceState(null, '', location.pathname + '?session=' + encodeURIComponent(code) + '&solo=1'
+      + (guest ? '&guest=1' : '') + (launch ? '#lt=' + encodeURIComponent(launch) : ''));
     draw(result);
-  } catch (e) { error('entryError', e.message); }
-  finally { $('joinForm').querySelector('button').disabled = false; }
-}
-async function findCourseSessions() {
-  const form = $('joinForm'), picker = $('course-sessions');
-  form.hidden = true; picker.hidden = true;
-  try {
-    const result = await api('session', { action: 'course_sessions' });
-    const sessions = Array.isArray(result.sessions) ? result.sessions : [];
-    if (!sessions.length) {
-      $('entryHelp').textContent = 'Your sign-in is confirmed, but your instructor has not opened a Sim04 session for this course yet. Return to your course page after they start one.';
-      return;
-    }
-    if (sessions.length === 1) {
-      $('entryHelp').textContent = `Joining ${sessions[0].name}…`;
-      $('code').value = sessions[0].code;
-      await join();
-      return;
-    }
-    $('entryHelp').textContent = 'Choose the open class session for this course.';
-    picker.replaceChildren();
-    for (const session of sessions) {
-      const button = document.createElement('button');
-      button.type = 'button'; button.className = 'button secondary';
-      button.textContent = `${session.name} · ${session.mode === 'team' ? 'Team session' : 'Individual session'}`;
-      button.addEventListener('click', async () => {
-        picker.hidden = true;
-        $('entryHelp').textContent = `Joining ${session.name}…`;
-        $('code').value = session.code;
-        await join();
-      });
-      picker.append(button);
-    }
-    picker.hidden = false;
   } catch (e) {
-    $('entryHelp').textContent = 'Your student access is confirmed, but Sim04 could not check for an open class session.';
+    $('entryHelp').textContent = 'Your session could not start. Try again.';
+    error('entryError', e.message);
+    $('startForm').hidden = false;
+  } finally { $('startForm').querySelector('button').disabled = false; }
+}
+async function resumeSolo() {
+  try {
+    config = await api('config');
+    const result = await api('session', { action: 'state', code, participantId });
+    if (!result.view?.solo) throw new Error('Open this class session from its invitation.');
+    draw(result);
+  } catch (e) {
+    $('entryHelp').textContent = 'Your saved session could not be opened.';
     error('entryError', e.message);
   }
 }
-$('joinForm').addEventListener('submit', join);
+$('startForm').addEventListener('submit', beginSolo);
+$('soloAdvance').onclick = async () => {
+  error('soloError', ''); $('soloAdvance').disabled = true;
+  try { draw(await api('session', { action: 'solo_advance', code, participantId })); }
+  catch (e) { error('soloError', e.message); await refresh(); }
+};
+$('soloRetryReport').onclick = async () => {
+  error('soloError', '');
+  try { draw(await api('session', { action: 'solo_report', code, participantId })); }
+  catch (e) { error('soloError', e.message); }
+};
 $('commitForm').addEventListener('submit', async event => {
   event.preventDefault(); error('commitError', '');
   const n = Number($('number').value).toFixed(1), confidence = $('confidence').value;
@@ -192,11 +196,11 @@ $('commitForm').addEventListener('submit', async event => {
   try { draw(await api('session', { action: 'commit', code, participantId, number: $('number').value, confidence })); }
   catch (e) { error('commitError', e.message); await refresh(); }
 });
-if (guest) {
-  $('joinForm').hidden = false;
-  $('entryHelp').textContent = 'Enter the classroom code from your instructor to join the room.';
+if (code && params.get('solo') === '1') resumeSolo();
+else if (code && (launch || guest)) beginSolo();
+else if (launch) beginSolo();
+else if (guest) {
+  $('startForm').hidden = false;
+  $('entryHelp').textContent = 'Start your own session. The timer begins as soon as you start.';
 }
-if (code) { $('code').value = code; if (launch || participantId || guest) join(); }
-else if (launch && launchClaims()?.role === 'student' && launchClaims()?.course) findCourseSessions();
-if (launch) $('nameField').hidden = true;
 setInterval(time, 1000); setInterval(refresh, 4000);

@@ -24,6 +24,14 @@ function createSession({ code, owner, mode, count, clockMinutes = config.clockMi
   };
 }
 
+function createSoloSession({ code, participantId, name, sheetId, now }) {
+  if (!config.assignmentOrder.includes(sheetId)) throw new Error('Choose an available definition.');
+  const session = createSession({ code, owner: participantId, mode: 'individual', count: config.minTeams, now });
+  const slot = { ...session.slots[0], sheetId, label: 'Your report', memberIds: [participantId] };
+  return { ...session, solo: true, count: 1, slots: [slot], state: 'running', startedAt: now,
+    participants: { [participantId]: { id: participantId, name, joinedAt: now, slotId: slot.id, reportedAt: null } } };
+}
+
 function deadline(session) { return session.startedAt + session.clockMinutes * 60000; }
 function secondsLeft(session, now) {
   return session.startedAt ? Math.max(0, Math.ceil((deadline(session) - now) / 1000)) : null;
@@ -123,6 +131,9 @@ function studentView(session, participantId, now) {
   if (!p) throw new Error('Join the session first.');
   return {
     state: session.state, mode: session.mode, group: slot ? slot.label : null,
+    solo: !!session.solo, stage: session.stage,
+    canSoloAdvance: !!session.solo && session.stage < 3 && allLocked(session, now),
+    completionPending: !!session.solo && !!session.platformAuth && session.stage === 3 && !p.reportedAt,
     lobby: session.state === 'lobby' ? {
       readyGroups: session.slots.filter(s => s.memberIds.length).length,
       totalGroups: session.slots.length,
@@ -135,6 +146,21 @@ function studentView(session, participantId, now) {
     commit: slot ? slot.commit && { number: slot.commit.number.toFixed(1), confidence: slot.commit.confidence } : null,
     canCommit: !!slot && session.stage === 0 && !!session.startedAt && now < deadline(session) && !slot.commit
   };
+}
+// Self-paced debrief examples come from the engine, after the student's report
+// is locked. They contain no other student's work or private calculation flags.
+function soloDebrief(session, now) {
+  if (!session.solo || session.stage < 1 || !allLocked(session, now)) return null;
+  const numbers = config.assignmentOrder.map((sheetId, i) => ({
+    label: `Example ${i + 1}`, number: engine.compute(sheetId).value.toFixed(1)
+  }));
+  return { numbers, ...(session.stage >= 2 ? {
+    definitions: config.assignmentOrder.map((sheetId, i) => ({
+      label: `Example ${i + 1}`, lines: sheets.sheetLines(sheetId),
+      department: sheets.reveal[sheetId].department, purpose: sheets.reveal[sheetId].purpose,
+      derivation: engine.derivation(sheetId), assigned: session.slots[0].sheetId === sheetId
+    }))
+  } : {}) };
 }
 function projector(session, now) {
   const c = clock(session, now);
@@ -168,4 +194,4 @@ function privateCheck(session) {
     ...engine.checkCommit(s.sheetId, s.commit?.number ?? null)
   }));
 }
-module.exports = { createSession, deadline, allLocked, clock, slotFor, start, assign, join, commit, advance, studentView, projector, privateCheck };
+module.exports = { createSession, createSoloSession, soloDebrief, deadline, allLocked, clock, slotFor, start, assign, join, commit, advance, studentView, projector, privateCheck };

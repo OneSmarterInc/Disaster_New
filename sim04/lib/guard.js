@@ -35,6 +35,7 @@ function participant(req, b, session) {
   const p = access(req, b);
   if (!p || p.platform !== session.platformAuth) return null;
   if (session.platformAuth && session.courseId && p.courseId !== session.courseId) return null;
+  if (session.solo && p.platform && p.id !== session.ownerId) return null;
   if (p.platform) return p;
   const id = String(b.participantId || '');
   return id && session.participants[id] ? { ...p, id } : { ...p, id: null };
