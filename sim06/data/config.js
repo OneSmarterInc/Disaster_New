@@ -36,6 +36,36 @@ module.exports = {
     "Two documents are attached: an extract from the Northline contract and ClearPath's network summary. You can open them now or at any time during play.",
   ],
 
+  // Shown once before the briefing. Written to be understood on the first read.
+  walkthrough: [
+    { title: 'What is going on',
+      text: [
+        'Card payments are failing in all twelve Harlow Home & Hardware stores.',
+        'You run store operations. You will read reports as they come in and decide what to do about it.',
+      ] },
+    { title: 'How the reports arrive',
+      text: [
+        'When your instructor starts the clock, a new report appears about every 45 seconds. There are twelve.',
+        'Everyone in the room gets each report at the same moment.',
+        'The clock runs ten minutes. That is one hour of store time, from 11:05 to 12:05.',
+        'A red counter at the top shows the card sales Harlow has lost so far.',
+      ] },
+    { title: 'The one decision',
+      text: [
+        'Switch to ClearPath moves every store to the backup provider. It takes about eight minutes, and no store can take a card during those eight minutes.',
+        'Stay on Northline means you commit to the provider Harlow uses now.',
+        'Each button asks for one line saying why. You can press one button, once, at any time. You cannot undo it.',
+        'If you press neither before the clock ends, that is recorded as no decision.',
+      ],
+      teamNote: 'You are playing in a team. The first person on your team to press a button decides for the whole team.' },
+    { title: 'Before the clock starts',
+      text: [
+        'Read the briefing. Then open the two documents: the Northline contract and the ClearPath network summary.',
+        'You can open both documents again at any time during play.',
+        'Nothing in this simulation is scored.',
+      ] },
+  ],
+
   documents: [
     {
       id: 'northline',
@@ -108,6 +138,14 @@ module.exports = {
   // The name the lesson turns on. Build gate: must appear in a highlighted line of every
   // document and must never appear in the briefing.
   hiddenDependency: 'Meridian',
+
+  // Instructor console only, shown after the clock ends. Order matters: disagreement before naming.
+  debrief: [
+    { step: 'Disagreement', prompt: 'Before showing anything: who switched early, and what made you sure? Who committed to holding, and what did you see? Who never decided, and what were you waiting for?' },
+    { step: 'Naming', prompt: 'Redundancy means having two of something. Diversity means the second one fails for different reasons than the first. Then concentration risk and blast radius, and the point that the dependency sat outside every contract Harlow signed (Northline Schedule B excludes it by name).' },
+    { step: 'Reading', prompt: 'Put up the reading figures. Did the people who opened both documents decide differently? Anyone who found Meridian in both: did you believe it, or did the reports win?' },
+    { step: 'The turn', prompt: 'Name a service you depend on. Then name who it depends on. Keep going until you reach a company you had never heard of.' },
+  ],
 
   retiredIds: ['rapid-03-bench'],
 };

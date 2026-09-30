@@ -165,6 +165,10 @@ t('projector aggregates and hides small groups', () => {
 });
 
 // ---- Build gate: real config passes, every rule catches a planted violation
+t('gate ignores ordinary numbers after a lowercase word', () => {
+  const c = clone(cfg); c.reports[0].text += ' Budget moved to 2026 figures.';
+  assert.deepStrictEqual(checkConfig(c), []);
+});
 t('real config passes the gate', () => assert.deepStrictEqual(checkConfig(cfg), []));
 const planted = [
   ['retired id', c => { c.sim.id = 'rapid-03-bench'; c.sim.number = 3; }, /retired/],
@@ -176,6 +180,9 @@ const planted = [
   ['banned word', c => { c.briefing[0] += ' We leverage two providers.'; }, /banned/],
   ['weekday', c => { c.reports[0].text = 'Tuesday morning, payments down.'; }, /weekday/],
   ['course code', c => { c.sim.teaches += ' (MIS 3000)'; }, /course/],
+  ['course code with space', c => { c.reports[0].text += ' See MIS 3000.'; }, /course/],
+  ['walkthrough gives the answer', c => { c.walkthrough[3].text.push('Look for Meridian.'); }, /walkthrough screen 4 names/],
+  ['debrief out of order', c => { c.debrief.reverse(); }, /Disagreement/],
   ['answer in briefing', c => { c.briefing[1] += ' Both use Meridian.'; }, /gives the answer away/],
   ['dependency missing from a document', c => { c.documents[1].blocks[2].text = 'Regional traffic carried over our own backhaul.'; }, /clearpath has no highlighted line/],
   ['reveal template token', c => { c.reveal.decisionLines.stay = 'You stayed.'; }, /missing \{n\}/],

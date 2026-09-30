@@ -4,7 +4,9 @@
 
 const PLACEHOLDER = /\b(TODO|TBD|XXX|FIXME|PLACEHOLDER|lorem ipsum)\b|\[their text\]/i;
 const BANNED = /\b(moat|delve[sd]?|leverage|realm|harness|unlock|tapestry|synergy|paradigm|cutting-edge|game changer|garner|next-gen)\b/i;
-const INSTITUTIONAL = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|semester|university|college|chapter|syllabus)\b|\b[A-Z]{2,4}\s?\d{4}\b/i;
+const INSTITUTIONAL_WORDS = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|semester|university|college|chapter|syllabus)\b/i;
+const COURSE_CODE = /\b[A-Z]{2,4}\s?\d{4}\b/; // case-sensitive: "MIS 3000", not "to 2026"
+const INSTITUTIONAL = { test: s => INSTITUTIONAL_WORDS.test(s) || COURSE_CODE.test(s), match: s => s.match(INSTITUTIONAL_WORDS) || s.match(COURSE_CODE) };
 
 function strings(obj, path = '', out = []) {
   if (typeof obj === 'string') out.push([path, obj]);
@@ -42,7 +44,7 @@ function checkConfig(cfg) {
   strings(cfg).forEach(([path, s]) => {
     if (PLACEHOLDER.test(s)) err(`placeholder text at ${path}`);
     if (BANNED.test(s)) err(`banned word at ${path}: ${s.match(BANNED)[0]}`);
-    if (INSTITUTIONAL.test(s)) err(`course, term, weekday or institution reference at ${path}: ${s.match(INSTITUTIONAL)[0]}`);
+    if (INSTITUTIONAL.test(s)) err(`course, term, weekday or institution reference at ${path}: ${INSTITUTIONAL.match(s)[0]}`);
   });
 
   // Lesson integrity: findable in every document, never given away in the briefing
@@ -57,6 +59,15 @@ function checkConfig(cfg) {
       if (para.includes(dep)) err(`briefing paragraph ${i + 1} names ${dep}, which gives the answer away`);
     });
   }
+
+  // Every sim prepares the student before play, and the debrief keeps disagreement first.
+  if (!Array.isArray(cfg.walkthrough) || cfg.walkthrough.length < 2) err('walkthrough needs at least two screens');
+  (cfg.walkthrough || []).forEach((w, i) => {
+    if (w.title && w.title.length > 45) err(`walkthrough screen ${i + 1} title is over 45 characters`);
+    (w.text || []).forEach(line => { if (line.split(/\s+/).length > 30) err(`walkthrough screen ${i + 1} has a sentence block over 30 words`); });
+    if (dep && JSON.stringify(w).includes(dep)) err(`walkthrough screen ${i + 1} names ${dep}`);
+  });
+  if (!Array.isArray(cfg.debrief) || cfg.debrief[0]?.step !== 'Disagreement') err('debrief must open with Disagreement');
 
   // Reveal templates carry every field the engine fills
   ['switch', 'stay'].forEach(k => {

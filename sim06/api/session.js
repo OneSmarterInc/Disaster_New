@@ -1,6 +1,5 @@
 'use strict';
-const { body, announceOnce, checkAccess } = require('../lib/guard.js');
-const { randomBytes } = require('node:crypto');
+const { body, announceOnce } = require('../lib/guard.js');
 const store = require('../lib/store.js');
 const { verifyLaunch, reportCompletion } = require('../lib/launch.js');
 const { META } = require('../lib/meta.js');
@@ -10,7 +9,7 @@ const { accountJoinUrl, participantLaunch, participantError } = require('../lib/
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
-const newId = () => randomBytes(16).toString('hex');
+const newId = () => Math.random().toString(36).slice(2, 10);
 const now = () => (typeof module.exports._now === 'function' ? module.exports._now() : Date.now());
 
 function facultyRoster() {
@@ -40,7 +39,7 @@ function whoIsFaculty(req, b) {
 }
 
 function ownsSession(who, sess) {
-  if (!who || sess.solo) return false;
+  if (!who) return false;
   if (sess.platformAuth) {
     if (!who.platformAuth) return false;
     if (sess.courseId && sess.courseId !== who.courseId) return false;
@@ -74,22 +73,23 @@ function phaseOf(sess, t) {
 
 function publicSession(sess, t) {
   return { code: sess.code, mode: sess.mode, state: sess.state, phase: phaseOf(sess, t),
-    solo: !!sess.solo, startedAt: sess.startedAt || null, serverNow: t, playMs: E.PLAY_MS };
+    startedAt: sess.startedAt || null, serverNow: t, playMs: E.PLAY_MS };
 }
 
 async function ensureRun(code, runId, label) {
-  const runs = await store.getRuns(code);
-  if (runs[runId]) return runs[runId];
+  const existing = await store.getRun(code, runId);
+  if (existing) return existing;
   const run = newRun(runId, label);
   if (await store.compareAndSetRun(code, runId, null, run)) return run;
-  return (await store.getRuns(code))[runId];
+  return store.getRun(code, runId);
 }
 
+// Per-poll reads touch only this participant and their run, so cost does not grow with the room.
 async function loadMe(code, pid) {
-  const [participants, runs] = await Promise.all([store.getParticipants(code), store.getRuns(code)]);
-  const me = participants[pid];
+  if (!pid) return null;
+  const me = await store.getParticipant(code, pid);
   if (!me) return null;
-  return { me, run: runs[me.runId], participants, runs };
+  return { me, run: await store.getRun(code, me.runId) };
 }
 
 function summaryOf(run) {
@@ -101,7 +101,6 @@ function summaryOf(run) {
 async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   if (!store.configured()) return res.status(503).json({ error: 'no_store', message: 'Session storage is not configured for this deployment.' });
   announceOnce(req);
 
@@ -110,7 +109,7 @@ async function handler(req, res) {
   const code = String(b.code || '').toUpperCase().trim();
 
   try {
-    if (['join', 'state', 'open_doc', 'decide', 'reveal', 'start_solo'].includes(action)) {
+    if (['join', 'state', 'open_doc', 'decide', 'reveal'].includes(action)) {
       const sess = await store.getSession(code);
       if (sess) {
         const err = participantError(req, b, sess, action === 'join' ? null : String(b.participantId || ''));
@@ -121,37 +120,12 @@ async function handler(req, res) {
     for (let attempt = 0; attempt < 5; attempt++) {
       const t = now();
       switch (action) {
-        case 'solo': {
-          if (!checkAccess(req, res)) return;
-          const launched = req.launch || null;
-          if (launched && (!participantLaunch(req, b) || launched.mode === 'session')) {
-            return res.status(403).json({ error: 'use_session' });
-          }
-          const name = String(launched ? launched.name || 'Participant' : b.name || '').trim().slice(0, 60);
-          if (!name) return res.status(400).json({ error: 'name_required' });
-          const c = newCode(), id = launched ? `platform:${launched.sub}` : newId();
-          const runId = `individual:${id}`;
-          const sess = { code: c, solo: true, owner: id, ownerId: launched?.sub || null,
-            platformAuth: !!launched, courseId: launched?.course || null,
-            mode: 'individual', state: 'open', startedAt: null, createdAt: t };
-          await store.putSession(c, sess);
-          const me = { id, name, runId, teamLabel: name, joinedAt: t };
-          if (!await store.compareAndSetParticipant(c, id, null, me)) throw new Error('solo participant write failed');
-          await ensureRun(c, runId, name);
-          return res.status(200).json({ participantId: id, session: publicSession(sess, t) });
-        }
-
-        case 'start_solo': {
+        // Lets the join screen ask for a team name up front. Reveals nothing beyond the mode.
+        case 'peek': {
+          if (!/^[A-Z2-9]{5}$/.test(code)) return res.status(400).json({ error: 'invalid_session_code' });
           const sess = await store.getSession(code);
           if (!sess) return res.status(404).json({ error: 'no_such_session' });
-          if (!sess.solo || sess.owner !== String(b.participantId || '')) {
-            return res.status(403).json({ error: 'not_your_session' });
-          }
-          if (sess.state === 'closed') return res.status(410).json({ error: 'session_closed' });
-          if (sess.startedAt) return res.status(200).json({ session: publicSession(sess, t) });
-          const next = { ...sess, startedAt: t };
-          if (!await store.compareAndSetSession(code, sess, next)) continue;
-          return res.status(200).json({ session: publicSession(next, t) });
+          return res.status(200).json({ mode: sess.mode, phase: phaseOf(sess, t), closed: sess.state === 'closed' });
         }
 
         case 'create': {
@@ -179,6 +153,7 @@ async function handler(req, res) {
             joined: Object.keys(participants).length,
             teams: sess.mode === 'team' ? Object.keys(runs).length : null,
             projector: sess.startedAt ? E.projector(states, t) : null,
+            debrief: phaseOf(sess, t) === 'ended' ? cfg.debrief : null,
           });
         }
 
@@ -203,8 +178,6 @@ async function handler(req, res) {
         case 'join': {
           const sess = await store.getSession(code);
           if (!sess) return res.status(404).json({ error: 'no_such_session' });
-          if (sess.solo) return res.status(403).json({ error: 'private_session' });
-          if (sess.state === 'closed') return res.status(410).json({ error: 'session_closed' });
           const launched = participantLaunch(req, b);
           if ((req.headers['x-launch-token'] || b.launchToken) && !launched) return res.status(401).json({ error: 'launch_token_invalid' });
           const name = String(launched ? launched.name || '' : b.name || '').slice(0, 60).trim();
@@ -212,6 +185,11 @@ async function handler(req, res) {
           const all = await store.getParticipants(code);
           const id = launched ? `platform:${launched.sub}` : (all[String(b.participantId || '')] ? String(b.participantId) : newId());
           const existing = all[id] || null;
+          // Returning students (a page reload) always get back in. New joiners are refused once the
+          // session is closed or the clock has ended, so a late arrival cannot land in the projector
+          // as a "no decision" they never had the chance to make.
+          if (!existing && sess.state === 'closed') return res.status(410).json({ error: 'session_closed' });
+          if (!existing && phaseOf(sess, t) === 'ended') return res.status(410).json({ error: 'session_ended' });
           let runId, label;
           if (existing) { runId = existing.runId; label = existing.teamLabel; }
           else if (sess.mode === 'individual') { runId = `individual:${id}`; label = name; }
@@ -231,10 +209,11 @@ async function handler(req, res) {
           if (!sess) return res.status(404).json({ error: 'no_such_session' });
           const loaded = await loadMe(code, String(b.participantId || ''));
           if (!loaded || !loaded.run) return res.status(403).json({ error: 'not_joined' });
-          const { me, run, participants } = loaded;
+          const { me, run } = loaded;
           const view = E.studentView(engineState(sess, run), t);
           if (run.decision && sess.mode === 'team') view.decision.by = run.decision.by || null;
-          const mates = sess.mode === 'team' ? Object.values(participants).filter(p => p && p.runId === me.runId).length : 1;
+          const mates = sess.mode === 'team'
+            ? Object.values(await store.getParticipants(code)).filter(p => p && p.runId === me.runId).length : 1;
           return res.status(200).json({ session: publicSession(sess, t), me: { id: me.id, name: me.name, team: sess.mode === 'team' ? me.teamLabel : null, mates }, view });
         }
 
@@ -277,21 +256,18 @@ async function handler(req, res) {
           if (phaseOf(sess, t) !== 'ended') return res.status(409).json({ error: 'not_ended' });
           const out = E.reveal(engineState(sess, run), t);
           if (sess.mode === 'team' && run.decision?.by) out.decisionLine += ` (${run.decision.by} pressed for the team.)`;
-          const launched = sess.platformAuth ? participantLaunch(req, b) : null;
-          let reported = !!me.reportedAt;
-          if (!launched) {
-            if (!me.completedAt) await store.compareAndSetParticipant(code, me.id, me, { ...me, completedAt: t });
-          } else if (!reported && (!me.reportingAt || t - me.reportingAt > 30000)) {
-            const next = { ...me, completedAt: me.completedAt || t, reportingAt: t };
-            if (!await store.compareAndSetParticipant(code, me.id, me, next)) continue;
-            const openedBoth = cfg.documents.every(d => out.reading[d.id]);
-            const result = await reportCompletion({ launch: launched, summary: summaryOf(run),
-              metrics: { choice: run.decision?.choice || 'none', atReport: run.decision?.atReport || null, openedBoth } });
-            const saved = { ...next, reportingAt: null, ...(result.ok ? { reportedAt: t } : {}) };
-            reported = result.ok && await store.compareAndSetParticipant(code, me.id, next, saved);
-            if (!result.ok) await store.compareAndSetParticipant(code, me.id, next, saved);
+          if (!me.completedAt) {
+            const next = { ...me, completedAt: t };
+            if (await store.compareAndSetParticipant(code, me.id, me, next)) {
+              const launched = participantLaunch(req, b);
+              if (launched) {
+                const openedBoth = cfg.documents.every(d => out.reading[d.id]);
+                await reportCompletion({ launch: launched, summary: summaryOf(run),
+                  metrics: { choice: run.decision?.choice || 'none', atReport: run.decision?.atReport || null, openedBoth } });
+              }
+            }
           }
-          return res.status(200).json({ reveal: out, completionReported: reported, completionRequired: !!launched });
+          return res.status(200).json({ reveal: out });
         }
 
         default:

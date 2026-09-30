@@ -60,6 +60,8 @@ module.exports = {
     return Number(await cmd(['EVAL', CAS_FIELD, '2', K(code), `${K(code)}:p`,
       id, previous ? JSON.stringify(previous) : '', JSON.stringify(next), String(TTL)])) === 1;
   },
+  async getParticipant(code, id) { return J(await cmd(['HGET', `${K(code)}:p`, id])); },
+  async getRun(code, runId) { return J(await cmd(['HGET', `${K(code)}:run`, runId])); },
   async getRuns(code) { return hgetall(`${K(code)}:run`); },
   async compareAndSetRun(code, runId, previous, next) {
     return Number(await cmd(['EVAL', CAS_FIELD, '2', K(code), `${K(code)}:run`,

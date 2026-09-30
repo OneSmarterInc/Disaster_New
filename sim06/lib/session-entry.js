@@ -28,29 +28,4 @@ function participantError(req, b, sess, pid) {
   return null;
 }
 
-
-// A valid class invitation grants entry to that room only. Platform rooms still
-// require the student's signed account launch and matching course.
-async function checkConfigAccess(req, res) {
-  const { checkAccess, announceOnce } = require('./guard.js');
-  const code = String(req.query?.session || req.body?.session || '').trim().toUpperCase();
-  if (!code) return checkAccess(req, res);
-  if (!/^[A-Z2-9]{5}$/.test(code)) {
-    res.status(400).json({ error: 'invalid_session_code' }); return false;
-  }
-  const store = require('./store.js');
-  if (!store.configured()) { res.status(503).json({ error: 'no_store' }); return false; }
-  const sess = await store.getSession(code);
-  if (!sess) { res.status(404).json({ error: 'no_such_session' }); return false; }
-  if (sess.solo) { res.status(403).json({ error: 'private_session' }); return false; }
-  if (sess.state === 'closed') { res.status(410).json({ error: 'session_closed' }); return false; }
-  if (req.headers['x-launch-token'] && !participantLaunch(req)) {
-    res.status(401).json({ error: 'launch_token_invalid' }); return false;
-  }
-  const denied = participantError(req, null, sess, null);
-  if (denied) { res.status(denied.status).json({ error: denied.error }); return false; }
-  announceOnce(req);
-  return true;
-}
-
-module.exports = { accountJoinUrl, participantLaunch, participantError, checkConfigAccess };
+module.exports = { accountJoinUrl, participantLaunch, participantError };
