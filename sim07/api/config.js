@@ -13,6 +13,7 @@ function publicConfig() {
       autoAdvanceSeconds: SETTINGS.autoAdvanceSeconds
     },
     setting: PRE_REVEAL.setting,
+    intro: PRE_REVEAL.intro,
     briefing: PRE_REVEAL.briefing,
     advisers: PRE_REVEAL.advisers,
     decision: PRE_REVEAL.decision,

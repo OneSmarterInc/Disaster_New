@@ -27,6 +27,7 @@ a{color:var(--amber)}
 button,input,textarea{font:inherit}
 :focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .bar{position:sticky;top:0;z-index:2;display:flex;gap:18px;align-items:center;justify-content:space-between;padding:12px clamp(16px,4vw,40px);background:rgba(14,21,36,.94);border-bottom:1px solid var(--line);font:13px var(--mono)}
+.bar[hidden]{display:none}
 .bar nav{display:flex;gap:4px;flex-wrap:wrap}
 .bar nav button{background:none;border:1px solid transparent;color:var(--dim);padding:5px 9px;cursor:pointer;font:13px var(--mono)}
 .bar nav button[aria-current="page"]{color:var(--ink);border-color:var(--line)}
@@ -75,6 +76,7 @@ textarea{min-height:130px;resize:vertical;line-height:1.5}
 .stage.current{animation:arrive .9s ease-out}
 .names{font-size:clamp(24px,4vw,30px);line-height:1.3;margin:22px 0 6px;padding:16px 0;border-top:1px solid var(--amber);border-bottom:1px solid var(--amber)}
 .echo{margin:14px 0 18px;padding:14px 18px;background:var(--paper);color:var(--paper-ink);font-size:19px;line-height:1.5}
+.how{padding-left:1.3em;margin:8px 0 0}.how li{margin:0 0 10px}
 .waiting{font:14px var(--mono);color:var(--dim);margin-top:26px}
 @keyframes arrive{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.stage.current{animation:none}}
@@ -136,7 +138,7 @@ function stageNo(){return S.solo?S.soloStage:(S.state?.stage||0)}
 const SECTIONS=[['setting','The offer'],['briefing','Briefing'],['advisers','Advisers'],['decision','Decide']];
 function renderBar(){
   const bar=document.getElementById('bar'),nav=document.getElementById('nav');
-  const pre=!record();bar.hidden=!(C&&(S.solo||S.state?.phase&&S.state.phase!=='lobby'));
+  const pre=!record();bar.hidden=currentView()==='intro'||!(C&&(S.solo||S.state?.phase&&S.state.phase!=='lobby'));
   nav.innerHTML=pre?SECTIONS.map(([k,l])=>`<button data-v="${k}" ${S.view===k?'aria-current="page"':''}>${esc(l)}</button>`).join(''):'<span class="dim">Decision recorded</span>';
   nav.querySelectorAll('button[data-v]').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;render();scrollTo(0,0)});
   tick();
@@ -166,6 +168,14 @@ setInterval(()=>{tick();if(S.solo)return soloTick()},1000);
 
 // ---- screens ----
 function viewSetting(){const s=C.setting;return `<div class="date">${esc(s.eyebrow)}</div><h1>${esc(s.title)}</h1>${s.body.map(p=>`<p>${esc(p)}</p>`).join('')}<p class="note">${esc(s.recognition)}</p><button class="btn" data-go="briefing">Read the briefing</button>`}
+function introMinutes(){return (!S.solo&&S.state?.decisionMinutes)||C.settings.decisionMinutes}
+function viewIntro(){
+  const s=C.setting,i=C.intro,lobby=!S.solo;
+  const who=lobby&&S.state?.me?`<p class="dim">Welcome, ${esc(S.state.me.name)}${S.state.session?.mode==='team'&&S.state.me.team?`, you are in ${esc(S.state.me.team)}`:''}.</p>`:'';
+  return `<div class="date">${esc(s.eyebrow)}</div><h1>${esc(s.title)}</h1>${who}${s.body.map(p=>`<p>${esc(p)}</p>`).join('')}<p class="note">${esc(s.recognition)}</p>
+  <h2>${esc(i.title)}</h2><ol class="how">${i.points.map(p=>`<li>${esc(p.replace('{minutes}',introMinutes()))}</li>`).join('')}</ol>
+  ${lobby?`<p class="waiting">${esc(i.lobbyWait)} This page updates on its own.</p>`:`<button class="btn" id="startClock">${esc(i.soloStart)}</button>`}`;
+}
 function viewBriefing(){return `<h1>What your team put together</h1>`+C.briefing.sections.map(sec=>`<h2>${esc(sec.title)}</h2>${sec.note?`<p class="dim small">${esc(sec.note)}</p>`:''}<table>${sec.rows.map(([k,v])=>`<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>`).join('')+`<button class="btn" data-go="advisers">Hear from your advisers</button>`}
 function viewAdvisers(){S.order||=shuffled(C.advisers);return `<h1>Four people you trust</h1><p class="dim">Each of them runs part of the business. Read them in any order.</p>`+S.order.map(a=>`<article class="adviser"><header><div><b>${esc(a.name)}</b> <span class="role">${esc(a.role)}</span></div><span class="pos">${esc(a.position)}</span></header>${a.text.map(p=>`<p>${esc(p)}</p>`).join('')}</article>`).join('')+`<button class="btn" data-go="decision">Make your decision</button>`}
 function viewDecision(){
@@ -205,8 +215,9 @@ function viewJoin(){return `<h1>Join your class session</h1><p class="dim">Sessi
 function currentView(){
   if(!S.solo){
     if(!S.pid||!S.state)return 'join';
-    if(S.state.phase==='lobby')return 'lobby';
+    if(S.state.phase==='lobby')return 'intro';
   }
+  if(S.solo&&!S.demo&&!S.soloClosesAt)return 'intro';
   const r=record();
   if(r){if(!r.recognised)return 'recognition';return 'reveal'}
   if(needsLapse())return 'lapse';
@@ -215,7 +226,7 @@ function currentView(){
 function render(){
   if(!C)return;
   const v=currentView();
-  const map={setting:viewSetting,briefing:viewBriefing,advisers:viewAdvisers,decision:viewDecision,lapse:viewLapse,recognition:viewRecognition,reveal:viewReveal,lobby:viewLobby,join:viewJoin};
+  const map={intro:viewIntro,setting:viewSetting,briefing:viewBriefing,advisers:viewAdvisers,decision:viewDecision,lapse:viewLapse,recognition:viewRecognition,reveal:viewReveal,lobby:viewLobby,join:viewJoin};
   const active=document.activeElement&&document.activeElement.tagName==='TEXTAREA'?document.activeElement.id:'';
   if((v==='decision'&&active==='why')||(v==='lapse'&&active==='lapse')){renderBar();return}
   app.innerHTML=(map[v]||viewSetting)();renderBar();wire();
@@ -231,6 +242,7 @@ function wire(){
   const lp=document.getElementById('lapse');if(lp){lp.oninput=()=>{S.lapseText=lp.value;const n=words(S.lapseText);document.getElementById('count').textContent=`${n} word${n===1?'':'s'}`;document.getElementById('lapseSubmit').disabled=n<C.settings.lapseMinWords}}
   const ls=document.getElementById('lapseSubmit');if(ls)ls.onclick=()=>submitLapse(ls);
   app.querySelectorAll('[data-rec]').forEach(b=>b.onclick=()=>submitRecognition(b.dataset.rec));
+  const sc=document.getElementById('startClock');if(sc)sc.onclick=()=>{S.soloClosesAt=Date.now()+C.settings.decisionMinutes*60000;S.view='briefing';render();scrollTo(0,0)};
   const jn=document.getElementById('join');if(jn)jn.onclick=()=>join(document.getElementById('nm').value);
   for(const id of ['reveal-retry','reveal-next']){const b=document.getElementById(id);if(b)b.onclick=()=>soloStageAdvance(S.soloStage+1);}
 }
@@ -288,6 +300,7 @@ function scrollToLatest(){const el=app.querySelector('.stage.current');if(el)el.
 // ---- session flow ----
 function applyState(d){
   const prevStage=stageNo();
+  if(S.state?.phase==='lobby'&&d.phase==='deciding'&&S.view==='setting')S.view='briefing';
   S.state=d;S.skew=(d.now||Date.now())-Date.now();
   if(stageNo()>prevStage){setTimeout(scrollToLatest,50)}
   if(stageNo()>=3)finishOnce();
@@ -337,7 +350,7 @@ function demoGate(message=''){
   else if(S.pid){await refresh();startPoll()}
   render();
 })();
-function startSolo(){S.soloClosesAt=S.demo?null:Date.now()+C.settings.decisionMinutes*60000;render()}
+function startSolo(){S.soloClosesAt=null;render()}
 </script>
 </body>
 </html>

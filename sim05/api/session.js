@@ -45,8 +45,12 @@ function ownsSession(who, sess) {
     if (!who.platformAuth) return false;
     if (sess.courseId && sess.courseId !== who.courseId) return false;
     if (sess.ownerId) return sess.ownerId === who.userId;
+    return !!sess.owner && sess.owner === who.name;
   }
-  return !sess.owner || sess.owner === who.name;
+  // Standalone sessions belong to the facilitator code that created them. A
+  // platform account never matches one by display name.
+  if (who.platformAuth) return false;
+  return !!sess.owner && sess.owner === who.name;
 }
 
 function publicSession(sess) {

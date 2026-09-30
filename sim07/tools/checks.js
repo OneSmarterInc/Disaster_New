@@ -347,6 +347,27 @@ async function check(name, fn) {
     assert.strictEqual(r.body.reported, false); assert.strictEqual(r.body.reason, 'faculty_demo');
   });
 
+  await check('a platform account cannot control a standalone session by matching the facilitator name', async () => {
+    const own = await fac({ action: 'create', mode: 'individual' });
+    const c5 = own.body.session.code;
+    const other = token({ sim: 'rapid-07-bought', role: 'faculty', sub: 'someone-else', name: 'Tester', course: 'c9' });
+    const r = await S({ action: 'control', code: c5, set: 'start' }, { 'x-launch-token': other });
+    assert.strictEqual(r.statusCode, 403);
+    const pj = await S({ action: 'projector', code: c5 }, { 'x-launch-token': other });
+    assert.strictEqual(pj.statusCode, 403);
+  });
+  await check('one platform faculty cannot control another faculty session', async () => {
+    const a = token({ sim: 'rapid-07-bought', role: 'faculty', sub: 'fac-a', name: 'Same Name', course: 'c1' });
+    const b = token({ sim: 'rapid-07-bought', role: 'faculty', sub: 'fac-b', name: 'Same Name', course: 'c1' });
+    const c6 = (await S({ action: 'create', mode: 'individual' }, { 'x-launch-token': a })).body.session.code;
+    const r = await S({ action: 'faculty_state', code: c6 }, { 'x-launch-token': b });
+    assert.strictEqual(r.statusCode, 403);
+  });
+  await check('the untimed intro is served with the pre-reveal config', async () => {
+    const ok = await call(config, {}, { 'x-access-code': 'open-sesame' }, 'GET');
+    assert(ok.body.intro && ok.body.intro.points.length >= 3);
+  });
+
   Date.now = realNow;
   let failed = 0;
   for (const [s, n] of results) { console.log(`${s}  ${n}`); if (s === 'FAIL') failed++; }

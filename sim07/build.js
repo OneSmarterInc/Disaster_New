@@ -43,6 +43,18 @@ if (!leakScan(JSON.stringify(seeded)).length) refuse('leak scanner did not catch
 // Reveal text must not be reachable from the config payload.
 for (const s of C.REVEAL.stages) for (const p of s.body) if (preRevealPayload.includes(p)) refuse('reveal text is in the pre-reveal payload');
 
+// 2b. Catalogue copy is shown before play, so it gets the same scan, plus a
+// check for wording that hints at how the story ends.
+const metaText = JSON.stringify(C.META);
+const metaLeaks = leakScan(metaText);
+if (metaLeaks.length) refuse('catalogue copy contains: ' + metaLeaks.join(', '));
+for (const hint of ['mistake', 'wrong', 'failed', 'regret', 'outcome is known', 'look different after', 'later knowledge', 'became known later']) {
+  if (metaText.toLowerCase().includes(hint)) refuse('catalogue copy hints at the ending: ' + hint);
+}
+if (C.META.detail.teaches !== 'what was knowable at the time · how hindsight rewrites a judgement') refuse('approved teaches line changed');
+if (!C.PRE_REVEAL.intro || !C.PRE_REVEAL.intro.points.length) refuse('untimed intro screen content missing');
+if (!pages.student.includes('function viewIntro()')) refuse('student page has no untimed intro screen');
+
 // 3. Names appear in stage 3 and nowhere earlier in the reveal.
 const st3 = C.REVEAL.stages.find(s => s.n === 3);
 if (!st3 || !/Blockbuster/.test(st3.names || '') || !/Netflix/.test(st3.names || '')) refuse('stage 3 does not name the companies');

@@ -10,21 +10,21 @@
 const META = {
   "id": "rapid-07-bought",
   "replaces": [],
-  "catalogueRevision": "bought-v2-2026-09",
+  "catalogueRevision": "bought-v3-2026-09",
   "title": "Would You Have Bought It?",
   "tagline": "The year 2000, and you can only see what they could see.",
-  "description": "You lead a large video rental chain in autumn 2000. A smaller company offers to sell itself for $50 million. Read the proposal, consider four advisers, and make your decision before learning what happened later.",
+  "description": "You lead a large video rental chain in autumn 2000. A smaller, loss-making company offers to sell itself for $50 million. Read the proposal, consider four advisers, and make your decision before learning what happened later.",
   "minutes": 20,
   "detail": {
     "world": "A video rental business in 2000",
     "seat": "Chief executive deciding on an acquisition",
     "clock": "A ten-minute decision followed by three stages of history",
-    "teaches": "Judge a decision using the evidence available at the time, rather than what became known later.",
-    "tangle": "The advisers focus on different parts of the business. You have limited time and cannot use later events to justify the original choice.",
-    "turn": "Keeping your original explanation visible helps you notice how later knowledge changes your judgment.",
+    "teaches": "what was knowable at the time · how hindsight rewrites a judgement",
+    "tangle": "Four advisers, each right about the part of the business they run. The price is small for you and large for what you are buying.",
+    "turn": "Your written reason stays on screen while the next ten years arrive.",
     "after": "See history in three stages and revisit your original reason. There is no score.",
     "activity": "Read the proposal and four advisers' views. Decide whether to buy and explain your reason. Then review later events while your original reasoning remains visible.",
-    "discussion": "Discuss whether a reasonable decision can look different after its outcome is known.",
+    "discussion": "Compare the reasons given for buying and for declining, first on the evidence of 2000 and then again after each stage.",
     "sessionShape": "Allow about 20 minutes for the decision and staged reveal, then add class discussion. The decision window is ten minutes. Individual play is recommended.",
     "suitableFor": "Business strategy, acquisitions, and case discussion classes.",
     "preparation": "No advance reading. Use only the evidence supplied in the case.",
@@ -151,6 +151,18 @@ const PRE_REVEAL = {
         ]
       }
     ]
+  },
+
+  intro: {
+    title: 'How this works',
+    points: [
+      'You have {minutes} minutes to read a short briefing, hear from four of your senior people, and decide.',
+      'You either buy the company or decline the offer, and you write a sentence or two saying why. Once you submit, you cannot change it.',
+      'If the time runs out before you decide, the offer lapses, which counts as declining.',
+      'After that, you will see what happened over the following years, in three parts. Nothing is scored.'
+    ],
+    soloStart: 'Start the clock',
+    lobbyWait: 'Your instructor will start the clock when the room is ready.'
   },
 
   advisers: [

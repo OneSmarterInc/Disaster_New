@@ -43,8 +43,12 @@ function ownsSession(who, sess) {
     if (!who.platformAuth) return false;
     if (sess.courseId && sess.courseId !== who.courseId) return false;
     if (sess.ownerId) return sess.ownerId === who.userId;
+    return !!sess.owner && sess.owner === who.name;
   }
-  return !sess.owner || sess.owner === who.name;
+  // Standalone sessions belong to the facilitator code that created them. A
+  // platform account never matches one by display name.
+  if (who.platformAuth) return false;
+  return !!sess.owner && sess.owner === who.name;
 }
 
 function publicSession(sess) {
@@ -67,6 +71,7 @@ function studentView(sess, participants, me, lastBeat, t) {
   const phase = E.phaseOf(sess, t);
   const out = {
     session: publicSession(sess), phase, now: t, closesAt: E.closedAt(sess),
+    decisionMinutes: E.settingsOf(sess).decisionMinutes,
     acceptsDecision: E.acceptsDecision(sess, t),
     me: { name: me.name, team: me.teamLabel || '', choice: me.choice || null, lapsed: !!me.lapsed,
       justification: me.justification || '', recognised: me.recognised || null },
