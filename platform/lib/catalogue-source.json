@@ -274,19 +274,19 @@
   },
   "rapid-04-whose-number": {
     "tagline": "Twenty-five minutes to give the board one number.",
-    "description": "Ridgeway Dispatch needs one customer-retention figure. Use the quarter’s records and your assigned definition to report a number, then compare how five valid definitions lead to different answers.",
+    "description": "Ridgeway Dispatch sells scheduling and invoicing software to plumbers, HVAC contractors and landscapers. The quarter has closed, and the board chair wants one figure before the next meeting: customer retention. Each team gets the account records, the support tickets and a definition sheet, and has to commit a number.",
     "detail": {
       "world": "Customer retention at a software company for trade businesses",
       "seat": "A team asked to report retention to the board",
       "clock": "A 25-minute decision window",
-      "teaches": "A business number depends on its definition, the records used, and its purpose.",
-      "tangle": "Every group uses the same data, but its assigned definition changes which accounts count.",
-      "turn": "Commit one figure before seeing how the other groups defined retention.",
-      "after": "Compare the figures, definitions, and reasons each department might prefer its measure. There is no score.",
-      "discussion": "Ask groups with far-apart figures to defend their calculations before revealing the definitions.",
+      "teaches": "Students defend a number and then watch another team defend a different one with equal care. That does work a lecture on measurement cannot.",
+      "tangle": "The records are real enough to argue about. Accounts cancel and come back, fall behind on payment, and drop to cheaper plans, and the definition sheet settles each case in one line.",
+      "turn": "Teams cannot see anyone else’s work, and a committed number cannot be changed.",
+      "after": "The debrief starts with an argument between two teams and ends with each student writing down the definition behind a number they are judged by. There is no score.",
+      "discussion": "Open with two teams defending their numbers, before any explanation.",
       "sessionShape": "Choose team or individual mode and at least three groups. Allow 25 minutes to calculate and additional time to discuss.",
-      "activity": "Read the account records, support tickets and your private definition sheet. Commit a retention percentage and confidence from 1 to 5.",
-      "suitableFor": "Business analytics, measurement, management and information systems classes.",
+      "activity": "Read the account records, the support tickets and the definition sheet. Commit a retention percentage and a confidence from 1 to 5.",
+      "suitableFor": "Marketing, accounting, operations and information systems classes, without changes.",
       "preparation": "No advance reading; the data pack is included.",
       "output": "One locked percentage and a confidence rating for each group.",
       "durationNote": "25 minutes of play, plus discussion.",
@@ -321,16 +321,16 @@
       ],
       "beats": [
         {
-          "at": "Read",
-          "what": "Examine the records and your private definition."
-        },
-        {
           "at": "Commit",
-          "what": "Submit one percentage and your confidence."
+          "what": "Each team locks its number and says how sure it is."
         },
         {
-          "at": "Discuss",
-          "what": "Compare definitions after all figures are locked."
+          "at": "The numbers",
+          "what": "Every number, shown at once."
+        },
+        {
+          "at": "The definitions",
+          "what": "The definitions, and who wrote each one."
         }
       ]
     }

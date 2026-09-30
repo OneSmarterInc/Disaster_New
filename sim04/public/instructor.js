@@ -20,7 +20,7 @@ function time() {
   let seconds = state.projector.clock.remaining;
   if (seconds !== null) seconds = Math.max(0, seconds - Math.floor((Date.now() - pollAt) / 1000));
   $('clock').textContent = seconds === null ? '--:--' : `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-  $('clock').classList.toggle('warn', seconds !== null && seconds <= 120);
+  $('clock').classList.toggle('warn', seconds !== null && seconds <= (state.warningMinutes ?? 2) * 60);
 }
 function el(name, className, text) {
   const node = document.createElement(name); if (className) node.className = className;
@@ -30,7 +30,8 @@ function statusList(groups) {
   const grid = el('div', 'status-list');
   for (const g of groups) {
     const item = el('div', 'status-item');
-    item.append(el('strong', '', g.label), el('span', g.committed ? 'success mono' : 'muted mono', g.committed ? 'Committed' : 'Not committed'));
+    item.append(el('strong', '', g.label), el('span', g.committed ? 'success mono' : 'muted mono',
+      g.committed ? 'Committed' : g.locked ? 'Time ended · no number' : 'Not committed'));
     grid.append(item);
   }
   return grid;
@@ -73,6 +74,8 @@ function draw(data) {
   $('setup').hidden = s.state !== 'lobby';
   $('compareSection').hidden = s.stage < 2;
   $('completeSection').hidden = s.stage < 3;
+  $('privateCheck').href = 'private-check.html?session=' + encodeURIComponent(s.code)
+    + (token ? '#lt=' + encodeURIComponent(token) : '');
   $('joinUrl').value = data.joinUrl || 'Set SIM_URL to enable invitations';
   const signature = JSON.stringify([s, p.groups, p.numbers, p.reveal, data.roster, data.slots]);
   if (signature === lastSignature) { time(); return; }
@@ -95,15 +98,17 @@ function draw(data) {
       roster.append(line);
     }
     if (!data.roster.length) roster.append(el('p', 'muted', 'No participants have joined yet. Share the invitation link.'));
+    const filled = data.slots.filter(x => x.members).length;
+    roster.append(el('p', 'note', `${filled} of ${data.slots.length} ${s.mode === 'team' ? 'groups' : 'seats'} filled. Empty ones are dropped when you start; at least three must be filled.`));
   }
   const advance = $('advance'); advance.hidden = s.state === 'lobby' || s.stage === 3;
   advance.textContent = ['Reveal numbers', 'Reveal definitions', 'Complete session'][s.stage];
-  advance.disabled = s.stage === 0 && !p.groups.every(g => g.committed);
+  advance.disabled = s.stage === 0 && !p.groups.every(g => g.locked);
   $('projectorStage').textContent = s.stage === 0 ? 'Projector · pre-reveal' : `Projector · Stage ${Math.min(s.stage, 2)}`;
   $('projectorTitle').textContent = ['Commitment status', 'One room, several numbers', 'What each number measures', 'What each number measures'][s.stage];
   $('projectorNote').textContent = s.stage === 0
     ? 'Only group names and commitment status are shown. The figures stay hidden until every report is locked.'
-    : s.stage === 1 ? 'Ask two groups with far-apart figures to explain their reasoning before showing their definitions.'
+    : s.stage === 1 ? 'Every locked number, shown at once.'
     : 'The contested line, department, purpose, and calculation are shown together.';
   const body = $('projectorBody'); body.replaceChildren();
   if (s.stage === 0) body.append(statusList(p.groups));

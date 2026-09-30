@@ -100,6 +100,7 @@ module.exports = async (req, res) => {
       }
       if (action === 'faculty_state') {
         return res.status(200).json({ session: safe(session), joinUrl: joinUrl(session),
+          warningMinutes: require('../data/config').warningMinutes,
           roster: Object.values(session.participants).map(p => ({ id: p.id, name: p.name,
             group: session.slots.find(s => s.id === p.slotId)?.label || null })),
           projector: room.projector(session, Date.now()),

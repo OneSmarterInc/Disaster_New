@@ -8,19 +8,23 @@ handover. `node test/gate-data.test.js` checks those source materials.
 
 1. A facilitator creates a room, explicitly choosing team or individual mode
    and at least three groups. The clock defaults to 25 minutes.
-2. Participants use the signed platform invitation. In team mode, the
-   facilitator assigns each joined participant to a group before starting.
-   In individual mode, one person occupies each numbered slot. Sheets are
-   assigned A, E, D, C, B and repeat in that order.
-3. Students see the briefing, sortable records, CSV downloads, and only their
+2. Participants use the signed platform invitation. In team mode, joiners are
+   placed in the smallest group automatically; the facilitator can move them
+   before starting. In individual mode, one person occupies each numbered slot.
+   Empty groups or seats are removed at start, with at least three filled slots
+   required. The remaining slots receive sheets A, E, D, C, B in repeating order,
+   even if lobby moves left gaps in the original group list.
+3. Materials stay hidden until the facilitator starts the clock. Students then
+   see the briefing, sortable records, CSV downloads, and only their
    own assigned definition. A percentage to one decimal and confidence from 1
    to 5 lock atomically; a second submission cannot change it.
 4. Once everyone commits or the clock expires, the facilitator reveals all
    figures at once. The next stage reveals each sheet, department and worked
    calculation. Two groups can be compared side by side.
 5. The private calculation check is `/private-check.html?session=ROOMCODE`.
-   It is intentionally absent from the projected console. Completing the room
-   reports launched participants to the platform; the instructor can retry a
+   The console footer links to it; open it privately on the instructor's device.
+   Signed faculty access travels in the URL fragment when opening a new tab.
+   Completing the room reports launched participants to the platform; the instructor can retry a
    failed callback.
 
 For direct access, students enter `ACCESS_CODE` and then the five-character
@@ -35,8 +39,10 @@ view without a separate direct-access code.
 
 Run `npm test` and `npm run build` from `sim04/`. These use Node 20 or later
 and install no dependencies. The test covers the full three-group flow and
-the seven-group sheet cycle. The build checks student bundle leaks, forbidden
-terms, config and deployment wiring. Runtime diagnostics are available through
+the seven-group sheet cycle, automatic assignment, lobby moves, empty-slot
+removal, and private-check authentication in a new tab. The build checks student
+bundle leaks, spoiler wording, forbidden terms, config and deployment wiring.
+Runtime diagnostics are available through
 `/api/health` with `x-health-key` when `HEALTH_SECRET` is set.
 
 ## Deployment

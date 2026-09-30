@@ -35,17 +35,18 @@ async function api(path, payload) {
   if (!response.ok) throw new Error(result.message || result.error || 'Please try again.');
   return result;
 }
+function warnAt() { return (config?.warningMinutes ?? 2) * 60; }
 function error(id, message) { $(id).textContent = message || ''; }
 function time() {
   if (!view) return;
   let remaining = view.clock.remaining;
   if (remaining !== null) remaining = Math.max(0, remaining - Math.floor((Date.now() - pollAt) / 1000));
   $('clock').textContent = remaining === null ? 'Not started' : `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
-  $('clock').classList.toggle('warn', remaining !== null && remaining <= 120);
+  $('clock').classList.toggle('warn', remaining !== null && remaining <= warnAt());
   const pill = $('statePill');
   pill.textContent = view.commit ? 'Report locked' : remaining === 0 ? 'Time ended' : view.canCommit ? 'Decision open' : view.state === 'lobby' ? 'Awaiting instructor' : 'Waiting';
   pill.classList.toggle('good', !!view.commit);
-  pill.classList.toggle('warn', !view.commit && remaining !== null && remaining <= 120);
+  pill.classList.toggle('warn', !view.commit && remaining !== null && remaining <= warnAt());
 }
 function table(target, records, columns) {
   const sort = { key: columns[0], direction: 1 };
@@ -84,13 +85,11 @@ function draw(result) {
   $('group').textContent = view.group || 'Waiting for assignment';
   $('waiting').hidden = !!view.data && view.state !== 'lobby';
   if (view.state === 'lobby') {
-    const { readyGroups, totalGroups, clockMinutes } = view.lobby;
-    $('roomLabel').textContent = `Room ${code} · ${readyGroups} of ${totalGroups} groups ready`;
+    const { clockMinutes } = view.lobby;
+    $('roomLabel').textContent = `Room ${code}`;
     $('waitingText').textContent = !view.group
       ? 'You have joined. Ask your instructor to assign you to a group.'
-      : readyGroups < totalGroups
-        ? `You are in ${view.group}. All ${totalGroups} groups need at least one participant before your instructor can press Start.`
-        : `You are in ${view.group}. All groups are ready; your instructor needs to press Start.`;
+      : `You are in ${view.group}. Your instructor will start the clock once everyone has joined.`;
     $('waitingHelp').textContent = `There is no set wait time. The ${clockMinutes}-minute timer begins when your instructor starts the room. This page checks automatically every 4 seconds. If you have been waiting, tell your instructor you are in room ${code}.`;
     error('waitingError', '');
   }
@@ -99,7 +98,7 @@ function draw(result) {
     renderedPack = true;
     $('briefing').textContent = config.briefing;
     for (const [i, line] of view.data.sheet.lines.entries()) {
-      const li = document.createElement('li'); li.textContent = line; if (i === 3) li.className = 'contested'; $('sheet').append(li);
+      const li = document.createElement('li'); li.textContent = line; $('sheet').append(li);
     }
     $('scope').textContent = `Starting monthly revenue in scope: $${Number(view.data.startingMrrInScope).toLocaleString('en-US')}`;
     $('plans').textContent = Object.entries(view.data.plans).map(([tier, price]) => `${tier} $${price}/month`).join(' · ');

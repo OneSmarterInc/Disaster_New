@@ -26,6 +26,24 @@ function studentLeaks(value, ownSheetId) {
   return faults;
 }
 
+// Words that tell a student the ending before they commit. Checked on the
+// student bundle, the projected console and the public catalogue copy.
+const SPOILERS = [/disagree/i, /different (?:definitions|answers|numbers|figures)/i, /valid definitions/i,
+  /other (?:groups|teams)\W{0,2}\s*(?:defin|number)/i, /before (?:showing|revealing) (?:their|the) definitions/i,
+  /definitions are revealed/i];
+const STUDENT_ONLY = [/contested/i, /private sheet/i, /only your group/i];
+function checkSpoilers(contents = Object.fromEntries(pages.map(p => [p, read(p)])), meta = META) {
+  const problems = [];
+  const student = ['public/launch.html', 'public/index.html', 'public/student.js'].map(p => contents[p] || '').join('\n');
+  const projected = ['public/instructor.html', 'public/instructor.js'].map(p => contents[p] || '').join('\n');
+  const catalogue = JSON.stringify({ tagline: meta.tagline, description: meta.description, detail: meta.detail });
+  for (const [where, text, rules] of [['student bundle', student, [...SPOILERS, ...STUDENT_ONLY]],
+    ['projected console', projected, SPOILERS], ['catalogue copy', catalogue, [...SPOILERS, ...STUDENT_ONLY]]]) {
+    for (const rule of rules) if (rule.test(text)) problems.push(`spoiler in ${where}: ${rule}`);
+  }
+  return problems;
+}
+
 function checkSource(contents = Object.fromEntries(pages.map(p => [p, read(p)]))) {
   const problems = [];
   const publicText = ['public/launch.html', 'public/index.html', 'public/student.js'].map(p => contents[p] || '').join('\n');
@@ -71,9 +89,9 @@ function checkWiring(overrides = {}) {
   return problems;
 }
 
-module.exports = { studentLeaks, checkSource, checkWiring };
+module.exports = { studentLeaks, checkSource, checkSpoilers, checkWiring };
 if (require.main === module) {
-  const problems = [...checkSource(), ...checkWiring()];
+  const problems = [...checkSource(), ...checkSpoilers(), ...checkWiring()];
   if (problems.length) { console.error(`Build gate failed (${problems.length}):\n- ${problems.join('\n- ')}`); process.exit(1); }
   console.log('Build gate passed: student bundle, protected data, routes, and deployment wiring.');
 }

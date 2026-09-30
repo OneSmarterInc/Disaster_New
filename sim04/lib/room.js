@@ -42,11 +42,22 @@ function slotFor(session, id) {
   const p = session.participants[id];
   return p && session.slots.find(s => s.id === p.slotId && s.memberIds.includes(id));
 }
+// Drop unfilled slots, then assign sheets to the remaining groups in order.
+// Lobby moves can leave gaps, and no participant has seen a sheet yet.
 function start(session, now) {
   if (session.state !== 'lobby') throw new Error('The session has already started.');
-  if (session.slots.some(s => !s.memberIds.length)) throw new Error('Every group needs at least one participant before play starts.');
   if (Object.values(session.participants).some(p => !slotFor(session, p.id))) throw new Error('Assign every joined participant to a group.');
-  return { ...session, state: 'running', startedAt: now };
+  const filled = session.slots.filter(s => s.memberIds.length);
+  if (filled.length < config.minTeams) {
+    throw new Error(`At least ${config.minTeams} ${session.mode === 'team' ? 'groups' : 'participants'} must have joined before play starts.`);
+  }
+  const assignment = engine.assignSheets(filled.length);
+  const slots = filled.map((s, i) => ({ ...s, sheetId: assignment[i] }));
+  return { ...session, slots, count: slots.length, state: 'running', startedAt: now };
+}
+// Team mode: place a new participant in the smallest group, earliest first.
+function openSlot(session) {
+  return session.slots.reduce((best, s) => (!best || s.memberIds.length < best.memberIds.length ? s : best), null);
 }
 function assign(session, participantId, slotId, label) {
   if (session.state !== 'lobby') throw new Error('Assignments are locked after the clock starts.');
@@ -77,12 +88,10 @@ function join(session, id, name, now) {
     return next;
   }
   next.participants[id] = { id, name: clean, joinedAt: now, slotId: null, reportedAt: null };
-  if (next.mode === 'individual') {
-    const free = next.slots.find(s => s.memberIds.length === 0);
-    if (!free) throw new Error('This session is full.');
-    free.memberIds.push(id);
-    next.participants[id].slotId = free.id;
-  }
+  const target = next.mode === 'individual' ? next.slots.find(s => s.memberIds.length === 0) : openSlot(next);
+  if (!target) throw new Error('This session is full.');
+  target.memberIds.push(id);
+  next.participants[id].slotId = target.id;
   return next;
 }
 function commit(session, participantId, number, confidence, now) {
@@ -120,7 +129,9 @@ function studentView(session, participantId, now) {
       clockMinutes: session.clockMinutes
     } : null,
     clock: clock(session, now),
-    data: slot ? engine.studentPayload(slot.sheetId) : null,
+    // No sheet before the clock starts: a participant moved between groups in the
+    // lobby must never have seen another group's definition.
+    data: slot && session.state !== 'lobby' ? engine.studentPayload(slot.sheetId) : null,
     commit: slot ? slot.commit && { number: slot.commit.number.toFixed(1), confidence: slot.commit.confidence } : null,
     canCommit: !!slot && session.stage === 0 && !!session.startedAt && now < deadline(session) && !slot.commit
   };
@@ -130,7 +141,7 @@ function projector(session, now) {
   const base = {
     session: { code: session.code, name: session.name, mode: session.mode, count: session.count, state: session.state, stage: session.stage },
     clock: c,
-    groups: session.slots.map(s => ({ id: s.id, label: s.label, committed: !!s.commit || c.expired }))
+    groups: session.slots.map(s => ({ id: s.id, label: s.label, committed: !!s.commit, locked: !!s.commit || c.expired }))
   };
   if (session.stage >= 1) {
     base.numbers = session.slots.map(s => ({ id: s.id, label: s.label,

@@ -200,6 +200,31 @@ await check('registration states explicit identity, number and canonical route',
     source['public/student.js'] += '\n// ' + sheets.reveal.E.purpose;
     assert.ok(gate.checkSource(source).some(s => s.includes('reveal')));
   });
+  await check('spoiler guards catch planted wording in student, console and catalogue copy', () => {
+    const fs = require('node:fs'), path = require('node:path');
+    const pages = ['launch.html','index.html','student.js','instructor.html','instructor.js','private-check.html','private-check.js'];
+    const clean = Object.fromEntries(pages.map(p => ['public/' + p, fs.readFileSync(path.join(__dirname, '../public', p), 'utf8')]));
+    assert.deepEqual(gate.checkSpoilers(clean), []);
+    const plant = (file, text) => ({ ...clean, [file]: clean[file] + '\n' + text });
+    assert.ok(gate.checkSpoilers(plant('public/student.js', "li.className = 'contested'")).some(s => s.includes('student bundle')));
+    assert.ok(gate.checkSpoilers(plant('public/index.html', 'Your private sheet')).some(s => s.includes('student bundle')));
+    assert.ok(gate.checkSpoilers(plant('public/instructor.html', 'reveal the disagreement')).some(s => s.includes('projected console')));
+    const { META } = require('../lib/meta');
+    const leaky = { ...META, description: 'Compare how five valid definitions lead to different answers.' };
+    assert.ok(gate.checkSpoilers(clean, leaky).some(s => s.includes('catalogue copy')));
+  });
+  await check('pre-reveal marks timed-out groups as locked, not committed', () => {
+    let session = room.createSession({ code: 'ABCDE', owner: 'F', mode: 'individual', count: 3, now: NOW });
+    for (let i = 0; i < 3; i++) session = room.join(session, 'p' + i, 'Person ' + i, NOW);
+    session = room.start(session, NOW);
+    session = room.commit(session, 'p0', 90, 4, NOW + 1);
+    const p = room.projector(session, room.deadline(session));
+    assert.equal(p.session.stage, 0);
+    assert.ok(p.groups.every(g => g.locked));
+    assert.deepEqual(p.groups.map(g => g.committed), [true, false, false]);
+    assert.equal(p.numbers, undefined);
+    assert.equal(p.reveal, undefined);
+  });
   await check('deployment guards catch disabled builds, missing URL and host-derived registration', () => {
     assert.ok(gate.checkWiring({ vercel: { git: { deploymentEnabled: false } } }).some(s => s.includes('deployment disabled')));
     assert.ok(gate.checkWiring({ env: 'SIM_URL=' }).some(s => s.includes('SIM_URL missing')));
