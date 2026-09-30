@@ -10,6 +10,7 @@ function publicConfig() {
     sim: { id: META.id, title: META.title, tagline: META.tagline, minutes: META.minutes },
     customer: C.CUSTOMER,
     briefing: C.BRIEFING,
+    walkthrough: C.WALKTHROUGH,
     clock: C.CLOCK,
     rounds: C.ROUNDS.length,
     copy: C.STUDENT_COPY

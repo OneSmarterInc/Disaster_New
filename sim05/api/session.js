@@ -76,7 +76,7 @@ module.exports = async (req, res) => {
   const now = Date.now();
 
   try {
-    if (['join', 'state', 'vote'].includes(action)) {
+    if (['join', 'state', 'vote', 'ready', 'solo_start', 'skip'].includes(action)) {
       const sess = await store.getSession(code);
       if (sess) {
         const error = participantError(req, b, sess, action === 'join' ? null : String(b.participantId || ''));
@@ -108,7 +108,7 @@ module.exports = async (req, res) => {
           const o = await ownedSession(req, res, b, code); if (!o) return;
           const participants = await store.getParticipants(code);
           const roster = Object.values(participants).filter(Boolean)
-            .map(p => ({ id: p.id, name: p.name, groupId: p.groupId || null, teamLabel: p.teamLabel || '', late: o.sess.mode === 'individual' && R.isLate(o.sess, p) }));
+            .map(p => ({ id: p.id, name: p.name, groupId: p.groupId || null, teamLabel: p.teamLabel || '', joined: !!p.joinedAt, ready: !!p.ready, late: o.sess.mode === 'individual' && R.isLate(o.sess, p) }));
           return res.status(200).json({
             session: { ...o.sess, joinUrl: o.sess.platformAuth ? accountJoinUrl(o.sess) : null },
             roster,
@@ -161,7 +161,7 @@ module.exports = async (req, res) => {
             next = { ...sess, state: 'running', startedAt: now, paused: false, pausedTotalMs: 0 };
             if (sess.mode === 'team') {
               const participants = await store.getParticipants(code);
-              const present = Object.values(participants).filter(Boolean);
+              const present = R.joined(participants);
               const unassigned = present.filter(p => !p.groupId);
               if (!present.length) return res.status(409).json({ error: 'participants_required', message: 'Assign at least one student to a team before starting.' });
               if (unassigned.length) {
@@ -170,6 +170,10 @@ module.exports = async (req, res) => {
               }
               next.teams = R.freezeTeams(participants);
             }
+          } else if (set === 'advance') {
+            const r = R.skipSegment(sess, now);
+            if (r.error) return res.status(r.status).json({ error: r.error });
+            next = r.next;
           } else {
             const r = R.applyControl(sess, set, now);
             if (r.error) return res.status(r.status).json({ error: r.error });
@@ -191,7 +195,7 @@ module.exports = async (req, res) => {
             code: c, solo: true, owner: id, ownerId: launch ? launch.sub : null,
             platformAuth: !!launch, courseId: launch ? launch.course || null : null,
             name: S.META.title, mode: 'individual', intensity: 'standard',
-            state: 'running', startedAt: now, paused: false, pausedTotalMs: 0, createdAt: now
+            state: 'lobby', paused: false, pausedTotalMs: 0, skipMs: 0, createdAt: now
           };
           await store.putSession(c, sess);
           const me = { id, name: String(launch ? launch.name || 'Participant' : b.name || 'Participant').slice(0, 60), groupId: `individual:${id}`, joinedAt: now, votes: {} };
@@ -226,6 +230,7 @@ module.exports = async (req, res) => {
             groupId: sess.mode === 'individual' ? `individual:${id}` : existing ? existing.groupId : null,
             teamLabel: sess.mode === 'individual' ? '' : existing ? existing.teamLabel || '' : '',
             joinedAt: existing?.joinedAt || now,
+            lateFrom: existing?.joinedAt ? existing.lateFrom || 0 : R.clock(sess, now).closedRounds,
             votes: existing?.votes || {}
           };
           if (!await store.compareAndSetParticipant(code, id, existing, participant, sess)) continue;
@@ -252,7 +257,52 @@ module.exports = async (req, res) => {
           if (r.error) return res.status(r.status).json({ error: r.error });
           if (!await store.compareAndSetParticipant(code, pid, me, r.next, sess)) continue;
           participants[pid] = r.next;
+          let current = sess;
+          if (R.allDecided(sess, participants, now)) {
+            const k = R.skipSegment(sess, now);
+            if (k.next && await store.compareAndSetSession(code, sess, k.next)) current = k.next;
+          }
+          return res.status(200).json({ ok: true, view: R.studentView(current, participants, pid, now) });
+        }
+
+        case 'ready': {
+          const sess = await store.getSession(code);
+          if (!sess) return res.status(404).json({ error: 'no_such_session' });
+          const pid = String(b.participantId || '');
+          const participants = await store.getParticipants(code);
+          const me = participants[pid];
+          if (!me) return res.status(403).json({ error: 'not_joined' });
+          if (me.ready) return res.status(200).json({ ok: true, view: R.studentView(sess, participants, pid, now) });
+          const next = { ...me, ready: true };
+          if (!await store.compareAndSetParticipant(code, pid, me, next, sess)) continue;
+          participants[pid] = next;
           return res.status(200).json({ ok: true, view: R.studentView(sess, participants, pid, now) });
+        }
+
+        // Solo only: the student starts their own clock, and may skip time they
+        // have no use for. Nobody can skip a decision they have not made.
+        case 'solo_start':
+        case 'skip': {
+          const sess = await store.getSession(code);
+          if (!sess) return res.status(404).json({ error: 'no_such_session' });
+          const pid = String(b.participantId || '');
+          if (!sess.solo || sess.owner !== pid) return res.status(403).json({ error: 'solo_only' });
+          const participants = await store.getParticipants(code);
+          const me = participants[pid];
+          if (!me) return res.status(403).json({ error: 'not_joined' });
+          let next;
+          if (action === 'solo_start') {
+            if (sess.state !== 'lobby') return res.status(409).json({ error: 'session_already_started' });
+            next = { ...sess, state: 'running', startedAt: now, pausedTotalMs: 0, skipMs: 0 };
+          } else {
+            const clk = R.clock(sess, now);
+            if (clk.phase === 'decide' && !(me.votes || {})[clk.round]) return res.status(409).json({ error: 'decide_first' });
+            const k = R.skipSegment(sess, now);
+            if (k.error) return res.status(k.status).json({ error: k.error });
+            next = k.next;
+          }
+          if (!await store.compareAndSetSession(code, sess, next)) continue;
+          return res.status(200).json({ ok: true, session: publicSession(next), view: R.studentView(next, participants, pid, now) });
         }
 
         default:

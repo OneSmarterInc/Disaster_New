@@ -39,6 +39,7 @@ p.body{color:var(--soft);max-width:66ch;margin-bottom:12px}
 .field{margin-top:14px}
 .field label{display:block;font:13px var(--mono);color:var(--dim);margin-bottom:6px}
 .field input{width:100%;background:var(--night);border:1px solid var(--line2);padding:10px 12px}
+input:-webkit-autofill,input:-webkit-autofill:focus{-webkit-text-fill-color:var(--bone);-webkit-box-shadow:0 0 0 40px var(--night) inset;caret-color:var(--bone)}
 .choice{display:grid;gap:8px;margin-top:6px}
 .field .choice label{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line2);padding:12px 14px;cursor:pointer;font:16px/1.45 var(--serif);color:var(--bone);margin:0}
 .field .choice label:has(input:checked){border-color:var(--amber);background:rgba(240,166,60,.06)}
@@ -105,7 +106,8 @@ if(incoming){sessionStorage.setItem(TOKEN_KEY,incoming);const p=new URLSearchPar
 function tokenInfo(t){try{return JSON.parse(atob(t.split('.')[0].replace(/-/g,'+').replace(/_/g,'/')))}catch{return null}}
 let course=new URLSearchParams(location.search).get('course')||tokenInfo(LT)?.course||'';
 let facultyCode='',code=localStorage.getItem(SESSION_KEY)||'',state=null,poll=null,error='',busy=false,tab='disagreement';
-let draft={name:'',mode:'',intensity:'standard'},teamDraft={},teamSize=4;
+const PLAY=new URLSearchParams(location.search).get('play');
+let draft={name:'',mode:['individual','team'].includes(PLAY)?PLAY:'',intensity:'standard'},teamDraft={},teamSize=4;
 
 async function renewFaculty(){
   if(!BASE)throw new Error('Open this session from your RapidSims faculty dashboard, or enter your facilitator code.');
@@ -137,6 +139,9 @@ function header(){
   if(!s){ctl.innerHTML='';return}
   const btns=[];
   if(s.state==='running'){
+    const ph=state.projector.clock.phase;
+    if(!s.paused&&ph==='decide')btns.push(`<button class="btn sm aux" data-c="advance">Close this round now</button>`);
+    if(!s.paused&&(ph==='reveal'||ph==='briefing'))btns.push(`<button class="btn sm aux" data-c="advance">${ph==='reveal'&&state.projector.clock.round===5?'Open the endings now':'Open the next round now'}</button>`);
     btns.push(s.paused?`<button class="btn sm aux" data-c="resume">Resume</button>`:`<button class="btn sm aux" data-c="pause">Pause</button>`);
     btns.push(`<button class="btn sm aux" data-c="close">Close session</button>`);
   }
@@ -161,7 +166,7 @@ function createView(){
   <p class="body">Every student sees the same clock. Choose how the room plays before anyone joins.</p>
   ${error?`<div class="note bad">${esc(error)}</div>`:''}
   <div class="grid2"><section class="card"><h3>New session</h3>
-    <div class="field"><label for="nm">Session name (only you see this)</label><input id="nm" value="${esc(draft.name)}" placeholder="Would You Approve This?"></div>
+    <div class="field"><label for="nm">Session name (only you see this)</label><input id="nm" name="sim-session-label" autocomplete="off" data-lpignore="true" data-1p-ignore value="${esc(draft.name)}" placeholder="Would You Approve This?"></div>
     <div class="field"><label>How will the room play?</label><div class="choice" role="radiogroup">
       <label><input type="radio" name="mode" value="individual" ${draft.mode==='individual'?'checked':''}><div><b>Individual</b><span>Each student decides alone. Recommended for this sim: the lesson is personal responsibility for each approval.</span></div></label>
       <label><input type="radio" name="mode" value="team" ${draft.mode==='team'?'checked':''}><div><b>Team</b><span>Members vote privately; the majority decides and a tie ships the feature.</span></div></label>
@@ -170,12 +175,12 @@ function createView(){
       <label><input type="radio" name="int" value="standard" ${draft.intensity==='standard'?'checked':''}><div><b>Standard</b><span>The final reveal names the inference plainly.</span></div></label>
       <label><input type="radio" name="int" value="lighter" ${draft.intensity==='lighter'?'checked':''}><div><b>Lighter</b><span>The final reveal describes a change in her health without naming it.</span></div></label>
     </div></div>
-    ${needCode?`<div class="field"><label for="fc">Facilitator code</label><input id="fc" type="password" autocomplete="off" value="${esc(facultyCode)}"></div>`:''}
+    ${needCode?`<div class="field"><label for="fc">Facilitator code</label><input id="fc" name="sim-facilitator-code" type="password" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore value="${esc(facultyCode)}"></div>`:''}
     <div style="margin-top:18px"><button class="btn pri" id="mk" ${busy?'disabled':''}>Create session</button></div>
   </section>
   <section class="card"><h3>Return to a session</h3>
-    <div class="field"><label for="rc">Session code</label><input id="rc" maxlength="5" value="${esc(code)}"></div>
-    ${needCode?`<div class="field"><label for="fc2">Facilitator code</label><input id="fc2" type="password" autocomplete="off" value="${esc(facultyCode)}"></div>`:''}
+    <div class="field"><label for="rc">Session code</label><input id="rc" name="sim-session-code" maxlength="5" autocomplete="off" data-lpignore="true" value="${esc(code)}"></div>
+    ${needCode?`<div class="field"><label for="fc2">Facilitator code</label><input id="fc2" name="sim-facilitator-code-2" type="password" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore value="${esc(facultyCode)}"></div>`:''}
     <div style="margin-top:18px"><button class="btn" id="rs" ${busy?'disabled':''}>Open session</button></div>
   </section></div>`;
   document.getElementById('mk').onclick=create;document.getElementById('rs').onclick=resume;
@@ -196,7 +201,7 @@ async function resume(){
   readDraft();code=(document.getElementById('rc').value||'').trim().toUpperCase();busy=true;error='';
   try{await refresh(true);localStorage.setItem(SESSION_KEY,code);startPoll()}catch(e){error=e.message;state=null}finally{busy=false;render()}
 }
-function startPoll(){clearInterval(poll);poll=setInterval(()=>refresh().catch(e=>{error=e.message}),2000)}
+function startPoll(){clearInterval(poll);poll=setInterval(()=>{refresh().catch(e=>{error=e.message});refreshEnrolment()},2000);refreshEnrolment()}
 let shown='';
 async function refresh(throwErr){
   if(!code)return;
@@ -208,23 +213,37 @@ async function refresh(throwErr){
   }catch(e){if(throwErr)throw e;error=e.message}
 }
 
+let enrol=null,enrolAt=0;
+async function refreshEnrolment(){
+  const s=state?.session;if(!s||!s.platformAuth||!s.courseId||s.state!=='lobby')return;
+  if(Date.now()-enrolAt<15000)return;enrolAt=Date.now();
+  try{const d=await api({action:'faculty_enrolments',code});enrol=d.available?d.students.filter(x=>x.accessReleased===true):null;shown='';render()}catch{}
+}
+function notJoined(){
+  if(!enrol)return null;
+  const inRoom=new Set(state.roster.filter(p=>p.joined).map(p=>p.id));
+  return enrol.filter(x=>!inRoom.has(x.participantId)).map(x=>x.name).sort((a,b)=>a.localeCompare(b));
+}
 function lobbyView(){
-  const s=state.session,people=state.roster.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const s=state.session,people=state.roster.filter(p=>p.joined||s.mode==='team').slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const here=state.roster.filter(p=>p.joined),readyN=here.filter(p=>p.ready).length;
+  const missing=notJoined();
   const joinUrl=s.joinUrl||location.origin+BASE+'/index.html?session='+s.code;
   const team=s.mode==='team';
-  const rows=people.map(p=>`<li><span>${esc(p.name)}</span>${team?`<input data-id="${esc(p.id)}" value="${esc(teamDraft[p.id]??p.teamLabel)}" placeholder="Team name" aria-label="Team for ${esc(p.name)}">`:''}</li>`).join('');
+  const rows=people.map(p=>`<li><span>${esc(p.name)}${p.joined?(p.ready?'':' <span class="late">reading the walkthrough</span>'):' <span class="late">not here yet</span>'}</span>${team?`<input data-id="${esc(p.id)}" value="${esc(teamDraft[p.id]??p.teamLabel)}" placeholder="Team name" aria-label="Team for ${esc(p.name)}">`:''}</li>`).join('');
   app.innerHTML=`<h2>Students join with this code</h2>
   <div class="join"><div class="code">${esc(s.code)}</div><div class="url">${esc(joinUrl)}</div></div>
   ${error?`<div class="note bad">${esc(error)}</div>`:''}
-  <div class="grid2"><section class="card"><h3>${people.length} joined</h3>
+  <div class="grid2"><section class="card"><h3>${here.length} joined · ${readyN} finished the walkthrough</h3>
     ${people.length?`<ul class="roster">${rows}</ul>`:`<p class="body">Nobody has joined yet. This list updates on its own.</p>`}
+    ${missing?`<h3 style="margin-top:20px">Not joined yet · ${missing.length}</h3>${missing.length?`<ul class="roster">${missing.map(n=>`<li><span>${esc(n)}</span></li>`).join('')}</ul>`:`<p class="body">Everyone enrolled has joined.</p>`}`:''}
     ${team&&people.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center">
       <button class="btn sm" id="split">Split into teams of</button><input id="ts" type="number" min="2" max="8" value="${teamSize}" style="width:64px;background:var(--night);border:1px solid var(--line2);padding:6px 8px">
       <button class="btn sm" id="save">Save teams</button>${s.platformAuth&&s.courseId?`<button class="btn sm" id="imp">Add approved course students</button>`:''}</div>`:''}
   </section>
   <section class="card"><h3>When everyone is in</h3>
-    <p class="body">Starting runs a four-minute briefing, then five three-minute rounds with a minute of reveal after each. About twenty-seven minutes in all.</p>
-    ${team?`<p class="body">Teams are fixed when you start. Students who arrive later can't join a team session.</p>`:`<p class="body">Students who join after round 1 closes can still play, but they stay out of the room's totals.</p>`}
+    <p class="body">Students read an untimed walkthrough while they wait. Starting runs a one-minute recap, then five three-minute rounds with a minute of reveal after each. About twenty-four minutes in all. A round closes early once everyone has decided.</p>
+    ${team?`<p class="body">Teams are fixed when you start, and only students who have joined are counted. Students who arrive later can't join a team session.</p>`:`<p class="body">Students who join after round 1 closes can still play, but they stay out of the room's totals.</p>`}
     <button class="btn pri" id="go">Start the session</button>
   </section></div>`;
   document.getElementById('go').onclick=()=>control('start');
@@ -244,6 +263,7 @@ async function saveTeams(){
 }
 async function control(set){
   if(set==='close'&&!confirm('Close this session? Students will see their ending and no further decisions can be made.'))return;
+  if(set==='advance'&&state?.projector?.clock?.phase==='decide'&&state.projector.live&&state.projector.live.decided<state.projector.live.of&&!confirm(`${state.projector.live.of-state.projector.live.decided} still deciding. Their features will ship as timeouts. Close the round?`))return;
   if(set==='start'&&Object.keys(teamDraft).length)await saveTeams();
   try{await api({action:'control',code,set});error=''}catch(e){error=e.message}
   shown='';await refresh();

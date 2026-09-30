@@ -12,7 +12,7 @@ const MODES = ['individual', 'team'];
 function elapsedSeconds(sess, now) {
   if (!sess || !sess.startedAt) return 0;
   const pausedMs = (sess.pausedTotalMs || 0) + (sess.paused && sess.pausedAt ? now - sess.pausedAt : 0);
-  return Math.max(0, (now - sess.startedAt - pausedMs) / 1000);
+  return Math.max(0, (now - sess.startedAt - pausedMs + (sess.skipMs || 0)) / 1000);
 }
 
 function clock(sess, now) {
@@ -29,9 +29,38 @@ function clock(sess, now) {
 // A participant who joined after round 1 closed still plays, but their missed
 // rounds are timeouts they never saw, so they stay out of the room's totals.
 function isLate(sess, participant) {
-  if (!sess.startedAt || !participant.joinedAt) return false;
-  const round1Closes = sess.startedAt + (C.CLOCK.briefingSeconds + C.CLOCK.decisionSeconds) * 1000 + (sess.pausedTotalMs || 0);
-  return participant.joinedAt >= round1Closes;
+  return Number(participant.lateFrom || 0) >= 1;
+}
+
+// Only people who actually opened the session count. Course students imported
+// ahead of time have no joinedAt until they arrive.
+function joined(participants) {
+  return Object.values(participants || {}).filter(p => p && p.joinedAt);
+}
+
+// Everyone whose decision the room is waiting for in the open round.
+function deciders(sess, participants) {
+  if (sess.mode === 'team') {
+    const ids = new Set(Object.values(sess.teams || {}).flat());
+    return joined(participants).filter(p => ids.has(p.id));
+  }
+  return joined(participants);
+}
+
+// True when every decider has voted in the open round, so it can close early.
+function allDecided(sess, participants, now) {
+  const clk = clock(sess, now);
+  if (clk.phase !== 'decide' || sess.paused) return false;
+  const who = deciders(sess, participants);
+  return who.length > 0 && who.every(p => (p.votes || {})[clk.round]);
+}
+
+// Move the shared clock to the end of the current segment.
+function skipSegment(sess, now) {
+  const clk = clock(sess, now);
+  if (sess.state !== 'running' || sess.paused) return { error: 'cannot_skip', status: 409 };
+  if (!['briefing', 'decide', 'reveal'].includes(clk.phase)) return { error: 'cannot_skip', status: 409 };
+  return { next: { ...sess, skipMs: (sess.skipMs || 0) + clk.remaining * 1000 }, from: { phase: clk.phase, round: clk.round } };
 }
 
 function ownVotes(participant, closedRounds) {
@@ -53,6 +82,10 @@ function teamDecisions(sess, participants, groupId, closedRounds) {
   });
 }
 
+function appFor(r) {
+  return r.app ? { ...r.app } : null;
+}
+
 // Everything one student may see. Future rounds never leave the server.
 function studentView(sess, participants, pid, now) {
   const me = participants[pid];
@@ -68,29 +101,36 @@ function studentView(sess, participants, pid, now) {
   for (let n = 1; n <= clk.openedRounds; n++) {
     const r = C.ROUNDS[n - 1];
     const entry = {
-      n, title: r.title, request: r.request, reason: r.reason, adds: r.adds,
+      n, title: r.title, request: r.request, reason: r.reason, adds: r.adds, app: appFor(r),
       myVote: (me.votes || {})[n] || null
     };
     if (n <= clk.closedRounds) {
-      const res = E.roundResult(decisions, n, intensity);
-      entry.result = res;
+      entry.result = E.roundResult(decisions, n, intensity);
       if (inTeam) entry.myVote = mine[n - 1];
     }
     rounds.push(entry);
   }
 
+  const onTeam = !inTeam || (!!me.groupId && teamMembers(sess, me.groupId).includes(pid));
   const view = {
     clock: clk,
     mode: sess.mode,
+    solo: !!sess.solo,
+    ready: !!me.ready,
+    late: sess.state === 'running' && clk.phase !== 'briefing' && !me.ready,
     team: inTeam ? { label: me.teamLabel || '', size: teamMembers(sess, me.groupId).length } : null,
     rounds,
-    canVote: clk.phase === 'decide' && !clk.paused && !(me.votes || {})[clk.round] && (!inTeam || !!me.groupId && teamMembers(sess, me.groupId).includes(pid)),
+    canVote: clk.phase === 'decide' && !clk.paused && !(me.votes || {})[clk.round] && onTeam,
+    canSkip: !!sess.solo && !clk.paused && (clk.phase === 'briefing' || clk.phase === 'reveal' || (clk.phase === 'decide' && !!(me.votes || {})[clk.round])),
     ending: null
   };
   if (clk.closedRounds === 5 && (clk.phase === 'ending' || clk.phase === 'closed')) {
     const e = E.ending(decisions, intensity);
+    const counts = { approve: 0, decline: 0, timeout: 0 };
+    e.decisions.forEach(d => { counts[d.decision]++; });
     view.ending = {
-      decisions: e.decisions.map((d, i) => ({ ...d, myVote: inTeam ? mine[i] : undefined })),
+      decisions: e.decisions.map((d, i) => ({ ...d, myVote: inTeam ? mine[i] : undefined, app: appFor(C.ROUNDS[i]) })),
+      counts,
       knows: e.knows,
       missing: e.missing
     };
@@ -103,30 +143,29 @@ function studentView(sess, participants, pid, now) {
 function projectorView(sess, participants, now) {
   const clk = clock(sess, now);
   const intensity = sess.intensity || 'standard';
-  const all = Object.values(participants || {}).filter(Boolean);
+  const present = joined(participants);
   let runs = [];
-  let deciders = [];
   if (sess.mode === 'team') {
     for (const groupId of Object.keys(sess.teams || {})) {
       const t = teamDecisions(sess, participants, groupId, clk.closedRounds);
       runs.push({ decisions: t.map(x => x.decision), splits: t.map(x => x.split) });
     }
-    deciders = all.filter(p => p.groupId && teamMembers(sess, p.groupId).includes(p.id));
   } else {
-    const counted = all.filter(p => !isLate(sess, p));
+    const counted = present.filter(p => !isLate(sess, p));
     runs = counted.map(p => ({ decisions: ownVotes(p, clk.closedRounds).map((d, i) => (i < clk.closedRounds ? d : undefined)) }));
-    deciders = counted;
   }
+  const who = deciders(sess, participants);
   const agg = E.aggregate(runs, intensity);
   const live = clk.phase === 'decide'
-    ? { round: clk.round, decided: deciders.filter(p => (p.votes || {})[clk.round]).length, of: deciders.length }
+    ? { round: clk.round, decided: who.filter(p => (p.votes || {})[clk.round]).length, of: who.length }
     : null;
   return {
     clock: clk,
     mode: sess.mode,
     intensity,
-    joined: all.length,
-    late: sess.mode === 'individual' ? all.filter(p => isLate(sess, p)).length : 0,
+    joined: present.length,
+    ready: present.filter(p => p.ready).length,
+    late: sess.mode === 'individual' ? present.filter(p => isLate(sess, p)).length : 0,
     teams: sess.mode === 'team' ? Object.keys(sess.teams || {}).length : null,
     live,
     rounds: agg.rounds.slice(0, clk.closedRounds),
@@ -159,8 +198,8 @@ function applyVote(sess, participant, round, decision, now) {
 // Freeze team membership at start so a vote can never move between teams.
 function freezeTeams(participants) {
   const teams = {};
-  for (const p of Object.values(participants)) {
-    if (p && p.groupId) (teams[p.groupId] ||= []).push(p.id);
+  for (const p of joined(participants)) {
+    if (p.groupId) (teams[p.groupId] ||= []).push(p.id);
   }
   for (const k of Object.keys(teams)) teams[k].sort();
   return teams;
@@ -201,6 +240,6 @@ function completionSummary(sess, participants, pid, now) {
 
 module.exports = {
   INTENSITIES, MODES,
-  elapsedSeconds, clock, isLate, ownVotes, teamDecisions, freezeTeams,
+  elapsedSeconds, clock, isLate, joined, deciders, allDecided, skipSegment, ownVotes, teamDecisions, freezeTeams,
   studentView, projectorView, applyVote, applyControl, completionSummary
 };

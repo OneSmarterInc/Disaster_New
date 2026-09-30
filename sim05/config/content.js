@@ -77,7 +77,7 @@ const META = {
 };
 
 const CLOCK = {
-  briefingSeconds: 240,
+  briefingSeconds: 60,
   decisionSeconds: 180,
   revealSeconds: 60,
   endingSeconds: 180
@@ -88,40 +88,86 @@ const CUSTOMER = { name: 'Dana Okafor', short: 'Dana', age: 34, since: 'Loopwell
 const BRIEFING = {
   heading: "You're the product manager at Loopwell.",
   individual: [
-    "You're the product manager at Loopwell, a fitness app with about two million users. Over the next twenty minutes, five feature requests will reach you, one at a time. Each comes from your own team with a business reason attached, and you approve it or decline it.",
+    "Loopwell is a fitness app with about two million users. Over the next twenty minutes, five feature requests will reach you, one at a time. Each comes from your own team with a business reason attached, and you approve it or decline it.",
     "Your decisions are final. You can't go back to an earlier round, and nothing you approve can be withdrawn later. Each round has a three-minute clock, and if it runs out before you decide, the feature ships (that's how the roadmap works here).",
     "After each decision you'll see what it means for one customer, Dana Okafor, 34, who has used Loopwell for two years. Your own choices stay private. The room only ever sees totals."
   ],
-  teamExtra: 'Your team decides by majority vote, and a tie ships the feature. A vote not cast before the clock runs out counts as approval.'
+  teamExtra: 'Your team decides by majority vote, and a tie ships the feature. A vote not cast before the clock runs out counts as approval.',
+  // The timed minute before round 1: a recap, because the walkthrough did the teaching.
+  recapHeading: 'Round 1 opens in a moment.',
+  recap: 'Five requests, three minutes each. Decisions are final, and if the clock runs out, the feature ships.'
 };
+
+// Untimed screens shown while the room fills (or before a solo run starts).
+const WALKTHROUGH = [
+  {
+    title: "You're the product manager at Loopwell.",
+    body: [
+      'Loopwell is a fitness app with about two million users. Five feature requests will reach you, one at a time. Each comes from your own team with a business reason attached, and you approve it or decline it.',
+      'Take your time with these screens. Nothing starts until your instructor starts the session.'
+    ],
+    soloBody: [
+      'Loopwell is a fitness app with about two million users. Five feature requests will reach you, one at a time. Each comes from your own team with a business reason attached, and you approve it or decline it.',
+      'Take your time with these screens. The clock starts only when you start round 1.'
+    ]
+  },
+  {
+    title: 'How a round works',
+    example: true,
+    body: [
+      "Each round shows one request, why your team wants it, and what data it adds. Beside it is the screen Dana would get in her app if the feature ships.",
+      "You have three minutes to approve or decline, and you confirm before your choice is recorded."
+    ],
+    labels: { request: 'The request', why: 'Why the team wants it', adds: 'What it adds', app: "Dana's app if it ships", buttons: 'Approve or decline', clock: 'Three minutes' }
+  },
+  {
+    title: "Dana's file",
+    body: [
+      'Dana Okafor, 34, has used Loopwell for two years. After each round her file shows what Loopwell can now work out about her, and how sure it can be.',
+      'There are three levels: high confidence, reasonable confidence, and a loose guess. The file only ever shows what could be worked out, never what Loopwell does with it.'
+    ]
+  },
+  {
+    title: 'The rules',
+    body: [
+      "Your decisions are final. You can't go back to an earlier round, and nothing you approve can be withdrawn later.",
+      "If the clock runs out before you decide, the feature ships (that's how the roadmap works here).",
+      'Your own choices stay private. The room only ever sees totals, and there is no score.'
+    ],
+    teamBody: 'Your team decides by majority vote, and a tie ships the feature. A vote not cast before the clock runs out counts as approval.'
+  }
+];
 
 const ROUNDS = [
   {
     n: 1, key: 'A',
     title: 'Step count and active minutes',
-    request: "Read step count and active minutes from the phone's motion sensor, all day.",
+    request: "Let Loopwell read step count and active minutes from the phone's motion sensor, all day.",
     reason: "It's the core of the product. Without it, Loopwell is a notebook.",
     adds: "A minute-by-minute record of when Dana is moving and when she isn't.",
     cost: 'Loopwell becomes a manual logging app. Most users, Dana included, stop logging within two weeks.',
-    missing: 'Automatic step and activity tracking'
+    missing: 'Automatic step and activity tracking',
+    app: { kind: 'steps', name: 'Step tracking', title: 'Today', big: '8,412', bigUnit: 'steps', small: '46 active minutes', off: 'Log your activity by hand to see your day.' }
   },
   {
     n: 2, key: 'G',
     title: 'Location on logged walks and runs',
-    request: 'Record GPS while Dana logs a walk or run, so the app can draw her route.',
+    request: 'Let Loopwell record GPS while Dana logs a walk or run, so the app can draw her route.',
     reason: 'Route maps are the most-requested feature, and users who save routes stay twice as long.',
     adds: 'Where each workout starts, where it goes and where it ends.',
     cost: 'Route maps ship at two competitors this quarter. Dana requested them and now plans her runs in another app.',
-    missing: 'Route maps for her runs'
+    missing: 'Route maps for her runs',
+    app: { kind: 'route', name: 'Route maps', title: 'Evening run', big: '5.2 km', bigUnit: '31 min', small: 'Your route', off: "Route maps aren't available." }
   },
   {
     n: 3, key: 'S',
     title: 'Overnight sleep tracking',
-    request: "Read the phone's motion sensor overnight to estimate sleep, with one coarse location check at bedtime so reports use the right time zone.",
-    reason: "Sleep is the feature users cite most when they cancel, and competitors already have it.",
+    request: "Let Loopwell track Dana's sleep overnight, with one coarse location check at bedtime.",
+    reason: "Sleep is the feature users cite most when they cancel, and competitors already have it. The bedtime location check keeps sleep reports in the right time zone.",
     adds: 'When Dana falls asleep and wakes, and roughly where the phone is each night.',
     cost: "Sleep is the feature users cite most when they cancel. Dana's renewal is due next month.",
-    missing: 'Sleep reports'
+    missing: 'Sleep reports',
+    app: { kind: 'sleep', name: 'Sleep reports', title: 'Last night', big: '7 h 12 m', bigUnit: 'asleep', small: 'Asleep 11:04 pm, awake 6:16 am', off: "Sleep reports aren't available." }
   },
   {
     n: 4, key: 'N',
@@ -130,16 +176,18 @@ const ROUNDS = [
     reason: "The nutrition tier is next year's main new revenue, and tips based on real purchases convert three times better than tips based on food logs.",
     adds: 'Every item she buys at that chain, with the date and the store.',
     cost: "The nutrition tier doesn't launch, and next year's revenue plan assumed it would. Dana's diet questions go unanswered.",
-    missing: 'Nutrition tips based on her shopping'
+    missing: 'Nutrition tips based on her shopping',
+    app: { kind: 'tip', name: 'Nutrition tips', title: 'Nutrition tip', big: 'Swap your yogurt', bigUnit: '', small: 'Your usual yogurt has 18 g of sugar. The plain one has 5 g.', off: 'Nutrition tips need a food log. Add meals by hand to get tips.' }
   },
   {
     n: 5, key: 'H',
     title: 'Resting heart rate from her watch',
-    request: "Sync resting heart rate from Dana's watch.",
+    request: "Let Loopwell sync resting heart rate from Dana's watch.",
     reason: 'Calorie estimates are the top complaint in support tickets. Heart rate cuts the error by more than half.',
     adds: 'Her resting heart rate, measured continuously, every day.',
     cost: "Calorie estimates stay off by up to 20% for users like Dana. That's the top complaint in support tickets.",
-    missing: 'Accurate calorie estimates'
+    missing: 'Accurate calorie estimates',
+    app: { kind: 'calories', name: 'Calorie estimates', title: 'Calories burned today', big: '412 kcal', bigUnit: '', small: 'Accurate to within 5%, using your heart rate', off: 'Estimated from steps only. Can be off by up to 20%.' }
   }
 ];
 
@@ -193,17 +241,17 @@ const INFERENCES = [
       },
       {
         level: 'moderate', requires: ['H', 'A'], label: 'A change in her health',
-        text: "That something changed in Dana's body about a month ago. Her resting heart rate is up and her runs are shorter. Early pregnancy is one of the likelier explanations, alongside illness or a new medication.",
+        text: "That something changed in Dana's body about a month ago. Her resting heart rate is up and her runs are shorter. Loopwell can't yet say what.",
         lighter: "That something changed in Dana's body about a month ago. Her resting heart rate is up and her runs are shorter. Loopwell can't yet say what."
       },
       {
         level: 'moderate', requires: ['N', 'S'], label: 'A change in her health',
-        text: 'That something changed for Dana about a month ago. She sleeps longer, stopped buying alcohol and started buying ginger and crackers. Early pregnancy is one of the likelier explanations.',
+        text: "That something changed for Dana about a month ago. She sleeps longer, stopped buying alcohol and started buying ginger and crackers. Loopwell can't yet say what.",
         lighter: "That something changed for Dana about a month ago. She sleeps longer and her shopping changed. Loopwell can't yet say what."
       },
       {
         level: 'low', requires: ['N'], label: 'A change in her shopping',
-        text: "That Dana's shopping changed three weeks ago: no alcohol, more ginger and crackers. On its own that fits several stories, and early pregnancy is only one of them.",
+        text: "That Dana's shopping changed three weeks ago: no alcohol, more ginger and crackers. On its own that fits several stories.",
         lighter: "That Dana's shopping changed three weeks ago. On its own that fits several stories."
       }
     ]
@@ -227,8 +275,8 @@ const STUDENT_COPY = {
   revealEmpty: 'Nothing yet beyond what Dana enters herself.',
   newMarker: 'New',
   updatedMarker: 'Updated',
-  revealChangedOne: "One line in Dana's file changed.",
-  revealChangedMany: "{n} lines in Dana's file changed.",
+  newInFile: "New in Dana's file",
+  updatedInFile: "Updated in Dana's file",
   revealUnchanged: "Dana's file is unchanged.",
   costHeading: 'What this means',
   endingHeading: 'Where this leaves Dana',
@@ -249,7 +297,30 @@ const STUDENT_COPY = {
   roundOpensIn: 'Round {n} opens in',
   roundClosesIn: 'Round closes in',
   endingIn: 'The ending opens in',
-  sessionClosed: 'This session has closed.'
+  sessionClosed: 'This session has closed.',
+  timeoutRule: 'If the clock runs out, the feature ships.',
+  countLine: 'You approved {approve} and declined {decline}.',
+  teamCountLine: 'Your team approved {approve} and declined {decline}.',
+  timeoutCountOne: 'The clock ran out on one more, and it shipped.',
+  timeoutCountMany: 'The clock ran out on {timeout} more, and they shipped.',
+  timeoutCountAll: 'The clock ran out on all five, and every one shipped.',
+  closingLine: 'Your instructor will take it from here.',
+  soloClosingLine: 'That is the end of the run. Nothing here is scored.',
+  appHeading: "Dana's app",
+  appIfShips: "Dana's app if this ships",
+  appNotShipped: 'Not in her app',
+  walkNext: 'Next',
+  walkBack: 'Back',
+  walkReview: 'Back to the walkthrough',
+  walkReady: "I'm ready",
+  walkStartSolo: 'Start round 1',
+  walkWaiting: 'You are ready. Your instructor will start the session.',
+  walkSkip: 'Skip to the open round',
+  walkLate: 'The session has already started.',
+  skipToResult: 'Show me the result',
+  skipToNext: 'Go to round {n}',
+  skipToEnding: 'Go to the ending',
+  expandHint: 'Tap a line to read it in full.'
 };
 
 const DEBRIEF = {
@@ -262,9 +333,9 @@ const DEBRIEF = {
   ],
   turn: 'Name a company that holds data about you, and something it could work out that you never told it.',
   teamPrompt: 'Who voted against something that shipped anyway?',
-  headline: '{reached} of {total} reached {what}. {declinedSome} of them declined at least one request.',
-  headlineWhat: { standard: 'a reasonable or better pregnancy estimate', lighter: 'a reasonable or better health-change estimate' },
+  headline: '{reached} of {total} ended with Loopwell estimating {what}. {declinedSome} of them declined at least one request.',
+  headlineWhat: { standard: "a change in Dana's health", lighter: "a change in Dana's health" },
   headlineLevels: ['high', 'moderate']
 };
 
-module.exports = { META, CLOCK, CUSTOMER, BRIEFING, ROUNDS, INFERENCES, ENDINGS, STUDENT_COPY, DEBRIEF };
+module.exports = { META, CLOCK, CUSTOMER, BRIEFING, WALKTHROUGH, ROUNDS, INFERENCES, ENDINGS, STUDENT_COPY, DEBRIEF };

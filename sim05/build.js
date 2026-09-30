@@ -16,6 +16,7 @@ const refuse = (m) => problems.push(m);
 // Every round, reveal and cost line arrives from the server one round at a time.
 const secret = [];
 for (const r of C.ROUNDS) secret.push(r.title, r.request, r.reason, r.adds, r.cost, r.missing);
+for (const r of C.ROUNDS) if (r.app) secret.push(r.app.title, r.app.small, r.app.off);
 for (const i of C.INFERENCES) for (const l of i.levels) { secret.push(l.text); if (l.lighter) secret.push(l.lighter); }
 for (const [name, html] of Object.entries(pages)) {
   for (const s of secret) if (html.includes(s)) refuse(`${name} page contains scenario content: "${s.slice(0, 50)}"`);

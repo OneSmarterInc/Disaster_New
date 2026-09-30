@@ -92,14 +92,14 @@ eq(E.teamDecision(['p1', 'p2', 'p3'], { p1: D, p2: D, p3: A }).decision, 'declin
 ok(E.teamDecision(team, { p1: A, p2: D }).split, 'split is flagged');
 ok(!E.teamDecision(team, { p1: A, p2: A }).split, 'unanimous is not split');
 
-// Clock.
-eq(E.totalSeconds(), 1620, 'twenty-seven minutes of play');
-eq(E.phaseAt(0).phase, 'briefing', 'starts in briefing');
-eq(E.phaseAt(240), { phase: 'decide', round: 1, remaining: 180 }, 'round 1 opens at four minutes');
-eq(E.phaseAt(420), { phase: 'reveal', round: 1, remaining: 60 }, 'round 1 reveal');
-eq(E.phaseAt(240 + 4 * 240), { phase: 'decide', round: 5, remaining: 180 }, 'round 5 opens');
-eq(E.phaseAt(1440).phase, 'ending', 'ending after round 5');
-eq(E.phaseAt(1620).phase, 'closed', 'closed at the end');
+// Clock: one-minute recap, five rounds of 3 + 1 minutes, three-minute ending.
+eq(E.totalSeconds(), 1440, 'twenty-four minutes of play');
+eq(E.phaseAt(0).phase, 'briefing', 'starts with the recap');
+eq(E.phaseAt(60), { phase: 'decide', round: 1, remaining: 180 }, 'round 1 opens at one minute');
+eq(E.phaseAt(240), { phase: 'reveal', round: 1, remaining: 60 }, 'round 1 reveal');
+eq(E.phaseAt(60 + 4 * 240), { phase: 'decide', round: 5, remaining: 180 }, 'round 5 opens');
+eq(E.phaseAt(1260).phase, 'ending', 'ending after round 5');
+eq(E.phaseAt(1440).phase, 'closed', 'closed at the end');
 
 // Aggregates.
 const agg = E.aggregate([
@@ -114,12 +114,14 @@ eq(agg.rounds[0], { round: 1, title: C.ROUNDS[0].title, approve: 5, decline: 0, 
 eq(agg.rounds[2].timeout, 1, 'timeouts counted separately');
 eq(agg.reached, 3, 'three reached an estimate');
 eq(agg.reachedAndDeclined, 2, 'two of them declined something');
-eq(agg.headline, '3 of 4 reached a reasonable or better pregnancy estimate. 2 of them declined at least one request.', 'headline text');
+eq(agg.headline, "3 of 4 ended with Loopwell estimating a change in Dana's health. 2 of them declined at least one request.", 'headline text');
 ok(agg.mostDivided === 4 || agg.mostDivided === 5, 'most divided round found');
 ok(/^Round \d split \d–\d\. Find one of each\.$/.test(agg.disagreement), 'disagreement prompt filled');
 ok(!E.aggregate([], 'standard').headline, 'no headline for an empty room');
 eq(E.aggregate([{ decisions: [D, D, D, A, D] }]).reached, 0, 'a low estimate does not count toward the headline');
 eq(E.aggregate([{ decisions: [A, D, D, D, A] }]).reached, 1, 'a moderate estimate counts toward the headline');
-ok(/health-change/.test(E.aggregate([{ decisions: [A, A, A, A, A] }], 'lighter').headline), 'lighter headline');
+ok(!/pregnan/i.test(E.aggregate([{ decisions: [A, A, A, A, A] }], 'lighter').headline), 'lighter headline never names pregnancy');
+// Only the high-confidence line names pregnancy, in either setting.
+for (const p of all) for (const k of E.ending(p).knows) if (k.id === 'health' && k.level !== 'high') ok(!/pregnan/i.test(k.text + k.label), 'lower levels never name pregnancy');
 
 console.log(`PASS engine-check: ${n} assertions across ${all.length} paths × 2 intensities`);

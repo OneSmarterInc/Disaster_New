@@ -47,6 +47,26 @@ the result. Refreshing the student page retains the scoped launch token and run.
 
 The lighter setting, chosen at creation, never names pregnancy anywhere.
 
+## Before and during play
+
+Students work through an untimed four-screen walkthrough while the room fills,
+then press "I'm ready"; the lobby shows how many have finished. Nothing is timed
+until the instructor starts. A one-minute recap precedes round 1, so play runs
+about twenty-four minutes. Late arrivals see the walkthrough with a way straight
+into the open round.
+
+Each request shows the screen Dana would get in her app if it ships; a reveal
+shows it live, or what is missing if declined. What changed in Dana's file appears
+in the main column. During a decision the file is compact; tap a line to read it.
+
+A round closes early once everyone has decided. The instructor can close the open
+round or open the next one at any time. In a solo run the student starts their own
+clock and can skip time they have no use for, but never an undecided round.
+In team mode only students who actually joined are frozen into teams, so an absent
+imported student can never outvote a team by silence.
+
+Pregnancy is named only at high confidence, in either setting.
+
 ## Checks
 
 `npm test` runs the build gate and every check in `tools/`, with Node 20 and no
