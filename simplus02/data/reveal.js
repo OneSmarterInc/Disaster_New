@@ -5,6 +5,11 @@ module.exports = {
   verified: true,
   verifiedOn: '2026-10-01',
   heading: 'What actually happened',
+  projectorParagraphs: [
+    'Crestline Power is modelled on AEP Ohio. In July 2025, Ohio’s Commission chose between two competing settlements. It adopted the agreement backed by AEP Ohio, Commission staff, consumer advocates and others. The data-centre parties had supported a different agreement: the adopted settlement was not unanimous.',
+    'The tariff tied demand charges to minimum billing demand, with a capacity-based minimum capped at 85%. A four-year ramp plus eight years gives a twelve-year contract. Early exit and collateral provisions add commitments of their own. The details matter: 85% is not a percentage of the entire electricity bill.',
+    'By February 2026, roughly 30,000 MW of initial interest had led to 5,642 MW of new binding contracts. Those were additional to 12,219 MW contracted earlier. The lesson is how financial commitments change a forecast, and how a regulator chooses a package when the parties cannot all agree.',
+  ],
   paragraphs: [
     'Crestline Power is modelled on AEP Ohio. The Commission is the Public Utilities Commission of Ohio.',
     'From March 2023, AEP Ohio paused new data-centre service requests and agreements in central Ohio. The proceeding recorded roughly 600 MW of existing data-centre demand and over 30,000 MW of requests without signed agreements. The July 2025 order directed AEP Ohio to end that moratorium.',

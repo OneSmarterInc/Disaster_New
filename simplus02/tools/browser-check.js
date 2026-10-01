@@ -132,6 +132,55 @@ let browser;
   }
   assert.equal(reports.size, 4);
   assert.ok([...reports.values()].every(n => n === 2), 'each failed report retries once, then stops');
+
+  await faculty.locator('#next').click();
+  await faculty.waitForFunction(() => c.phase === 'debrief');
+  await faculty.locator('#reveal').click();
+  await faculty.waitForFunction(() => c.reveal === true);
+  assert.equal(await faculty.locator('.reveal-summary > p').count(), 3, 'projector version contains three short paragraphs');
+  assert.equal(await faculty.locator('#reveal-details').evaluate(el => el.open), false, 'full reveal starts collapsed');
+  await faculty.locator('#reveal-details summary').click();
+  await faculty.getByRole('heading', { name: 'Sources', exact: true }).waitFor();
+  assert.equal(await faculty.locator('#reveal-details a').count(), 5, 'all sources remain available with the full account');
+  await faculty.evaluate(() => poll());
+  assert.equal(await faculty.locator('#reveal-details').evaluate(el => el.open), true, 'polling does not collapse a reveal being read');
+  await faculty.locator('#hide').click();
+  await faculty.waitForFunction(() => c.reveal === false);
+  assert.equal(await faculty.locator('.reveal-summary').count(), 0);
+
+  // One disconnected reader cannot hold up the room after an explicit owner confirmation.
+  const overrideFaculty = await page();
+  await overrideFaculty.goto(origin + '/simplus02#lt=' + token('override-teacher', 'faculty', 'session'));
+  await overrideFaculty.locator('#new').click();
+  await overrideFaculty.locator('.big').waitFor();
+  const overrideCode = (await overrideFaculty.locator('.big').innerText()).trim();
+  const overrideStudents = [];
+  for (let i = 0; i < 4; i++) {
+    const student = await page(); overrideStudents.push(student);
+    await student.goto(origin + '/simplus02#lt=' + token('override' + i));
+    await student.getByRole('heading', { name: 'What this proceeding decides' }).waitFor();
+    if (i < 3) await finishWalkthrough(student);
+  }
+  await overrideFaculty.waitForFunction(() => c.walkthrough.finished === 3 && c.joined === 4);
+  await overrideFaculty.locator('#seat').click();
+  await overrideFaculty.locator('#brief-anyway').waitFor();
+  assert.equal(await overrideFaculty.locator('#next').isEnabled(), false);
+  await overrideStudents[3].context().close();
+  const beforeOverride = await store.get(keys.session(overrideCode));
+  let confirmation = '';
+  overrideFaculty.once('dialog', dialog => { confirmation = dialog.message(); dialog.dismiss(); });
+  await overrideFaculty.locator('#brief-anyway').click();
+  assert.ok(confirmation.includes('override3') && !confirmation.includes('override2'), 'confirmation names only unfinished participants');
+  assert.deepEqual(await store.get(keys.session(overrideCode)), beforeOverride, 'cancelling leaves the clock and room unchanged');
+  overrideFaculty.once('dialog', dialog => dialog.accept());
+  await overrideFaculty.locator('#brief-anyway').click();
+  await overrideFaculty.waitForFunction(() => c.phase === 'briefing');
+  assert.deepEqual((await store.get(keys.session(overrideCode))).walkthroughOverride.participants.map(p => p.name), ['override3']);
+  const returning = await page();
+  await returning.goto(origin + '/simplus02/?session=' + overrideCode + '#lt=' + token('override3'));
+  await returning.getByRole('heading', { name: 'Your seat', exact: true }).waitFor();
+  assert.equal(await returning.locator('#walk-next').count(), 0, 'unfinished student returns directly to their private brief');
+
   assert.ok(requests.every(u => u.startsWith(origin + '/simplus02/api/')), 'mounted APIs stay under the platform prefix');
   const standalone = await fetch(origin + '/api/session', {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-faculty-code': 'browser-faculty-code' },
@@ -158,7 +207,7 @@ let browser;
   assert.ok(requests.some(u => u === origin + '/api/session'), 'own-domain root uses root APIs');
   assert.ok(registrations.some(p => p.sim === C.id && p.number === 102));
   assert.deepEqual(errors, [], 'shipped pages and handlers have no uncaught errors');
-  console.log('PASS SimPlus-02 Chromium flow: faculty launch/reload, four account joins, untimed walkthrough/resume/readiness, negotiation, close, completion retries, standalone entry and mounted assets/APIs.');
+  console.log('PASS SimPlus-02 Chromium flow: faculty launch/reload, account joins, untimed walkthrough/resume/readiness, confirmed override/cancel/disconnected rejoin, negotiation, close, completion retries, compact reveal/details/polling, standalone entry and mounted assets/APIs.');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
   if (browser) await browser.close();
   server.close();

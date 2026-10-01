@@ -6,7 +6,7 @@ Simulation ID `rapidsimplus-02`, number `102`, repository folder `simplus02/`, p
 
 Create a project from `OneSmarterInc/Disaster_New`, production branch `main`, root directory `simplus02`, framework preset **Other**. The checked-in configuration uses `node tools/build-gate.js` as its build command and `public` as its output directory. Git deployments must remain enabled.
 
-The simulation is instructor-led and needs at least four students per table. Additional students share seats as co-counsel. Students complete four untimed lobby screens before the briefing clock starts. Walkthrough progress survives rejoining, and the console lists students still reading. The instructor can seat the room while students read; briefing starts only once all seated students finish. Existing rooms created before this change retain their original flow. The engine, calibration, timed phases and confidential seat briefs are retained.
+The simulation is instructor-led and needs at least four students per table. Additional students share seats as co-counsel. Students complete four untimed lobby screens before the briefing clock starts. Walkthrough progress survives rejoining, and the console lists students still reading. The instructor can seat the room while students read. Briefing normally waits for all seated students; **Start briefing anyway** requires confirmation naming unfinished students, then sends them straight to their private brief. The session records who was unfinished when the instructor overrode the wait. Existing rooms created before this change retain their original flow. The engine, calibration, timed phases and confidential seat briefs are retained.
 
 ## Environment variables
 
@@ -54,6 +54,8 @@ After the project and rewrites are deployed:
 `data/reveal.js` was verified on 1 October 2026 against the July 2025 PUCO order, the tariff provisions, and AEP Ohio's separately dated February 2026 load update. It now has `verified: true` and source URLs with document locations. The original order was read from the filed copy in Florida PSC filing 07142-2025, Exhibit D, because the Ohio docket blocked access. The reveal distinguishes the competing settlements, demand-charge tiers, ramp plus eight-year term, exit eligibility and fee, and collateral qualification. It also clarifies that the 5,642 MW of new contracts was additional to 12,219 MW already contracted. This verification does not publish the catalogue row; keep it unpublished until the deployment and class flow are confirmed.
 
 ## Checks and screens
+
+The projector reveal has three short paragraphs. **Details** expands the full verified account and all five sources, including document locations. The expanded view stays open across console polling. See `SPEC.md` for the current lobby flow and debrief prompts, including the competing settlements and the distinction between new and earlier contracts.
 
 `npm test` and `npm run build` run calibration, content, table, API, integration and browser-script syntax checks. `simplus02-checks` additionally runs the complete four-student class flow in Chromium against disposable fixtures, including walkthrough completion, progress recovery, faculty readiness, fresh-tab rejoining and failed completion retries. To run that browser check locally, install Playwright and Chromium, then run `node tools/browser-check.js` with Playwright available on `NODE_PATH`.
 

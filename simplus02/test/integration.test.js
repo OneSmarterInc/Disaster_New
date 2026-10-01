@@ -77,7 +77,7 @@ global.fetch = async (url, options) => {
   eq((await call(session, { action: 'entry' }, auth({ course: 'c2' }))).body, { code: null });
   const before = await store.get(keys.session(code));
   for (const action of ['console', 'seat', 'phase', 'extend', 'notice', 'close', 'reveal']) {
-    eq((await call(session, { action, code, to: 'briefing', on: true }, auth({ sub: 'other-teacher', role: 'faculty' }))).status, 403, action + ' belongs to the creating instructor');
+    eq((await call(session, { action, code, to: 'briefing', on: true, skipWalkthrough: true }, auth({ sub: 'other-teacher', role: 'faculty' }))).status, 403, action + ' belongs to the creating instructor');
   }
   eq((await call(session, { action: 'console', code }, auth({ sub: 'teacher', role: 'faculty', course: 'c2' }))).status, 403);
   eq(await store.get(keys.session(code)), before, 'unauthorised faculty requests do not mutate the room');
@@ -149,7 +149,7 @@ global.fetch = async (url, options) => {
   async function denyCrossAccess() {
     const snapshot = [...db.entries()];
     for (let i = 0; i < 2; i++) for (const action of ['console', 'seat', 'phase', 'extend', 'notice', 'close', 'reveal']) {
-      const r = await call(session, { action, code: rooms[1 - i], to: 'briefing', tableId: 'T1', noticeId: 'closest', on: true }, instructors[i]);
+      const r = await call(session, { action, code: rooms[1 - i], to: 'briefing', tableId: 'T1', noticeId: 'closest', on: true, skipWalkthrough: true }, instructors[i]);
       eq([r.status, r.body.error], [403, 'not_session_owner'], `instructor ${i + 1} cannot ${action} the other's room`);
     }
     eq([...db.entries()], snapshot, 'cross-instructor calls cannot mutate sessions, rosters, tables or reports');
@@ -177,6 +177,39 @@ global.fetch = async (url, options) => {
       eq((await call(session, { action, code: room, to: 'briefing', tableId: 'T1', noticeId: 'closest', on: true }, stranger)).status, 403, 'distinct platform faculty in the same course cannot cross-access either room');
     }
   }
+
+  // The owner may explicitly bypass missing readers without marking them complete.
+  const readers = [];
+  for (let i = 0; i < 4; i++) {
+    const headers = auth({ sub: 'reader' + i, name: 'Reader ' + i });
+    const joined = await call(session, { action: 'join', code: otherCourseRoom }, headers);
+    eq(joined.status, 200);
+    const person = { ...joined.body, headers: { ...headers, 'x-participant-key': joined.body.participantKey } };
+    readers.push(person);
+    for (let step = 1; step <= (i < 2 ? 4 : 1); step++) eq((await call(session, { action: 'walkthrough', code: otherCourseRoom, ...person, step }, person.headers)).status, 200);
+  }
+  eq((await call(session, { action: 'seat', code: otherCourseRoom }, otherOwner)).status, 200);
+  const waitingRoom = await store.get(keys.session(otherCourseRoom));
+  for (const skipWalkthrough of [undefined, false, 'true']) {
+    eq((await call(session, { action: 'phase', code: otherCourseRoom, to: 'briefing', skipWalkthrough }, otherOwner)).status, 409, 'only an explicit override bypasses readers');
+  }
+  eq(await store.get(keys.session(otherCourseRoom)), waitingRoom, 'normal start does not alter the waiting room or clock');
+  for (const stranger of [owner, readers[2].headers]) {
+    eq((await call(session, { action: 'phase', code: otherCourseRoom, to: 'briefing', skipWalkthrough: true }, stranger)).status, stranger === owner ? 403 : 401, 'other faculty and students cannot override readiness');
+  }
+  eq((await call(session, { action: 'phase', code: otherCourseRoom, to: 'briefing', skipWalkthrough: true }, otherOwner)).status, 200);
+  const overridden = await store.get(keys.session(otherCourseRoom));
+  eq(overridden.phaseEndsAt, now + C.timing.briefing * 60000, 'confirmed override starts the normal briefing clock');
+  eq(overridden.walkthroughOverride.participants, readers.slice(2).map((p, i) => ({ id: p.participantId, name: 'Reader ' + (i + 2) })), 'audit record names only the unfinished students');
+  for (const person of readers.slice(2)) {
+    const v = (await call(session, { action: 'view', code: otherCourseRoom, ...person }, person.headers)).body;
+    eq(v.phase, 'briefing'); eq(v.walkthrough, undefined, 'unfinished readers enter their brief immediately');
+    assert.ok(v.brief && v.brief.person);
+    eq((await store.get(keys.roster(otherCourseRoom)))[person.participantId].walkthroughStep, 1, 'override does not claim the student finished reading');
+  }
+  const beforeRepeat = await store.get(keys.session(otherCourseRoom));
+  eq((await call(session, { action: 'phase', code: otherCourseRoom, to: 'briefing', skipWalkthrough: true }, otherOwner)).status, 400, 'override cannot restart the briefing timer');
+  eq(await store.get(keys.session(otherCourseRoom)), beforeRepeat);
 
   // A stored room from before the walkthrough version must remain playable.
   const legacyCode = (await call(session, { action: 'create' }, instructors[0])).body.code;

@@ -80,11 +80,17 @@ async function facultyAction(a, b, who, now) {
   if (a === 'phase' || a === 'extend' || a === 'reveal') {
     return retry(async () => {
       const s = await store.get(keys.session(code));
+      let walkthroughOverride;
       if (a === 'phase' && b.to === 'briefing' && s.phase === 'lobby' && s.tableIds.length) {
         const roster = await store.get(keys.roster(code));
-        if (Object.values(roster).some(p => p.table && !R.walkthroughComplete(s, p))) throw reject('walkthrough_incomplete', 409);
+        const waiting = Object.entries(roster).filter(([, p]) => p.table && !R.walkthroughComplete(s, p));
+        if (waiting.length) {
+          if (b.skipWalkthrough !== true) throw reject('walkthrough_incomplete', 409);
+          walkthroughOverride = { at: now, by: who.name, participants: waiting.map(([id, p]) => ({ id, name: p.name })) };
+        }
       }
       const next = a === 'phase' ? R.setPhase(s, String(b.to), now) : a === 'extend' ? R.extend(s) : { ...s, reveal: Boolean(b.on) };
+      if (walkthroughOverride) next.walkthroughOverride = walkthroughOverride;
       return (await store.cas(keys.session(code), s, next)) ? { phase: next.phase, phaseEndsAt: next.phaseEndsAt } : undefined;
     });
   }
