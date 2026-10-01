@@ -13,7 +13,7 @@ const sql = async (strings, ...v) => {
   if (q.startsWith('SELECT c.id, c.title FROM course_sims')) return [{ id: course.id, title: course.title }];
   if (q.startsWith('SELECT id, faculty_id, archived FROM courses')) return [{ ...course, faculty_id: owner }];
   if (q.startsWith('SELECT 1 FROM course_sims')) return attached && (q.includes('JOIN courses') || v[1] === simId) ? [{ one: 1 }] : [];
-  if (q.startsWith('SELECT e.id, e.paid, e.dropped, c.title')) return [{ id: 'enrolment', paid, dropped: false, title: course.title }];
+  if (q.startsWith('SELECT e.id, e.paid, e.dropped, c.title')) return [{ id: 'enrolment', paid, dropped: false, title: course.title, course_id: course.id }];
   if (q.startsWith('INSERT INTO launches')) return [];
   if (q.startsWith('SELECT id, role, disabled FROM users')) return [{ id: 'teacher', role: 'faculty', disabled }];
   if (q.startsWith('SELECT u.id AS student_id, u.name, e.paid')) return [{ student_id: 'student', name: 'Student', paid }];
@@ -55,6 +55,10 @@ const eq = (a, b, message) => { assert.deepEqual(a, b, message); assertions++; }
     eq((await call(launch, { query: { ...query, mode: 'session' } })).code, 403, 'student cannot become instructor');
     me = { id: 'teacher', name: 'Teacher', role: 'faculty' };
     eq((await call(launch, { query: { sim: simId, mode: 'session', format: 'json' } })).code, 200, sim + ' teacher course recovery');
+    for (const play of ['team', 'individual']) {
+      const run = await call(launch, { query: { sim: simId, course: course.id, mode: 'session', play, format: 'json' } });
+      eq(new URL(run.payload.url).searchParams.get('play'), play, sim + ' forwards instructor mode selection');
+    }
     const facultyToken = launchToken({ userId: 'teacher', name: 'Teacher', role: 'faculty', simId, courseId: course.id, mode: 'session' });
     const input = { body: { courseId: course.id }, headers: { 'x-launch-token': facultyToken } };
     eq((await call(roster, input)).payload.students, [{ participantId: 'platform:student', name: 'Student', accessReleased: true }], sim + ' course roster');

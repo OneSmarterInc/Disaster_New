@@ -44,8 +44,15 @@ async function page(n,kind='index',url='',saved={}){
   let p=await page(n,'index',`http://fixture/sim${n}/index.html?guest=1`,gate);
   ok(!p.body().includes('Session code'),`${n}: direct play needs no session code`);
   if(n==='09'){p.elements.get('sn').value='Solo Student';await p.click('sb')}
-  ok(p.run(n==='07'?'S.solo&&!!S.soloClosesAt':n==='09'?'S.session.solo&&!!S.view':'S.solo&&!!S.view'),`${n}: standalone play starts`);
+  ok(p.run(n==='07'?'S.solo&&currentView()===\'intro\'':n==='09'?'S.session.solo&&!!S.view':'S.solo&&!!S.view'),`${n}: standalone play opens`);
   if(n==='07'){
+    ok(p.run('S.soloClosesAt')===null&&p.elements.get('bar').hidden,'07: solo introduction has no timer or navigation');
+    ok(p.body().includes('How this works')&&!p.body().includes('What your team put together'),'07: introduction precedes the timed briefing');
+    F.advance(120000);await p.tick();
+    ok(p.run('currentView()')==='intro'&&p.run('S.soloClosesAt')===null,'07: reading the introduction consumes no decision time');
+    await p.click('startClock');
+    ok(p.run('S.soloClosesAt-Date.now()===C.settings.decisionMinutes*60000'),'07: student start gives the full decision interval');
+    ok(p.run('currentView()')==='briefing'&&!p.elements.get('bar').hidden,'07: student start opens the briefing and navigation');
     p.run("S.choice='buy';S.text='The acquisition gives us an affordable option for a different way of doing business.'");
     await p.run('submitDecision({disabled:false})');await p.run("submitRecognition('no')");
     ok(p.run('S.soloStage')===1,'07: solo recognition opens the first reveal');
@@ -70,6 +77,8 @@ async function page(n,kind='index',url='',saved={}){
   }
   if(n==='07'){
     const solo=await page(n,'index',`http://fixture/sim07/index.html#lt=${encodeURIComponent(student)}`);
+    ok(solo.run('currentView()')==='intro'&&solo.run('S.soloClosesAt')===null,'07: signed solo entry also waits for student start');
+    await solo.click('startClock');
     solo.run("S.choice='decline';S.text='The losses make the proposed acquisition too uncertain for our business today.'");
     await solo.run('submitDecision({disabled:false})');F.failReveal();await solo.run("submitRecognition('no')");
     ok(solo.run('S.soloStage')===0&&solo.body().includes('Try again now'),'07: first reveal failure is visible and can be retried');
@@ -118,7 +127,7 @@ async function page(n,kind='index',url='',saved={}){
   p.elements.get(n==='07'?'nm':'jn').value='Class Guest';await p.click(n==='07'?'join':'jb');
   ok(Object.keys(await F.fixtures[n].store.getParticipants(guest)).length===1,`${n}: guest joins faculty room`);
   p=await page(n,'index',`http://fixture/sim${n}/index.html?session=${guest}&guest=1`,p);
-  ok(p.body().includes("You're in."),`${n}: guest refresh stays in class`);
+  ok(n==='07'?p.run('currentView()')==='intro'&&p.body().includes('Welcome, Class Guest')&&p.elements.get('bar').hidden:p.body().includes("You're in."),`${n}: guest refresh stays in class`);
 
   const room=(await F.invoke(n,{action:'create',mode:'individual',launchToken:faculty})).body.session.code;
   const plain=await page(n,'index',`http://fixture/sim${n}/index.html?session=${room}`);
@@ -126,10 +135,16 @@ async function page(n,kind='index',url='',saved={}){
   p=await page(n,'index',`http://fixture/sim${n}/index.html?session=${room}#lt=${encodeURIComponent(student)}`);
   ok(Object.keys(await F.fixtures[n].store.getParticipants(room)).includes('platform:student-'+n),`${n}: signed student auto-joins own account`);
   p=await page(n,'index',`http://fixture/sim${n}/index.html?session=${room}`,p);
-  ok(!p.redirect()&&p.body().includes("You're in."),`${n}: signed token survives refresh`);
+  ok(!p.redirect()&&(n==='07'?p.run('currentView()')==='intro'&&p.body().includes('Welcome, Test Student'):p.body().includes("You're in.")),`${n}: signed token survives refresh`);
   ok(p.requests.every(x=>x.startsWith(`/sim${n}/api/`)),`${n}: all APIs use platform path prefix`);
+  if(n==='07'){
+    F.advance(120000);await p.tick();
+    ok(p.run('currentView()')==='intro'&&!p.run('closesAt()')&&p.elements.get('bar').hidden,'07: class lobby keeps the introduction untimed');
+    ok(!p.elements.has('startClock'),'07: class introduction waits for the instructor rather than starting a solo clock');
+  }
   await F.invoke(n,{action:'control',set:'start',code:room,launchToken:faculty});await p.tick();
   if(n==='07'){
+    ok(p.run('currentView()')==='briefing'&&p.run('closesAt()>Date.now()')&&!p.elements.get('bar').hidden,'07: instructor start opens the class briefing and timer');
     p.run("S.choice='buy';S.text='The acquisition gives us an affordable option for a different way of doing business.'");
     await p.run('submitDecision({disabled:false})');await p.run("submitRecognition('no')");
     await F.invoke(n,{action:'control',set:'end_decisions',code:room,launchToken:faculty});F.advance(21000);

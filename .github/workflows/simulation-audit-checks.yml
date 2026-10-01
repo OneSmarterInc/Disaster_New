@@ -55,6 +55,11 @@ jobs:
           node platform/tools/protocol-check.js
           node tools/full-flow-check.js
           node tools/health-security-check.js
+      - name: Account entry and session client flows
+        run: |
+          node tools/test-entry-flow.js
+          node platform/tools/session-sims-check.js
+          node platform/tools/new-sims-entry-check.js
       - name: Health diagnostics and catalogue presentation
         run: |
           node platform/tools/sync-catalogue-source.js --check
@@ -64,6 +69,7 @@ jobs:
           node platform/tools/deploy-check.js
           node platform/tools/catalogue-check.js
           node platform/tools/sim-detail-check.js
+          node platform/tools/address-check.test.js
           node platform/tools/address-check.js
           node platform/tools/contact-check.js
           node platform/tools/prose-check.js
