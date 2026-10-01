@@ -74,16 +74,18 @@ module.exports = async (req, res) => {
     // for a course and it never reports completion.
     if (action === 'practice') {
       const who = faculty(req, b);
-      if (!who || !who.platform) return error(res, 401, 'faculty_authorization_required');
+      if (!who) return error(res, 401, 'faculty_authorization_required');
+      const pid = who.platform ? who.id : 'practice:' + newId();
       for (let attempt = 0; attempt < 10; attempt++) {
         const c = codeOf();
-        let session = room.createSession({ code: c, owner: who.name || 'Instructor', mode: 'team', groupSize: 1,
-          name: 'Practice room', now: Date.now() });
-        Object.assign(session, { platformAuth: true, ownerId: who.id, courseId: who.courseId || null, practice: true });
-        session = room.join(session, who.id, who.email || 'instructor@practice.room', Date.now());
-        session = room.move(session, who.id, 'new');
+        let session = room.createSession({ code: c, owner: who.name || 'Instructor', ownerKey: who.key || null,
+          mode: 'team', groupSize: 1, name: 'Practice room', now: Date.now() });
+        Object.assign(session, { platformAuth: !!who.platform, ownerId: who.platform ? who.id : null,
+          courseId: who.courseId || null, practice: true });
+        session = room.join(session, pid, who.email || 'instructor@practice.room', Date.now());
+        session = room.move(session, pid, 'new');
         if (!await store.createSession(c, session)) continue;
-        return res.status(200).json({ participantId: who.id, ...studentResult(session, who.id) });
+        return res.status(200).json({ participantId: pid, ...studentResult(session, pid) });
       }
       return error(res, 503, 'code_unavailable');
     }

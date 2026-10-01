@@ -14,6 +14,27 @@ async function api(action, extra = {}) {
   if (!r.ok) throw new Error(body.message || body.error || 'Please try again.');
   return body;
 }
+// Rooms this browser created or opened, so an instructor never has to remember a code.
+function remembered() { try { return JSON.parse(localStorage.getItem('m04-my-rooms') || '[]'); } catch { return []; } }
+function remember(c, list = remembered()) {
+  try { localStorage.setItem('m04-my-rooms', JSON.stringify([c, ...list.filter(x => x !== c)].slice(0, 12))); } catch {}
+}
+function forget(c) { try { localStorage.setItem('m04-my-rooms', JSON.stringify(remembered().filter(x => x !== c))); } catch {} }
+async function listRooms() {
+  const box = $('myRooms'); if (!box) return;
+  const rows = [];
+  for (const c of remembered()) {
+    try {
+      const d = await api('faculty_state', { code: c });
+      const people = d.projector.unassigned.length + d.projector.groups.reduce((n, g) => n + g.members.length, 0);
+      const stateText = d.session.stage === 3 ? 'complete' : d.session.state === 'lobby' ? 'not started' : 'running';
+      rows.push({ c, text: `${c} · ${d.session.name} · ${d.session.mode} · ${people} joined · ${stateText}` });
+    } catch { forget(c); }
+  }
+  box.replaceChildren(...(rows.length ? [el('div', 'eyebrow', 'Your rooms')] : []), ...rows.map(r => {
+    const b = el('button', 'button secondary small', r.text); b.type = 'button'; b.onclick = () => openRoom(r.c); return b;
+  }));
+}
 function say(text, success = false) { $('message').textContent = text || ''; $('message').classList.toggle('success', success); }
 function time() {
   if (!state) return;
@@ -162,7 +183,7 @@ function draw(data) {
 }
 async function refresh() { if (!code) return; try { draw(await api('faculty_state')); } catch (e) { say(e.message); } }
 function openRoom(value) {
-  code = value.trim().toUpperCase(); sessionStorage.setItem('m04-faculty-room', code);
+  code = value.trim().toUpperCase(); sessionStorage.setItem('m04-faculty-room', code); remember(code);
   history.replaceState(null, '', location.pathname + '?session=' + encodeURIComponent(code));
   refresh();
 }
@@ -173,6 +194,15 @@ $('createForm').addEventListener('submit', async e => {
   catch (err) { say(err.message); }
 });
 $('openRoom').onclick = () => openRoom($('roomCode').value);
+$('preview').onclick = async () => {
+  try {
+    const r = await api('practice');
+    sessionStorage.setItem('m04-participant:' + r.session.code, r.participantId);
+    remember(r.session.code);
+    location.href = 'index.html?session=' + encodeURIComponent(r.session.code) + '&practice=1'
+      + (token ? '#lt=' + encodeURIComponent(token) : '');
+  } catch (e) { say(e.message); }
+};
 $('divideSize').oninput = () => { divideTouched = true; };
 $('divide').onclick = async () => {
   try { await api('divide', { groupSize: Number($('divideSize').value) }); lastSignature = ''; await refresh(); say('Groups divided at random. Drag anyone to adjust.', true); }
@@ -196,7 +226,7 @@ async function authorize() {
     if (facultyCode) sessionStorage.setItem('m04-faculty-code', facultyCode);
     $('signIn').hidden = true; $('create').hidden = false; $('reopen').hidden = false;
     say('');
-    if (code) await refresh();
+    if (code) await refresh(); else listRooms();
   } catch (e) {
     facultyCode = ''; sessionStorage.removeItem('m04-faculty-code');
     $('signIn').hidden = false; $('create').hidden = true; $('reopen').hidden = true;

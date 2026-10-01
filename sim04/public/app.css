@@ -7,3 +7,4 @@
 .chip{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 9px;margin-top:8px;border:1px solid var(--line,#2B3548);background:rgba(255,255,255,.02);cursor:grab}
 .chip .chip-move{width:auto;min-height:0;padding:3px 6px;font-size:12px;max-width:110px}
 .status-item.example,.reveal-card.example{opacity:.78;border-style:dashed}
+.howto{border:1px solid var(--line,#2B3548);padding:14px 16px;margin:6px 0 16px}.howto .row{align-items:center;gap:12px}

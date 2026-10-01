@@ -3,6 +3,7 @@ const BASE = (location.pathname.match(/^\/sim-?\d+/) || [''])[0];
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const guest = params.get('guest') === '1';
+const facultyPractice = params.get('practice') === '1';
 let code = (params.get('session') || '').trim().toUpperCase();
 let launch = guest ? null : new URLSearchParams(location.hash.slice(1)).get('lt') || null;
 if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
@@ -24,6 +25,7 @@ let config = null, view = null, pollAt = 0, renderedPack = false, renderedCommit
 
 function headers() {
   return { 'content-type': 'application/json', ...(launch ? { 'x-launch-token': launch }
+    : facultyPractice ? { 'x-faculty-code': sessionStorage.getItem('m04-faculty-code') || '' }
     : { 'x-access-code': sessionStorage.getItem('m04-access') || '' }) };
 }
 async function api(path, payload) {
@@ -104,6 +106,7 @@ function draw(result) {
       $('waitingTitle').textContent = 'You are in your practice room';
       $('waitingText').textContent = 'Read What happens today, then press Start the clock.';
       $('practiceConsole').href = 'instructor.html?session=' + encodeURIComponent(code) + (launch ? '#lt=' + encodeURIComponent(launch) : '');
+      $('practiceConsole').removeAttribute?.('target');
     }
     error('waitingError', '');
   }
@@ -146,9 +149,9 @@ async function refresh() {
 async function join(event) {
   event?.preventDefault();
   code = $('code').value.trim().toUpperCase();
-  if (!launch && !guest) { error('entryError', 'Open Sim04 from your course page.'); return; }
+  if (!launch && !guest && !facultyPractice) { error('entryError', 'Open Sim04 from your course page.'); return; }
   if (!/^[A-Z2-9]{5}$/.test(code)) { error('entryError', 'Enter the 5-letter room code from your instructor.'); return; }
-  if (!launch && !participantId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('email').value.trim())) { error('entryError', 'Enter your email address.'); return; }
+  if (!launch && !participantId && !facultyPractice && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('email').value.trim())) { error('entryError', 'Enter your email address.'); return; }
   if (launch) sessionStorage.setItem('m04-lt:' + code, launch);
   $('joinForm').querySelector('button').disabled = true;
   try {
@@ -232,7 +235,7 @@ if (guest) {
   $('joinForm').hidden = false;
   $('entryHelp').textContent = 'Enter the room code from your instructor and your email address.';
 }
-if (code) { $('code').value = code; if (launch || participantId || guest) join(); }
+if (code) { $('code').value = code; if (launch || participantId || guest || facultyPractice) join(); }
 else if (launch && launchClaims()?.role === 'student' && launchClaims()?.course) findCourseSessions();
 else if (launch && ['faculty', 'faculty_preview'].includes(launchClaims()?.role)) showFacultyChoice();
 else if (!guest && !launch) $('entryHelp').textContent = 'Open Sim04 from your course page, or use the class link from your instructor.';

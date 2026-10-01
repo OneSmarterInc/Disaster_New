@@ -277,6 +277,21 @@ await check('registration states explicit identity, number and canonical route',
     assert.equal((await call({ action: 'practice' }, students[1])).status, 401, 'students cannot open practice rooms');
     assert.equal((await call({ action: 'faculty_state', code: pcode, facultyCode: 'other-instructor' }, null)).status, 403);
   });
+  await check('direct-route practice room: only its owner can play it with their faculty code', async () => {
+    const pat = { 'x-faculty-code': 'private-instructor' };
+    const made = await call({ action: 'practice' }, null, pat);
+    assert.equal(made.status, 200);
+    const pcode = made.body.session.code, pid = made.body.participantId;
+    assert.ok(pid.startsWith('practice:'));
+    assert.equal((await call({ action: 'state', code: pcode, participantId: pid }, null, pat)).status, 200);
+    assert.equal((await call({ action: 'state', code: pcode, participantId: pid }, null, { 'x-faculty-code': 'other-instructor' })).status, 401);
+    assert.equal((await call({ action: 'state', code: pcode, participantId: pid }, null, { 'x-access-code': 'private-student' })).status, 401);
+    assert.equal((await call({ action: 'start', code: pcode }, null, pat)).status, 200);
+    const cfg = { status: 0 };
+    await require('../api/config')({ method: 'GET', headers: pat },
+      { setHeader() {}, status(n) { cfg.status = n; return this; }, json() { return this; } });
+    assert.equal(cfg.status, 200, 'the practice student page can load its config with a faculty code');
+  });
   await check('a shared FACULTY_CODE is refused and fails the health check', async () => {
     process.env.FACULTY_CODE = 'shared-code-1';
     assert.equal((await call({ action: 'faculty_access', facultyCode: 'shared-code-1' }, null)).status, 401);

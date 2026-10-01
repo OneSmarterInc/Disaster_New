@@ -41,6 +41,13 @@ function owns(who, session) {
   return !!session.ownerKey && session.ownerKey === who.key;
 }
 function participant(req, b, session) {
+  // A direct-route practice room is played by its owner with their faculty code.
+  if (session.practice && !session.platformAuth) {
+    const f = faculty(req, b);
+    if (!f || !owns(f, session)) return null;
+    const id = String(b.participantId || '');
+    return { platform: false, id: session.participants[id] ? id : null };
+  }
   const p = access(req, b);
   if (!p || p.platform !== session.platformAuth) return null;
   if (session.platformAuth && session.courseId && p.courseId !== session.courseId) return null;
