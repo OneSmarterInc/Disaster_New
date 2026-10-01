@@ -8,7 +8,8 @@ const SESSION_SIMS = new Set([
   'rapid-07-bought',
   'rapid-08-later',
   'rapid-09-money-land',
-  'rapid-10-bubble'
+  'rapid-10-bubble',
+  'rapidsimplus-02'
 ]);
 
 module.exports = { SESSION_SIMS };

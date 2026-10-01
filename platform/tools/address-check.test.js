@@ -14,6 +14,8 @@ const entry = "location.replace('https://rapidsims.flexee.org/open.html?' + entr
 try {
   write('sim07/public/index.html', entry);
   write('sim05/public/launch.html', entry.replaceAll("'", '"'));
+  write('simplus02/public/index.html', entry);
+  write('simplus02/public/console.html', entry);
   write('sim04/test/invitation.test.js', "const fixture = 'https://fixture.vercel.app';");
   write('sim08/tools/platform-launch-check.js', "const fixture = 'https://fixture.vercel.app';");
   write('tools/test-entry-flow.js', "const fixture = 'https://fixture.flexee.org';");

@@ -10,7 +10,7 @@ const sims = {
   sim04: 'rapid-04-whose-number', sim05: 'rapid-05-approve',
   sim06: 'rapid-06-switch', sim07: 'rapid-07-bought',
   sim08: 'rapid-08-later', sim09: 'rapid-09-money-land',
-  sim10: 'rapid-10-bubble'
+  sim10: 'rapid-10-bubble', simplus02: 'rapidsimplus-02'
 };
 const html = fs.readFileSync(path.join(root, 'platform/public/open.html'), 'utf8');
 assert.match(html, /id="message"/);
@@ -62,5 +62,5 @@ async function open(sim, status, data = {}, extra = '') {
     '/session.html?sim=rapid-04-whose-number&session=ABCDE&course=course-1');
   const outage = await open('rapid-04-whose-number', 503);
   assert.equal(outage.destination, undefined, 'a backend outage is never interpreted as a guest');
-  console.log('PASS direct entry for all 11 sims: entitled, denied, guest, invitation, unavailable');
+  console.log(`PASS direct entry for all ${Object.keys(sims).length} sims: entitled, denied, guest, invitation, unavailable`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

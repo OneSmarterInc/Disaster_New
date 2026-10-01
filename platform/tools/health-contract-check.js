@@ -28,7 +28,7 @@ async function invoke(handler, req) {
   await handler(req,res); return { status:code, body:payload };
 }
 const handlers = new Map();
-for (const dir of ['sim','sim-02','sim03','sim04','sim05','sim06','sim07','sim08','sim09','sim-plus-01','sim10']) {
+for (const dir of ['sim','sim-02','sim03','sim04','sim05','sim06','sim07','sim08','sim09','sim-plus-01','sim10','simplus02']) {
   const handler = dir === 'sim10' ? require('../../sim10/lib/app').createApp() : require(path.join(root,dir,'api/health.js'));
   handlers.set(`https://${dir}.test/api/health`,handler);
 }
@@ -73,5 +73,5 @@ const call = body => invoke(admin,{method:'POST',headers:{},body});
   assert.equal(r.body.results[0].state,'unverified');
   assert.match(r.body.results[0].detail,/Set a dedicated matching HEALTH_SECRET/);
   assert.equal(inspectHealth({ok:true,sim:'unexpected'},sims[0]).state,'needs attention');
-  console.log(`Health contracts passed for all 11 sims (${requests} admin probes), missing/wrong diagnostic keys, storage, signing and legacy aliases.`);
+  console.log(`Health contracts passed for all ${handlers.size} sims (${requests} admin probes), missing/wrong diagnostic keys, storage, signing and legacy aliases.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

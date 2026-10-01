@@ -9,7 +9,7 @@ for (const [id,number,label] of [
   ['rapid-03-midland',4,'RapidSim 03'],['rapid-04-whose-number',4,'RapidSim 04'],['rapid-05-approve',6,'RapidSim 05'],
   ['rapid-06-switch',5,'RapidSim 06'],['rapid-07-bought',8,'RapidSim 07'],
   ['rapid-08-later',7,'RapidSim 08'],['rapid-09-money-land',10,'RapidSim 09'],
-  ['rapid-10-bubble',9,'RapidSim 10'],['rapidsimplus-01',101,'RapidSim+ 01']
+  ['rapid-10-bubble',9,'RapidSim 10'],['rapidsimplus-01',101,'RapidSim+ 01'],['rapidsimplus-02',102,'RapidSim+ 02']
 ]) {
   const row={id,number,title:'Test'};
   assert.equal(identity.label(row),label);

@@ -5,6 +5,7 @@
   const guestPaths = Object.freeze({
     'rapid-01-disaster': '/sim01/', 'rapid-02-relay': '/sim02/',
     'rapidsimplus-01': '/simplus01/',
+    'rapidsimplus-02': '/simplus02/',
     'rapid-03-midland': '/sim03/launch.html',
     'rapid-04-whose-number': '/sim04/launch.html',
     'rapid-05-approve': '/sim05/launch.html',
@@ -28,6 +29,7 @@
   const params = new URLSearchParams({ sim, format: 'json' });
   if (session) params.set('session', session);
   if (q.get('course')) params.set('course', q.get('course'));
+  if (q.get('mode') === 'session') params.set('mode', 'session');
   fetch('/api/launch?' + params.toString(), {
     credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(10000)
   }).then(async response => {
@@ -42,7 +44,8 @@
         if (q.get('course')) invite.set('course', q.get('course'));
         location.replace('/session.html?' + invite.toString());
       } else {
-        location.replace(path + (path.includes('?') ? '&' : '?') + 'guest=1');
+        const guestPath = sim === 'rapidsimplus-02' && q.get('mode') === 'session' ? '/simplus02/console.html' : path;
+        location.replace(guestPath + (guestPath.includes('?') ? '&' : '?') + 'guest=1');
       }
     } else {
       message.textContent = data.message || 'RapidSims could not check your access. Please try again.';

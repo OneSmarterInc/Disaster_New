@@ -83,6 +83,13 @@ const announce = data => signBack(Object.assign({ kind:'register', exp:Date.now(
   await call({token:announce({sim:'invalid-number',number:-1,launchUrl:'https://invalid.test'})});
   assert.ok(row('invalid-number').number>0,'invalid declarations use a free positive number');
 
+  const wire = require('../../simplus02/lib/meta');
+  result = await call({ token: announce({ ...wire, sim: wire.id, launchUrl: 'https://wire.test/simplus02' }) });
+  assert.equal(result.body.created, true);
+  assert.equal(row(wire.id).number, 102);
+  assert.equal(row(wire.id).published, false, 'SimPlus-02 stays unpublished until its reveal is verified and an administrator publishes it');
+  assert.deepEqual(row(wire.id).detail.beats, wire.detail.beats);
+
   for (const table of ['course_sims','launches','completions','previews','sim_access','transcripts']) {
     const alias = `used-${table}`;
     DB.sims.push({id:alias,number:20+DB.sims.length,title:'Historical',published:false,detail:{}});

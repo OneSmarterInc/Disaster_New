@@ -9,7 +9,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const SKIP = new Set(['.git', 'node_modules', 'docs', 'test', 'tests']);
 // what a deployment address looks like
 const HOSTS = /https?:\/\/[a-z0-9-]+\.(vercel\.app|flexee\.org)/gi;
-const ENTRY_PAGE = /^(sim|sim-02|sim-plus-01|sim0[3-9]|sim10)\/public\/(index|launch)\.html$/;
+const ENTRY_PAGE = /^(?:(sim|sim-02|sim-plus-01|sim0[3-9]|sim10)\/public\/(index|launch)|simplus02\/public\/(index|console))\.html$/;
 const ACCOUNT_REDIRECT = /\blocation\.replace\(\s*(['"])https:\/\/rapidsims\.flexee\.org\/open\.html\?\1\s*\+\s*entry\.toString\(\)\s*\)/g;
 
 function scan(root = ROOT) {

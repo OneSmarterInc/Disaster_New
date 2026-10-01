@@ -9,7 +9,7 @@ const sources = [
   'sim/lib/scenario.js', 'sim-02/lib/scenario.js', 'sim03/lib/scenario.js', 'sim04/lib/meta.js',
   'sim05/config/content.js', 'sim06/lib/meta.js', 'sim07/data/config.js',
   'sim08/config/content.js', 'sim09/config/content.js', 'sim10/data/config.js',
-  'sim-plus-01/lib/meta.js'
+  'sim-plus-01/lib/meta.js', 'simplus02/lib/meta.js'
 ];
 function snapshot() {
   return Object.fromEntries(sources.map(file => {
@@ -25,10 +25,10 @@ if (require.main === module) {
     if (fs.readFileSync(output, 'utf8') !== text) {
       console.error('Catalogue copy is stale. Run node platform/tools/sync-catalogue-source.js');
       process.exitCode = 1;
-    } else console.log('Catalogue source matches all eleven simulations.');
+    } else console.log(`Catalogue source matches all ${sources.length} simulations.`);
   } else {
     fs.writeFileSync(output, text);
-    console.log('Updated public catalogue source for all eleven simulations.');
+    console.log(`Updated public catalogue source for all ${sources.length} simulations.`);
   }
 }
 module.exports = { sources, snapshot };
