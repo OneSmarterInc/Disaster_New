@@ -113,6 +113,7 @@ const handlers = {
   faculty:require('../api/faculty.js'),
   auth:require('../api/auth.js'), student:require('../api/student.js'), launch:require('../api/launch.js'),
   join:require('../../sim03/api/join.js'), session:require('../../sim03/api/session.js'),
+  platform:require('../../sim03/api/platform.js'),
   config:require('../../sim03/api/config.js'), outcome:require('../../sim03/api/outcome.js'), finish:require('../../sim03/api/finish.js')
 };
 async function call(name, body={}, {headers={}, query={}, method='POST'}={}) {
@@ -120,6 +121,7 @@ async function call(name, body={}, {headers={}, query={}, method='POST'}={}) {
     status(n){this.statusCode=n;return this;}, setHeader(k,v){this.headers[k.toLowerCase()]=v;},
     json(x){this.payload=x;return this;}, send(x){this.payload=x;return this;}, end(){return this;},
     redirect(n,url){this.statusCode=n;this.url=url;return this;} };
+  if (typeof handlers[name] !== 'function') throw new Error('Unhandled fixture API: ' + name);
   await handlers[name]({method,headers,body,query},res);
   return res;
 }
