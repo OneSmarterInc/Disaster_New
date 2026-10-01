@@ -51,8 +51,8 @@ function start() {
   <label for="c">Or reopen a session</label><input id="c" value="${esc(code)}" maxlength="5"><p style="margin-top:10px"><button id="open">Open session</button></p>
   <p class="err">${esc(err)}</p></div>`;
   const keep = () => { if ($('#f')) { fac = $('#f').value.trim(); sessionStorage.setItem('wire:fac', fac); } };
-  $('#new').onclick = async () => { keep(); try { code = (await api('create')).code; wireRememberLaunch(code); history.replaceState(null, '', '?code=' + code); poll(); } catch (e) { err = e.message === 'faculty_only' ? 'That faculty code was not recognised.' : e.message; start(); } };
-  $('#open').onclick = () => { keep(); code = $('#c').value.trim().toUpperCase(); wireRememberLaunch(code); history.replaceState(null, '', '?code=' + code); poll(); };
+  $('#new').onclick = async () => { keep(); try { code = (await api('create')).code; wireRememberLaunch(code); wireSetRunUrl(code); poll(); } catch (e) { err = e.message === 'faculty_only' ? 'That faculty code was not recognised.' : e.message; start(); } };
+  $('#open').onclick = () => { keep(); code = $('#c').value.trim().toUpperCase(); wireRememberLaunch(code); wireSetRunUrl(code); poll(); };
 }
 
 function controls() {

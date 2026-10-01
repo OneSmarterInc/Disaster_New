@@ -61,7 +61,7 @@ function joinScreen() {
     if (!code) { err = 'Enter the session code.'; return render(); }
     if (!name && !launchToken) { err = 'Enter your name.'; return render(); }
     if ($('#a')) sessionStorage.setItem('wire:access', $('#a').value.trim());
-    try { me = await api('join', { name }); localStorage.setItem('wire:' + code, JSON.stringify(me)); wireRememberLaunch(code); err = ''; poll(); }
+    try { me = await api('join', { name }); localStorage.setItem('wire:' + code, JSON.stringify(me)); wireRememberLaunch(code); wireSetRunUrl(code); err = ''; poll(); }
     catch (e) { me = null; say(e); }
   };
 }
@@ -178,7 +178,7 @@ async function initEntry() {
     try {
       if (!code) code = (await api('entry')).code || '';
       if (code) {
-        me = await api('join'); wireRememberLaunch(code);
+        me = await api('join'); wireRememberLaunch(code); wireSetRunUrl(code);
         localStorage.setItem('wire:' + code, JSON.stringify(me)); poll(); return;
       }
       err = 'Your instructor has not opened a class session yet. Join an invitation when it is ready.';

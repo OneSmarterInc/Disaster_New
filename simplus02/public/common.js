@@ -12,6 +12,13 @@ function wireLaunchClaims(token) {
 function wireRememberLaunch(code) {
   if (wireToken) sessionStorage.setItem('wire:launch:' + wireKind + ':' + String(code).toUpperCase(), wireToken);
 }
+function wireSetRunUrl(code) {
+  const current = new URL(location.href);
+  current.searchParams.delete('session');
+  current.searchParams.set('code', String(code).toUpperCase());
+  current.hash = '';
+  history.replaceState(null, '', current.pathname + current.search);
+}
 if (wireIncoming) {
   wireRememberLaunch(wireScope);
   const clean = new URL(location.href); clean.searchParams.delete('lt'); clean.hash = '';

@@ -11,6 +11,7 @@ const C = require('../data/config');
 const L = require('../lib/launch');
 process.env.LAUNCH_SECRET = 'browser-fixture-secret';
 process.env.ACCESS_CODE = 'browser-guest-code';
+process.env.FACULTY_CODES = 'Fixture:browser-faculty-code';
 const db = new Map(), reports = new Map(), errors = [], requests = [];
 Object.assign(store, {
   configured: () => true,
@@ -110,12 +111,28 @@ let browser;
   }
   assert.equal(reports.size, 4);
   assert.ok([...reports.values()].every(n => n === 2), 'each failed report retries once, then stops');
+  assert.ok(requests.every(u => u.startsWith(origin + '/simplus02/api/')), 'mounted APIs stay under the platform prefix');
+  const standalone = await fetch(origin + '/api/session', {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-faculty-code': 'browser-faculty-code' },
+    body: JSON.stringify({ action: 'create' }),
+  });
+  assert.equal(standalone.status, 200);
+  const standaloneCode = (await standalone.json()).code;
   const guest = await page();
   await guest.goto(origin + '/?guest=1');
   await guest.locator('#a').waitFor();
   assert.equal(await guest.locator('#c').count(), 1, 'standalone guests retain the classroom join form');
+  await guest.locator('#c').fill(standaloneCode);
+  await guest.locator('#n').fill('Guest');
+  await guest.locator('#a').fill('browser-guest-code');
+  await guest.locator('#go').click();
+  await guest.getByText('Your instructor will seat the room shortly.', { exact: false }).waitFor();
+  assert.equal(new URL(guest.url()).searchParams.get('guest'), '1');
+  assert.equal(new URL(guest.url()).searchParams.get('code'), standaloneCode);
+  await guest.reload();
+  await guest.getByText('Your instructor will seat the room shortly.', { exact: false }).waitFor();
+  assert.ok(requests.some(u => u === origin + '/api/session'), 'own-domain root uses root APIs');
   assert.ok(registrations.some(p => p.sim === C.id && p.number === 102));
-  assert.ok(requests.every(u => u.startsWith(origin + '/simplus02/api/')), 'mounted APIs stay under the platform prefix');
   assert.deepEqual(errors, [], 'shipped pages and handlers have no uncaught errors');
   console.log('PASS SimPlus-02 Chromium flow: faculty launch/reload, four account joins, fresh-tab rejoin, negotiation, close, completion retries, standalone entry and mounted assets/APIs.');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
