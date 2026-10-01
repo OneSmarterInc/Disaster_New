@@ -37,7 +37,8 @@ require.cache[path.resolve(__dirname, '../lib/store.js')] = { id: 'store', filen
 // Capture completion reports instead of posting them.
 const launchMod = require('../lib/launch.js');
 const reports = [];
-launchMod.reportCompletion = async x => { reports.push(x); return { ok: true }; };
+let reportOk = true;
+launchMod.reportCompletion = async x => { reports.push(x); return { ok: reportOk }; };
 
 const handler = require('../api/session.js');
 const cfgHandler = require('../api/config.js');
@@ -143,6 +144,36 @@ async function t(name, fn) { try { await fn(); pass++; } catch (e) { fail++; con
     const r = await post({ action: 'faculty_state', code, facultyCode: 'wrong' });
     assert.strictEqual(r.status, 401);
   });
+  await t('a platform faculty account cannot claim a standalone room by display name', async () => {
+    const sameName = tok({ sub: 'u-tester', name: 'Tester', role: 'faculty', sim: cfg.sim.id, mode: 'session' });
+    assert.strictEqual((await post({ action: 'faculty_state', code, launchToken: sameName })).status, 403);
+    assert.strictEqual((await post({ action: 'control', code, set: 'close', launchToken: sameName })).status, 403);
+    assert.strictEqual((await post({ action: 'faculty_state', code, facultyCode: 'fac123' })).status, 200);
+  });
+  await t('a standalone room without an owner cannot be read or controlled', async () => {
+    const c = (await post({ action: 'create', mode: 'individual', facultyCode: 'fac123' })).body.session.code;
+    const sess = await mem.getSession(c);
+    await mem.putSession(c, { ...sess, owner: null });
+    for (const facultyCode of ['fac123', 'fac999']) {
+      assert.strictEqual((await post({ action: 'faculty_state', code: c, facultyCode })).status, 403);
+      assert.strictEqual((await post({ action: 'control', code: c, set: 'start', facultyCode })).status, 403);
+    }
+  });
+  await t('legacy platform ownership requires a matching platform account and course', async () => {
+    const fac = tok({ sub: 'legacy-owner', name: 'Tester', role: 'faculty', sim: cfg.sim.id, course: 'legacy-course', mode: 'session' });
+    const c = (await post({ action: 'create', mode: 'individual', launchToken: fac })).body.session.code;
+    const sess = await mem.getSession(c);
+    await mem.putSession(c, { ...sess, ownerId: null });
+    assert.strictEqual((await post({ action: 'faculty_state', code: c, launchToken: fac })).status, 200);
+    assert.strictEqual((await post({ action: 'faculty_state', code: c, facultyCode: 'fac123' })).status, 403);
+    for (const p of [{ name: 'Other', course: 'legacy-course' }, { name: 'Tester', course: 'wrong-course' }]) {
+      const other = tok({ sub: 'another-owner', role: 'faculty', sim: cfg.sim.id, mode: 'session', ...p });
+      assert.strictEqual((await post({ action: 'control', code: c, set: 'start', launchToken: other })).status, 403);
+    }
+    await mem.putSession(c, { ...sess, ownerId: null, owner: null });
+    assert.strictEqual((await post({ action: 'faculty_state', code: c, launchToken: fac })).status, 403);
+    assert.strictEqual((await post({ action: 'control', code: c, set: 'start', launchToken: fac })).status, 403);
+  });
   await t('after the clock: reveal, no decision recorded for the undecided', async () => {
     clock += 700_000;
     const ra = await post({ action: 'reveal', code, participantId: a });
@@ -162,6 +193,9 @@ async function t(name, fn) { try { await fn(); pass++; } catch (e) { fail++; con
     const r = await post({ action: 'join', code, name: 'Ana', participantId: a });
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.body.participantId, a);
+    assert.strictEqual((await call(cfgHandler, { session: code, participantId: a })).status, 200);
+    assert.strictEqual((await call(cfgHandler, { session: code })).status, 410);
+    assert.strictEqual((await call(cfgHandler, { session: code, participantId: 'not-joined' })).status, 410);
     const n = await post({ action: 'join', code, name: 'Newcomer' });
     assert.strictEqual(n.body.error, 'session_closed');
   });
@@ -237,6 +271,61 @@ async function t(name, fn) { try { await fn(); pass++; } catch (e) { fail++; con
     assert.ok(s.includes('Meridian Transit Networks')); // the fine print is still there to find
     assert.strictEqual(ok.body.walkthrough.length, 4);
     assert.ok(!JSON.stringify(ok.body.walkthrough).includes('Meridian'));
+  });
+
+  await t('standalone access code creates a private run with a student-controlled start', async () => {
+    assert.strictEqual((await post({ action: 'solo', name: 'Guest' })).status, 401);
+    const direct = await post({ action: 'solo', name: 'Guest' }, { 'x-access-code': 'open' });
+    assert.strictEqual(direct.status, 200);
+    const c = direct.body.session.code, pid = direct.body.participantId;
+    assert.strictEqual(direct.body.session.solo, true);
+    assert.strictEqual(direct.body.session.phase, 'lobby');
+    assert.strictEqual((await post({ action: 'join', code: c, name: 'Stranger' })).status, 403);
+    assert.strictEqual((await post({ action: 'start_solo', code: c, participantId: 'wrong' })).status, 403);
+    assert.strictEqual((await post({ action: 'start_solo', code: c, participantId: pid })).body.session.phase, 'playing');
+    assert.strictEqual((await post({ action: 'start_solo', code, participantId: a })).status, 403);
+    assert.strictEqual((await call(cfgHandler, { session: c })).status, 403);
+    clock += 30_000;
+    assert.strictEqual((await post({ action: 'decide', code: c, participantId: pid, choice: 'stay', reason: 'Read both documents' })).status, 200);
+    clock += 700_000;
+    const before = reports.length;
+    const withToken = tok({ sub: 'unrelated', role: 'student', sim: cfg.sim.id });
+    const end = await post({ action: 'reveal', code: c, participantId: pid, launchToken: withToken });
+    assert.strictEqual(end.status, 200);
+    assert.strictEqual(end.body.completionRequired, false);
+    assert.strictEqual(reports.length, before);
+    assert.strictEqual((await post({ action: 'faculty_state', code: c, facultyCode: 'fac123' })).status, 403);
+  });
+
+  await t('class links bypass access code while preserving account and course checks', async () => {
+    const guest = (await post({ action: 'create', mode: 'individual', facultyCode: 'fac123' })).body.session.code;
+    delete process.env.ACCESS_CODE;
+    assert.strictEqual((await call(cfgHandler, { session: guest })).status, 200);
+    assert.strictEqual((await call(cfgHandler, { session: 'ZZZZZ' })).status, 404);
+    const fac = tok({ sub: 'f2', role: 'faculty', sim: cfg.sim.id, course: 'c2', mode: 'session', name: 'Faculty' });
+    const pc = (await post({ action: 'create', mode: 'individual', launchToken: fac })).body.session.code;
+    const stu = tok({ sub: 's2', role: 'student', sim: cfg.sim.id, course: 'c2', name: 'Student' });
+    const wrong = tok({ sub: 's2', role: 'student', sim: cfg.sim.id, course: 'wrong' });
+    assert.strictEqual((await call(cfgHandler, { session: pc })).body.error, 'platform_signin_required');
+    assert.strictEqual((await call(cfgHandler, { session: pc }, { 'x-launch-token': wrong })).status, 403);
+    assert.strictEqual((await call(cfgHandler, { session: pc }, { 'x-launch-token': stu })).status, 200);
+    const pid = (await post({ action: 'join', code: pc, launchToken: stu })).body.participantId;
+    await post({ action: 'control', code: pc, set: 'start', launchToken: fac });
+    clock += 700_000;
+    reportOk = false;
+    assert.strictEqual((await post({ action: 'reveal', code: pc, participantId: pid, launchToken: stu })).body.completionReported, false);
+    reportOk = true;
+    const before = reports.length;
+    assert.strictEqual((await post({ action: 'reveal', code: pc, participantId: pid, launchToken: stu })).body.completionReported, true);
+    await post({ action: 'reveal', code: pc, participantId: pid, launchToken: stu });
+    assert.strictEqual(reports.length, before + 1);
+    assert.strictEqual(reports.at(-1).launch.course, 'c2');
+    await post({ action: 'control', code: pc, set: 'close', launchToken: fac });
+    assert.strictEqual((await call(cfgHandler, { session: pc }, { 'x-launch-token': stu })).status, 200);
+    assert.strictEqual((await call(cfgHandler, { session: pc })).status, 401);
+    assert.strictEqual((await call(cfgHandler, { session: pc }, { 'x-launch-token': wrong })).status, 403);
+    const newcomer = tok({ sub: 'not-joined', role: 'student', sim: cfg.sim.id, course: 'c2' });
+    assert.strictEqual((await call(cfgHandler, { session: pc }, { 'x-launch-token': newcomer })).status, 410);
   });
 
   console.log(`${pass} passed, ${fail} failed`);

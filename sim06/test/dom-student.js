@@ -4,7 +4,7 @@ const {JSDOM}=require('jsdom');
 (async()=>{
   const code=(await call(session,'POST',{action:'create',mode:'individual',facultyCode:'f'},{})).body.session.code;
   const html=fs.readFileSync(path.join(SIM,'public/index.html'),'utf8').replace(/@import url\([^)]*\);/,'');
-  const dom=new JSDOM(html,{url:`https://x.test/index.html?session=${code}`,runScripts:'dangerously',pretendToBeVisual:true,beforeParse(w){
+  const dom=new JSDOM(html,{url:`https://x.test/index.html?session=${code}&guest=1`,runScripts:'dangerously',pretendToBeVisual:true,beforeParse(w){
     w.sessionStorage.setItem('m06-access','open');
     w.fetch=async(u,o={})=>{const h=u.includes('/api/session')?session:config;const hd={};Object.entries(o.headers||{}).forEach(([k,v])=>hd[k.toLowerCase()]=v);
       const r=await call(h,o.method||'GET',o.body?JSON.parse(o.body):{},hd);return {ok:r.status<400,status:r.status,json:async()=>r.body}};
@@ -38,5 +38,18 @@ const {JSDOM}=require('jsdom');
   $('[data-rdoc="clearpath"]').click();await wait(100);
   assert.ok(w.document.querySelector('#modal mark').textContent.includes('Meridian'),'highlight after reveal');
   const svg=w.document.querySelector('svg');assert.ok(svg&&svg.querySelectorAll('rect').length===5,'map drawn');
+  await call(session,'POST',{action:'control',code,set:'close',facultyCode:'f'},{});
+  const pid=w.localStorage.getItem('m06-pid-'+code);
+  const resumed=new JSDOM(html,{url:`https://x.test/index.html?session=${code}&guest=1`,runScripts:'dangerously',pretendToBeVisual:true,beforeParse(rw){
+    rw.sessionStorage.setItem('m06-access','open');
+    rw.localStorage.setItem('m06-pid-'+code,pid);
+    rw.localStorage.setItem('m06-wt-'+code,'1');
+    rw.fetch=async(u,o={})=>{const h=u.includes('/api/session')?session:config;const hd={};Object.entries(o.headers||{}).forEach(([k,v])=>hd[k.toLowerCase()]=v);
+      const query=Object.fromEntries(new URL(u,'https://x.test').searchParams);
+      const r=await call(h,o.method||'GET',o.body?JSON.parse(o.body):query,hd);return {ok:r.status<400,status:r.status,json:async()=>r.body}};
+  }});
+  await wait(300);
+  assert.ok(resumed.window.document.getElementById('app').textContent.includes('What was underneath'),'returning student can reload the explanation after the room closes');
+  resumed.window.close();
   console.log('DOM smoke passed');w.close();process.exit(0);
 })().catch(e=>{console.error('FAIL',e.message);process.exit(1)});

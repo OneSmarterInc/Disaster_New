@@ -7,7 +7,7 @@
     "gate": "node tools/build-gate.js",
     "test": "node tools/build-gate.js && node test/run.js && node test/api.js",
     "test:lua": "node test/store-lua.js",
-    "test:dom": "node test/dom-student.js && node test/dom-instructor.js"
+    "test:dom": "node test/dom-student.js && node test/dom-instructor.js && node test/dom-solo.js"
   },
   "engines": {
     "node": ">=20"

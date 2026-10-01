@@ -70,6 +70,7 @@ function announce(meta, selfUrl) {
   const token = signBack({
     kind: 'register',
     sim: meta.id,
+    number: 6,
     title: meta.title,
     tagline: meta.tagline,
     description: meta.description,

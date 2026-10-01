@@ -12,8 +12,8 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0E152
 <div class="box">
   <div class="ey">Flexee RapidSim 06</div>
   <h1 id="title">Do We Switch?</h1>
-  <p class="muted" id="message">Enter the access code supplied by your instructor or administrator.</p>
-  <div class="field" id="gate"><label for="code">Access code</label><input id="code" type="password" autocomplete="off" spellcheck="false"><button class="btn" id="open">Open simulation</button><div class="err" id="err"></div></div>
+  <p class="muted" id="message">Checking your RapidSims sign-in…</p>
+  <div class="field" id="gate" hidden><label for="code">Access code</label><input id="code" type="password" autocomplete="off" spellcheck="false"><button class="btn" id="open">Open simulation</button><div class="err" id="err"></div></div>
 </div>
 <script>
 const BASE=(location.pathname.match(/^\/sim-?\d+/)||[''])[0];
@@ -24,13 +24,21 @@ const faculty=launch&&(launch.role==='faculty'||launch.role==='faculty_preview')
 if(faculty&&token)sessionStorage.setItem('m06-faculty-lt',token);
 const params=new URLSearchParams(location.search);params.delete('lt');const q=params.toString();
 function goWithToken(){const target=faculty?'/instructor.html':'/index.html';location.replace(BASE+target+(q?'?'+q:'')+'#lt='+encodeURIComponent(token))}
-if(token){goWithToken()}
+if(!token && params.get('guest')!=='1' && !['localhost','127.0.0.1'].includes(location.hostname)){
+  const entry=new URLSearchParams({sim:'rapid-06-switch'});
+  if(params.get('session'))entry.set('session',params.get('session'));
+  if(params.get('course'))entry.set('course',params.get('course'));
+  location.replace('https://rapidsims.flexee.org/open.html?'+entry.toString());
+}
+else if(token){goWithToken()}
 else if(params.get('session')){
+  sessionStorage.removeItem('m06-lt:'+params.get('session').trim().toUpperCase());
   document.getElementById('gate').hidden=true;
   document.getElementById('message').textContent='Opening your class session…';
   location.replace(BASE+'/api/join?session='+encodeURIComponent(params.get('session')));
 }
 else{
+  sessionStorage.removeItem('m06-lt:solo');
   const input=document.getElementById('code'),button=document.getElementById('open'),err=document.getElementById('err');
   const remembered=sessionStorage.getItem('m06-access')||'';if(remembered)input.value=remembered;
   async function verify(){
@@ -43,6 +51,8 @@ else{
     }catch(e){sessionStorage.removeItem('m06-access');err.textContent=e.message;button.disabled=false;input.focus()}
   }
   button.onclick=verify;input.addEventListener('keydown',e=>{if(e.key==='Enter')verify()});
+  document.getElementById('gate').hidden=false;
+  document.getElementById('message').textContent='Enter the access code supplied by your instructor or administrator.';
   input.focus();
 }
 </script>
