@@ -54,7 +54,12 @@ global.fetch = async (url, options) => {
   assert.deepEqual(removed.sort(), ['DONE1', 'MISS1', 'ZZZZ2']);
   assert(calls.some(args => args[0] === 'SCAN'), 'pre-deploy sessions are backfilled once');
   assert(expiries.includes(indexKey) && expiries.includes(readyKey));
-  console.log('PASS Sim04 room index: atomic creation, legacy backfill, course isolation, and stale cleanup');
+  const practice = { code: 'PRACT', name: 'Practice room', platformAuth: true, courseId: 'course-04',
+    mode: 'team', state: 'lobby', stage: 0, practice: true };
+  await store.createSession(practice.code, practice);
+  assert(!indexedCodes.includes('PRACT'), 'a faculty practice room is never added to the course index');
+  assert(!(await store.courseSessions('course-04')).some(s => s.code === 'PRACT'), 'and never listed');
+  console.log('PASS Sim04 room index: atomic creation, legacy backfill, course isolation, practice rooms hidden, and stale cleanup');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => {
   global.fetch = oldFetch;
   for (const key of Object.keys(process.env)) if (!(key in oldEnv)) delete process.env[key];

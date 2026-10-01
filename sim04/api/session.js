@@ -23,7 +23,7 @@ async function reportAll(code) {
   let sent = 0, failed = 0;
   for (let i = 0; i < 100; i++) {
     const current = await store.getSession(code);
-    if (!current || current.stage !== 3 || !current.platformAuth) break;
+    if (!current || current.stage !== 3 || !current.platformAuth || current.practice) break;
     const person = Object.values(current.participants).find(p => p.id.startsWith('platform:') && !p.reportedAt &&
       (!p.reportingAt || Date.now() - p.reportingAt > 30000));
     if (!person) break;
@@ -68,6 +68,24 @@ module.exports = async (req, res) => {
         return error(res, 403, 'student_course_required', 'Open Sim04 from a course where you have access.');
       }
       return res.status(200).json({ sessions: await store.courseSessions(who.courseId) });
+    }
+    // A faculty member previewing as a student gets a private practice room of
+    // their own: they own it, they are its only participant, it is never listed
+    // for a course and it never reports completion.
+    if (action === 'practice') {
+      const who = faculty(req, b);
+      if (!who || !who.platform) return error(res, 401, 'faculty_authorization_required');
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const c = codeOf();
+        let session = room.createSession({ code: c, owner: who.name || 'Instructor', mode: 'team', groupSize: 1,
+          name: 'Practice room', now: Date.now() });
+        Object.assign(session, { platformAuth: true, ownerId: who.id, courseId: who.courseId || null, practice: true });
+        session = room.join(session, who.id, who.email || 'instructor@practice.room', Date.now());
+        session = room.move(session, who.id, 'new');
+        if (!await store.createSession(c, session)) continue;
+        return res.status(200).json({ participantId: who.id, ...studentResult(session, who.id) });
+      }
+      return error(res, 503, 'code_unavailable');
     }
     if (action === 'create') {
       const who = faculty(req, b);

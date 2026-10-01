@@ -32,7 +32,7 @@ store.createSession = async (code, session) => {
 };
 store.getSession = async code => sessions.has(code) ? structuredClone(sessions.get(code)) : null;
 store.courseSessions = async courseId => [...sessions.values()]
-  .filter(session => session.platformAuth && session.courseId === courseId && session.state !== 'complete' && session.stage < 3)
+  .filter(session => !session.practice && session.platformAuth && session.courseId === courseId && session.state !== 'complete' && session.stage < 3)
   .map(({ code, name, mode, state, stage }) => ({ code, name, mode, state, stage }));
 store.compareAndSetSession = async (code, previous, next) => {
   if (JSON.stringify(sessions.get(code)) !== JSON.stringify(previous)) return false;
@@ -256,6 +256,26 @@ await check('registration states explicit identity, number and canonical route',
     assert.ok(gate.checkWiring({ env: 'SIM_URL=' }).some(s => s.includes('SIM_URL missing')));
     assert.ok(gate.checkWiring({ launch: "req.headers['x-forwarded-host']" }).some(s => s.includes('request host')));
     assert.ok(gate.checkWiring({ platform: { rewrites: [] } }).some(s => s.includes('platform route missing')));
+  });
+  await check('faculty preview: a private practice room the instructor owns and plays alone', async () => {
+    const before = requests.filter(x => x.url.endsWith('/api/complete')).length;
+    const practice = await call({ action: 'practice' });
+    assert.equal(practice.status, 200);
+    const pcode = practice.body.session.code;
+    assert.equal(practice.body.view.practice, true);
+    assert.equal(practice.body.view.group, 'Team 1');
+    assert.equal(practice.body.view.data, null, 'no sheet before the clock');
+    assert.ok(!(await call({ action: 'course_sessions' }, students[0])).body.sessions.some(x => x.code === pcode),
+      'practice rooms are never listed for students');
+    assert.equal((await call({ action: 'join', code: pcode }, students[0])).status, 200, 'join call itself is not blocked');
+    assert.equal((await call({ action: 'start', code: pcode })).status, 200);
+    const playing = await call({ action: 'state', code: pcode, participantId: 'platform:instructor' });
+    assert.equal(playing.body.view.data.sheet.lines.length, 5);
+    assert.equal((await call({ action: 'commit', code: pcode, number: 90, confidence: 3 })).status, 200);
+    for (let i = 0; i < 3; i++) assert.equal((await call({ action: 'advance', code: pcode })).status, 200);
+    assert.equal(requests.filter(x => x.url.endsWith('/api/complete')).length, before, 'practice never reports completion');
+    assert.equal((await call({ action: 'practice' }, students[1])).status, 401, 'students cannot open practice rooms');
+    assert.equal((await call({ action: 'faculty_state', code: pcode, facultyCode: 'other-instructor' }, null)).status, 403);
   });
   await check('a shared FACULTY_CODE is refused and fails the health check', async () => {
     process.env.FACULTY_CODE = 'shared-code-1';

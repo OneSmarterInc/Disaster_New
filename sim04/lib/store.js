@@ -50,7 +50,7 @@ async function backfillCourseIndex(courseId, index) {
       if (!values?.[i]) continue;
       try {
         const session = JSON.parse(values[i]);
-        if (!session.solo && session.platformAuth && String(session.courseId) === String(courseId) &&
+        if (!session.solo && !session.practice && session.platformAuth && String(session.courseId) === String(courseId) &&
             session.state !== 'complete' && session.stage < 3) {
           found.add(keys[i].slice('m04:sess:'.length));
         }
@@ -65,7 +65,7 @@ module.exports = {
   configured,
   getSession,
   async createSession(code, session) {
-    if (!session.solo && session.platformAuth && session.courseId) {
+    if (!session.solo && !session.practice && session.platformAuth && session.courseId) {
       return Number(await cmd(['EVAL', CREATE_WITH_COURSE_INDEX, '2', key(code), courseKey(session.courseId),
         JSON.stringify(session), String(TTL), code])) === 1;
     }
@@ -78,7 +78,7 @@ module.exports = {
     const active = [];
     for (const code of Array.isArray(codes) ? codes : []) {
       const session = await getSession(code);
-      if (!session || session.solo || !session.platformAuth || String(session.courseId) !== String(courseId) ||
+      if (!session || session.solo || session.practice || !session.platformAuth || String(session.courseId) !== String(courseId) ||
           session.state === 'complete' || session.stage >= 3) {
         await cmd(['SREM', index, code]);
         continue;

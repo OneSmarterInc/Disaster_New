@@ -157,7 +157,7 @@ function studentView(session, participantId, now) {
   if (!p) throw new Error('Join the session first.');
   const started = session.state !== 'lobby';
   return {
-    state: session.state, mode: session.mode, stage: session.stage, you: p.name,
+    state: session.state, mode: session.mode, stage: session.stage, you: p.name, practice: !!session.practice,
     group: slot ? slot.label : null,
     groupmates: slot ? slot.memberIds.filter(id => id !== participantId).map(id => session.participants[id].name) : [],
     clockMinutes: session.clockMinutes,
