@@ -401,7 +401,7 @@ function renderCourse() {
           </div>
           <div class="side faculty-sim-side">
             <div class="faculty-sim-actions">
-              ${x.sim_id==='rapid-03-midland'
+              ${['rapid-03-midland','rapid-05-approve'].includes(x.sim_id)
                 ? `<a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session&play=team">Run groups</a>
                    <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session&play=individual">Run individual</a>`
                 : `<a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session">Run a session</a>`}
