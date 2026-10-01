@@ -84,6 +84,30 @@ body.present header .ctl .aux,body.present .aux{display:none!important}
 body.present main{width:calc(100% - 80px)}
 body.present .big{font-size:120px}
 @media(max-width:900px){.grid2,.stage{grid-template-columns:1fr}.bar-row{grid-template-columns:1fr}}
+.roster select{background:var(--night);border:1px solid var(--line2);padding:6px 8px;font:14px var(--serif);color:var(--bone);min-width:150px}
+.roster li.sub{font:12px var(--mono);color:var(--dim);padding-top:16px}
+.roster{scrollbar-color:var(--line2) var(--panel);scrollbar-width:thin}
+.roster::-webkit-scrollbar{width:8px}.roster::-webkit-scrollbar-track{background:var(--panel)}.roster::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+.teamnames{margin-top:20px}.teamnames .tn{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.hint{font:12px var(--mono);color:var(--dimmer);margin-top:8px}
+.progress{margin-top:30px}.progress .ph{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.progress ul{list-style:none;margin-top:6px}.progress li{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:15px}
+.tick{color:var(--amber)}
+.pteam{border-top:1px solid var(--line2);padding-top:12px;margin-top:14px}.pteam .ph span{font-size:18px}
+.tallies{font:12.5px var(--mono);color:var(--soft);margin-top:8px;display:grid;gap:3px}
+.terms li{display:grid;gap:4px;margin-bottom:12px}.terms li small{font-size:19px;color:var(--soft);line-height:1.4;max-width:60ch}
+.compact .bars{gap:6px;margin-top:20px}.compact .bar{height:22px}.compact .bar-row .lab{font-size:14px}
+.overlay{position:fixed;inset:0;background:rgba(5,8,15,.82);display:grid;place-items:start center;overflow:auto;z-index:20;padding:40px 16px}
+.ovpanel{background:var(--night);border:1px solid var(--line2);width:min(980px,100%);padding:26px 28px;position:relative}
+.ovclose{position:absolute;right:16px;top:16px}
+.ovbar{font:12px var(--mono);color:var(--amber);margin-bottom:16px}
+.ovpanel h2{font-size:26px;margin:6px 0 12px}.ovpanel p{color:var(--soft);margin-bottom:8px}
+.ovpanel .k{font:12px var(--mono);color:var(--dim);margin-top:12px}
+.ovapp{border:1px dashed var(--line2);border-radius:14px;padding:12px 14px;max-width:280px;margin-top:10px}
+.ovgrid{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:16px}
+.ovround{border-top:1px solid var(--line);padding:10px 0}.ovround .cost{color:#E3B9C2}
+.ovfile{list-style:none}.ovfile li{border-bottom:1px solid var(--line);padding:8px 0;font-size:15px;color:var(--soft)}
+@media(max-width:900px){.ovgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -139,17 +163,17 @@ function header(){
   if(!s){ctl.innerHTML='';return}
   const btns=[];
   if(s.state==='running'){
-    const ph=state.projector.clock.phase;
+    const ph=state.projector.clock.phase,over=ph==='ending'||ph==='closed';
     if(!s.paused&&ph==='decide')btns.push(`<button class="btn sm aux" data-c="advance">Close this round now</button>`);
     if(!s.paused&&(ph==='reveal'||ph==='briefing'))btns.push(`<button class="btn sm aux" data-c="advance">${ph==='reveal'&&state.projector.clock.round===5?'Open the endings now':'Open the next round now'}</button>`);
-    btns.push(s.paused?`<button class="btn sm aux" data-c="resume">Resume</button>`:`<button class="btn sm aux" data-c="pause">Pause</button>`);
+    if(!over)btns.push(s.paused?`<button class="btn sm aux" data-c="resume">Resume</button>`:`<button class="btn sm aux" data-c="pause">Pause</button>`);
     btns.push(`<button class="btn sm aux" data-c="close">Close session</button>`);
   }
   if(s.state!=='lobby')btns.push(`<button class="btn sm" id="pres">${document.body.classList.contains('present')?'Exit projector':'Projector'}</button>`);
   btns.push(`<button class="btn sm aux" id="leave">Leave</button>`);
   ctl.innerHTML=btns.join('');
   ctl.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>control(b.dataset.c));
-  const pres=document.getElementById('pres');if(pres)pres.onclick=()=>{document.body.classList.toggle('present');render()};
+  const pres=document.getElementById('pres');if(pres)pres.onclick=()=>{document.body.classList.toggle('present');closeOverlay();render()};
   document.getElementById('leave').onclick=()=>{clearInterval(poll);code='';state=null;localStorage.removeItem(SESSION_KEY);document.body.classList.remove('present');render()};
 }
 
@@ -162,12 +186,12 @@ function render(){
 
 function createView(){
   const needCode=!LT;
-  app.innerHTML=`<h2>Set up this room</h2>
-  <p class="body">Every student sees the same clock. Choose how the room plays before anyone joins.</p>
+  app.innerHTML=`<h2>Set up this session</h2>
+  <p class="body">Every student sees the same clock. Choose how the class plays before anyone joins.</p>
   ${error?`<div class="note bad">${esc(error)}</div>`:''}
   <div class="grid2"><section class="card"><h3>New session</h3>
     <div class="field"><label for="nm">Session name (only you see this)</label><input id="nm" name="sim-session-label" autocomplete="off" data-lpignore="true" data-1p-ignore value="${esc(draft.name)}" placeholder="Would You Approve This?"></div>
-    <div class="field"><label>How will the room play?</label><div class="choice" role="radiogroup">
+    <div class="field"><label>How will the class play?</label><div class="choice" role="radiogroup">
       <label><input type="radio" name="mode" value="individual" ${draft.mode==='individual'?'checked':''}><div><b>Individual</b><span>Each student decides alone. Recommended for this sim: the lesson is personal responsibility for each approval.</span></div></label>
       <label><input type="radio" name="mode" value="team" ${draft.mode==='team'?'checked':''}><div><b>Team</b><span>Members vote privately; the majority decides and a tie ships the feature.</span></div></label>
     </div></div>
@@ -207,7 +231,8 @@ async function refresh(throwErr){
   if(!code)return;
   try{
     const d=await api({action:'faculty_state',code});state=d;
-    const key=JSON.stringify([d.session.state,d.session.paused,d.roster,d.projector.clock.phase,d.projector.clock.round,d.projector.live,d.projector.rounds,d.projector.endings]);
+    const key=JSON.stringify([d.session.state,d.session.paused,d.session.teamLabels,d.roster,d.projector.clock.phase,d.projector.clock.round,d.projector.live,d.projector.rounds,d.projector.endings,d.projector.progress]);
+    if(overlay)refreshOverlay();
     const active=document.activeElement;const typing=active&&active.tagName==='INPUT';
     if(key!==shown&&!typing){shown=key;render()}else tickClock();
   }catch(e){if(throwErr)throw e;error=e.message}
@@ -221,50 +246,66 @@ async function refreshEnrolment(){
 }
 function notJoined(){
   if(!enrol)return null;
-  const inRoom=new Set(state.roster.filter(p=>p.joined).map(p=>p.id));
-  return enrol.filter(x=>!inRoom.has(x.participantId)).map(x=>x.name).sort((a,b)=>a.localeCompare(b));
+  const inSession=new Set(state.roster.filter(p=>p.joined).map(p=>p.id));
+  return enrol.filter(x=>!inSession.has(x.participantId)).map(x=>x.name).sort((a,b)=>a.localeCompare(b));
 }
+function defaultLabel(gid){const m=/^team:team-(\d+)$/.exec(gid||'');return m?'Team '+m[1]:(state.roster.find(p=>p.groupId===gid)?.teamLabel||gid.replace(/^team:/,''))}
+function teamsInLobby(){
+  const ids=[...new Set(state.roster.filter(p=>p.groupId).map(p=>p.groupId))];
+  return ids.map(gid=>({gid,label:(state.session.teamLabels||{})[gid]||defaultLabel(gid),renamed:!!(state.session.teamLabels||{})[gid]}))
+    .sort((a,b)=>defaultLabel(a.gid).localeCompare(defaultLabel(b.gid),undefined,{numeric:true}));
+}
+function nextTeamLabel(){const nums=state.roster.map(p=>/^team:team-(\d+)$/.exec(p.groupId||'')).filter(Boolean).map(m=>+m[1]);return 'Team '+((nums.length?Math.max(...nums):0)+1)}
 function lobbyView(){
-  const s=state.session,people=state.roster.filter(p=>p.joined||s.mode==='team').slice().sort((a,b)=>a.name.localeCompare(b.name));
-  const here=state.roster.filter(p=>p.joined),readyN=here.filter(p=>p.ready).length;
-  const missing=notJoined();
+  const s=state.session,team=s.mode==='team';
+  const byName=(a,b)=>a.name.localeCompare(b.name);
+  const here=state.roster.filter(p=>p.joined).sort(byName),away=team?state.roster.filter(p=>!p.joined).sort(byName):[];
+  const readyN=here.filter(p=>p.ready).length;
+  const missing=team?null:notJoined();
   const joinUrl=s.joinUrl||location.origin+BASE+'/index.html?session='+s.code;
-  const team=s.mode==='team';
-  const rows=people.map(p=>`<li><span>${esc(p.name)}${p.joined?(p.ready?'':' <span class="late">reading the walkthrough</span>'):' <span class="late">not here yet</span>'}</span>${team?`<input data-id="${esc(p.id)}" value="${esc(teamDraft[p.id]??p.teamLabel)}" placeholder="Team name" aria-label="Team for ${esc(p.name)}">`:''}</li>`).join('');
+  const teams=team?teamsInLobby():[];
+  const picker=p=>`<select data-id="${esc(p.id)}" aria-label="Team for ${esc(p.name)}"><option value="">Unassigned</option>${teams.map(t=>`<option value="${esc(t.gid)}" ${p.groupId===t.gid?'selected':''}>${esc(t.label)}</option>`).join('')}<option value="__new__">New team (${esc(nextTeamLabel())})</option></select>`;
+  const row=p=>`<li><span>${esc(p.name)}${p.joined?(p.ready?'':' <span class="late">reading the walkthrough</span>'):''}</span>${team?picker(p):''}</li>`;
+  const list=here.length||away.length?`<ul class="roster">${here.map(row).join('')}${away.length?`<li class="sub">Not here yet · ${away.length}</li>${away.map(row).join('')}`:''}</ul>`:`<p class="body">Nobody has joined yet. This list updates on its own.</p>`;
+  const teamNames=teams.length?`<div class="teamnames"><h3>Team names</h3>${teams.map(t=>`<div class="tn"><span>${esc(t.label)}${t.renamed?` <span class="late">renamed from ${esc(defaultLabel(t.gid))}</span>`:''}</span>${t.renamed?`<button class="btn sm" data-reset="${esc(t.gid)}">Reset name</button>`:''}</div>`).join('')}<p class="hint">Students can rename their own team until you start.</p></div>`:'';
   app.innerHTML=`<h2>Students join with this code</h2>
   <div class="join"><div class="code">${esc(s.code)}</div><div class="url">${esc(joinUrl)}</div></div>
   ${error?`<div class="note bad">${esc(error)}</div>`:''}
   <div class="grid2"><section class="card"><h3>${here.length} joined · ${readyN} finished the walkthrough</h3>
-    ${people.length?`<ul class="roster">${rows}</ul>`:`<p class="body">Nobody has joined yet. This list updates on its own.</p>`}
+    ${list}
     ${missing?`<h3 style="margin-top:20px">Not joined yet · ${missing.length}</h3>${missing.length?`<ul class="roster">${missing.map(n=>`<li><span>${esc(n)}</span></li>`).join('')}</ul>`:`<p class="body">Everyone enrolled has joined.</p>`}`:''}
-    ${team&&people.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center">
-      <button class="btn sm" id="split">Split into teams of</button><input id="ts" type="number" min="2" max="8" value="${teamSize}" style="width:64px;background:var(--night);border:1px solid var(--line2);padding:6px 8px">
-      <button class="btn sm" id="save">Save teams</button>${s.platformAuth&&s.courseId?`<button class="btn sm" id="imp">Add approved course students</button>`:''}</div>`:''}
+    ${team&&here.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center">
+      <button class="btn sm" id="split">Split everyone here into teams of</button><input id="ts" type="number" min="2" max="8" value="${teamSize}" style="width:64px;background:var(--night);border:1px solid var(--line2);padding:6px 8px">
+      ${s.platformAuth&&s.courseId?`<button class="btn sm" id="imp">Add approved course students</button>`:''}</div>`:''}
+    ${teamNames}
   </section>
   <section class="card"><h3>When everyone is in</h3>
     <p class="body">Students read an untimed walkthrough while they wait. Starting runs a one-minute recap, then five three-minute rounds with a minute of reveal after each. About twenty-four minutes in all. A round closes early once everyone has decided.</p>
-    ${team?`<p class="body">Teams are fixed when you start, and only students who have joined are counted. Students who arrive later can't join a team session.</p>`:`<p class="body">Students who join after round 1 closes can still play, but they stay out of the room's totals.</p>`}
+    ${team?`<p class="body">Teams are fixed when you start, and only students who have joined are counted. Students who arrive later can't join a team session.</p>`:`<p class="body">Students who join after round 1 closes can still play, but they stay out of the class totals.</p>`}
     <button class="btn pri" id="go">Start the session</button>
   </section></div>`;
   document.getElementById('go').onclick=()=>control('start');
-  if(team&&people.length){
-    app.querySelectorAll('.roster input').forEach(i=>i.oninput=()=>{teamDraft[i.dataset.id]=i.value});
-    document.getElementById('split').onclick=()=>{teamSize=Math.max(2,Math.min(8,Number(document.getElementById('ts').value)||4));
-      const shuffled=people.map(p=>p.id).sort(()=>Math.random()-.5);const n=Math.max(1,Math.round(shuffled.length/teamSize));
-      shuffled.forEach((id,i)=>{teamDraft[id]='Team '+String.fromCharCode(65+(i%n))});render()};
-    document.getElementById('save').onclick=saveTeams;
+  if(team){
+    app.querySelectorAll('.roster select').forEach(sel=>sel.onchange=()=>{
+      const v=sel.value,label=v==='__new__'?nextTeamLabel():v?defaultLabel(v):'__unassigned__';
+      assignTeams({[sel.dataset.id]:label});
+    });
+    const sp=document.getElementById('split');if(sp)sp.onclick=()=>{
+      teamSize=Math.max(2,Math.min(8,Number(document.getElementById('ts').value)||4));
+      const ids=here.map(p=>p.id).sort(()=>Math.random()-.5),n=Math.max(1,Math.round(ids.length/teamSize)),assign={};
+      ids.forEach((id,i)=>{assign[id]='Team '+((i%n)+1)});assignTeams(assign);
+    };
+    app.querySelectorAll('[data-reset]').forEach(b=>b.onclick=async()=>{try{await api({action:'team_label',code,groupId:b.dataset.reset});error=''}catch(e){error=e.message}shown='';await refresh()});
     const imp=document.getElementById('imp');if(imp)imp.onclick=async()=>{try{await api({action:'faculty_enrolments',code});error=''}catch(e){error=e.message}shown='';await refresh()};
   }
 }
-async function saveTeams(){
-  const assign={};for(const [id,v] of Object.entries(teamDraft))assign[id]=v.trim()||'__unassigned__';
-  try{await api({action:'group',code,assign});teamDraft={};error=''}catch(e){error=e.message}
+async function assignTeams(assign){
+  try{await api({action:'group',code,assign});error=''}catch(e){error=e.message}
   shown='';await refresh();
 }
 async function control(set){
   if(set==='close'&&!confirm('Close this session? Students will see their ending and no further decisions can be made.'))return;
   if(set==='advance'&&state?.projector?.clock?.phase==='decide'&&state.projector.live&&state.projector.live.decided<state.projector.live.of&&!confirm(`${state.projector.live.of-state.projector.live.decided} still deciding. Their features will ship as timeouts. Close the round?`))return;
-  if(set==='start'&&Object.keys(teamDraft).length)await saveTeams();
   try{await api({action:'control',code,set});error=''}catch(e){error=e.message}
   shown='';await refresh();
 }
@@ -281,11 +322,11 @@ setInterval(tickClock,250);
 
 function phaseLine(c){
   if(c.paused)return 'Paused';
-  if(c.phase==='briefing')return 'Briefing · round 1 opens in';
+  if(c.phase==='briefing')return 'Recap · round 1 opens in';
   if(c.phase==='decide')return `Round ${c.round} of 5 · deciding`;
   if(c.phase==='reveal')return c.round<5?`Round ${c.round} of 5 · reveal · round ${c.round+1} opens in`:'Round 5 of 5 · reveal · endings open in';
   if(c.phase==='ending')return 'Endings';
-  return 'Session closed';
+  return state.session.state==='running'?'Endings':'Session closed';
 }
 function bars(rounds){
   if(!rounds.length)return '';
@@ -295,6 +336,25 @@ function bars(rounds){
     <div class="bar" role="img" aria-label="${r.approve} approved, ${r.timeout} timed out, ${r.decline} declined">${seg(r.approve,'a')}${seg(r.timeout,'t')}${seg(r.decline,'d')}</div></div>`}).join('');
   const unit=state.session.mode==='team'?'teams':'students';
   return `<div class="bars">${rows}</div><div class="legend"><span><i style="background:var(--approve)"></i>Approved</span><span><i style="background:var(--timeout)"></i>Shipped when the clock ran out</span><span><i style="background:var(--decline)"></i>Declined</span><span>Counts are ${unit}</span></div>`;
+}
+function tallyLine(t){
+  const tie=t.decision!=='decline'&&t.approve+t.missing===t.decline&&t.decline>0;
+  const result=t.decision==='decline'?'declined':t.approve+t.decline===0?'nobody voted, shipped':tie?'tie, shipped':'shipped';
+  return `Round ${t.round} · ${t.approve} approve, ${t.decline} decline${t.missing?`, ${t.missing} didn't vote`:''} · ${result}`;
+}
+function progressPanel(P){
+  const g=P.progress||{},open=P.clock.phase==='decide';
+  const tick=m=>!m.joined?'<span class="late">not here</span>':open?(m.decided?'<b class="tick">✓</b>':'<span class="late">deciding</span>'):'';
+  let body='';
+  if(g.teams){
+    body=g.teams.map(t=>`<div class="pteam"><div class="ph"><span>${esc(t.label)}</span><button class="btn sm" data-view="${esc(t.groupId)}">View as ${esc(t.label)}</button></div>
+      <ul>${t.members.map(m=>`<li><span>${esc(m.name)}</span>${tick(m)}</li>`).join('')}</ul>
+      ${t.tallies.length?`<div class="tallies">${t.tallies.map(x=>`<div>${esc(tallyLine(x))}</div>`).join('')}</div>`:''}</div>`).join('');
+  }else if(g.students){
+    body=`<ul>${g.students.map(m=>`<li><span>${esc(m.name)}${m.late?' <span class="late">joined late</span>':''}</span>${tick(m)}</li>`).join('')}</ul>`;
+  }
+  return `<section class="card progress aux"><div class="ph"><h3>Progress · only you see this</h3><button class="btn sm" id="pv">Show the student screen</button></div>
+    <p class="hint">${open?'Ticks show who has decided this round, never which way.':'Ticks appear while a round is open.'}${g.teams?' Team counts appear after each round closes, without names.':''}</p>${body}</section>`;
 }
 function projectorView(){
   const P=state.projector,c=P.clock,s=state.session;
@@ -306,20 +366,57 @@ function projectorView(){
   if(P.endings){
     const tabs=[['disagreement','Disagreement'],['naming','Naming'],['turn','The turn']];
     if(P.debrief.teamPrompt)tabs.splice(1,0,['team','Team votes']);
-    const body=tab==='naming'?`<ul class="terms">${P.debrief.naming.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`
+    const body=tab==='naming'?`<ul class="terms">${P.debrief.naming.map(t=>`<li><span>${esc(t.term)}</span><small>${esc(t.line)}</small></li>`).join('')}</ul>`
       :tab==='turn'?`<p class="prompt">${esc(P.debrief.turn)}</p>`
       :tab==='team'?`<p class="prompt">${esc(P.debrief.teamPrompt)}</p>`
-      :`<p class="prompt">${esc(P.disagreement||'No round split the room. Ask who hesitated longest, and at which round.')}</p>`;
+      :`<p class="prompt">${esc(P.disagreement||'')}</p>`;
     debrief=`<section class="debrief"><div class="tabs" role="tablist">${tabs.map(([k,l])=>`<button class="btn sm" role="tab" aria-selected="${tab===k}" data-t="${k}">${l}</button>`).join('')}</div>${body}</section>`;
   }
-  const endings=P.endings?`<section class="card"><h3>Where the room ended</h3><ul class="endings">${P.endings.map(e=>`<li><span>${esc(e.label)}</span><b>${e.count}</b></li>`).join('')}</ul></section>`
-    :`<section class="card"><h3>In the room</h3><ul class="endings"><li><span>Joined</span><b>${P.joined}</b></li>${P.teams!=null?`<li><span>Teams</span><b>${P.teams}</b></li>`:''}</ul></section>`;
+  const endings=P.endings?`<section class="card"><h3>Where the class ended</h3><ul class="endings">${P.endings.map(e=>`<li><span>${esc(e.label)}</span><b>${e.count}</b></li>`).join('')}</ul></section>`
+    :`<section class="card"><h3>In this session</h3><ul class="endings"><li><span>Joined</span><b>${P.joined}</b></li>${P.teams!=null?`<li><span>Teams</span><b>${P.teams}</b></li>`:''}</ul></section>`;
+  const headline=P.headline?`<p class="headline">${esc(P.headline)}</p>`:'';
+  // Once the endings open, the question comes first and the numbers sit below it.
+  const main=P.endings
+    ?`<div class="now">${esc(phaseLine(c))}</div>${debrief}${headline}<div class="compact">${bars(P.rounds)}</div>`
+    :`<div class="now">${esc(phaseLine(c))}</div>${timer}${live}${headline}${bars(P.rounds)}${late}`;
   app.innerHTML=`${error?`<div class="note bad aux">${esc(error)}</div>`:''}
-  <div class="stage"><div><div class="now">${esc(phaseLine(c))}</div>${timer}${live}
-    ${P.headline?`<p class="headline">${esc(P.headline)}</p>`:''}
-    ${bars(P.rounds)}${late}${debrief}</div>${endings}</div>`;
+  <div class="stage"><div>${main}</div><div>${endings}</div></div>${s.state==='running'||P.endings?progressPanel(P):''}`;
   app.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+  app.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>openOverlay({kind:'team',groupId:b.dataset.view}));
+  const pv=document.getElementById('pv');if(pv)pv.onclick=()=>openOverlay({kind:'preview'});
   tickClock();
+}
+
+// Read-only views in an overlay: the current round as students see it, or one team's screen.
+let overlay=null;
+function openOverlay(o){overlay=o;refreshOverlay()}
+function closeOverlay(){overlay=null;document.getElementById('ov')?.remove()}
+const OUT={approve:'Approved',decline:'Declined',timeout:'Shipped when the clock ran out'};
+function appBox(a){return a?`<div class="ovapp"><div class="k">Dana's app</div><b>${esc(a.title)}</b><div>${esc(a.big)} ${esc(a.bigUnit||'')}</div><small>${esc(a.small)}</small></div>`:''}
+async function refreshOverlay(){
+  if(!overlay)return;
+  let html='';
+  try{
+    if(overlay.kind==='preview'){
+      const d=await api({action:'preview',code});
+      html=d.round?`<div class="k">Round ${d.round.n} of 5 · ${esc(d.round.title)}</div><h2>${esc(d.round.request)}</h2><p><b>Why the team wants it.</b> ${esc(d.round.reason)}</p><p><b>What it adds.</b> ${esc(d.round.adds)}</p>${appBox(d.round.app)}`
+        :`<p>No round is open yet. Students are on the walkthrough or the recap.</p>`;
+      html=`<div class="ovbar">Student screen preview · read-only</div>${html}`;
+    }else{
+      const {view:v}=await api({action:'team_view',code,groupId:overlay.groupId});
+      const done=v.rounds.filter(r=>r.result),cur=v.rounds.find(r=>!r.result);
+      const file=(done.length?done[done.length-1].result.picture:[]).map(p=>`<li><b>${esc(p.label)}</b> · ${esc(p.level)}<br>${esc(p.text)}</li>`).join('')||'<li>Loopwell knows nothing yet beyond what Dana enters herself.</li>';
+      const hist=done.map(r=>`<div class="ovround"><div class="k">Round ${r.n} · ${esc(r.title)}</div><b>${esc(OUT[r.result.decision])}</b>${r.result.picture.filter(p=>r.result.changed.includes(p.id)).map(p=>`<p>${esc(p.text)}</p>`).join('')}${r.result.cost?`<p class="cost">${esc(r.result.cost)}</p>`:''}</div>`).join('');
+      html=`<div class="ovbar">Viewing ${esc(v.team.label)} · read-only · members' own votes are not shown</div>
+        ${cur?`<div class="k">Now: round ${cur.n} · ${esc(cur.title)}</div><h2>${esc(cur.request)}</h2>${appBox(cur.app)}`:''}
+        <div class="ovgrid"><div>${hist||'<p>No rounds have closed yet.</p>'}</div><div><div class="k">Dana's file for this team</div><ul class="ovfile">${file}</ul>
+        ${v.ending?`<div class="k">What Loopwell couldn't offer her</div><ul class="ovfile">${(v.ending.missing.length?v.ending.missing:['Every feature shipped.']).map(m=>`<li>${esc(m)}</li>`).join('')}</ul>`:''}</div></div>`;
+    }
+  }catch(e){html=`<div class="note bad">${esc(e.message)}</div>`}
+  let el=document.getElementById('ov');
+  if(!el){el=document.createElement('div');el.id='ov';el.className='overlay aux';document.body.appendChild(el)}
+  el.innerHTML=`<div class="ovpanel" role="dialog" aria-label="Read-only view"><button class="btn sm ovclose" id="ovx">Close</button>${html}</div>`;
+  document.getElementById('ovx').onclick=closeOverlay;
 }
 
 (async()=>{if(code&&(LT||facultyCode)){try{await refresh(true);startPoll()}catch{state=null}}render()})();

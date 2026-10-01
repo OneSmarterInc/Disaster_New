@@ -339,20 +339,29 @@ const STUDENT_COPY = {
   skipToResult: 'Show me the result',
   skipToNext: 'Go to round {n}',
   skipToEnding: 'Go to the ending',
-  expandHint: 'Tap a line to read it in full.'
+  expandHint: 'Tap a line to read it in full.',
+  teamYoureOn: "You're on {team}.",
+  teamRename: 'Rename your team',
+  teamRenameSave: 'Save name',
+  teamRenameHint: 'Anyone on your team can rename it until the session starts.'
 };
 
 const DEBRIEF = {
   disagreement: 'Round {round} split {approve}–{decline}. Find one of each.',
+  disagreementTeams: 'Round {round} split {teams} internally. Ask {whose} members where they disagreed.',
+  noDisagreement: 'No round divided the class. Ask who hesitated longest, and at which round.',
   naming: [
-    'Collected vs inferred',
-    'Purpose limitation',
-    'Data minimisation',
-    'Consent for every step, covering none of the result'
+    { term: 'Collected vs inferred', line: 'Loopwell collected steps, routes, sleep, shopping and heart rate. It inferred a pregnancy nobody told it about.' },
+    { term: 'Purpose limitation', line: "Data gathered for one purpose shouldn't be used for another. Route maps don't justify knowing where Dana sleeps." },
+    { term: 'Data minimization', line: 'Collect only what a feature needs. Sleep reports needed a time zone, not a nightly location.' },
+    { term: 'Consent for every step, covering none of the result', line: 'Dana agreed to each feature. She never agreed to the combination.' }
   ],
   turn: 'Name a company that holds data about you, and something it could work out that you never told it.',
   teamPrompt: 'Who voted against something that shipped anyway?',
-  headline: '{reached} of {total} ended with Loopwell estimating {what}. {declinedSome} of them declined at least one request.',
+  headlineMain: '{reached} of {total} {unit} ended with Loopwell estimating {what}.',
+  headlineZero: 'None of the {total} {unit} ended with Loopwell estimating {what}.',
+  headlineNoneDeclined: 'None of them declined a request.',
+  headlineSomeDeclined: 'Of those, {declinedSome} declined at least one request.',
   headlineWhat: { standard: "a change in Dana's health", lighter: "a change in Dana's health" },
   headlineLevels: ['high', 'moderate']
 };

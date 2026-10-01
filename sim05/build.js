@@ -22,6 +22,7 @@ for (const [name, html] of Object.entries(pages)) {
   for (const s of secret) if (html.includes(s)) refuse(`${name} page contains scenario content: "${s.slice(0, 50)}"`);
   if (/privacy/i.test(html) && name !== 'instructor') refuse(`${name} page uses the word "privacy"`);
   if (/pregnan/i.test(html)) refuse(`${name} page names the round-five inference`);
+  if (/\broom\b/i.test(html)) refuse(`${name} page uses the word "room"; say "class" or "session"`);
   if (/fetch\s*\(\s*['"`]\/api\//.test(html)) refuse(`${name} page has an unprefixed /api fetch`);
   if (!html.includes("location.pathname.match(/^\\/sim-?\\d+/)")) refuse(`${name} page is missing the path-prefix detector`);
   for (const [, js] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {

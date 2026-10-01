@@ -82,6 +82,18 @@ function teamDecisions(sess, participants, groupId, closedRounds) {
   });
 }
 
+function teamLabel(sess, participants, groupId) {
+  if (!groupId) return '';
+  if (sess.teamLabels && sess.teamLabels[groupId]) return sess.teamLabels[groupId];
+  const any = Object.values(participants || {}).find(p => p && p.groupId === groupId && p.teamLabel);
+  return any ? any.teamLabel : groupId.replace(/^team:/, '');
+}
+
+function teamGroups(sess, participants) {
+  if (sess.teams && sess.state !== 'lobby') return Object.keys(sess.teams);
+  return [...new Set(Object.values(participants || {}).filter(p => p && p.groupId && p.groupId.startsWith('team:')).map(p => p.groupId))];
+}
+
 function appFor(r) {
   return r.app ? { ...r.app } : null;
 }
@@ -118,7 +130,7 @@ function studentView(sess, participants, pid, now) {
     solo: !!sess.solo,
     ready: !!me.ready,
     late: sess.state === 'running' && clk.phase !== 'briefing' && !me.ready,
-    team: inTeam ? { label: me.teamLabel || '', size: teamMembers(sess, me.groupId).length } : null,
+    team: inTeam ? { label: teamLabel(sess, participants, me.groupId), assigned: !!me.groupId, canRename: sess.state === 'lobby' && !!me.groupId, size: teamMembers(sess, me.groupId).length } : null,
     rounds,
     canVote: clk.phase === 'decide' && !clk.paused && !(me.votes || {})[clk.round] && onTeam,
     canSkip: !!sess.solo && !clk.paused && (clk.phase === 'briefing' || clk.phase === 'reveal' || (clk.phase === 'decide' && !!(me.votes || {})[clk.round])),
@@ -155,7 +167,7 @@ function projectorView(sess, participants, now) {
     runs = counted.map(p => ({ decisions: ownVotes(p, clk.closedRounds).map((d, i) => (i < clk.closedRounds ? d : undefined)) }));
   }
   const who = deciders(sess, participants);
-  const agg = E.aggregate(runs, intensity);
+  const agg = E.aggregate(runs, intensity, { mode: sess.mode });
   const live = clk.phase === 'decide'
     ? { round: clk.round, decided: who.filter(p => (p.votes || {})[clk.round]).length, of: who.length }
     : null;
@@ -172,12 +184,55 @@ function projectorView(sess, participants, now) {
     endings: clk.closedRounds === 5 ? agg.groups : null,
     headline: clk.closedRounds === 5 ? agg.headline : null,
     disagreement: clk.closedRounds === 5 ? agg.disagreement : null,
+    progress: progress(sess, participants, now),
     debrief: {
       naming: C.DEBRIEF.naming,
       turn: C.DEBRIEF.turn,
       teamPrompt: sess.mode === 'team' ? C.DEBRIEF.teamPrompt : null
     }
   };
+}
+
+// Instructor-only. Who is here, who has finished the walkthrough, who has decided
+// in the open round. Never which way anyone voted. Team tallies appear only for
+// closed rounds and carry counts, never names.
+function progress(sess, participants, now) {
+  const clk = clock(sess, now);
+  const open = clk.phase === 'decide' ? clk.round : 0;
+  const person = p => ({ name: p.name, joined: !!p.joinedAt, ready: !!p.ready, decided: open ? !!(p.votes || {})[open] : null });
+  if (sess.mode !== 'team') {
+    return { students: Object.values(participants || {}).filter(p => p && p.joinedAt).map(p => ({ ...person(p), late: isLate(sess, p) })).sort((a, b) => a.name.localeCompare(b.name)) };
+  }
+  const teams = teamGroups(sess, participants).map(gid => {
+    const ids = sess.teams && sess.state !== 'lobby' ? sess.teams[gid] : Object.values(participants).filter(p => p && p.groupId === gid).map(p => p.id);
+    const t = teamDecisions(sess, participants, gid, clk.closedRounds);
+    return {
+      groupId: gid,
+      label: teamLabel(sess, participants, gid),
+      members: ids.map(id => participants[id]).filter(Boolean).map(person).sort((a, b) => a.name.localeCompare(b.name)),
+      tallies: t.slice(0, clk.closedRounds).map((x, i) => ({ round: i + 1, approve: x.approve, decline: x.decline, missing: x.missing, decision: x.decision }))
+    };
+  }).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+  return { teams };
+}
+
+// Read-only: exactly what one team sees, minus every member's own vote.
+function teamView(sess, participants, groupId, now) {
+  const ids = teamMembers(sess, groupId).length ? teamMembers(sess, groupId) : Object.values(participants).filter(p => p && p.groupId === groupId).map(p => p.id);
+  if (!ids.length || !participants[ids[0]]) return null;
+  const v = studentView(sess, participants, ids[0], now);
+  v.rounds.forEach(r => { delete r.myVote; });
+  if (v.ending) v.ending.decisions.forEach(d => { delete d.myVote; });
+  v.canVote = false; v.canSkip = false;
+  return { ...v, team: { ...v.team, label: teamLabel(sess, participants, groupId) } };
+}
+
+// The round in front of students right now, for the instructor's preview.
+function preview(sess, now) {
+  const clk = clock(sess, now);
+  if (!clk.openedRounds) return { clock: clk, round: null };
+  const r = C.ROUNDS[(clk.round || clk.openedRounds) - 1];
+  return { clock: clk, round: { n: r.n, title: r.title, request: r.request, reason: r.reason, adds: r.adds, app: appFor(r) } };
 }
 
 // Validate and apply one vote. Returns { next } or { error }.
@@ -240,6 +295,6 @@ function completionSummary(sess, participants, pid, now) {
 
 module.exports = {
   INTENSITIES, MODES,
-  elapsedSeconds, clock, isLate, joined, deciders, allDecided, skipSegment, ownVotes, teamDecisions, freezeTeams,
+  elapsedSeconds, clock, isLate, joined, teamLabel, teamGroups, progress, teamView, preview, deciders, allDecided, skipSegment, ownVotes, teamDecisions, freezeTeams,
   studentView, projectorView, applyVote, applyControl, completionSummary
 };

@@ -205,6 +205,10 @@ p.body{color:var(--soft);margin-bottom:14px}
 .summary{margin-top:6px;font-size:19px;color:var(--bone)}
 .reflect{border-left:3px solid var(--amber);padding:6px 0 6px 18px;margin-top:34px;max-width:62ch}
 .reflect p{font-size:20px;line-height:1.4}
+.team-box{border:1px solid var(--line2);padding:14px 16px;margin:16px 0;max-width:460px}
+.team-box .body{margin-bottom:10px;color:var(--bone)}
+.rename{display:flex;gap:8px}.rename input{flex:1;background:var(--night);border:1px solid var(--line2);padding:8px 10px}
+.btn.sm{padding:8px 14px;font-size:13px}
 </style>
 </head>
 <body>
@@ -337,7 +341,7 @@ async function poll(){
   const d=await sessionApi({action:'state',code:S.code,participantId:S.pid});
   S.session=d.session;S.view=d.view;S.syncedAt=performance.now();S.remaining=d.view.clock.remaining;
   const key=JSON.stringify([d.session.state,d.session.paused,d.view.clock.phase,d.view.clock.round,d.view.rounds,d.view.ending,d.view.canVote,d.view.canSkip,d.view.ready,d.view.team]);
-  if(key!==S.shown){S.shown=key;if(!d.view.canVote)S.confirming=null;render()}
+  if(key!==S.shown&&!S.renaming){S.shown=key;if(!d.view.canVote)S.confirming=null;render()}
   if(d.view.ending&&LAUNCH_TOKEN&&!S.reported){S.reported=true;request('/api/finish',{code:S.code,participantId:S.pid}).then(d=>{S.reported=!!d.reported}).catch(()=>{S.reported=false})}
 }
 
@@ -416,8 +420,14 @@ function render(){
   if(c.phase==='lobby'){
     if(S.session.solo||!v.ready||S.review)return renderWalk(false);
     const wait=S.session.mode==='team'&&!v.team?.label?CFG.copy.waitingForTeam:CFG.copy.walkWaiting;
-    app.innerHTML=`<div class="lead"><div class="kicker">Session ${esc(S.session.code)}</div><h2>You're in.</h2><p class="body">${esc(wait)}</p><button class="btn" id="again">${esc(CFG.copy.walkReview)}</button></div>`;
+    const t=v.team,X=CFG.copy;
+    const teamBlock=t&&t.assigned?`<div class="team-box"><p class="body">${esc(fill(X.teamYoureOn,{team:t.label}))}</p>${t.canRename?(S.renaming?`<div class="rename"><input id="tname" maxlength="30" autocomplete="off" value="${esc(t.label)}" aria-label="${esc(X.teamRename)}"><button class="btn pri sm" id="tsave">${esc(X.teamRenameSave)}</button></div><p class="rule">${esc(X.teamRenameHint)}</p>`:`<button class="btn sm" id="tren">${esc(X.teamRename)}</button>`):''}</div>`:'';
+    app.innerHTML=`<div class="lead"><div class="kicker">Session ${esc(S.session.code)}</div><h2>You're in.</h2><p class="body">${esc(wait)}</p>${teamBlock}${S.error?`<div class="note bad">${esc(S.error)}</div>`:''}<button class="btn" id="again">${esc(CFG.copy.walkReview)}</button></div>`;
     document.getElementById('again').onclick=()=>{S.walk=0;S.review=true;renderWalk(false)};
+    const tr=document.getElementById('tren');if(tr)tr.onclick=()=>{S.renaming=true;render();document.getElementById('tname')?.focus()};
+    const ts=document.getElementById('tsave');if(ts)ts.onclick=async()=>{
+      try{const d=await sessionApi({action:'rename_team',code:S.code,participantId:S.pid,label:document.getElementById('tname').value});S.view=d.view;S.error='';S.renaming=false;S.shown='';render()}
+      catch(e){S.error=e.message;render()}};
     return;
   }
   if(!S.session.solo&&!v.ready&&!S.walkDone&&!v.ending)return renderWalk(true);

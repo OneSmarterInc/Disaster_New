@@ -86,7 +86,8 @@ for (let r = 1; r <= 5; r++) {
 const team = ['p1', 'p2', 'p3', 'p4'];
 eq(E.teamDecision(team, { p1: A, p2: A, p3: D, p4: D }).decision, 'approve', 'a tie ships');
 eq(E.teamDecision(team, { p1: D, p2: D, p3: D, p4: A }).decision, 'decline', 'majority decline');
-eq(E.teamDecision(team, { p1: D, p2: D }).decision, 'approve', 'missing votes count as approval');
+eq(E.teamDecision(team, { p1: D, p2: D }).decision, 'timeout', 'two declines and two silent ships, as a timeout');
+eq(E.teamDecision(team, { p1: A, p2: D }).decision, 'approve', 'one approval plus silence ships as an approval');
 eq(E.teamDecision(team, {}).decision, 'timeout', 'nobody voting is a timeout');
 eq(E.teamDecision(['p1', 'p2', 'p3'], { p1: D, p2: D, p3: A }).decision, 'decline', 'odd team majority decline');
 ok(E.teamDecision(team, { p1: A, p2: D }).split, 'split is flagged');
@@ -114,7 +115,14 @@ eq(agg.rounds[0], { round: 1, title: C.ROUNDS[0].title, approve: 5, decline: 0, 
 eq(agg.rounds[2].timeout, 1, 'timeouts counted separately');
 eq(agg.reached, 3, 'three reached an estimate');
 eq(agg.reachedAndDeclined, 2, 'two of them declined something');
-eq(agg.headline, "3 of 4 ended with Loopwell estimating a change in Dana's health. 2 of them declined at least one request.", 'headline text');
+eq(agg.headline, "3 of 4 students ended with Loopwell estimating a change in Dana's health. Of those, 2 declined at least one request.", 'headline text');
+eq(E.aggregate([{ decisions: [A, A, A, A, A] }], 'standard', { mode: 'team' }).headline, "1 of 1 team ended with Loopwell estimating a change in Dana's health. None of them declined a request.", 'one team, none declined');
+eq(E.aggregate([{ decisions: [D, D, D, D, D] }, { decisions: [A, D, D, D, D] }]).headline, "None of the 2 students ended with Loopwell estimating a change in Dana's health.", 'nobody reached it');
+ok(!/^\d/.test(E.aggregate([{ decisions: [D, D, D, D, D] }]).headline.split('. ')[1] || ''), 'second sentence never starts with a numeral');
+// Team mode: disagreement inside teams is found even when every team agrees with every other.
+const tAgg = E.aggregate([{ decisions: [A, A, A, A, A], splits: [false, false, false, true, true] }], 'standard', { mode: 'team' });
+eq(tAgg.disagreement, 'Round 4 split 1 team internally. Ask its members where they disagreed.', 'team split prompt');
+eq(E.aggregate([{ decisions: [A, A, A, A, A] }]).disagreement, 'No round divided the class. Ask who hesitated longest, and at which round.', 'no disagreement fallback');
 ok(agg.mostDivided === 4 || agg.mostDivided === 5, 'most divided round found');
 ok(/^Round \d split \d–\d\. Find one of each\.$/.test(agg.disagreement), 'disagreement prompt filled');
 ok(!E.aggregate([], 'standard').headline, 'no headline for an empty room');

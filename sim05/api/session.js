@@ -80,7 +80,7 @@ module.exports = async (req, res) => {
   const now = Date.now();
 
   try {
-    if (['join', 'state', 'vote', 'ready', 'solo_start', 'skip'].includes(action)) {
+    if (['join', 'state', 'vote', 'ready', 'solo_start', 'skip', 'rename_team'].includes(action)) {
       const sess = await store.getSession(code);
       if (sess) {
         const error = participantError(req, b, sess, action === 'join' ? null : String(b.participantId || ''));
@@ -267,6 +267,49 @@ module.exports = async (req, res) => {
             if (k.next && await store.compareAndSetSession(code, sess, k.next)) current = k.next;
           }
           return res.status(200).json({ ok: true, view: R.studentView(current, participants, pid, now) });
+        }
+
+        // Students rename their own team, in the lobby only.
+        case 'rename_team': {
+          const sess = await store.getSession(code);
+          if (!sess) return res.status(404).json({ error: 'no_such_session' });
+          if (sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
+          if (sess.state !== 'lobby') return res.status(409).json({ error: 'teams_locked' });
+          const pid = String(b.participantId || '');
+          const participants = await store.getParticipants(code);
+          const me = participants[pid];
+          if (!me || !me.joinedAt) return res.status(403).json({ error: 'not_joined' });
+          if (!me.groupId) return res.status(409).json({ error: 'team_not_assigned' });
+          const label = String(b.label || '').replace(/\s+/g, ' ').trim().slice(0, 30);
+          if (!label) return res.status(400).json({ error: 'team_name_required' });
+          const next = { ...sess, teamLabels: { ...(sess.teamLabels || {}), [me.groupId]: label } };
+          if (!await store.compareAndSetSession(code, sess, next)) continue;
+          return res.status(200).json({ ok: true, view: R.studentView(next, participants, pid, now) });
+        }
+
+        case 'team_label': {
+          const o = await ownedSession(req, res, b, code); if (!o) return;
+          const gid = String(b.groupId || '');
+          if (!gid.startsWith('team:')) return res.status(400).json({ error: 'invalid_team' });
+          const labels = { ...(o.sess.teamLabels || {}) };
+          const label = String(b.label || '').replace(/\s+/g, ' ').trim().slice(0, 30);
+          if (label) labels[gid] = label; else delete labels[gid];
+          if (!await store.compareAndSetSession(code, o.sess, { ...o.sess, teamLabels: labels })) continue;
+          return res.status(200).json({ ok: true });
+        }
+
+        case 'team_view': {
+          const o = await ownedSession(req, res, b, code); if (!o) return;
+          if (o.sess.mode !== 'team') return res.status(409).json({ error: 'not_team_mode' });
+          const participants = await store.getParticipants(code);
+          const view = R.teamView(o.sess, participants, String(b.groupId || ''), now);
+          if (!view) return res.status(404).json({ error: 'no_such_team' });
+          return res.status(200).json({ view });
+        }
+
+        case 'preview': {
+          const o = await ownedSession(req, res, b, code); if (!o) return;
+          return res.status(200).json(R.preview(o.sess, now));
         }
 
         case 'ready': {

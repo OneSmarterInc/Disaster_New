@@ -101,7 +101,8 @@ function teamDecision(memberIds, votes) {
   const yes = approve + missing;
   let decision;
   if (decline > yes) decision = 'decline';
-  else if (approve === 0 && decline === 0) decision = 'timeout';
+  // It shipped, but nobody actually approved it: silence carried it, so say so.
+  else if (approve === 0) decision = 'timeout';
   else decision = 'approve';
   return { decision, approve, decline, missing, split: approve > 0 && decline > 0 };
 }
@@ -133,7 +134,8 @@ function phaseAt(elapsedSeconds, clock = C.CLOCK) {
 
 // Projector aggregates. `runs` is a list of { decisions: [...5] }, one per
 // student (individual) or per team. Nothing here identifies anyone.
-function aggregate(runs, intensity = 'standard') {
+function aggregate(runs, intensity = 'standard', opts = {}) {
+  const team = opts.mode === 'team';
   const rounds = C.ROUNDS.map(r => ({ round: r.n, title: r.title, approve: 0, decline: 0, timeout: 0, splitTeams: 0 }));
   const groups = C.ENDINGS.map(e => ({ group: e.group, label: endingLabel(e.group, intensity), count: 0 }));
   let reached = 0, reachedAndDeclined = 0, complete = 0;
@@ -150,18 +152,32 @@ function aggregate(runs, intensity = 'standard') {
       if (d.some(x => normalise(x) === 'decline')) reachedAndDeclined++;
     }
   }
+  // Disagreement across the class: the closest approve/decline split of a round.
   const contested = rounds.filter(r => r.approve > 0 && r.decline > 0);
-  const mostDivided = contested.length
+  const across = contested.length
     ? contested.slice().sort((a, b) =>
         Math.abs(a.approve - a.decline) - Math.abs(b.approve - b.decline) || a.round - b.round)[0]
     : null;
+  // In team mode, disagreement inside teams counts too, and usually matters more.
+  const inside = team ? rounds.filter(r => r.splitTeams > 0).sort((a, b) => b.splitTeams - a.splitTeams || a.round - b.round)[0] || null : null;
+  const useInside = inside && (!across || inside.splitTeams >= Math.min(across.approve, across.decline));
+  const mostDivided = useInside ? inside : across;
   const what = C.DEBRIEF.headlineWhat[intensity === 'lighter' ? 'lighter' : 'standard'];
-  const headline = complete
-    ? fill(C.DEBRIEF.headline, { reached, total: complete, what, declinedSome: reachedAndDeclined })
-    : null;
-  const disagreement = mostDivided
-    ? fill(C.DEBRIEF.disagreement, { round: mostDivided.round, approve: mostDivided.approve, decline: mostDivided.decline })
-    : null;
+  const unit = complete === 1 ? (team ? 'team' : 'student') : (team ? 'teams' : 'students');
+  let headline = null;
+  if (complete) {
+    headline = reached === 0
+      ? fill(C.DEBRIEF.headlineZero, { total: complete, unit, what })
+      : fill(C.DEBRIEF.headlineMain, { reached, total: complete, unit, what }) + ' ' +
+        (reachedAndDeclined === 0 ? C.DEBRIEF.headlineNoneDeclined : fill(C.DEBRIEF.headlineSomeDeclined, { declinedSome: reachedAndDeclined }));
+  }
+  let disagreement = C.DEBRIEF.noDisagreement;
+  if (useInside) {
+    const n = inside.splitTeams;
+    disagreement = fill(C.DEBRIEF.disagreementTeams, { round: inside.round, teams: n === 1 ? '1 team' : `${n} teams`, whose: n === 1 ? 'its' : 'their' });
+  } else if (across) {
+    disagreement = fill(C.DEBRIEF.disagreement, { round: across.round, approve: across.approve, decline: across.decline });
+  }
   return { rounds, groups, complete, reached, reachedAndDeclined, headline, mostDivided: mostDivided && mostDivided.round, disagreement };
 }
 
