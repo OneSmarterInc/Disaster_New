@@ -56,6 +56,9 @@ let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
   ok((await fac({ action: 'phase', code, to: 'briefing' })).status === 400, 'cannot brief before seating');
   ok((await fac({ action: 'seat', code })).body.tables === 7, '7 tables');
   ok((await call(session, { action: 'join', code, name: 'Late' }, { 'x-access-code': 'room-code' })).status === 409, 'late join blocked');
+  for (const p of people) for (let step = 1; step <= 4; step++) {
+    ok((await call(session, { action: 'walkthrough', code, participantId: p.participantId, step }, p.h)).status === 200, 'walkthrough screen acknowledged');
+  }
   for (const to of ['briefing', 'openings']) ok((await fac({ action: 'phase', code, to })).status === 200, to);
 
   const views = await Promise.all(people.map(p => call(session, { action: 'view', code, participantId: p.participantId }, p.h)));

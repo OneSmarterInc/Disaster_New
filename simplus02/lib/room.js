@@ -5,7 +5,7 @@ const C = require('../data/config');
 const T = require('../engine/table');
 const M = require('../engine/model');
 const { playForward } = require('../engine/playforward');
-const { publicBrief, seatBriefs, staffNotices } = require('../data/content');
+const { publicBrief, seatBriefs, staffNotices, walkthrough } = require('../data/content');
 
 const MIN = 60000;
 const PHASES = ['lobby', 'briefing', 'openings', 'negotiation', 'closed', 'debrief'];
@@ -19,7 +19,7 @@ function newCode() {
 function newSession(code, by, now) {
   return { code, createdAt: now, createdBy: by, seed: crypto.randomBytes(8).toString('hex'),
            phase: 'lobby', phaseEndsAt: null, negotiationStartedAt: null, extended: false,
-           tableIds: [], reveal: false };
+           tableIds: [], reveal: false, walkthroughVersion: 1 };
 }
 
 function join(roster, name, launch, now) {
@@ -97,10 +97,15 @@ function myNumbers(seat, dials) {
 }
 
 const sheet = t => ({ dials: t.dials, signatures: t.signatures, locked: t.locked, groups: C.settlementGroups });
+// Rooms already running when this version ships retain their original flow.
+const walkthroughComplete = (sess, person) => sess.walkthroughVersion !== 1 || (person.walkthroughStep || 0) >= walkthrough.length;
 
 function studentView(sess, roster, pid, table, now) {
   const me = roster[pid];
   const base = { phase: sess.phase, phaseEndsAt: sess.phaseEndsAt, now, name: me.name };
+  if (sess.walkthroughVersion === 1 && sess.phase === 'lobby') {
+    base.walkthrough = { screens: walkthrough, step: me.walkthroughStep || 0, complete: walkthroughComplete(sess, me) };
+  }
   if (!me.seat) return { ...base, seated: false };
   const co = Object.entries(roster).filter(([id, p]) => id !== pid && p.table === me.table && p.seat === me.seat).map(([, p]) => p.name);
   const view = {
@@ -139,6 +144,8 @@ function consoleView(sess, roster, tables, now) {
   const out = {
     code: sess.code, phase: sess.phase, phaseEndsAt: sess.phaseEndsAt, now, extended: sess.extended,
     joined: Object.keys(roster).length,
+    walkthrough: { finished: Object.values(roster).filter(p => walkthroughComplete(sess, p)).length,
+      pending: Object.values(roster).filter(p => !walkthroughComplete(sess, p)).map(p => p.name) },
     unseated: Object.values(roster).filter(p => !p.table).map(p => p.name),
     tables: sess.tableIds.map(id => ({ ...tableStatus(sess, tables[id], byTable[id] || [], now), id })),
     staffNotices: staffNotices.map(({ id, label }) => ({ id, label })),
@@ -160,5 +167,5 @@ function completionSummary(roster, pid, table) {
   };
 }
 
-module.exports = { PHASES, newCode, newSession, join, seatRoom, setPhase, extend, dueToClose, canNegotiate,
+module.exports = { PHASES, newCode, newSession, join, seatRoom, setPhase, extend, dueToClose, canNegotiate, walkthroughComplete,
                    addNotice, myNumbers, studentView, consoleView, completionSummary };

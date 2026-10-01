@@ -33,7 +33,7 @@ const $ = s => document.querySelector(s), app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const qs = new URLSearchParams(location.search), hs = new URLSearchParams(location.hash.slice(1));
 const launchToken = wireLaunchToken();
-let code = (qs.get('session') || qs.get('code') || '').toUpperCase(), me = null, view = null, err = '', reported = false, finishPending = false, timer = null, skew = 0;
+let code = (qs.get('session') || qs.get('code') || '').toUpperCase(), me = null, view = null, err = '', reported = false, finishPending = false, timer = null, skew = 0, walkthroughPage = null;
 if (code) try { me = JSON.parse(localStorage.getItem('wire:' + code)); } catch (e) {}
 
 async function api(action, extra = {}, path = 'api/session') {
@@ -135,8 +135,27 @@ function outcome() {
   <div class="scen">${col('If the forecast demand arrives', o.arrives)}${col('If it does not', o.misses)}</div>`;
 }
 
+function orientation() {
+  const w = view.walkthrough, page = Math.min(walkthroughPage ?? w.step, w.screens.length - 1), screen = w.screens[page];
+  app.innerHTML = `<h1>Who Pays for the Wire?</h1><div class="panel" style="max-width:680px" aria-live="polite">
+  <p class="dim mono">Walkthrough ${page + 1} of ${w.screens.length} · No timer</p><h2 style="margin-top:0">${esc(screen.heading)}</h2>
+  ${screen.paragraphs.map(p => `<p>${esc(p)}</p>`).join('')}<p>
+  ${page ? '<button id="walk-back">Back</button> ' : ''}<button class="primary" id="walk-next">${page === w.screens.length - 1 ? 'Finish walkthrough' : 'Next'}</button></p>
+  <p class="err">${esc(err)}</p></div>`;
+  if ($('#walk-back')) $('#walk-back').onclick = () => { walkthroughPage = page - 1; render(); };
+  $('#walk-next').onclick = () => {
+    if (page < w.step) { walkthroughPage = page + 1; return render(); }
+    walkthroughPage = null; $('#walk-next').disabled = true; act('walkthrough', { step: page + 1 });
+  };
+}
+
 function render() {
   if (!me || !view) return joinScreen();
+  if (view.walkthrough && !view.walkthrough.complete) return orientation();
+  if (view.phase === 'lobby' && view.walkthrough) {
+    app.innerHTML = `<h1>Who Pays for the Wire?</h1><p>You're ready, ${esc(view.name)}. Walkthrough complete.</p><p class="dim">${view.seated ? 'Your table is assigned. Your instructor will start the briefing once everyone is ready.' : 'Your instructor will seat the room shortly.'}</p>`;
+    return;
+  }
   if (!view.seated) { app.innerHTML = `<h1>Who Pays for the Wire?</h1><p>You're in, ${esc(view.name)}. Your instructor will seat the room shortly.</p>`; return; }
   let body = '';
   if (view.phase === 'briefing') body = briefs();

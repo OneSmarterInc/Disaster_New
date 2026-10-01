@@ -56,9 +56,9 @@ function start() {
 }
 
 function controls() {
-  const b = (id, text, primary) => `<button id="${id}" ${primary ? 'class="primary"' : ''}>${text}</button> `;
+  const b = (id, text, primary, disabled = false) => `<button id="${id}" ${primary ? 'class="primary"' : ''} ${disabled ? 'disabled' : ''}>${text}</button> `;
   switch (c.phase) {
-    case 'lobby': return c.tables.length ? b('next', 'Start briefing', 1) : b('seat', `Seat the room (${c.joined} joined)`, 1);
+    case 'lobby': return c.tables.length ? b('next', 'Start briefing', 1, !!(c.walkthrough && c.walkthrough.pending.length)) : b('seat', `Seat the room (${c.joined} joined)`, 1);
     case 'briefing': return b('next', 'Start opening statements', 1);
     case 'openings': return b('next', 'Open negotiation', 1);
     case 'negotiation': return (c.extended ? '' : b('extend', 'Add 10 minutes')) + b('close', 'Close the sheet now');
@@ -74,7 +74,9 @@ function live() {
   const claims = wireLaunchClaims(launchToken);
   if (claims && claims.course) invitation.searchParams.set('course', claims.course);
   if (!launchToken) invitation.searchParams.set('guest', '1');
-  return `<p>Student invitation: <a href="${esc(invitation.href)}">${esc(invitation.href)}</a></p><div class="wrap"><table><tr><th>Table</th><th>Seats</th><th>Money</th><th>Threshold</th><th>Moves</th><th>Quiet for</th><th>Staff notice</th></tr>
+  return `<p>Student invitation: <a href="${esc(invitation.href)}">${esc(invitation.href)}</a></p>
+  ${c.phase === 'lobby' && c.walkthrough ? `<div class="panel"><p class="mono">Walkthrough complete: ${c.walkthrough.finished} of ${c.joined}</p><p class="dim">${c.walkthrough.pending.length ? 'Still reading: ' + esc(c.walkthrough.pending.join(', ')) + '. The briefing timer starts once everyone is ready.' : 'Everyone who has joined is ready for the briefing.'}</p></div>` : ''}
+  <div class="wrap"><table><tr><th>Table</th><th>Seats</th><th>Money</th><th>Threshold</th><th>Moves</th><th>Quiet for</th><th>Staff notice</th></tr>
   ${c.tables.map(t => `<tr><td class="mono">${t.id}</td><td>${t.members.length}</td><td>${t.locked.money ? 'Locked' : 'Open'}</td><td>${t.locked.threshold ? 'Locked' : 'Open'}</td>
   <td class="mono">${t.moves}</td><td class="mono ${t.stalled ? 'stall' : ''}">${t.minutesSinceActivity} min${t.stalled ? ', stalled' : ''}</td>
   <td>${c.phase === 'negotiation' ? `<select data-t="${t.id}" aria-label="Notice for ${t.id}"><option value="">Send…</option>${c.staffNotices.map(n => `<option value="${n.id}">${esc(n.label)}</option>`).join('')}</select>` : ''} <span class="dim mono">${t.notices ? t.notices + ' sent' : ''}</span></td></tr>`).join('')}
@@ -93,7 +95,8 @@ function projection() {
   <p class="dim" style="margin-top:8px">Shaded terms were set by the Commission. Select two tables to play them forward side by side.</p>
   ${pf.length ? side('If the demand does not arrive', 'misses') + side('If it arrives', 'arrives') : ''}
   ${c.revealContent ? `<div class="panel" style="margin-top:24px"><h2 style="margin-top:0">${esc(c.revealContent.heading)}</h2>${c.revealContent.paragraphs.map(p => `<p>${esc(p)}</p>`).join('')}
-  <p class="dim">${esc(c.revealContent.facilitatorNote)}</p></div>` : ''}`;
+  <p class="dim">${esc(c.revealContent.facilitatorNote)}</p>
+  <details><summary>Sources</summary>${(c.revealContent.sources || []).map(s => `<p><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.label)}</a></p>`).join('')}</details></div>` : ''}`;
 }
 
 function render() {
@@ -109,7 +112,7 @@ function render() {
   app.querySelectorAll('select[data-t]').forEach(el => el.onchange = () => el.value && run('notice', { tableId: el.dataset.t, noticeId: el.value }));
   app.querySelectorAll('tr[data-r]').forEach(el => el.onclick = () => { const id = el.dataset.r; picked = picked.includes(id) ? picked.filter(x => x !== id) : [...picked, id].slice(-2); render(); });
 }
-async function run(action, extra) { try { await api(action, extra); err = ''; } catch (e) { err = e.message; } poll(); }
+async function run(action, extra) { try { await api(action, extra); err = ''; } catch (e) { err = e.message === 'walkthrough_incomplete' ? 'Some students are still reading the walkthrough. The briefing timer has not started.' : e.message; } render(); poll(); }
 async function poll() {
   clearTimeout(timer);
   try { const v = await api('console'); skew = v.now - Date.now(); const changed = JSON.stringify(v) !== JSON.stringify(c); c = v; if (changed && document.activeElement.tagName !== 'SELECT') render(); }

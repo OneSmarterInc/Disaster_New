@@ -70,4 +70,24 @@ const staffNotices = [
   { id: 'tenminutes', label: 'Notice: ten minutes', text: `Commission staff note that ten minutes remain. Terms left unsigned will be set by the Commission.` },
 ];
 
-module.exports = { publicBrief, seatBriefs, staffNotices };
+// Public orientation only. Private seat constraints arrive in the timed briefing.
+const walkthrough = [
+  { heading: 'What this proceeding decides', paragraphs: [
+    'New data centres want electricity, and Crestline Power must build the wires to deliver it. Nobody knows how much of the promised demand will arrive. Your table must decide who carries that risk.',
+    'Four parties share one table: the utility, a data-centre developer, industrial energy users, and a consumer advocate. You will receive your party’s private brief after the instructor starts the briefing.',
+  ] },
+  { heading: 'How the term sheet works', paragraphs: [
+    'The sheet has five terms: minimum payment, contract length, exit fee, collateral, and the size threshold. During negotiation, any seat can change an open term. A change clears the signatures on that term.',
+    'Each seat signs for itself. The four money terms lock together only when all four seats have signed every one of them. The size threshold locks separately. A seat can unlock a group to reopen it for discussion.',
+  ] },
+  { heading: 'What the deadline does', paragraphs: [
+    'This walkthrough has no timer. Once everyone has finished and the room is seated, your instructor starts the timed briefing, opening statements, and negotiation.',
+    'At the negotiation deadline, signed and locked groups stand. The Commission imposes every term in an unlocked group, and each imposed term adds three to four months to the connection freeze. Your instructor can add ten minutes once, or close the sheet early.',
+  ] },
+  { heading: 'What you see afterwards', paragraphs: [
+    'You will see the terms your table ends with, which ones the Commission imposed, and how long the connection freeze continues.',
+    'Then you will see what happens to all four parties in two possible futures: if the forecast demand arrives, and if it does not. During the debrief, your instructor can compare tables and reveal the real proceeding behind this simulation.',
+  ] },
+];
+
+module.exports = { publicBrief, seatBriefs, staffNotices, walkthrough };

@@ -7,7 +7,7 @@ const C = require('../data/config');
 const meta = require('../lib/meta');
 process.env.LAUNCH_SECRET = 'integration-secret';
 process.env.HEALTH_SECRET = 'diagnostics-secret';
-process.env.FACULTY_CODES = 'Host:faculty-code';
+process.env.FACULTY_CODES = 'Host:faculty-code,Other instructor:other-faculty-code';
 process.env.ACCESS_CODE = 'guest-code';
 process.env.PLATFORM_URL = 'https://platform.test';
 process.env.SIM_URL = 'https://platform.test/simplus02';
@@ -101,9 +101,22 @@ global.fetch = async (url, options) => {
   for (const headers of [{ 'x-participant-key': me.participantKey }, { ...auth({ sub: 'intruder' }), 'x-participant-key': me.participantKey },
     { ...auth({ sub: 'student0', course: 'c2' }), 'x-participant-key': me.participantKey }]) {
     eq((await call(session, { action: 'view', ...input }, headers)).status, 403, 'a leaked key cannot replace account and course identity');
+    eq((await call(session, { action: 'walkthrough', ...input, step: 1 }, headers)).status, 403, 'walkthrough acknowledgements require the participant identity');
     eq((await call(finish, input, headers)).body.reported || false, false);
   }
+  eq((await call(session, { action: 'phase', code, to: 'briefing' }, owner)).status, 409, 'briefing waits for the untimed walkthrough');
+  eq((await store.get(keys.session(code))).phaseEndsAt, null, 'waiting for readers does not start a clock');
+  eq((await call(session, { action: 'walkthrough', ...input, step: 4 }, me.headers)).status, 400, 'cannot skip to the last screen');
+  for (let step = 1; step <= 2; step++) eq((await call(session, { action: 'walkthrough', ...input, step }, me.headers)).status, 200);
+  await call(session, { action: 'join', code }, auth({ sub: 'student0' }));
+  eq((await call(session, { action: 'view', ...input }, me.headers)).body.walkthrough.step, 2, 'fresh account rejoin retains walkthrough progress');
+  eq((await call(session, { action: 'walkthrough', ...input, step: 1 }, me.headers)).body.walkthrough.step, 2, 'retrying an earlier screen never rolls back progress');
+  for (const person of people) {
+    for (let step = person === me ? 3 : 1; step <= 4; step++) eq((await call(session, { action: 'walkthrough', code, participantId: person.participantId, step }, person.headers)).status, 200);
+  }
+  eq((await call(session, { action: 'console', code }, owner)).body.walkthrough, { finished: 4, pending: [] }, 'faculty sees actual joined participants ready');
   for (const to of ['briefing', 'openings', 'negotiation']) eq((await call(session, { action: 'phase', code, to }, owner)).status, 200);
+  eq((await call(session, { action: 'walkthrough', ...input, step: 4 }, me.headers)).status, 409, 'timed play does not reopen the walkthrough');
   eq((await call(finish, input, me.headers)).status, 409, 'cannot report before the outcome');
   now += 45 * 60000;
   const started = new Promise(resolve => { callbackStarted = resolve; });
@@ -122,7 +135,61 @@ global.fetch = async (url, options) => {
   eq([reports[1].payload.sub, reports[1].payload.course, reports[1].payload.sim], ['student0', 'c1', C.id]);
   eq(reports[1].payload.summary.seat, (await store.get(keys.roster(code)))[me.participantId].seat);
 
-  const guestRoom = await call(session, { action: 'create' }, { 'x-faculty-code': 'faculty-code' });
+  // Two standalone instructors exercise every console action in both directions.
+  const instructors = [{ 'x-faculty-code': 'faculty-code' }, { 'x-faculty-code': 'other-faculty-code' }];
+  const rooms = [];
+  for (const headers of instructors) {
+    const room = await call(session, { action: 'create' }, headers);
+    eq(room.status, 200); rooms.push(room.body.code);
+    for (let i = 0; i < 4; i++) {
+      const p = (await call(session, { action: 'join', code: room.body.code, name: 'Guest ' + i }, { 'x-access-code': 'guest-code' })).body;
+      for (let step = 1; step <= 4; step++) eq((await call(session, { action: 'walkthrough', code: room.body.code, ...p, step }, { 'x-participant-key': p.participantKey })).status, 200);
+    }
+  }
+  async function denyCrossAccess() {
+    const snapshot = [...db.entries()];
+    for (let i = 0; i < 2; i++) for (const action of ['console', 'seat', 'phase', 'extend', 'notice', 'close', 'reveal']) {
+      const r = await call(session, { action, code: rooms[1 - i], to: 'briefing', tableId: 'T1', noticeId: 'closest', on: true }, instructors[i]);
+      eq([r.status, r.body.error], [403, 'not_session_owner'], `instructor ${i + 1} cannot ${action} the other's room`);
+    }
+    eq([...db.entries()], snapshot, 'cross-instructor calls cannot mutate sessions, rosters, tables or reports');
+  }
+  await denyCrossAccess();
+  for (let i = 0; i < 2; i++) {
+    const code = rooms[i], headers = instructors[i];
+    eq((await call(session, { action: 'console', code }, headers)).status, 200);
+    eq((await call(session, { action: 'seat', code }, headers)).status, 200);
+    for (const to of ['briefing', 'openings', 'negotiation']) eq((await call(session, { action: 'phase', code, to }, headers)).status, 200);
+    eq((await call(session, { action: 'notice', code, tableId: 'T1', noticeId: 'closest' }, headers)).status, 200);
+    eq((await call(session, { action: 'extend', code }, headers)).status, 200);
+    eq((await call(session, { action: 'reveal', code, on: true }, headers)).status, 200);
+  }
+  await denyCrossAccess();
+  const beforeDeadline = now; now += 56 * 60000;
+  await denyCrossAccess(); // Ownership is checked before lazy deadline settlement, too.
+  now = beforeDeadline;
+  for (let i = 0; i < 2; i++) eq((await call(session, { action: 'close', code: rooms[i] }, instructors[i])).body.phase, 'closed');
+
+  const otherOwner = auth({ sub: 'other-teacher', role: 'faculty' });
+  const otherCourseRoom = (await call(session, { action: 'create' }, otherOwner)).body.code;
+  for (const [room, stranger] of [[code, otherOwner], [otherCourseRoom, owner]]) {
+    for (const action of ['console', 'seat', 'phase', 'extend', 'notice', 'close', 'reveal']) {
+      eq((await call(session, { action, code: room, to: 'briefing', tableId: 'T1', noticeId: 'closest', on: true }, stranger)).status, 403, 'distinct platform faculty in the same course cannot cross-access either room');
+    }
+  }
+
+  // A stored room from before the walkthrough version must remain playable.
+  const legacyCode = (await call(session, { action: 'create' }, instructors[0])).body.code;
+  const currentRoom = await store.get(keys.session(legacyCode)), legacyRoom = { ...currentRoom };
+  delete legacyRoom.walkthroughVersion;
+  await store.cas(keys.session(legacyCode), currentRoom, legacyRoom);
+  let legacyParticipant;
+  for (let i = 0; i < 4; i++) legacyParticipant = (await call(session, { action: 'join', code: legacyCode, name: 'Existing participant ' + i }, { 'x-access-code': 'guest-code' })).body;
+  eq((await call(session, { action: 'seat', code: legacyCode }, instructors[0])).status, 200);
+  eq((await call(session, { action: 'phase', code: legacyCode, to: 'briefing' }, instructors[0])).status, 200, 'legacy rooms can start briefing without a new prerequisite');
+  eq((await call(session, { action: 'view', code: legacyCode, ...legacyParticipant }, { 'x-participant-key': legacyParticipant.participantKey })).body.walkthrough, undefined, 'legacy participants do not get pushed back into the new walkthrough');
+
+  const guestRoom = await call(session, { action: 'create' }, instructors[0]);
   delete process.env.ACCESS_CODE;
   eq((await call(session, { action: 'join', code: guestRoom.body.code })).status, 401, 'missing access configuration fails closed');
   eq((await call(session, { action: 'console', code: guestRoom.body.code }, owner)).status, 403, 'platform faculty cannot take over a standalone instructor room');

@@ -77,13 +77,22 @@ let browser;
   for (let i = 0; i < 4; i++) {
     const student = await page(); students.push(student);
     await student.goto(origin + '/simplus02#lt=' + token('student' + i));
-    await student.getByText("Your instructor will seat the room shortly.", { exact: false }).waitFor();
+    await student.getByRole('heading', { name: 'What this proceeding decides' }).waitFor();
+    assert.equal(await student.locator('#clock').count(), 0, 'walkthrough has no running clock');
     assert.equal(await student.locator('#c').count(), 0, 'course entry joins without a classroom-code prompt');
   }
   assert.equal(Object.keys(await store.get(keys.roster(code))).length, 4);
+  for (const step of [1, 2]) {
+    await students[0].locator('#walk-next').click();
+    await students[0].waitForFunction(expected => view.walkthrough.step === expected, step);
+  }
   const recovered = await page();
   await recovered.goto(origin + '/simplus02/?session=' + code + '#lt=' + token('student0'));
-  await recovered.getByText('Your instructor will seat the room shortly.', { exact: false }).waitFor();
+  await recovered.getByRole('heading', { name: 'What the deadline does' }).waitFor();
+  await recovered.locator('#walk-back').click();
+  await recovered.getByRole('heading', { name: 'How the term sheet works' }).waitFor();
+  await recovered.locator('#walk-next').click();
+  await recovered.getByRole('heading', { name: 'What the deadline does' }).waitFor();
   assert.equal(Object.keys(await store.get(keys.roster(code))).length, 4, 'fresh-tab account recovery does not duplicate seats');
   await students[0].context().close(); students[0] = recovered;
   await faculty.reload();
@@ -91,6 +100,18 @@ let browser;
   assert.equal(await faculty.locator('#f').count(), 0, 'console reload retains its scoped launch token');
   await faculty.locator('#seat').click();
   await faculty.getByRole('button', { name: 'Start briefing' }).waitFor();
+  assert.equal(await faculty.locator('#next').isEnabled(), false, 'faculty cannot start the timed briefing while students are reading');
+  assert.equal((await store.get(keys.session(code))).phaseEndsAt, null);
+  async function finishWalkthrough(student) {
+    for (let step = (await student.evaluate(() => view.walkthrough.step)) + 1; step <= 4; step++) {
+      await student.locator('#walk-next').click();
+      await student.waitForFunction(expected => view.walkthrough.step === expected, step);
+    }
+    await student.getByText('Walkthrough complete.', { exact: false }).waitFor();
+  }
+  for (const student of students) await finishWalkthrough(student);
+  await faculty.waitForFunction(() => c.walkthrough.finished === 4);
+  assert.equal(await faculty.locator('#next').isEnabled(), true);
   for (const phase of ['briefing', 'openings', 'negotiation']) {
     await faculty.locator('#next').click();
     await faculty.waitForFunction(expected => c && c.phase === expected, phase);
@@ -126,15 +147,18 @@ let browser;
   await guest.locator('#n').fill('Guest');
   await guest.locator('#a').fill('browser-guest-code');
   await guest.locator('#go').click();
-  await guest.getByText('Your instructor will seat the room shortly.', { exact: false }).waitFor();
+  await guest.getByRole('heading', { name: 'What this proceeding decides' }).waitFor();
   assert.equal(new URL(guest.url()).searchParams.get('guest'), '1');
   assert.equal(new URL(guest.url()).searchParams.get('code'), standaloneCode);
+  await guest.locator('#walk-next').click();
+  await guest.getByRole('heading', { name: 'How the term sheet works' }).waitFor();
   await guest.reload();
-  await guest.getByText('Your instructor will seat the room shortly.', { exact: false }).waitFor();
+  await guest.getByRole('heading', { name: 'How the term sheet works' }).waitFor();
+  await finishWalkthrough(guest);
   assert.ok(requests.some(u => u === origin + '/api/session'), 'own-domain root uses root APIs');
   assert.ok(registrations.some(p => p.sim === C.id && p.number === 102));
   assert.deepEqual(errors, [], 'shipped pages and handlers have no uncaught errors');
-  console.log('PASS SimPlus-02 Chromium flow: faculty launch/reload, four account joins, fresh-tab rejoin, negotiation, close, completion retries, standalone entry and mounted assets/APIs.');
+  console.log('PASS SimPlus-02 Chromium flow: faculty launch/reload, four account joins, untimed walkthrough/resume/readiness, negotiation, close, completion retries, standalone entry and mounted assets/APIs.');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
   if (browser) await browser.close();
   server.close();

@@ -6,6 +6,7 @@ const { body, faculty, entrant, owns, participant } = require('../lib/guard');
 const { announce } = require('../lib/launch');
 const R = require('../lib/room');
 const T = require('../engine/table');
+const { walkthrough } = require('../data/content');
 
 const FACULTY_ACTIONS = new Set(['create', 'seat', 'phase', 'extend', 'notice', 'close', 'reveal', 'console']);
 const TABLE_ACTIONS = { move: T.move, sign: T.sign, unsign: T.unsign, unlock: T.unlock };
@@ -79,6 +80,10 @@ async function facultyAction(a, b, who, now) {
   if (a === 'phase' || a === 'extend' || a === 'reveal') {
     return retry(async () => {
       const s = await store.get(keys.session(code));
+      if (a === 'phase' && b.to === 'briefing' && s.phase === 'lobby' && s.tableIds.length) {
+        const roster = await store.get(keys.roster(code));
+        if (Object.values(roster).some(p => p.table && !R.walkthroughComplete(s, p))) throw reject('walkthrough_incomplete', 409);
+      }
       const next = a === 'phase' ? R.setPhase(s, String(b.to), now) : a === 'extend' ? R.extend(s) : { ...s, reveal: Boolean(b.on) };
       return (await store.cas(keys.session(code), s, next)) ? { phase: next.phase, phaseEndsAt: next.phaseEndsAt } : undefined;
     });
@@ -148,6 +153,18 @@ async function studentAction(a, req, b, now) {
   if (a === 'view') {
     const table = me.table ? await store.get(keys.table(code, me.table)) : null;
     return R.studentView(sess, roster, pid, table, now);
+  }
+  if (a === 'walkthrough') {
+    if (sess.phase !== 'lobby' || sess.walkthroughVersion !== 1) throw reject('walkthrough_closed', 409);
+    return retry(async () => {
+      const current = await store.get(keys.roster(code)), person = current[pid], step = Number(b.step);
+      const previous = person.walkthroughStep || 0;
+      if (!Number.isInteger(step) || step < 1 || step > walkthrough.length || step > previous + 1) throw reject('invalid_walkthrough_step');
+      const next = { ...current, [pid]: { ...person, walkthroughStep: Math.max(previous, step) } };
+      if (!await store.cas(keys.roster(code), current, next)) return undefined;
+      const table = person.table ? await store.get(keys.table(code, person.table)) : null;
+      return R.studentView(sess, next, pid, table, now);
+    });
   }
   const op = TABLE_ACTIONS[a];
   if (!op) throw reject('unknown_action');
