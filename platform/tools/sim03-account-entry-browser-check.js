@@ -73,7 +73,7 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
     if(url.pathname.startsWith('/sim03'))return simRoute(req,res,url);
     if(url.pathname==='/api/register'){res.writeHead(200,{'content-type':'application/json'});return res.end('{}');}
     if(url.pathname.startsWith('/api/'))return invoke(url.pathname.slice(5),req,res,url);
-    if(['/session.html','/session-entry.js','/app.css','/faculty.html','/sim-detail.css','/sim-detail.js','/render-transcript.js'].includes(url.pathname))return file(res,'platform/public'+url.pathname);
+    if(['/session.html','/session-entry.js','/app.css','/faculty.html','/sim-identity.js','/sim-detail.css','/sim-detail.js','/render-transcript.js'].includes(url.pathname))return file(res,'platform/public'+url.pathname);
     res.writeHead(404);res.end('Not found');
   };
   platform=await listen(platformRoute);
@@ -200,9 +200,10 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
 })().catch(async error=>{
   console.error(error);process.exitCode=1;
   for(let i=0;i<contexts.length;i++){
-    const p=contexts[i].pages()[0];if(!p)continue;
-    console.error('FAILED_PAGE',i,p.url(),await p.locator('body').innerText().catch(()=>''));
-    await shot(p,'failure-'+i).catch(()=>{});
+    for(const [j,p] of contexts[i].pages().entries()){
+      console.error('FAILED_PAGE',i,j,p.url(),await p.locator('body').innerText().catch(()=>''));
+      await shot(p,'failure-'+i+'-'+j).catch(()=>{});
+    }
   }
 }).finally(async()=>{
   if(process.env.AGENT_BROWSER_BIN)await exec(process.env.AGENT_BROWSER_BIN,['--session','account-entry-check','close']).catch(()=>{});

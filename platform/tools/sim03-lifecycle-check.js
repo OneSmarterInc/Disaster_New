@@ -109,7 +109,7 @@ function sql(strings, ...v) {
     const e = state.enrolments.find(x => x.student_id === studentId && x.course_id === courseId);
     const c = state.courses.get(courseId);
     const attached = state.courseSims.some(x => x.course_id === courseId && x.sim_id === simId);
-    return Promise.resolve(e && c && attached ? [{ id: e.id, paid: e.paid, dropped: e.dropped, title: c.title }] : []);
+    return Promise.resolve(e && c && attached ? [{ id: e.id, paid: e.paid, dropped: e.dropped, title: c.title, course_id: e.course_id }] : []);
   }
   if (q.startsWith('INSERT INTO launches ')) {
     const [id, user_id, sim_id, course_id, as_role] = v;
