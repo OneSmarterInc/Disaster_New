@@ -72,7 +72,7 @@ check('sim id not retired', () => assert.ok(!config.retiredIds.includes(config.s
 console.log('Assignment and error check');
 check('3 teams -> A, E, D', () => assert.deepStrictEqual(E.assignSheets(3), ['A', 'E', 'D']));
 check('7 teams cycle -> ... A, E', () => assert.deepStrictEqual(E.assignSheets(7).slice(5), ['A', 'E']));
-check('2 teams refused', () => assert.throws(() => E.assignSheets(2)));
+check('0 teams refused, 1 team allowed', () => { assert.throws(() => E.assignSheets(0)); assert.deepStrictEqual(E.assignSheets(1), ['A']); });
 check('exact commit ok', () => assert.strictEqual(E.checkCommit('E', 69.6).status, 'ok'));
 check('within tolerance ok', () => assert.strictEqual(E.checkCommit('E', 69.5).status, 'ok'));
 check('outside tolerance flagged', () => assert.strictEqual(E.checkCommit('D', 77.5).status, 'mismatch'));

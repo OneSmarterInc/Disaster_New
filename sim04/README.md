@@ -6,18 +6,15 @@ handover. `node test/gate-data.test.js` checks those source materials.
 
 ## Flow
 
-The normal student launch is self-paced. One student starts immediately, with
-their own definition and 25-minute timer. No faculty room, Start action, or
-minimum class size is required. After committing a report (or time expiring),
-the student opens the numbers, then the explanation, then finishes the session.
-The debrief uses five labelled worked examples computed from the data pack.
-Completion is sent to the course automatically, with a student retry button if
-delivery fails. Refreshing the saved run preserves its definition, timer and
-locked report. Guest access-code play also supports an individual run.
-
-Older classroom links also start a private student run. Existing instructor-led
-room APIs remain available for the faculty console; the normal student screen
-does not join or wait in their lobbies. The retained class-room API flow is:
+Classroom play. Students join the instructor's room with their email (taken from
+their RapidSims account, or typed on the direct route) and wait under Unassigned,
+reading the untimed "What happens today" introduction. The instructor sets a group
+size, presses Divide randomly, and drags people between groups (a Move menu does
+the same on a phone or tablet). Any number of groups may play, even one; the
+projector fills unused definitions with labelled worked examples. Only the
+instructor's Start begins the clock. Faculty use personal codes (`FACULTY_CODES`,
+`Name:code` pairs); a shared `FACULTY_CODE` is refused and fails `/api/health`.
+The detailed flow:
 
 1. A facilitator creates a room, explicitly choosing team or individual mode
    and at least three groups. The clock defaults to 25 minutes.

@@ -48,15 +48,10 @@ global.fetch = async (url, options) => {
     courseId: 'another-course', mode: 'team', state: 'lobby', stage: 0 });
   records.set('m04:sess:DONE1', { code: 'DONE1', name: 'Finished class', platformAuth: true,
     courseId: 'course-04', mode: 'individual', state: 'complete', stage: 3 });
-  const solo = { code: 'SOLO1', name: 'Private run', platformAuth: true,
-    courseId: 'course-04', mode: 'individual', state: 'running', stage: 0, solo: true };
-  assert.equal(await store.createSession(solo.code, solo), true);
-  assert.equal(calls.at(-1)[0], 'SET', 'private runs are not indexed as class sessions');
-  records.set('m04:sess:SOLO1', solo);
-  indexedCodes.push('ZZZZ2', 'DONE1', 'MISS1', 'SOLO1');
+  indexedCodes.push('ZZZZ2', 'DONE1', 'MISS1');
   const sessions = await store.courseSessions('course-04');
   assert.deepEqual(sessions, [{ code: 'ABCDE', name: 'Monday class', mode: 'team', state: 'lobby', stage: 0 }]);
-  assert.deepEqual(removed.sort(), ['DONE1', 'MISS1', 'SOLO1', 'ZZZZ2']);
+  assert.deepEqual(removed.sort(), ['DONE1', 'MISS1', 'ZZZZ2']);
   assert(calls.some(args => args[0] === 'SCAN'), 'pre-deploy sessions are backfilled once');
   assert(expiries.includes(indexKey) && expiries.includes(readyKey));
   console.log('PASS Sim04 room index: atomic creation, legacy backfill, course isolation, and stale cleanup');

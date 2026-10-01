@@ -13,8 +13,11 @@ module.exports = (req, res) => {
   const launchSecret = !!process.env.LAUNCH_SECRET, storage = store.configured();
   const platform = /^https:\/\//.test(process.env.PLATFORM_URL || '');
   const self = /^https:\/\//.test(process.env.SIM_URL || '');
+  // A shared instructor code would let one faculty member run another's room.
+  const sharedCode = !!process.env.FACULTY_CODE;
+  const codes = require('../lib/guard').facultyCodes().length;
   return res.status(200).json({
-    ok: launchSecret && storage && platform && self,
+    ok: launchSecret && storage && platform && self && !sharedCode,
     sim: META.id, diagnostic: true, needsModelKey: false,
     build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'local',
     launchSecret: launchSecret ? 'configured' : 'MISSING',
@@ -23,6 +26,7 @@ module.exports = (req, res) => {
     platformUrl: process.env.PLATFORM_URL || 'MISSING',
     registersAs: process.env.SIM_URL || 'MISSING',
     accessCode: process.env.ACCESS_CODE ? 'configured' : 'not set (standalone access closed)',
+    facultyCodes: sharedCode ? 'SHARED FACULTY_CODE SET: remove it and use FACULTY_CODES' : `${codes} personal`,
     features: ['launch-token', 'self-register', 'completion-report', 'individual-session-mode',
       'team-session-mode', 'room-clock', 'staged-projector', 'private-error-check']
   });

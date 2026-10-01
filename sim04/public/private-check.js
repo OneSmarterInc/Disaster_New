@@ -12,12 +12,18 @@ $('check').onclick = async () => {
     body: JSON.stringify({ action: 'private_check', code: $('room').value, facultyCode: $('faculty').value }) });
   const data = await r.json();
   if (!r.ok) { $('error').textContent = data.message || data.error; return; }
-  for (const c of data.checks) {
+  const line = (title, text, cls, small) => {
     const item = document.createElement('div'); item.className = 'status-item';
-    const title = document.createElement('strong'); title.textContent = c.label;
-    const result = document.createElement('span'); result.className = c.status === 'ok' ? 'success mono' : 'mono';
-    result.textContent = c.status === 'none' ? 'No number reported' : c.status === 'ok'
-      ? `${c.number}% · Matches its sheet` : `${c.number}% · Check calculation; sheet gives ${c.correct.toFixed(1)}%`;
-    item.append(title, result); $('results').append(item);
+    const t = document.createElement('strong'); t.textContent = title;
+    const r = document.createElement('span'); r.className = cls; r.textContent = text;
+    item.append(t, r);
+    if (small) { const m = document.createElement('small'); m.className = 'muted mono'; m.textContent = small; item.append(m); }
+    $('results').append(item);
+  };
+  for (const c of data.checks.groups || []) {
+    line(c.label, c.status === 'not_started' ? 'Clock not started' : c.status === 'none' ? 'No number reported'
+      : c.status === 'ok' ? `${c.number}% · Matches its sheet` : `${c.number}% · Check calculation; sheet gives ${c.correct.toFixed(1)}%`,
+      c.status === 'ok' ? 'success mono' : 'mono', c.members.join(', '));
   }
+  if ((data.checks.unassigned || []).length) line('Not in a group', String(data.checks.unassigned.length), 'mono', data.checks.unassigned.join(', '));
 };

@@ -18,7 +18,7 @@ const realDateNow = Date.now, realFetch = global.fetch, oldEnv = { ...process.en
 Date.now = () => now;
 Object.assign(process.env, {
   LAUNCH_SECRET: 'test-secret-not-for-production', PLATFORM_URL: 'https://platform.test',
-  SIM_URL: canonicalSimUrl, FACULTY_CODE: 'private-instructor', ACCESS_CODE: 'private-student'
+  SIM_URL: canonicalSimUrl, FACULTY_CODES: 'Pat:private-instructor,Lee:other-instructor', ACCESS_CODE: 'private-student'
 });
 const sessions = new Map(), requests = [];
 global.fetch = async (url, options) => {
@@ -40,7 +40,7 @@ store.compareAndSetSession = async (code, previous, next) => {
 };
 
 const handler = require('../api/session');
-const token = (sub, role) => signBack({ sub, name: sub, role, sim: config.simId,
+const token = (sub, role) => signBack({ sub, name: sub, email: `${sub}@school.edu`, role, sim: config.simId,
   course: 'course-4', mode: role === 'student' ? 'play' : 'session', iat: now, exp: now + 600000 });
 const teacher = token('instructor', 'faculty');
 const students = ['ada', 'ben', 'cy'].map(id => token(id, 'student'));
@@ -53,16 +53,19 @@ async function call(payload, launch = teacher, extraHeaders = {}) {
 }
 
 (async () => {
-  await check('mode and at least three groups required', () => {
-    assert.throws(() => room.createSession({ code: 'ABCDE', count: 3, now }), /Choose team or individual/);
-    assert.throws(() => room.createSession({ code: 'ABCDE', count: 2, mode: 'team', now }), /between 3 and 100/);
+  await check('mode required; group size must be 1 to 50', () => {
+    assert.throws(() => room.createSession({ code: 'ABCDE', now }), /Choose team or individual/);
+    assert.throws(() => room.createSession({ code: 'ABCDE', mode: 'team', groupSize: 0, now }), /1 to 50/);
+    assert.equal(room.createSession({ code: 'ABCDE', mode: 'team', groupSize: 1, now }).groupSize, 1);
   });
   await check('seven groups cycle A, E, D, C, B, A, E', () => {
-    const seven = room.createSession({ code: 'ABCDEFG', count: 7, mode: 'team', now });
+    let seven = room.createSession({ code: 'ABCDEFG', mode: 'individual', now });
+    for (let i = 0; i < 7; i++) seven = room.join(seven, 'p' + i, `p${i}@school.edu`, now);
+    seven = room.start(room.divide(seven, 1), now);
     assert.deepEqual(seven.slots.map(x => x.sheetId), ['A', 'E', 'D', 'C', 'B', 'A', 'E']);
   });
-  const rejected = await call({ action: 'create', mode: 'individual', count: 2 });
-  await check('API refuses a two-participant session', () => assert.equal(rejected.status, 400));
+  const rejected = await call({ action: 'create', mode: 'team', groupSize: 0 });
+  await check('API refuses a group size of zero', () => assert.equal(rejected.status, 400));
   const studentGate = { 'x-access-code': 'private-student' };
   await check('student access code cannot unlock instructor controls', async () => {
     assert.equal((await call({ action: 'faculty_access' }, null, studentGate)).status, 401);
@@ -76,10 +79,15 @@ async function call(payload, launch = teacher, extraHeaders = {}) {
     facultyCode: 'private-instructor' }, null);
   assert.equal(direct.status, 200);
   await check('student code joins a standalone room without instructor code', async () => {
-    const joined = await call({ action: 'join', code: direct.body.session.code, name: 'Solo student' }, null, studentGate);
+    const joined = await call({ action: 'join', code: direct.body.session.code, email: 'Solo@School.edu' }, null, studentGate);
     assert.equal(joined.status, 200);
-    assert.equal(joined.body.view.group, 'Participant 1');
-    assert.deepEqual(joined.body.view.lobby, { readyGroups: 1, totalGroups: 3, clockMinutes: 25 });
+    assert.equal(joined.body.view.group, null, 'joiners wait unassigned');
+    assert.equal(joined.body.view.you, 'solo');
+    assert.equal(joined.body.view.data, null);
+    const twice = await call({ action: 'join', code: direct.body.session.code, email: 'solo@school.edu' }, null, studentGate);
+    assert.equal(twice.status, 409, 'one email joins once');
+    const noEmail = await call({ action: 'join', code: direct.body.session.code, email: 'not an email' }, null, studentGate);
+    assert.equal(noEmail.status, 409);
   });
   await check('standalone invitation returns to the student access gate', async () => {
     const redirect = {};
@@ -90,7 +98,7 @@ async function call(payload, launch = teacher, extraHeaders = {}) {
     assert.equal(redirect.status, 302);
     assert.equal(redirect.path, '../launch.html?session=' + direct.body.session.code + '&guest=1');
   });
-const created = await call({ action: 'create', mode: 'team', count: 3, clockMinutes: 1 });
+const created = await call({ action: 'create', mode: 'team', groupSize: 1, clockMinutes: 1 });
 assert.equal(created.status, 200);
 const code = created.body.session.code;
 await check('student course launch lists only open rooms for its course', async () => {
@@ -111,14 +119,28 @@ await check('registration states explicit identity, number and canonical route',
     const joined = await call({ action: 'join', code }, students[i]);
     assert.equal(joined.status, 200);
     assert.equal(joined.body.view.data, null);
-    const assigned = await call({ action: 'assign', code, participantId: `platform:${['ada','ben','cy'][i]}`, slotId: `slot-${i + 1}` });
-    assert.equal(assigned.status, 200);
+    assert.equal(joined.body.view.group, null);
   }
+  for (const who of ['ada', 'ben', 'cy']) {
+    const moved = await call({ action: 'move', code, participantId: `platform:${who}`, target: 'new' });
+    assert.equal(moved.status, 200);
+  }
+  await check('a second instructor cannot see or run this room', async () => {
+    for (const action of ['faculty_state', 'divide', 'start', 'private_check']) {
+      const r = await call({ action, code, facultyCode: 'other-instructor' }, null);
+      assert.equal(r.status, 403, action);
+    }
+  });
+  await check('projector console carries short names, never emails', async () => {
+    const state = await call({ action: 'faculty_state', code });
+    assert.deepEqual(state.body.projector.groups.map(g => g.members[0].name), ['ada', 'ben', 'cy']);
+    assert.ok(!JSON.stringify(state.body).includes('@school.edu'));
+  });
   const started = await call({ action: 'start', code });
   assert.equal(started.status, 200);
   await check('started room clears lobby status and starts its minute clock', async () => {
     const state = await call({ action: 'state', code }, students[0]);
-    assert.equal(state.body.view.lobby, null);
+    assert.equal(state.body.view.state, 'running');
     assert.equal(state.body.view.clock.remaining, 60);
   });
   for (let i = 0; i < 3; i++) {
@@ -152,19 +174,22 @@ await check('registration states explicit identity, number and canonical route',
   await check('stage 1 reveals all figures, including no number, without sheets', () => {
     assert.equal(stage1.status, 200);
     const p = room.projector(sessions.get(code), now);
-    assert.deepEqual(p.numbers.map(n => n.number), ['90.0', '20.0', null]);
+    assert.deepEqual(p.numbers.filter(n => !n.example).map(n => n.number), ['90.0', '20.0', null]);
+    assert.deepEqual(p.numbers.filter(n => n.example).map(n => n.number), ['80.0', '85.0']);
     assert.equal(p.reveal, undefined);
     assert.ok(!JSON.stringify(p).includes(sheets.contested.E));
   });
   const checkResult = await call({ action: 'private_check', code });
   await check('private check flags a wrong report and leaves no report unscored', () => {
-    assert.deepEqual(checkResult.body.checks.map(c => c.status), ['ok', 'mismatch', 'none']);
-    assert.equal(checkResult.body.checks[1].correct, 69.6);
+    assert.deepEqual(checkResult.body.checks.groups.map(c => c.status), ['ok', 'mismatch', 'none']);
+    assert.equal(checkResult.body.checks.groups[1].correct, 69.6);
+    assert.deepEqual(checkResult.body.checks.groups[0].members, ['ada@school.edu']);
   });
   await call({ action: 'advance', code });
   await check('stage 2 groups same sheets and derives numbers from the engine', () => {
     const p = room.projector(sessions.get(code), now);
-    assert.equal(p.reveal.length, 3);
+    assert.equal(p.reveal.length, 5);
+    assert.deepEqual(p.reveal.map(r => r.example), [false, false, false, true, true]);
     assert.ok(p.reveal[0].derivation.at(-1).includes('90.0%'));
     assert.ok(p.reveal[1].derivation.at(-1).includes('69.6%'));
     assert.equal(p.reveal[0].contestedIndex, 3);
@@ -214,10 +239,11 @@ await check('registration states explicit identity, number and canonical route',
     assert.ok(gate.checkSpoilers(clean, leaky).some(s => s.includes('catalogue copy')));
   });
   await check('pre-reveal marks timed-out groups as locked, not committed', () => {
-    let session = room.createSession({ code: 'ABCDE', owner: 'F', mode: 'individual', count: 3, now: NOW });
-    for (let i = 0; i < 3; i++) session = room.join(session, 'p' + i, 'Person ' + i, NOW);
-    session = room.start(session, NOW);
-    session = room.commit(session, 'p0', 90, 4, NOW + 1);
+    let session = room.createSession({ code: 'ABCDE', owner: 'F', mode: 'individual', now: NOW });
+    for (let i = 0; i < 3; i++) session = room.join(session, 'p' + i, `p${i}@school.edu`, NOW);
+    session = room.start(room.divide(session, 1, () => 0.999), NOW);
+    const firstSlot = session.slots[0].memberIds[0];
+    session = room.commit(session, firstSlot, 90, 4, NOW + 1);
     const p = room.projector(session, room.deadline(session));
     assert.equal(p.session.stage, 0);
     assert.ok(p.groups.every(g => g.locked));
@@ -230,6 +256,14 @@ await check('registration states explicit identity, number and canonical route',
     assert.ok(gate.checkWiring({ env: 'SIM_URL=' }).some(s => s.includes('SIM_URL missing')));
     assert.ok(gate.checkWiring({ launch: "req.headers['x-forwarded-host']" }).some(s => s.includes('request host')));
     assert.ok(gate.checkWiring({ platform: { rewrites: [] } }).some(s => s.includes('platform route missing')));
+  });
+  await check('a shared FACULTY_CODE is refused and fails the health check', async () => {
+    process.env.FACULTY_CODE = 'shared-code-1';
+    assert.equal((await call({ action: 'faculty_access', facultyCode: 'shared-code-1' }, null)).status, 401);
+    const out = {}; process.env.HEALTH_SECRET = 'h';
+    require('../api/health')({ headers: { 'x-health-key': 'h' } }, { setHeader() {}, status() { return this; }, json(b) { Object.assign(out, b); } });
+    assert.equal(out.ok, false); assert.match(out.facultyCodes, /SHARED/);
+    delete process.env.FACULTY_CODE;
   });
   console.log(`${passed} runtime checks passed, 0 failed`);
 })().catch(e => { console.error('FAIL', e.stack); process.exitCode = 1; }).finally(() => {

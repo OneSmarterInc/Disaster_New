@@ -13,10 +13,9 @@ const codeOf = () => Array.from({ length: 5 }, () => CHARS[randomInt(CHARS.lengt
 const newId = () => randomBytes(16).toString('hex');
 const error = (res, status, code, message) => res.status(status).json({ error: code, ...(message ? { message } : {}) });
 const validCode = code => /^[A-Z2-9]{5}$/.test(code);
-const safe = s => ({ code: s.code, name: s.name, mode: s.mode, count: s.count,
-  clockMinutes: s.clockMinutes, state: s.state, stage: s.stage, solo: !!s.solo });
-const studentResult = (session, id) => ({ session: safe(session), view: room.studentView(session, id, Date.now()),
-  ...(session.solo ? { debrief: room.soloDebrief(session, Date.now()) } : {}) });
+const safe = s => ({ code: s.code, name: s.name, mode: s.mode, groupSize: s.groupSize,
+  clockMinutes: s.clockMinutes, state: s.state, stage: s.stage });
+const studentResult = (session, id) => ({ session: safe(session), view: room.studentView(session, id, Date.now()) });
 const joinUrl = s => s.platformAuth ? accountJoinUrl(s)
   : process.env.SIM_URL ? process.env.SIM_URL.replace(/\/+$/, '') + '/launch.html?session=' + s.code + '&guest=1' : null;
 
@@ -70,33 +69,16 @@ module.exports = async (req, res) => {
       }
       return res.status(200).json({ sessions: await store.courseSessions(who.courseId) });
     }
-    if (action === 'solo') {
-      const me = access(req, b);
-      if (!me) return error(res, 401, 'participant_authorization_required');
-      if (me.mode === 'session') return error(res, 409, 'use_session');
-      const id = me.platform ? me.id : newId();
-      const name = String(me.platform ? me.name : b.name || 'Participant').trim().slice(0, 60) || 'Participant';
-      for (let attempt = 0; attempt < 10; attempt++) {
-        const c = codeOf();
-        const session = room.createSoloSession({ code: c, participantId: id, name,
-          sheetId: config.assignmentOrder[randomInt(config.assignmentOrder.length)], now: Date.now() });
-        Object.assign(session, { platformAuth: !!me.platform, ownerId: me.platform ? me.id : null,
-          courseId: me.courseId || null });
-        if (!await store.createSession(c, session)) continue;
-        await announce();
-        return res.status(200).json({ participantId: id, ...studentResult(session, id) });
-      }
-      return error(res, 503, 'code_unavailable');
-    }
     if (action === 'create') {
       const who = faculty(req, b);
       if (!who) return error(res, 401, 'faculty_authorization_required');
       const mode = String(b.mode || '');
-      const count = Number(b.count), minutes = b.clockMinutes === undefined ? undefined : Number(b.clockMinutes);
+      const minutes = b.clockMinutes === undefined ? undefined : Number(b.clockMinutes);
       for (let attempt = 0; attempt < 10; attempt++) {
         const c = codeOf();
         let session;
-        try { session = room.createSession({ code: c, owner: who.name || 'Facilitator', mode, count,
+        try { session = room.createSession({ code: c, owner: who.name || 'Facilitator', ownerKey: who.key || null, mode,
+          groupSize: b.groupSize === undefined ? undefined : Number(b.groupSize),
           clockMinutes: minutes, name: b.name, now: Date.now() }); }
         catch (e) { return error(res, 400, 'invalid_session', e.message); }
         session.platformAuth = !!who.platform;
@@ -112,7 +94,7 @@ module.exports = async (req, res) => {
     for (let attempt = 0; attempt < 8; attempt++) {
       const session = await store.getSession(code);
       if (!session) return error(res, 404, 'no_such_session');
-      const isFaculty = ['faculty_state', 'faculty_enrolments', 'assign', 'start', 'advance', 'private_check', 'report'].includes(action);
+      const isFaculty = ['faculty_state', 'faculty_enrolments', 'divide', 'move', 'rename', 'start', 'advance', 'private_check', 'report'].includes(action);
       let who;
       if (isFaculty) {
         who = faculty(req, b);
@@ -122,10 +104,7 @@ module.exports = async (req, res) => {
       if (action === 'faculty_state') {
         return res.status(200).json({ session: safe(session), joinUrl: joinUrl(session),
           warningMinutes: require('../data/config').warningMinutes,
-          roster: Object.values(session.participants).map(p => ({ id: p.id, name: p.name,
-            group: session.slots.find(s => s.id === p.slotId)?.label || null })),
-          projector: room.projector(session, Date.now()),
-          slots: session.slots.map(s => ({ id: s.id, label: s.label, members: s.memberIds.length })) });
+          projector: room.projector(session, Date.now()) });
       }
       if (action === 'faculty_enrolments') {
         const result = await courseEnrolments(req, b, session);
@@ -137,43 +116,30 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, completion: await reportAll(code) });
       }
       let next;
-      if (action === 'assign') {
-        try { next = room.assign(session, String(b.participantId || ''), String(b.slotId || ''), b.label); }
-        catch (e) { return error(res, 409, 'assignment_rejected', e.message); }
+      if (['divide', 'move', 'rename'].includes(action)) {
+        try {
+          next = action === 'divide' ? room.divide(session, b.groupSize === undefined ? undefined : Number(b.groupSize))
+            : action === 'move' ? room.move(session, String(b.participantId || ''), String(b.target || ''))
+            : room.rename(session, String(b.slotId || ''), b.label);
+        } catch (e) { return error(res, 409, 'groups_rejected', e.message); }
       } else if (action === 'start') {
         try { next = room.start(session, Date.now()); }
         catch (e) { return error(res, 409, 'start_rejected', e.message); }
       } else if (action === 'advance') {
         try { next = room.advance(session, Date.now()); }
         catch (e) { return error(res, 409, 'reveal_not_ready', e.message); }
-      } else if (['join', 'state', 'commit', 'solo_advance', 'solo_report'].includes(action)) {
-        if (action === 'join' && session.solo) return error(res, 403, 'private_session');
+      } else if (['join', 'state', 'commit'].includes(action)) {
         const me = participant(req, b, session);
         if (!me) return error(res, 401, 'participant_authorization_required');
         if (action === 'join') {
           const id = me.platform ? me.id : (me.id || newId());
-          try { next = room.join(session, id, me.platform ? me.name : b.name, Date.now()); }
+          try { next = room.join(session, id, me.platform ? (me.email || b.email) : b.email, Date.now()); }
           catch (e) { return error(res, 409, 'join_rejected', e.message); }
           if (!await store.compareAndSetSession(code, session, next)) continue;
           return res.status(200).json({ participantId: id, ...studentResult(next, id) });
         }
         if (!me.id || !session.participants[me.id]) return error(res, 403, 'not_joined');
         if (action === 'state') return res.status(200).json(studentResult(session, me.id));
-        if (action === 'solo_advance' || action === 'solo_report') {
-          if (!session.solo) return error(res, 403, 'private_session_required');
-          if (action === 'solo_report' || session.stage === 3) {
-            if (session.stage !== 3) return error(res, 409, 'not_complete');
-            const completion = await reportAll(code);
-            const latest = await store.getSession(code);
-            return res.status(200).json({ completion, ...studentResult(latest, me.id) });
-          }
-          try { next = room.advance(session, Date.now()); }
-          catch (e) { return error(res, 409, 'report_not_locked', e.message); }
-          if (!await store.compareAndSetSession(code, session, next)) continue;
-          const completion = next.stage === 3 ? await reportAll(code) : null;
-          const latest = completion ? await store.getSession(code) : next;
-          return res.status(200).json({ completion, ...studentResult(latest, me.id) });
-        }
         try { next = room.commit(session, me.id, b.number, b.confidence, Date.now()); }
         catch (e) { return error(res, 409, 'commit_rejected', e.message); }
         if (!await store.compareAndSetSession(code, session, next)) continue;

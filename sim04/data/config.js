@@ -4,7 +4,8 @@ module.exports = {
   retiredIds: ['rapid-03-bench'],
   clockMinutes: 25,
   warningMinutes: 2,
-  minTeams: 3,
+  minTeams: 1,           // any number of groups may play, even one
+  defaultGroupSize: 4,
   errorTolerance: 0.1,
   assignmentOrder: ['A', 'E', 'D', 'C', 'B'],
   minSpreadPoints: 10,

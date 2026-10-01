@@ -35,7 +35,7 @@ const storage = values => ({ getItem: key => values.get(key) || null,
   vm.createContext(context);
   vm.runInContext(read('instructor.js'), context);
   vm.runInContext(`draw({session:{code:'ABCDE',state:'lobby',stage:0,mode:'team',clockMinutes:25},
-    projector:{clock:{remaining:null},groups:[]},roster:[],slots:[]})`, context);
+    projector:{clock:{remaining:null},groups:[],unassigned:[]}})`, context);
   const link = new URL(consolePage.element('privateCheck').href, 'https://platform.test/sim04/instructor.html');
   assert.equal(link.searchParams.get('session'), 'ABCDE');
   assert.equal(new URLSearchParams(link.hash.slice(1)).get('lt'), token,
@@ -49,7 +49,7 @@ const storage = values => ({ getItem: key => values.get(key) || null,
     sessionStorage: storage(new Map()), URLSearchParams,
     fetch: async (url, options) => {
       requests.push({ url, options });
-      return { ok: true, json: async () => ({ checks: [{label:'Team 1',status:'none'}] }) };
+      return { ok: true, json: async () => ({ checks: { groups: [{label:'Team 1',status:'none',members:['a@school.edu']}], unassigned: [] } }) };
     }
   });
   assert.equal(checkPage.element('facultyField').hidden, true);

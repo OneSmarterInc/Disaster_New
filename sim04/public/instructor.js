@@ -6,7 +6,7 @@ const token = new URLSearchParams(location.hash.slice(1)).get('lt') || sessionSt
 if (token) sessionStorage.setItem('m04-faculty-lt', token);
 let facultyCode = sessionStorage.getItem('m04-faculty-code') || '';
 let code = (query.get('session') || sessionStorage.getItem('m04-faculty-room') || '').trim().toUpperCase();
-let state = null, lastSignature = '', pollAt = 0;
+let state = null, lastSignature = '', pollAt = 0, divideTouched = false;
 function headers() { return { 'content-type': 'application/json', ...(token ? { 'x-launch-token': token } : { 'x-faculty-code': facultyCode }) }; }
 async function api(action, extra = {}) {
   const r = await fetch(BASE + '/api/session', { method: 'POST', headers: headers(), cache: 'no-store', body: JSON.stringify({ action, code, facultyCode, ...extra }) });
@@ -30,17 +30,46 @@ function statusList(groups) {
   const grid = el('div', 'status-list');
   for (const g of groups) {
     const item = el('div', 'status-item');
-    item.append(el('strong', '', g.label), el('span', g.committed ? 'success mono' : 'muted mono',
+    item.append(el('strong', '', g.label), el('small', 'muted mono', g.members.map(m => m.name).join(', ')),
+      el('span', g.committed ? 'success mono' : 'muted mono',
       g.committed ? 'Committed' : g.locked ? 'Time ended · no number' : 'Not committed'));
     grid.append(item);
   }
   return grid;
 }
+// One person, draggable on a desktop, with a Move menu for phones and tablets.
+function chip(person, targets, here) {
+  const node = el('div', 'chip'); node.draggable = true;
+  node.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', person.id));
+  const menu = el('select', 'chip-move'); menu.setAttribute('aria-label', 'Move ' + person.name);
+  const head = document.createElement('option'); head.value = ''; head.textContent = 'Move'; menu.append(head);
+  for (const t of targets) if (t.id !== here) {
+    const o = document.createElement('option'); o.value = t.id; o.textContent = t.label; menu.append(o);
+  }
+  menu.onchange = () => menu.value && moveTo(person.id, menu.value);
+  node.append(el('span', 'mono', person.name), menu);
+  return node;
+}
+function column(title, id, people, targets, note) {
+  const col = el('div', 'column');
+  col.append(el('div', 'eyebrow', title + (people ? ` · ${people.length}` : '')));
+  if (note) col.append(el('p', 'note', note));
+  (people || []).forEach(p => col.append(chip(p, targets, id)));
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('over'); });
+  col.addEventListener('dragleave', () => col.classList.remove('over'));
+  col.addEventListener('drop', e => { e.preventDefault(); col.classList.remove('over'); moveTo(e.dataTransfer.getData('text/plain'), id); });
+  return col;
+}
+async function moveTo(participantId, target) {
+  try { await api('move', { participantId, target }); lastSignature = ''; await refresh(); } catch (e) { say(e.message); }
+}
 function reportList(numbers) {
   const grid = el('div', 'status-list');
   for (const n of numbers) {
     const item = el('div', 'status-item');
+    if (n.example) item.classList.add('example');
     item.append(el('strong', '', n.label), el('span', 'clock', n.number === null ? 'No number reported' : `${n.number}%`));
+    if (n.example) item.append(el('small', 'muted mono', 'Worked example, not a group'));
     if (n.confidence) item.append(el('small', 'muted mono', `Confidence ${n.confidence}/5`));
     grid.append(item);
   }
@@ -48,20 +77,23 @@ function reportList(numbers) {
 }
 function revealCard(group) {
   const card = el('article', 'reveal-card');
+  if (group.example) card.classList.add('example');
   card.append(el('div', 'department', `${group.department} · Definition ${group.sheetId}`),
-    el('h3', '', group.groups.map(g => g.label).join(', ')), el('p', 'muted', group.purpose));
+    el('h3', '', group.example ? 'Worked example' : group.groups.map(g => g.label).join(', ')), el('p', 'muted', group.purpose));
   const list = el('ol', 'definition');
   group.lines.forEach((line, i) => list.append(el('li', i === group.contestedIndex ? 'contested' : '', line)));
   card.append(list, el('p', 'eyebrow', 'Worked derivation'));
   for (const step of group.derivation) card.append(el('p', 'quiet', step));
-  const result = group.groups.map(g => `${g.label}: ${g.number === null ? 'No number reported' : g.number + '%'}`).join(' · ');
+  const result = group.example ? `Example figure: ${group.exampleNumber}%`
+    : group.groups.map(g => `${g.label}: ${g.number === null ? 'No number reported' : g.number + '%'}`).join(' · ');
   card.append(el('p', 'mono', result));
   return card;
 }
 function comparison() {
   const a = $('compareA').value, b = $('compareB').value;
   const cards = state.projector.reveal || [];
-  const find = id => cards.find(r => r.groups.some(g => g.id === id));
+  const find = id => id.startsWith('example-') ? cards.find(r => r.sheetId === id.slice(8))
+    : cards.find(r => r.groups.some(g => g.id === id));
   $('comparison').replaceChildren(...[find(a), find(b)].filter(Boolean).map(revealCard));
 }
 function draw(data) {
@@ -77,29 +109,31 @@ function draw(data) {
   $('privateCheck').href = 'private-check.html?session=' + encodeURIComponent(s.code)
     + (token ? '#lt=' + encodeURIComponent(token) : '');
   $('joinUrl').value = data.joinUrl || 'Set SIM_URL to enable invitations';
-  const signature = JSON.stringify([s, p.groups, p.numbers, p.reveal, data.roster, data.slots]);
+  const signature = JSON.stringify([s, p.groups, p.unassigned, p.numbers, p.reveal]);
   if (signature === lastSignature) { time(); return; }
   lastSignature = signature;
   if (s.state === 'lobby') {
     $('start').textContent = `Start ${s.clockMinutes}-minute clock`;
-    const roster = $('roster'); roster.replaceChildren();
-    for (const member of data.roster) {
-      const line = el('div', 'row'); line.append(el('span', 'mono', member.name));
-      if (s.mode === 'team') {
-        const select = el('select'); select.style.maxWidth = '220px';
-        const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Assign group'; select.append(empty);
-        for (const slot of data.slots) {
-          const option = document.createElement('option'); option.value = slot.id; option.textContent = slot.label;
-          if (member.group === slot.label) option.selected = true; select.append(option);
-        }
-        select.onchange = async () => { if (!select.value) return; try { await api('assign', { participantId: member.id, slotId: select.value }); await refresh(); } catch (e) { say(e.message); } };
-        line.append(select);
-      } else line.append(el('span', 'pill good', member.group || 'Awaiting slot'));
-      roster.append(line);
-    }
-    if (!data.roster.length) roster.append(el('p', 'muted', 'No participants have joined yet. Share the invitation link.'));
-    const filled = data.slots.filter(x => x.members).length;
-    roster.append(el('p', 'note', `${filled} of ${data.slots.length} ${s.mode === 'team' ? 'groups' : 'seats'} filled. Empty ones are dropped when you start; at least three must be filled.`));
+    $('divideRow').hidden = s.mode === 'individual';
+    if (!divideTouched) $('divideSize').value = s.groupSize;
+    const targets = [{ id: 'unassigned', label: 'Unassigned' }, ...p.groups.map(g => ({ id: g.id, label: g.label })),
+      { id: 'new', label: 'New group' }];
+    const board = $('roster'); board.replaceChildren(
+      column('Unassigned', 'unassigned', p.unassigned, targets,
+        p.unassigned.length || p.groups.length ? '' : 'Nobody has joined yet. Share the invitation link.'),
+      ...p.groups.map(g => column(g.label, g.id, g.members, targets)),
+      column('New group', 'new', [], targets, 'Drop someone here to start a new group.'));
+    const people = p.unassigned.length + p.groups.reduce((n, g) => n + g.members.length, 0);
+    $('start').disabled = !p.groups.length;
+    $('startNote').textContent = !people ? '' : p.unassigned.length
+      ? `${p.groups.length} group(s) ready. ${p.unassigned.length} not yet in a group will wait until you place them.`
+      : `${p.groups.length} group(s) ready.`;
+  }
+  $('late').hidden = s.state === 'lobby' || s.stage > 0 || !p.unassigned.length;
+  if (!$('late').hidden) {
+    const targets = p.groups.map(g => ({ id: g.id, label: g.label }));
+    $('lateList').replaceChildren(column('Not yet in a group', 'unassigned', p.unassigned, targets),
+      ...p.groups.map(g => column(g.label, g.id, g.members, [])));
   }
   const advance = $('advance'); advance.hidden = s.state === 'lobby' || s.stage === 3;
   advance.textContent = ['Reveal numbers', 'Reveal definitions', 'Complete session'][s.stage];
@@ -135,10 +169,18 @@ function openRoom(value) {
 $('createForm').addEventListener('submit', async e => {
   e.preventDefault(); const mode = document.querySelector('input[name=mode]:checked')?.value;
   if (!mode) { say('Choose team or individual mode.'); return; }
-  try { const response = await api('create', { mode, count: Number($('count').value), clockMinutes: Number($('minutes').value) }); openRoom(response.session.code); say('Room created. Share the invitation link.', true); }
+  try { const response = await api('create', { mode, groupSize: Number($('groupSize').value), clockMinutes: Number($('minutes').value) }); openRoom(response.session.code); say('Room created. Share the invitation link.', true); }
   catch (err) { say(err.message); }
 });
 $('openRoom').onclick = () => openRoom($('roomCode').value);
+$('divideSize').oninput = () => { divideTouched = true; };
+$('divide').onclick = async () => {
+  try { await api('divide', { groupSize: Number($('divideSize').value) }); lastSignature = ''; await refresh(); say('Groups divided at random. Drag anyone to adjust.', true); }
+  catch (e) { say(e.message); }
+};
+$('createForm').addEventListener('change', () => {
+  $('groupSize').closest('.field').hidden = document.querySelector('input[name=mode]:checked')?.value === 'individual';
+});
 $('start').onclick = async () => { try { await api('start'); await refresh(); say('Clock started.', true); } catch (e) { say(e.message); } };
 $('advance').onclick = async () => {
   try { const result = await api('advance'); await refresh();

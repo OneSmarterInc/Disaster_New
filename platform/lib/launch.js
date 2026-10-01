@@ -42,10 +42,11 @@ function verify(token) {
 // was under the length of every simulation in the catalogue, so a token could
 // expire mid-run — and it did, silently, because the sims only need it at the
 // start and at the end.
-function launchToken({ userId, name, role, simId, courseId, mode, minutes = 60 }) {
+function launchToken({ userId, name, email, role, simId, courseId, mode, minutes = 60 }) {
   return sign({
     sub: userId,
     name,
+    email: email || null,      // sims that group students by email (Sim-04) read this
     role,                      // 'student' | 'faculty' | 'faculty_preview'
     sim: simId,
     mode: mode || 'play',

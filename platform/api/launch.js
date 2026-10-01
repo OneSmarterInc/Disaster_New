@@ -170,7 +170,7 @@ module.exports = async (req, res) => {
             VALUES (${id('lch')}, ${me.id}, ${simId}, ${courseId}, ${asRole})`;
 
     const token = launchToken({
-      userId: me.id, name: me.name, role: asRole,
+      userId: me.id, name: me.name, email: me.email, role: asRole,
       // Long enough to outlive the thing it launches. Ten minutes was shorter
       // than a twenty-minute simulation, so a token could expire mid-run — and
       // in sim 03 it expired on day seven of eight, before the debrief, which

@@ -45,8 +45,7 @@ async function launchPage(pathname, search = '', hash = '') {
   assert.equal(redirect('?guest=1'), undefined, 'guest resumes without another account check');
   assert.equal(redirect('', '#lt=signed-token'), undefined, 'signed student stays in the sim');
   assert.equal(redirect('', '', 'localhost'), undefined);
-  assert.doesNotMatch(entryHtml, /id="joinForm"|Waiting for your instructor|Faculty code|Instructor code/,
-    'student entry contains no room-code form or faculty waiting screen');
+  assert.match(entryHtml, /id="joinForm"[^>]+hidden/, 'room-code form is hidden on signed student entry');
   assert.match(launchHtml, /id="gate" hidden/, 'access-code gate starts hidden while account is checked');
 
   const direct = await launchPage('/launch.html');
@@ -57,5 +56,5 @@ async function launchPage(pathname, search = '', hash = '') {
   await guest.element('open').onclick();
   assert.equal(guest.destination(), '/sim04/index.html?guest=1');
   assert.equal(guest.storage.get('m04-access'), 'test-student-code');
-  console.log('PASS Sim04 entry: signed students skip codes; guests keep the access-code gate');
+  console.log('PASS Sim04 entry: signed students skip codes; guests keep access and room codes');
 })().catch(error => { console.error(error); process.exit(1); });
