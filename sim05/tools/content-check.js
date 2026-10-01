@@ -31,6 +31,7 @@ for (const [p, s] of everything) {
 }
 for (const [p, s] of studentFacing) {
   if (/privacy/i.test(s)) refuse(`"privacy" appears in student-facing copy at ${p}`);
+  if (/\broom\b/i.test(s)) refuse(`"room" appears in student-facing copy at ${p}; say "class" or name the screen`);
   if (COURSE_OR_PLACE.test(s)) refuse(`course, day or institution named at ${p}: ${s.match(COURSE_OR_PLACE)[0]}`);
 }
 

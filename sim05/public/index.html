@@ -119,11 +119,12 @@ p.body{color:var(--soft);margin-bottom:14px}
 .dots span.on{background:var(--amber)}.dots span.done{background:var(--soft)}
 .example{border:1px dashed var(--line2);padding:18px 20px 16px;margin-top:22px;position:relative}
 .ex-tag{position:absolute;top:-10px;left:14px;background:var(--night);padding:0 8px;font:12px var(--mono);color:var(--amber)}
-.ex-grid{display:grid;grid-template-columns:1fr 150px;gap:22px}
+.ex-grid{display:grid;grid-template-columns:1fr 180px;gap:22px}
+.ex-label{white-space:nowrap}
 .ex-label{font:12px var(--mono);color:var(--dim);margin:10px 0 6px}
 .ex-bar{display:block;height:9px;background:var(--line2);margin-bottom:7px}
 .ex-bar.tall{height:14px}.w90{width:90%}.w80{width:80%}.w70{width:70%}.w60{width:60%}
-.ex-row{display:grid;grid-template-columns:130px 1fr;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:4px}
+.ex-row{display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:4px}
 .ex-row .ex-bar{margin:6px 0}
 .ex-btns{display:flex;gap:8px}.ex-btn{width:70px;height:26px;border:1px solid var(--line2)}.ex-btn.pri{background:var(--amberDeep);border-color:var(--amberDeep)}
 .ex-phone{height:170px;border:1px solid var(--line2);border-radius:18px}
@@ -193,6 +194,17 @@ p.body{color:var(--soft);margin-bottom:14px}
 .ending li i{display:block;font:normal 12px var(--mono);color:var(--dimmer);margin-bottom:4px}
 .closing{margin-top:34px;color:var(--dim);font-style:italic}
 @media(max-width:860px){.round-body{grid-template-columns:1fr}.strip{grid-template-columns:1fr 1fr}.ex-grid{grid-template-columns:1fr}.phone{max-width:260px}}
+.walk-file{max-width:380px;margin-top:22px}
+.walk-file .file{position:static}
+.ex-entry{border-top:1px dashed var(--line2);padding:14px 20px 16px;position:relative}
+.ex-entry .lab{display:block;font:12px var(--mono);color:var(--dim)}
+.ex-entry .conf{display:block;font:12px var(--mono);color:var(--dimmer);margin-bottom:8px}
+.ex-tag2{position:absolute;right:16px;top:12px;font:11px var(--mono);color:var(--amber)}
+.ph-big.ph-head{font:500 19px/1.25 var(--serif)}
+.file li.new{box-shadow:inset 3px 0 0 var(--amber)}
+.summary{margin-top:6px;font-size:19px;color:var(--bone)}
+.reflect{border-left:3px solid var(--amber);padding:6px 0 6px 18px;margin-top:34px;max-width:62ch}
+.reflect p{font-size:20px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -356,13 +368,13 @@ function phoneBody(a){
   if(a.kind==='route')return `<svg viewBox="0 0 160 110" class="ph-art" aria-hidden="true"><g class="ph-street"><path d="M0 22H160M0 58H160M0 92H160M26 0V110M70 0V110M118 0V110M0 110L60 0"/></g><path class="ph-route" d="M26 92 L26 58 L70 58 L70 22 L118 22 L118 58 L96 76 L70 92 Z"/><circle cx="26" cy="92" r="4" class="ph-dot"/></svg>`;
   if(a.kind==='sleep'){const h=[12,26,40,30,46,22,38,48,28,16,34,20];return `<svg viewBox="0 0 160 70" class="ph-art" aria-hidden="true">${h.map((y,i)=>`<rect x="${i*13+2}" y="${60-y}" width="10" height="${y}" rx="2" class="ph-bar"/>`).join('')}<path d="M0 64H160" class="ph-street"/></svg>`}
   if(a.kind==='calories')return `<svg viewBox="0 0 160 60" class="ph-art" aria-hidden="true"><path class="ph-route" d="M0 40 L20 38 L30 20 L40 44 L55 36 L70 38 L80 14 L90 46 L110 34 L130 36 L140 24 L160 30"/></svg>`;
-  return `<div class="ph-tipmark" aria-hidden="true">+</div>`;
+  return '';
 }
 function phone(a,mode){
   if(!a)return '';
   const head=mode==='preview'?CFG.copy.appIfShips:mode==='off'?CFG.copy.appNotShipped:CFG.copy.appHeading;
   if(mode==='off')return `<figure class="phone off"><figcaption>${esc(head)}</figcaption><div class="ph-screen"><div class="ph-app">Loopwell</div><div class="ph-title">${esc(a.name)}</div><p class="ph-off">${esc(a.off)}</p></div></figure>`;
-  return `<figure class="phone ${mode==='preview'?'preview':''}"><figcaption>${esc(head)}</figcaption><div class="ph-screen"><div class="ph-app">Loopwell</div><div class="ph-title">${esc(a.title)}</div>${phoneBody(a)}<div class="ph-big">${esc(a.big)}${a.bigUnit?` <small>${esc(a.bigUnit)}</small>`:''}</div><p class="ph-small">${esc(a.small)}</p></div></figure>`;
+  return `<figure class="phone ${mode==='preview'?'preview':''}"><figcaption>${esc(head)}</figcaption><div class="ph-screen"><div class="ph-app">Loopwell</div><div class="ph-title">${esc(a.title)}</div>${phoneBody(a)}<div class="ph-big${a.kind==='tip'?' ph-head':''}">${esc(a.big)}${a.bigUnit?` <small>${esc(a.bigUnit)}</small>`:''}</div><p class="ph-small">${esc(a.small)}</p></div></figure>`;
 }
 
 // Dana's file. During a decision it is compact (tap a line to read it); in a
@@ -372,10 +384,15 @@ function file(picture,opts={}){
   const line=p=>{
     const ch=changed.includes(p.id),tag=ch?(added.includes(p.id)?CFG.copy.newMarker:CFG.copy.updatedMarker):'';
     const lab=`<span class="lab">${esc(p.label)}</span><span class="conf">${tag?`<b>${esc(tag)}</b> · `:''}${esc(CFG.copy.levelWords[p.level]||'')}</span>`;
-    return opts.compact?`<li><details><summary>${lab}</summary><p>${esc(p.text)}</p></details></li>`:`<li class="${ch?'new':''}">${lab}<p>${esc(p.text)}</p></li>`;
+    return opts.compact?`<li class="${ch?'new':''}"><details><summary>${lab}</summary><p>${esc(p.text)}</p></details></li>`:`<li class="${ch?'new':''}">${lab}<p>${esc(p.text)}</p></li>`;
   };
-  const items=picture&&picture.length?`<ol>${picture.map(line).join('')}</ol>${opts.compact?`<div class="hint">${esc(CFG.copy.expandHint)}</div>`:''}`:`<div class="empty">${esc(CFG.copy.revealEmpty)}</div>`;
+  const items=picture&&picture.length?`<ol>${(opts.chronological?picture:byRecency(picture)).map(line).join('')}</ol>${opts.compact?`<div class="hint">${esc(CFG.copy.expandHint)}</div>`:''}`:`<div class="empty">${esc(CFG.copy.revealEmpty)}</div>`;
   return `<aside class="file" aria-label="${esc(CFG.copy.revealHeading)}"><div class="file-head"><div class="who">${esc(c.name)}</div><div class="meta">${c.age} · ${esc(c.since)}</div><div class="title">${esc(CFG.copy.revealHeading)}</div></div>${items}</aside>`;
+}
+function byRecency(picture){
+  const last={};
+  for(const r of S.view.rounds)if(r.result)for(const id of r.result.changed)last[id]=r.n;
+  return picture.map((p,i)=>({p,i})).sort((a,b)=>(last[b.p.id]||0)-(last[a.p.id]||0)||a.i-b.i).map(x=>x.p);
 }
 function latestPicture(){
   const done=S.view.rounds.filter(r=>r.result);
@@ -386,7 +403,7 @@ function skipButton(){
   const v=S.view;if(!v.canSkip)return '';
   const c=v.clock;
   const label=c.phase==='decide'?CFG.copy.skipToResult:c.phase==='briefing'?fill(CFG.copy.skipToNext,{n:1}):c.round<5?fill(CFG.copy.skipToNext,{n:c.round+1}):CFG.copy.skipToEnding;
-  return `<div class="skip"><button class="btn" id="skip">${esc(label)}</button></div>`;
+  return `<div class="skip"><button class="btn pri" id="skip">${esc(label)}</button></div>`;
 }
 function wireSkip(){
   const b=document.getElementById('skip');if(!b)return;
@@ -420,10 +437,11 @@ function render(){
 function renderWalk(late){
   const W=CFG.walkthrough,i=Math.min(S.walk||0,W.length-1),w=W[i],solo=!!S.session.solo;
   const body=(solo&&w.soloBody?w.soloBody:w.body).map(p=>`<p class="body">${esc(p)}</p>`).join('')+(w.teamBody&&S.session.mode==='team'?`<p class="body">${esc(w.teamBody)}</p>`:'');
-  const example=w.example?exampleRound(w.labels):'';
+  const fx=w.fileExample;
+  const example=w.example?exampleRound(w.labels):fx?`<div class="walk-file">${file([]).replace('</aside>',`<div class="ex-entry"><span class="ex-tag2">${esc(fx.tag)}</span><span class="lab">${esc(fx.label)}</span><span class="conf">${esc(CFG.copy.levelWords[fx.level])}</span><span class="ex-bar w90"></span><span class="ex-bar w70"></span></div></aside>`)}</div>`:'';
   const last=i===W.length-1;
   const next=last?`<button class="btn pri" id="wn">${esc(solo?CFG.copy.walkStartSolo:CFG.copy.walkReady)}</button>`:`<button class="btn pri" id="wn">${esc(CFG.copy.walkNext)}</button>`;
-  const banner=late?`<div class="note warn">${esc(CFG.copy.walkLate)} <button class="btn sm" id="wskip">${esc(CFG.copy.walkSkip)}</button></div>`:'';
+  const banner=late?`<div class="note warn">${esc(CFG.copy.walkLate)} <button class="btn sm pri" id="wskip">${esc(CFG.copy.walkSkip)}</button></div>`:'';
   app.innerHTML=`<section class="walk">${banner}<div class="dots" aria-label="Step ${i+1} of ${W.length}">${W.map((_,k)=>`<span class="${k===i?'on':k<i?'done':''}"></span>`).join('')}</div>
     <h2>${esc(w.title)}</h2>${body}${example}
     <div class="decide" style="margin-top:26px">${i>0?`<button class="btn" id="wb">${esc(CFG.copy.walkBack)}</button>`:''}${next}</div>
@@ -485,30 +503,36 @@ async function vote(n,decision){
 function renderReveal(r,paused){
   const res=r.result,team=S.session.mode==='team';
   const mine=team&&r.myVote?`<small>${esc(CFG.copy.yourVotes)}: ${esc(outcomeWords(r.myVote))}</small>`:'';
-  const head=team?`${esc(CFG.copy.teamDecision)}: ${esc(outcomeWords(res.decision))}`:esc(outcomeWords(res.decision));
+  const head=esc((team?CFG.copy.teamOutcomeSentence:CFG.copy.outcomeSentence)[res.decision]);
   const changed=res.picture.filter(p=>res.changed.includes(p.id));
   const change=changed.length?changed.map(p=>`<div class="change"><div class="ch-head">${esc(res.added.includes(p.id)?CFG.copy.newInFile:CFG.copy.updatedInFile)} · ${esc(CFG.copy.levelWords[p.level])}</div><div class="ch-label">${esc(p.label)}</div><p>${esc(p.text)}</p></div>`).join('')
     :`<p class="note">${esc(CFG.copy.revealUnchanged)}</p>`;
   const cost=res.cost?`<div class="cost"><h3>${esc(CFG.copy.costHeading)}</h3><p>${esc(res.cost)}</p></div>`:'';
   app.innerHTML=`<div class="layout"><div class="lead-wide">${paused}<div class="kicker">Round ${r.n} of 5 · ${esc(r.title)}</div>
   <p class="outcome ${res.decision}">${head}${mine}</p><p class="body">${esc(r.request)}</p>
-  <div class="round-body"><div>${change}${cost}${skipButton()}</div>${phone(r.app,res.decision==='decline'?'off':'live')}</div></div>${file(res.picture,{changed:res.changed,added:res.added})}</div>`;
+  <div class="round-body"><div>${change}${cost}${skipButton()}</div>${phone(r.app,res.decision==='decline'?'off':'live')}</div></div>${file(res.picture,{changed:res.changed,added:res.added,compact:true})}</div>`;
   wireSkip();
 }
 function renderEnding(paused){
   const e=S.view.ending,team=S.session.mode==='team';
   const strip=e.decisions.map(d=>`<div class="st ${d.decision}"><span class="n">${d.round}</span><span class="t">${esc(d.title)}</span><span class="d">${esc(outcomeWords(d.decision))}</span>${team&&d.myVote?`<span class="mv">${esc(CFG.copy.yourVotes)}: ${esc(outcomeWords(d.myVote))}</span>`:''}</div>`).join('');
-  const t=e.counts.timeout;
-  const count=t===5?CFG.copy.timeoutCountAll:fill(team?CFG.copy.teamCountLine:CFG.copy.countLine,e.counts)+(t===1?' '+CFG.copy.timeoutCountOne:t>1?' '+fill(CFG.copy.timeoutCountMany,{timeout:['','one','two','three','four'][t]}):'');
+  const W=['no','one','two','three','four','five'],c=e.counts,who=team?'Your team':'You',X=CFG.copy;
+  const req=n=>`${W[n]} request${n===1?'':'s'}`;
+  let count=c.approve===5?fill(X.countAllApproved,{who}):c.decline===5?fill(X.countAllDeclined,{who})
+    :c.approve&&c.decline?fill(X.countBoth,{who,approve:req(c.approve),decline:W[c.decline]})
+    :c.approve?fill(X.countApprovedOnly,{who,approve:req(c.approve)}):c.decline?fill(X.countDeclinedOnly,{who,decline:req(c.decline)}):'';
+  const t=c.timeout;
+  if(t===5)count=X.timeoutCountAll;else if(t===1)count+=' '+X.timeoutCountOne;else if(t>1)count+=' '+fill(X.timeoutCountMany,{timeout:W[t]});
+  const k=e.knows.length,summary=k===0?X.summaryNone:k===1?X.summaryOne:fill(X.summaryMany,{n:W[k]});
   const knows=e.knows.length?e.knows.map(k=>`<li><b>${esc(k.label)}</b><i>${esc(CFG.copy.levelWords[k.level])}</i>${esc(k.text)}</li>`).join(''):`<li>${esc(CFG.copy.revealEmpty)}</li>`;
   const missing=e.missing.length?e.missing.map(m=>`<li>${esc(m)}</li>`).join(''):`<li>${esc(CFG.copy.endingMissingEmpty)}</li>`;
   const appRows=e.decisions.map(d=>`<li class="${d.decision==='decline'?'off':''}"><span>${esc(d.app?.name||d.title)}</span><b>${d.decision==='decline'?'Not available':'On'}</b></li>`).join('');
   app.innerHTML=`${paused}<div class="kicker">${esc(CFG.customer.name)}</div><h2>${esc(CFG.copy.endingHeading)}</h2>
-  <h3 class="sec">${esc(team?CFG.copy.teamDecision+'s':CFG.copy.yourDecisions)}</h3><div class="strip">${strip}</div><p class="count">${esc(count)}</p>
+  <h3 class="sec">${esc(team?CFG.copy.teamDecision+'s':CFG.copy.yourDecisions)}</h3><div class="strip">${strip}</div><p class="count">${esc(count.trim())}</p><p class="summary">${esc(summary)}</p>
   <div class="ending"><section><h3 class="sec">${esc(CFG.copy.endingKnows)}</h3><ul>${knows}</ul></section>
   <section><h3 class="sec">${esc(CFG.copy.endingMissing)}</h3><ul>${missing}</ul>
   <figure class="phone list"><figcaption>${esc(CFG.copy.appHeading)}</figcaption><div class="ph-screen"><div class="ph-app">Loopwell</div><ul>${appRows}</ul></div></figure></section></div>
-  <p class="closing">${esc(S.session.solo?CFG.copy.soloClosingLine:CFG.copy.closingLine)}</p>`;
+  ${S.session.solo?`<div class="reflect"><p>${esc(CFG.copy.soloReflection)}</p></div>`:''}<p class="closing">${esc(S.session.solo?CFG.copy.soloClosingLine:CFG.copy.closingLine)}</p>`;
 }
 
 init();
