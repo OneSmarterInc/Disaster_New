@@ -99,7 +99,7 @@ let browser;
   await faculty.locator('.big').waitFor();
   assert.equal(await faculty.locator('#f').count(), 0, 'console reload retains its scoped launch token');
   await faculty.locator('#seat').click();
-  await faculty.getByRole('button', { name: 'Start briefing' }).waitFor();
+  await faculty.getByRole('button', { name: 'Start briefing', exact: true }).waitFor();
   assert.equal(await faculty.locator('#next').isEnabled(), false, 'faculty cannot start the timed briefing while students are reading');
   assert.equal((await store.get(keys.session(code))).phaseEndsAt, null);
   async function finishWalkthrough(student) {
