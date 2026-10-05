@@ -2,21 +2,33 @@
 const CODE = (new URLSearchParams(location.search).get('code') || '').toUpperCase();
 const HOST = localStorage.getItem(`s10host:${CODE}`);
 const headers = { 'X-Host-Key': HOST || '' };
+const projector = new URLSearchParams(location.search).get('projector') === '1';
+let acting = false, polling = false, lastTabs = '', lastControls = '';
+configureChrome(true);
+if (projector) { document.body.classList.add('projector-page'); $('#notes').remove(); }
+$('#projector-link').href = `console?code=${encodeURIComponent(CODE)}&projector=1`;
 let state = null; let skew = 0; let viewing = null; let lastBoard = ''; let lastNotes = '';
 
 $('#code').textContent = CODE;
-$('#join-url').textContent = new URL('.', document.baseURI).href.replace(/^https?:\/\//, '');
+const fallbackJoin = new URL(`./?session=${encodeURIComponent(CODE)}`, document.baseURI).href;
+$('#join-url').textContent = fallbackJoin; $('#join-url').href = fallbackJoin;
+$('#copy-join').onclick = async () => {
+  try { await navigator.clipboard.writeText($('#join-url').href); $('#copy-status').textContent = 'Join link copied.'; }
+  catch { $('#copy-status').textContent = 'Select the join link above and copy it.'; $('#join-url').focus(); }
+};
 
 async function poll() {
+  if (polling) return; polling = true;
   try {
     const s = await api('GET', `api/console?code=${encodeURIComponent(CODE)}`, null, headers);
     skew = s.serverNow - Date.now(); state = s;
-    if (s.joinUrl) $('#join-url').textContent = 'Through RapidSims, with this code';
+    $('#join-url').textContent = s.joinUrl || fallbackJoin; $('#join-url').href = s.joinUrl || fallbackJoin;
     if (!viewing || !s.cases.includes(viewing)) viewing = s.activeCase;
-    render(); $('#err').textContent = '';
+    render(); clearRecovery(); $('#err').textContent = '';
   } catch (e) {
-    $('#err').textContent = e.status === 403 ? 'This browser does not hold the host key for this session. Open the console from the browser that created it.' : 'Connection lost. Retrying…';
-  }
+    showRecovery(e, true);
+    $('#err').textContent = e.status === 401 ? 'Sign-in expired. Reopen this simulation from your courses.' : e.status === 403 ? 'This browser does not hold the host key for this session. Open the console from the browser that created it.' : 'Connection lost. Retrying…';
+  } finally { polling = false; }
 }
 setInterval(poll, 2000); poll();
 
@@ -28,9 +40,13 @@ setInterval(() => {
   if (left <= 0) poll();
 }, 500);
 
+function updateActionButtons() { document.querySelectorAll('[data-act], [data-pair], [data-opposing], [data-unproject]').forEach(b => { b.disabled = acting || projector; }); }
 async function act(path, body) {
+  if (acting || projector) return;
+  acting = true; updateActionButtons();
   try { await api('POST', path, { code: CODE, caseId: viewing, ...body }, headers); await poll(); }
-  catch (e) { $('#err').textContent = e.message; }
+  catch (e) { $('#err').textContent = e.message; if (e.status === 401) showRecovery(e, true); }
+  finally { acting = false; updateActionButtons(); }
 }
 
 const STAGE_BTN = ['Reveal the company', 'Reveal the next four quarters', 'Reveal what happened'];
@@ -40,7 +56,8 @@ function render() {
   const nth = s.cases.indexOf(viewing) + 1;
   $('#case-label').textContent = `Company ${nth} of ${s.cases.length} \u00b7 ${s.mode === 'team' ? `${s.teams} teams` : 'individual'}`;
   $('#phase-label').textContent = PHASE_NAMES[c.phase];
-  $('#tabs').innerHTML = s.cases.length > 1 ? s.cases.map((cs, i) => `<button class="btn quiet" data-tab="${cs}" aria-pressed="${cs === viewing}">Company ${i + 1}</button>`).join('') : '';
+  const tabs = s.cases.length > 1 ? s.cases.map((cs, i) => `<button class="btn quiet" data-tab="${cs}" aria-pressed="${cs === viewing}">Company ${i + 1}</button>`).join('') : '';
+  if (tabs !== lastTabs) { $('#tabs').innerHTML = tabs; lastTabs = tabs; }
   document.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { viewing = b.dataset.tab; lastBoard = ''; render(); });
 
   const ctl = [];
@@ -50,8 +67,10 @@ function render() {
   if (viewing === 'A' && b && b.canStart) ctl.push('<button class="btn" data-act="startB">Start the clock for company 2</button>');
   if (c.phase === 'closed' && c.reveal < 3) ctl.push(`<button class="btn" data-act="reveal">${STAGE_BTN[c.reveal]}</button>`);
   if (c.phase === 'closed' && c.heldCount) ctl.push(`<button class="btn quiet" data-act="held">${s.showHeld ? 'Hide' : 'Show'} held responses</button>`);
-  $('#controls').innerHTML = ctl.join(' ');
+  const controls = ctl.join(' ');
+  if (controls !== lastControls) { $('#controls').innerHTML = controls; lastControls = controls; }
   document.querySelectorAll('[data-act]').forEach((btn) => btn.onclick = () => {
+    if (acting || projector) return;
     const a = btn.dataset.act;
     if (a === 'start') act('api/host/start');
     if (a === 'startB') { viewing = 'B'; lastBoard = ''; act('api/host/start'); }
@@ -60,9 +79,18 @@ function render() {
   });
 
   const html = board(s, c);
-  if (html !== lastBoard) { $('#board').innerHTML = html; lastBoard = html; wireBoard(c); }
-  const notes = notesHtml(c);
-  if (notes !== lastNotes) { $('#notes-body').innerHTML = notes; lastNotes = notes; }
+  if (html !== lastBoard) {
+    const active = document.activeElement;
+    const attr = ['data-pair', 'data-opposing', 'data-unproject'].find(a => active?.hasAttribute(a));
+    const value = attr ? active.getAttribute(attr) : null;
+    $('#board').innerHTML = html; lastBoard = html; wireBoard(c);
+    if (attr) document.querySelector(`[${attr}="${CSS.escape(value)}"]`)?.focus({ preventScroll: true });
+  }
+  if (!projector) {
+    const notes = notesHtml(c);
+    if (notes !== lastNotes) { $('#notes-body').innerHTML = notes; lastNotes = notes; }
+  }
+  updateActionButtons();
 }
 
 function said(it, title) {

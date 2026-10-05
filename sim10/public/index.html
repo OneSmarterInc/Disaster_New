@@ -29,17 +29,18 @@ base.href = mount;
 <title>Infrastructure or Bubble?</title>
 <link rel="stylesheet" href="app.css">
 </head>
-<body>
+<body class="index-page">
+<header class="brandbar"><a class="brand" href="./"><span class="brand-mark">R</span><span>RapidSims<small>10 / INFRASTRUCTURE OR BUBBLE?</small></span></a><a class="account-link" href="/student.html">Back to courses</a></header>
 <main class="wrap narrow">
-  <h1>Infrastructure or Bubble?</h1>
-  <form id="access-gate" autocomplete="off" hidden>
+  <p class="eyebrow">Financial judgment lab</p><h1>Infrastructure or Bubble?</h1><p class="intro muted">Two quarters of a real company. One call. Explain the evidence behind your judgment.</p>
+  <form class="panel" id="access-gate" autocomplete="off" hidden>
     <p>Enter the access code supplied by your instructor or administrator.</p>
     <div class="field"><label for="entry-code">Access code</label><input id="entry-code" type="password" autocomplete="off" required></div>
     <p class="error" id="entry-error" role="alert"></p>
     <button class="btn" id="entry-open" type="submit">Open simulation</button>
   </form>
-  <div id="entry-options" hidden>
-  <section id="solo" hidden>
+  <div class="entry-grid" id="entry-options" hidden>
+  <section class="panel" id="solo" hidden>
     <h2>Play on your own</h2>
     <p>Read the figures, make your call, then explore what happened. Your reading and decision timers start when you begin.</p>
     <form id="solo-form">
@@ -52,9 +53,8 @@ base.href = mount;
       <button class="btn" id="solo-resume" type="button" hidden>Resume your run</button>
     </form>
     <p><a href="host" id="host-link" hidden>Run a class session</a></p>
-    <hr>
   </section>
-  <h2>Join a class session</h2>
+  <section class="panel"><h2>Join a class session</h2>
   <p class="muted">Enter the code your host shows on screen.</p>
   <form id="join" autocomplete="off">
     <div class="field">
@@ -71,7 +71,7 @@ base.href = mount;
     </div>
     <p class="error" id="err" role="alert"></p>
     <button class="btn" id="go" type="submit">Join</button>
-  </form>
+  </form></section>
   </div>
   <p class="error" id="entry-status" role="status" hidden></p>
   <p id="account-link" hidden><a href="/student.html">Back to your courses</a></p>
@@ -79,6 +79,7 @@ base.href = mount;
 </main>
 <script src="common.js"></script>
 <script>
+if (document.querySelectorAll) configureChrome();
 const form = $('#join'), codeEl = $('#code'), teamField = $('#team-field'), teamEl = $('#team'), err = $('#err');
 let who = launchInfo(), entryAllowed = false;
 const preset = new URLSearchParams(location.search).get('session');
@@ -100,7 +101,7 @@ async function verifyEntry() {
   $('#entry-error').textContent = '';
   try {
     await api('GET', 'api/access');
-    if (who && ['faculty', 'faculty_preview'].includes(who.role) && who.mode === 'session') { location.replace('host'); return; }
+    if (who && ['faculty', 'faculty_preview'].includes(who.role) && who.mode === 'session') { const play = new URLSearchParams(location.search).get('play'); location.replace('host' + (['team', 'individual'].includes(play) ? '?play=' + play : '')); return; }
     showEntry();
     if (preset && launchToken()) await go();
   } catch (e) {

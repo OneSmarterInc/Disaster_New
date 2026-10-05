@@ -154,7 +154,7 @@ function createApp({ store: injectedStore, clock = () => Date.now() } = {}) {
         case 'POST /api/verdict': return send(res, 200, await engine.saveIndividual(store, body.code, pid, body.caseId, body.fields || {}, now));
         case 'POST /api/private': return send(res, 200, await engine.savePrivate(store, body.code, pid, body.caseId, body.call, now));
         case 'POST /api/team/draft': return send(res, 200, await engine.saveTeamDraft(store, body.code, pid, body.caseId, body.fields || {}, now));
-        case 'POST /api/team/commit': return send(res, 200, await engine.commitTeam(store, body.code, pid, body.caseId, now));
+        case 'POST /api/team/commit': return send(res, 200, await engine.commitTeam(store, body.code, pid, body.caseId, now, body.expected));
         case 'GET /api/console': return send(res, 200, await engine.consoleState(store, q('code'), hostKey, now));
         case 'POST /api/host/start': await engine.startCase(store, body.code, hostKey, body.caseId, now); return send(res, 200, { ok: true });
         case 'POST /api/host/reveal': await engine.advanceReveal(store, body.code, hostKey, body.caseId, now); return send(res, 200, { ok: true });

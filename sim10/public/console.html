@@ -34,7 +34,8 @@ base.href = mount;
   @media (max-width: 720px) { .pair, .split { grid-template-columns: 1fr; } }
 </style>
 </head>
-<body>
+<body class="console-page">
+<header class="brandbar"><a class="brand" href="./"><span class="brand-mark">R</span><span>RapidSims<small>10 / INFRASTRUCTURE OR BUBBLE?</small></span></a><a class="account-link" href="/student.html">Back to courses</a></header>
 <header class="rail">
   <div class="rail-inner">
     <span class="case" id="case-label"></span>
@@ -44,9 +45,11 @@ base.href = mount;
 </header>
 <main class="wrap">
   <section class="join panel">
-    <div><p class="muted" style="margin:0">Join at</p><p class="mono" id="join-url" style="margin:0"></p></div>
+    <div><p class="muted" style="margin:0">Join at</p><p class="mono" style="margin:0"><a id="join-url" href="./"></a></p></div>
     <div><p class="muted" style="margin:0">Code</p><p class="code" id="code" style="margin:0"></p></div>
   </section>
+  <div class="controls"><button type="button" class="btn quiet" id="copy-join">Copy join link</button><a class="btn quiet" id="projector-link" target="_blank" rel="noopener" href="console">Open projector view</a><span id="copy-status" role="status"></span></div>
+  <section id="recovery" class="panel recovery" hidden role="alert"><p id="recovery-message"></p><a id="recovery-link" class="btn quiet" href="./">Return to RapidSims</a></section>
   <div class="tabs" id="tabs"></div>
   <div class="controls" id="controls"></div>
   <p class="error" id="err" role="alert"></p>

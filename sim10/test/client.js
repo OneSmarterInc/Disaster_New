@@ -109,6 +109,8 @@ async function check({ call, tok }) {
     const fac = tok({ sub: 'faculty', role: 'faculty', course: 'c1', mode: 'session' });
     const facultyPage = await page(`https://fixture/sim10/#lt=${fac}`, call);
     assert.equal(facultyPage.target(), 'https://fixture/sim10/host');
+    const individualLaunch = await page(`https://fixture/sim10/?play=individual#lt=${fac}`, call);
+    assert.equal(individualLaunch.target(), 'https://fixture/sim10/host?play=individual');
     const made = await call('POST', '/sim10/api/session', { mode: 'individual', cases: ['A'] }, { 'X-Launch-Token': fac });
     const classCode = made.body.code;
     const first = await page(`https://fixture/sim10/?session=${classCode}#lt=${token}`, call, root.ss);
@@ -193,13 +195,15 @@ async function check({ call, tok }) {
     // transient platform failure. The shipped player must retry that too.
     const player = fs.readFileSync(path.join(publicDir, 'play.js'), 'utf8');
     let attempts = 0;
-    const completion = vm.createContext({ CODE: code, headers: {}, launchToken: () => token,
+    const completionStatus = { textContent: '' };
+    const completion = vm.createContext({ $: () => completionStatus, CODE: code, headers: {}, launchToken: () => token,
       api: async () => { attempts++; return { reported: attempts >= 3, pending: attempts === 2 }; }
     });
     vm.runInContext(player.slice(player.indexOf('let finishSent = false;')), completion);
     const complete = "maybeFinish({cases:['A'],caseId:'A',reveal:{stage:3}})";
     for (let i = 0; i < 4; i++) { vm.runInContext(complete, completion); await new Promise(resolve => setImmediate(resolve)); }
     assert.equal(attempts, 3, 'failed and pending reports retry; successful report stops');
+    assert(completionStatus.textContent.includes('progress is updated'));
   } finally {
     if (previous === undefined) delete process.env.BASE_PATH; else process.env.BASE_PATH = previous;
   }

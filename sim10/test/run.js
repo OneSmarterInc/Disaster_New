@@ -168,12 +168,14 @@ test('team: private call window, shared draft, first commit wins, team isolation
   assert.strictEqual(seen.mine.private, 'infra');
   const other = await E.studentState(store, code, o1.pid, team);
   assert.deepStrictEqual(other.teamDraft, {}, 'other team sees nothing of team 1');
+  await rejects(E.commitTeam(store, code, m2.pid, 'A', team), 'bad_request');
+  await E.saveTeamDraft(store, code, m1.pid, 'A', { lineWhy: 'Cash is needed to fund the continued construction.', mind: longMind }, team);
   await E.commitTeam(store, code, m2.pid, 'A', team);
   await rejects(E.commitTeam(store, code, m1.pid, 'A', team), 'conflict');
   await rejects(E.saveTeamDraft(store, code, m1.pid, 'A', { call: 'infra' }, team), 'conflict');
   const end = T0 + 21 * MIN;
   const r1 = (await E.studentState(store, code, m1.pid, end)).result;
-  assert.deepStrictEqual([r1.status, r1.call, r1.blanks], ['recorded', 'bubble', ['reason', 'mind']]);
+  assert.deepStrictEqual([r1.status, r1.call, r1.blanks], ['recorded', 'bubble', []]);
   assert.strictEqual((await E.studentState(store, code, o1.pid, end)).result.status, 'no_verdict', 'no commit by the clock is no verdict');
   const con = await E.consoleState(store, code, host, end);
   assert.deepStrictEqual(con.byCase.A.movement, { moved: 1, held: 0, split: 0, noVerdict: 1 });
@@ -621,6 +623,8 @@ test('mount path: prefixed pages and APIs work without exposing server content',
 test('client: solo entry, signed account rejoin and scoped tokens use the real API', async () => {
   await withServer(async ({ call }) => require('./client').check({ call, tok, T0 }));
 });
+
+test('UI regressions: queued saves, retries, concurrent teams, review conflicts and clock continuity', () => require('./ui-regressions').check());
 
 (async () => {
   let failed = 0;

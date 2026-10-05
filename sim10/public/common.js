@@ -108,3 +108,23 @@ function wireGlossary(glossary) {
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 }
+
+function showRecovery(error, faculty = false) {
+  const box = $('#recovery'); if (!box) return;
+  box.hidden = false;
+  const auth = error.status === 401;
+  $('#recovery-message').textContent = auth
+    ? 'Your sign-in has expired. Reopen this simulation from RapidSims. Unsaved changes remain in this tab.'
+    : (error.status === 403 ? error.message : 'Connection interrupted. Keep this tab open; your latest changes may not be saved. Retrying…');
+  const link = $('#recovery-link');
+  link.hidden = !auth && error.status !== 403;
+  link.href = /^\/sim10(?:\/|$)/.test(location.pathname) ? (faculty ? '/faculty.html' : '/student.html') : './';
+  link.textContent = auth ? 'Reopen from your courses' : 'Return to the start';
+}
+function clearRecovery() { const box = $('#recovery'); if (box) box.hidden = true; }
+function configureChrome(faculty = false) {
+  document.querySelectorAll('.account-link').forEach(link => {
+    link.href = /^\/sim10(?:\/|$)/.test(location.pathname) ? (faculty ? '/faculty.html' : '/student.html') : './';
+    link.textContent = /^\/sim10(?:\/|$)/.test(location.pathname) ? 'Back to courses' : 'Return to the start';
+  });
+}

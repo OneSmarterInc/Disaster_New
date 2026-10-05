@@ -64,3 +64,37 @@ Chuck blind-reads both packs (join as a student with `DEV_OPEN=1`) and playtests
 Registration supplies Sim10-specific financial-analysis catalogue details (revision `sim10-v2`) and requests number 10 for new records. Existing record IDs, publication states and administrator numbering remain intact.
 
 Set `HEALTH_SECRET` to the same dedicated diagnostic key as the platform. Public `/api/health` stays minimal. The `x-health-key` header unlocks build, Redis configuration, launch-secret fingerprint, platform URL and registration address. It does not issue network requests or mutate sessions. Never use `LAUNCH_SECRET` as the diagnostic key.
+
+
+## UI branch review
+
+The approved UI changes are isolated on `feature/sim10-ui-review`, based on
+`610977f6383baa8ed8412e40cb0378c40da57c96`. The unchanged baseline is preserved
+on `backup/main-before-sim10-ui-20261005`; no merge to `main` is part of this work.
+
+- Desktop figures and answers use two columns; mobile uses one document flow.
+- Draft writes are serialized; failed fields remain in this tab and can be retried.
+  Hide/show does not recreate the form. Unsaved expired drafts can be copied,
+  but are never represented as recorded answers.
+- Team commitment requires a cited line, a reason of at least 15 characters and
+  counter-evidence of at least 80 characters. The confirmation checks that the
+  shared draft still matches the reviewed answer. Individual deadlines still
+  record the last saved response, including incomplete responses.
+- Concurrent edits to different team fields use compare-and-set to avoid lost
+  updates. Editing the same field concurrently remains last-writer-wins.
+- Progress uses the server phase start. Faculty mode survives the launch redirect.
+- The console exposes the actual join URL and a copy action. Its projector link
+  opens a host-authenticated display without facilitator notes or host controls.
+- Authentication and connection failures have different recovery messages.
+  Progress reporting is shown separately from answers being recorded.
+
+Validation: `npm test` includes content gates, API/engine tests, entry tests and
+save-queue regression coverage. `npm run gate` checks content provenance/leaks.
+
+The optional `npm run test:browser` suite requires Playwright and Chromium.
+Install a local test runtime with `npm install --no-save --package-lock=false playwright`
+and `npx playwright install chromium`, or point `SIM10_PLAYWRIGHT_PATH` at an
+existing Playwright module. `SIM10_CHROMIUM_PATH` and comma-separated
+`SIM10_BROWSER_ARGS` can select an existing browser. Set `SIM10_SCREENSHOTS` to
+an external directory for screenshots. The suite starts its own local server,
+uses an in-memory store and does not contact live simulation sessions.

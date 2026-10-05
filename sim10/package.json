@@ -9,6 +9,7 @@
     "start": "node server.js",
     "gate": "node tools/gate.js",
     "test": "node test/run.js",
-    "build": "node tools/gate.js"
+    "build": "node tools/gate.js",
+    "test:browser": "node test/browser.js"
   }
 }

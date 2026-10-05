@@ -47,7 +47,7 @@ function phaseOf(session, cs, now) {
   if (!run || !run.startedAt) return { name: 'waiting', endsAt: null };
   let t = run.startedAt;
   for (const p of phaseList(session)) {
-    if (now < t + p.ms) return { name: p.name, endsAt: t + p.ms };
+    if (now < t + p.ms) return { name: p.name, startsAt: t, endsAt: t + p.ms };
     t += p.ms;
   }
   return { name: 'closed', endsAt: t };
@@ -245,18 +245,28 @@ async function saveTeamDraft(store, code, pid, cs, fields, now) {
   if (s.mode !== 'team') fail('bad_request', 'This is an individual session.');
   if (phaseOf(s, cs, now).name !== 'team') fail('closed', 'The team call is open in the team window only.');
   if (await store.get(K.commit(s.code, cs, p.team))) fail('conflict', 'Your team has already committed its call.');
-  const cur = (await store.get(K.draft(s.code, cs, p.team))) || {};
-  const next = { ...cur, ...cleanFields(cs, fields), updatedAt: now, lastBy: pid };
-  await store.set(K.draft(s.code, cs, p.team), next);
-  return next;
+  const key = K.draft(s.code, cs, p.team);
+  const cleaned = cleanFields(cs, fields);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const cur = await store.get(key);
+    const next = { ...(cur || {}), ...cleaned, updatedAt: now, lastBy: pid };
+    if (await store.compareAndSet(key, cur, next)) return next;
+  }
+  fail('conflict', 'Your team is editing at the same time. Please retry saving.');
 }
 
-async function commitTeam(store, code, pid, cs, now) {
+async function commitTeam(store, code, pid, cs, now, expected) {
   const s = await getSession(store, code); const p = await participant(store, s, pid);
   if (s.mode !== 'team') fail('bad_request', 'This is an individual session.');
   if (phaseOf(s, cs, now).name !== 'team') fail('closed', 'The team call is open in the team window only.');
   const d = await store.get(K.draft(s.code, cs, p.team));
   if (!d || !d.call) fail('bad_request', 'Choose the team\'s call before committing.');
+  if (!d.line || (d.lineWhy || '').trim().length < config.minLineReasonChars || (d.mind || '').trim().length < config.minMindChangerChars) {
+    fail('bad_request', 'Cite a line and complete both explanations before committing.');
+  }
+  if (expected && ['call', 'line', 'lineWhy', 'mind'].some(key => (d[key] || '') !== (expected[key] || ''))) {
+    fail('conflict', 'Your team changed the answer. Review the latest draft before committing.');
+  }
   const rec = { call: d.call, line: d.line || null, lineWhy: d.lineWhy || '', mind: d.mind || '', by: pid, at: now };
   const ok = await store.setnx(K.commit(s.code, cs, p.team), rec);
   if (!ok) fail('conflict', 'Your team has already committed its call.');
@@ -367,7 +377,7 @@ async function studentState(store, code, pid, now) {
   const view = {
     code: s.code, mode: s.mode, cases: s.cases, caseId: cs, team: p.team,
     solo: !!s.solo,
-    phase: ph.name, endsAt: ph.endsAt, serverNow: now,
+    phase: ph.name, startsAt: ph.startsAt || null, endsAt: ph.endsAt, serverNow: now,
     rules: { minMind: config.minMindChangerChars, minReason: config.minLineReasonChars },
   };
   if (s.solo && ph.name === 'closed') {
