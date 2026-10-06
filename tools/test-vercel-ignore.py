@@ -2,6 +2,7 @@
 import json, os, pathlib, subprocess, tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 configs = {p.parent.name: json.loads(p.read_text())['ignoreCommand'] for p in ROOT.glob('*/vercel.json')}
+assert all(len(cmd) <= 256 for cmd in configs.values())
 with tempfile.TemporaryDirectory() as directory:
     repo = pathlib.Path(directory)
     def git(*args):
@@ -13,7 +14,9 @@ with tempfile.TemporaryDirectory() as directory:
         git('add', '.'); git('commit', '-qm', 'fixture')
         return git('rev-parse', 'HEAD')
     git('init', '-q'); git('config', 'user.email', 'test@example.invalid'); git('config', 'user.name', 'Test')
-    for name in configs: (repo / name).mkdir()
+    for name in configs:
+        (repo / name).mkdir()
+        (repo / name / 'vercel-ignore.sh').write_text((ROOT / name / 'vercel-ignore.sh').read_text())
     base = commit('README.md')
     count = 0
     def check(name, previous, expected, force='0'):
