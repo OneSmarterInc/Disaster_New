@@ -16,7 +16,10 @@ const app={get innerHTML(){return LAST;},set innerHTML(v){LAST=v;},
   querySelectorAll(sel){const m=sel.match(/\[data-(\w+)\]/);if(!m)return[];
     return [...LAST.matchAll(new RegExp(`data-${m[1]}="([^"]*)"`,'g'))].map(x=>{const e=mk('d');e.dataset[m[1]]=x[1];return e;});},
   querySelector:()=>mk('x')};
-global.window={scrollTo(){}};global.location={href:''};
+const windowListeners = {};
+global.window={scrollTo(){},addEventListener(type, listener){windowListeners[type]=listener;}};
+global.location={href:'http://localhost/',pathname:'/',search:''};
+window.location = global.location;
 global.document={getElementById:id=>id==='app'?app:mk(id),createElement:()=>mk('t'),addEventListener(){},
   body:{appendChild(){}},querySelector:()=>mk('x'),querySelectorAll:()=>[]};
 
@@ -40,6 +43,8 @@ global.fetch = async (p, o) => {
   return { ok:true, json: async () => ({ sims:[SIM] }) };
 };
 const strip = s => s.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+require('../public/sim-detail.js');
+global.simDetailHTML = window.simDetailHTML;
 new Function('window','location','document','fetch', js)(global.window, global.location, global.document, global.fetch);
 
 setTimeout(() => {
@@ -49,4 +54,14 @@ setTimeout(() => {
   console.log('  shows what it teaches:', LAST.includes('Sequencing under uncertainty'));
   assert.ok(LAST.includes(SIM.title), 'signed-out users see the catalogue');
   assert.ok(LAST.includes('Sequencing under uncertainty'), 'the teaching description renders');
+  assert.equal(typeof windowListeners.popstate, 'function', 'catalogue handles browser history');
+  location.search = '?sim=' + SIM.id;
+  windowListeners.popstate();
+  assert.ok(LAST.includes('id="back"'), 'history restores the simulation detail');
+  assert.ok(LAST.includes(SIM.detail.tangle), 'restored detail belongs to the selected simulation');
+  location.search = '';
+  windowListeners.popstate();
+  assert.ok(LAST.includes('data-open="' + SIM.id + '"'), 'history restores the catalogue list');
+  assert.ok(!LAST.includes('id="back"'), 'the previous detail is removed');
+  console.log('  catalogue Back/Forward restoration passed');
 }, 60);
