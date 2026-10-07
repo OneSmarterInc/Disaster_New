@@ -10,6 +10,8 @@
 <script src="/sim-detail.js"></script>
 <script src="/render-transcript.js?v=2"></script>
 <script src="/portal-navigation.js"></script>
+<link rel="stylesheet" href="/faculty-results.css">
+<script src="/faculty-results.js"></script>
 </head>
 <body class="console">
 <div class="top">
@@ -34,9 +36,9 @@ let navigation = null;
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 const F = {
-  view:'home', tab:'crs', data:null, simsOverview:null, course:null, progress:null, studentResults:null,
+  view:'home', tab:'crs', data:null, simsOverview:null, course:null, progress:null, studentResults:null, simResults:null, resultsSort:'name',
   me:null, err:null, q:{}, filter:{}, sel:new Set(),
-  page:{crs:1,sim:1,ros:1,studentResults:1,played:1},
+  page:{crs:1,sim:1,ros:1,studentResults:1,played:1,simResults:1},
   newCourse:false, editCourse:false, addSim:false, help:null, looking:null
 };
 
@@ -154,6 +156,23 @@ async function openProgress(courseId, simId) {
   catch (e) { if (e.stale) return; F.err = e.message; }
   render();
 }
+async function openSimResults(courseId, simId) {
+  if (F.me?.role !== 'faculty') return;
+  F.q.simResults='';
+  navigation.record('replace');
+  return navigation.go({...facultyRoute(),view:'sim-results',course:courseId,sim:simId,student:null,edit:null,add:null,p_simResults:null,f_simResults:null,sort:null},false);
+}
+function renderSimResults() {
+  FacultyResults.mount(app,F.simResults,{
+    back:()=>openCourse(F.simResults.course.id),
+    change:options=>{
+      F.q.simResults=options.search;
+      navigation.record('replace');
+      return navigation.go({...facultyRoute(),f_simResults:options.filter,p_simResults:options.page,sort:options.sort},false);
+    },
+    history:options=>api('/api/faculty',{action:'sim_result_history',courseId:F.simResults.course.id,simId:F.simResults.sim.id,...options})
+  });
+}
 async function openStudentResults(courseId, studentId) {
   if (navigation) return navigation.go({...facultyRoute(),view:'student-results',course:courseId,student:studentId,sim:null,edit:null,add:null});
   try { F.studentResults = await api('/api/faculty', { action:'student_results', courseId, studentId }); F.view = 'student-results'; F.page.studentResults = 1; F.err = null; }
@@ -166,6 +185,7 @@ function render() {
   if (!F.data) { app.innerHTML = F.err
     ? `<div class="crumb" style="margin-top:34px">Teaching</div><div class="head"><div><h1>Something went wrong</h1><p class="hint">${esc(F.err)}</p></div></div>`
     : '<div class="empty" style="margin-top:40px">Loading…</div>'; return; }
+  if (F.view === 'sim-results' && F.simResults) return renderSimResults();
   if (F.view === 'played' && F.progress) return renderPlayed();
   if (F.view === 'student-results' && F.studentResults) return renderStudentResults();
   if (F.view === 'course' && F.course) return renderCourse();
@@ -420,6 +440,7 @@ function renderCourse() {
                 : `<a class="btn pri sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}&mode=session">Run a session</a>`}
               <a class="btn sm" href="/api/launch?sim=${encodeURIComponent(x.sim_id)}&course=${encodeURIComponent(course.id)}">Play it yourself</a>
               <button class="btn sm faculty-result-btn" data-prog="${esc(x.sim_id)}">Who has played</button>
+              ${F.me?.role === 'faculty' ? `<button class="btn sm faculty-result-btn" data-sim-results="${esc(x.sim_id)}">Results</button>` : ''}
               <button class="btn sm" data-seats="${esc(x.sim_id)}" data-cur="${x.expected_seats||''}">Expected number</button>
               <button class="btn sm danger" data-rmsim="${esc(x.sim_id)}">Remove</button>
             </div>
@@ -525,6 +546,7 @@ function renderCourse() {
     flash(document.getElementById('ecopy'), 'Copied');
   };
   app.querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProgress(course.id, b.dataset.prog));
+  app.querySelectorAll('[data-sim-results]').forEach(b => b.onclick = () => openSimResults(course.id,b.dataset.simResults));
   app.querySelectorAll('[data-student-results]').forEach(b => b.onclick = () => openStudentResults(course.id, b.dataset.studentResults));
   app.querySelectorAll('[data-seats]').forEach(b => b.onclick = async () => {
     const v = prompt('How many students do you expect for this simulation?\n\nA forecast, not a limit — nobody is turned away if more enrol.', b.dataset.cur || '');
@@ -789,29 +811,35 @@ function wireCommon() {
 
 
 function facultyRoute() {
-  const course = F.view === 'played' ? F.progress?.course.id
+  const course = F.view === 'sim-results' ? F.simResults?.course.id : F.view === 'played' ? F.progress?.course.id
     : F.view === 'student-results' ? F.studentResults?.course.id : F.course?.course.id;
   return {view:F.view,tab:F.tab,course:F.view==='home'?null:course,
-    sim:F.view==='played'?F.progress?.sim.id:null,
+    sim:F.view==='sim-results'?F.simResults?.sim.id:F.view==='played'?F.progress?.sim.id:null,
+    sort:F.view==='sim-results'?F.resultsSort:null,
     student:F.view==='student-results'?F.studentResults?.student.id:null,
     look:F.looking,new:F.view==='home'&&F.newCourse?'1':null,edit:F.view==='course'&&F.editCourse?'1':null,add:F.view==='course'&&F.addSim?'1':null,
     ...PortalNavigation.listState(F.filter,F.page)};
 }
 async function restoreFaculty(params,current) {
   const courseId=PortalNavigation.id(params,'course'), simId=PortalNavigation.id(params,'sim'), studentId=PortalNavigation.id(params,'student');
-  const view=['home','course','played','student-results'].includes(params.get('view')) ? params.get('view') : courseId ? 'course' : 'home';
-  if (view!=='home' && (!courseId || (view==='played' && !simId) || (view==='student-results' && !studentId))) {
+  const view=['home','course','played','student-results','sim-results'].includes(params.get('view')) ? params.get('view') : courseId ? 'course' : 'home';
+  if (view!=='home' && (!courseId || (['played','sim-results'].includes(view) && !simId) || (view==='student-results' && !studentId))) {
     throw Object.assign(new Error('Incomplete link'),{status:404});
   }
+  if (view==='sim-results' && F.me?.role!=='faculty') throw Object.assign(new Error('Faculty access required'),{status:403});
   const data=await api('/api/faculty',{action:'overview'});
   const tab=params.get('tab')==='sim'?'sim':'crs';
   const simsOverview=tab==='sim' ? (await api('/api/faculty',{action:'sims_overview'})).sims || [] : null;
-  const course=view!=='home'?await api('/api/faculty',{action:'course_detail',courseId}):null;
+  const course=view!=='home' && view!=='sim-results'?await api('/api/faculty',{action:'course_detail',courseId}):null;
   const progress=view==='played'?await api('/api/faculty',{action:'sim_progress',courseId,simId}):null;
   const studentResults=view==='student-results'?await api('/api/faculty',{action:'student_results',courseId,studentId}):null;
+  const lists=PortalNavigation.lists(params,['crs','sim','ros','studentResults','played','simResults']);
+  const simResults=view==='sim-results'?await api('/api/faculty',{action:'sim_results',courseId,simId,
+    page:lists.page.simResults||1,filter:lists.filter.simResults||'all',sort:params.get('sort'),search:F.q.simResults||''}):null;
   if(!current())return;
-  Object.assign(F,{data,tab,view,course,progress,studentResults,simsOverview,err:null,
-    ...PortalNavigation.lists(params,['crs','sim','ros','studentResults','played']),
+  if(simResults){lists.page.simResults=simResults.page;lists.filter.simResults=simResults.filter;}
+  Object.assign(F,{data,tab,view,course,progress,studentResults,simResults,resultsSort:simResults?.sort||'name',simsOverview,err:null,
+    ...lists,
     newCourse:view==='home' && params.get('new')==='1',editCourse:view==='course' && params.get('edit')==='1',
     addSim:view==='course' && params.get('add')==='1',looking:PortalNavigation.id(params,'look') || null,help:null});
   F.sel.clear();
@@ -831,7 +859,7 @@ async function restoreFaculty(params,current) {
     root:app, read:facultyRoute, restore:restoreFaculty,
     beforeRestore:()=>{document.getElementById('lookSheet')?.remove();document.body.classList.remove('sheet-open');},
     render:()=>{render();drawLook();}, search:()=>F.q, setSearch:q=>{F.q=q;},
-    navigation:'[data-tab],[data-open],#back,#backCourse,[data-prog],[data-student-results],[data-f],[data-page-key],[data-look],#lookClose,#nc,#ce,#as'
+    navigation:'.fr-back,[data-tab],[data-open],#back,#backCourse,[data-prog],[data-sim-results],[data-student-results],[data-f],[data-page-key],[data-look],#lookClose,#nc,#ce,#as'
   });
   await navigation.start(F.me.id);
 })();

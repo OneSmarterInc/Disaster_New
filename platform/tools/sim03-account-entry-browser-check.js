@@ -73,7 +73,7 @@ async function shot(p,name){await p.screenshot({path:path.join(artifacts,name+'.
     if(url.pathname.startsWith('/sim03'))return simRoute(req,res,url);
     if(url.pathname==='/api/register'){res.writeHead(200,{'content-type':'application/json'});return res.end('{}');}
     if(url.pathname.startsWith('/api/'))return invoke(url.pathname.slice(5),req,res,url);
-    if(['/session.html','/session-entry.js','/portal-navigation.js','/app.css','/faculty.html','/sim-identity.js','/sim-detail.css','/sim-detail.js','/render-transcript.js'].includes(url.pathname))return file(res,'platform/public'+url.pathname);
+    if(['/session.html','/session-entry.js','/portal-navigation.js','/faculty-results.js','/faculty-results.css','/app.css','/faculty.html','/sim-identity.js','/sim-detail.css','/sim-detail.js','/render-transcript.js'].includes(url.pathname))return file(res,'platform/public'+url.pathname);
     res.writeHead(404);res.end('Not found');
   };
   platform=await listen(platformRoute);
