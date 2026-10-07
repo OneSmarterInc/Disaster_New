@@ -46,6 +46,26 @@ module.exports = async (req, res) => {
   try {
     switch (String(b.action || '')) {
 
+      // Simulation-centric results are a faculty-only screen. Keep existing admin
+      // teaching routes unchanged; do not grant this new action to another role.
+      case 'sim_results':
+      case 'sim_result_history': {
+        if (me.role !== 'faculty') return res.status(403).json({ error:'wrong_role' });
+        const course = await ownCourse(s, me.id, String(b.courseId || ''));
+        if (!course) return res.status(404).json({ error:'no_such_course' });
+        const sim = (await s`SELECT si.id, si.number, si.title FROM course_sims cs
+          JOIN sims si ON si.id=cs.sim_id WHERE cs.course_id=${course.id} AND cs.sim_id=${String(b.simId || '')}`)[0];
+        if (!sim) return res.status(404).json({ error:'no_such_simulation' });
+        await ensureTranscripts(s);
+        const reader = require('../lib/faculty-results.js');
+        try {
+          return res.status(200).json(await (b.action==='sim_results' ? reader.results : reader.history)(s,course,sim,b));
+        } catch (error) {
+          if (error.status) return res.status(error.status).json({error:error.message});
+          throw error;
+        }
+      }
+
       case 'overview': {
         const courses = await s`
           SELECT c.*,
